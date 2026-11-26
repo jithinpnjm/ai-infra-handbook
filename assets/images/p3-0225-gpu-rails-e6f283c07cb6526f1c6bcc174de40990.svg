@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1320" width="1600" height="1320">
+  <title>A GPU pod's networks: primary eth0, secondary rails, and the NCCL interface variables</title>
+  <desc>Architecture infographic illustrating GPU pod networking, secondary RDMA attachment chain, pod spec snippets, NCCL interface environment variables, and failure mode.</desc>
+
+  <rect width="1600" height="1320" fill="#f5f8f5" />
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">A GPU pod's networks: primary eth0, secondary rails,</text>
+  <text x="800" y="112" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">and the NCCL interface variables</text>
+
+  
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  
+  <rect x="40" y="160" width="460" height="730" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  
+  <g transform="translate(65, 180)">
+    <rect x="0" y="0" width="48" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="12" y1="40" x2="12" y2="48" stroke="#207448" stroke-width="4" />
+    <line x1="36" y1="40" x2="36" y2="48" stroke="#207448" stroke-width="4" />
+    <line x1="4" y1="48" x2="44" y2="48" stroke="#207448" stroke-width="4" />
+    <circle cx="14" cy="14" r="4" fill="#207448" />
+    <circle cx="26" cy="14" r="4" fill="#207448" />
+  </g>
+  <text x="130" y="212" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">GPU Pod</text>
+
+  
+  <rect x="65" y="245" width="410" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="85" y="285" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0" font-weight="bold" fill="#207448">eth0 from the primary CNI:</tspan>
+    <tspan x="85" dy="36">control traffic, service</tspan>
+    <tspan x="85" dy="34">access, logs, perhaps NCCL</tspan>
+    <tspan x="85" dy="34">bootstrap; may be the</tspan>
+    <tspan x="85" dy="34">overlay</tspan>
+  </text>
+
+  
+  <rect x="65" y="500" width="410" height="360" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="85" y="540" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0" font-weight="bold" fill="#207448">net1, net2 ... secondary</tspan>
+    <tspan x="85" dy="34" font-weight="bold" fill="#207448">interfaces: RDMA-capable NICs</tspan>
+    <tspan x="85" dy="36">(ConnectX in RoCE or IB mode)</tspan>
+    <tspan x="85" dy="34">for high-bandwidth</tspan>
+    <tspan x="85" dy="34">GPU-to-GPU and storage</tspan>
+    <tspan x="85" dy="34">traffic</tspan>
+  </text>
+
+  
+  <line x1="270" y1="890" x2="270" y2="945" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="40" y="955" width="460" height="175" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(65, 980)">
+    <line x1="0" y1="12" x2="48" y2="12" stroke="#207448" stroke-width="4" />
+    <line x1="0" y1="28" x2="48" y2="28" stroke="#207448" stroke-width="4" />
+    <line x1="10" y1="4" x2="10" y2="36" stroke="#207448" stroke-width="4" />
+    <line x1="24" y1="4" x2="24" y2="36" stroke="#207448" stroke-width="4" />
+    <line x1="38" y1="4" x2="38" y2="36" stroke="#207448" stroke-width="4" />
+  </g>
+  <text x="130" y="1010" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Network Fabrics</text>
+  <text x="65" y="1075" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">Rails: rail0, rail1, ...</text>
+
+  
+  
+  <rect x="530" y="160" width="530" height="345" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(555, 180)">
+    <circle cx="20" cy="20" r="14" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="34" cy="20" r="14" fill="none" stroke="#207448" stroke-width="4" />
+  </g>
+  <text x="615" y="212" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Attachment Chain</text>
+
+  <rect x="550" y="240" width="490" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="566" y="274" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="566" dy="0">NVIDIA Network Operator,</tspan>
+    <tspan x="566" dy="32">Multus (NetworkAttachmentDefinition),</tspan>
+    <tspan x="566" dy="32">SR-IOV device plugin with SR-IOV</tspan>
+    <tspan x="566" dy="32">CNI (places VFs into the pod),</tspan>
+    <tspan x="566" dy="32">host-device, macvlan or ipvlan CNI,</tspan>
+    <tspan x="566" dy="32">RDMA shared device plugin</tspan>
+    <tspan x="566" dy="32">(rdma/hca_shared_devices_a)</tspan>
+  </text>
+
+  
+  <rect x="530" y="525" width="530" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="550" y="565" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="550" dy="0">annotation</tspan>
+    <tspan x="550" dy="34">k8s.v1.cni.cncf.io/networks:</tspan>
+    <tspan x="550" dy="34">rail0</tspan>
+  </text>
+
+  
+  <rect x="530" y="665" width="530" height="155" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="550" y="702" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="550" dy="0">resources:</tspan>
+    <tspan x="550" dy="34">  nvidia.com/gpu: 8,</tspan>
+    <tspan x="550" dy="34">  nvidia.com/rdma_shared_device_a: 1</tspan>
+    <tspan x="550" dy="34">  or nvidia.com/sriov_net: 8</tspan>
+  </text>
+
+  
+  <rect x="530" y="840" width="530" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="550" y="876" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="550" dy="0" font-family="monospace">securityContext capabilities add</tspan>
+    <tspan x="550" dy="32" font-family="monospace">IPC_LOCK:</tspan>
+    <tspan font-family="sans-serif"> RDMA memory registration,</tspan>
+    <tspan x="550" dy="32">so the pod can pin memory</tspan>
+  </text>
+
+  
+  <rect x="530" y="995" width="530" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="550" y="1030" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="550" dy="0" font-family="monospace">NetworkAttachmentDefinition rail0:</tspan>
+    <tspan x="550" dy="32">macvlan, master ens1f0, mode bridge,</tspan>
+    <tspan x="550" dy="32">mtu 9000, ipam whereabouts range</tspan>
+    <tspan x="550" dy="32">10.100.0.0/24</tspan>
+  </text>
+
+  
+  
+  <rect x="1090" y="160" width="470" height="660" rx="16" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(1115, 180)">
+    <circle cx="20" cy="20" r="18" fill="none" stroke="#db8129" stroke-width="4" />
+    <path d="M 20 10 L 20 22 L 28 26" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="1170" y="212" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Tell NCCL which interface</text>
+
+  
+  <rect x="1115" y="240" width="420" height="95" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+  <text x="1130" y="272" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1130" dy="0" font-family="monospace" font-weight="bold">NCCL_SOCKET_IFNAME</tspan>
+    <tspan x="1130" dy="32">controls bootstrap and socket</tspan>
+    <tspan x="1130" dy="30">transport</tspan>
+  </text>
+
+  
+  <rect x="1115" y="350" width="420" height="80" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+  <text x="1130" y="382" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1130" dy="0" font-family="monospace" font-weight="bold">NCCL_IB_HCA</tspan> selects the
+    <tspan x="1130" dy="32">RDMA devices</tspan>
+  </text>
+
+  
+  <rect x="1115" y="445" width="420" height="80" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+  <text x="1130" y="477" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1130" dy="0" font-family="monospace" font-weight="bold">NCCL_IB_GID_INDEX</tspan> selects
+    <tspan x="1130" dy="32">the RoCE GIDs</tspan>
+  </text>
+
+  
+  <rect x="1115" y="540" width="420" height="185" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+  <text x="1130" y="572" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1130" dy="0" font-family="sans-serif" font-weight="bold" fill="#db8129">example</tspan>
+    <tspan x="1130" dy="32">NCCL_SOCKET_IFNAME=net1</tspan>
+    <tspan x="1130" dy="32">and</tspan>
+    <tspan x="1130" dy="32">NCCL_IB_HCA=mlx5_0,mlx5_1</tspan>
+    <tspan x="1130" dy="36" font-family="sans-serif" font-style="italic">or run with hostNetwork</tspan>
+  </text>
+
+  
+  <rect x="1090" y="845" width="470" height="285" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(1115, 870)">
+    <path d="M 20 4 L 38 36 L 2 36 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <line x1="20" y1="16" x2="20" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="20" cy="31" r="2" fill="#207448" />
+  </g>
+  <text x="1170" y="900" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Failure Story</text>
+
+  <rect x="1115" y="930" width="420" height="180" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1130" y="966" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1130" dy="0">the first interface NCCL sees</tspan>
+    <tspan x="1130" dy="34">may be the overlay; the job runs,</tspan>
+    <tspan x="1130" dy="34">but every collective crosses</tspan>
+    <tspan x="1130" dy="34">the overlay, and nothing logs</tspan>
+    <tspan x="1130" dy="34">an error</tspan>
+  </text>
+
+  
+  <rect x="40" y="1170" width="1520" height="100" rx="16" fill="#207448" />
+  <g transform="translate(70, 1195)">
+    <circle cx="25" cy="25" r="22" fill="none" stroke="#ffffff" stroke-width="4" />
+    <polyline points="15,25 22,32 35,18" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="135" y="1232" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Make the fast path the default by naming the interfaces the library should use</text>
+</svg>

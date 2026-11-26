@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1260" width="1600" height="1260">
+  <title>umask worked out: starting mode minus the mask</title>
+  <desc>Infographic explaining umask math and file/directory permissions for common masks 022, 077, and 002, plus a shared directory recipe.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1260" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="65" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">umask worked out: starting mode minus the mask</text>
+
+  
+  
+
+  
+  <rect x="50" y="100" width="200" height="56" rx="8" fill="#207448"/>
+  <text x="150" y="137" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">umask</text>
+
+  <rect x="270" y="100" width="380" height="56" rx="8" fill="#207448"/>
+  <text x="460" y="137" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">New file: 666 minus mask</text>
+
+  <rect x="670" y="100" width="380" height="56" rx="8" fill="#207448"/>
+  <text x="860" y="137" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">New directory: 777 minus mask</text>
+
+  <rect x="1070" y="100" width="480" height="56" rx="8" fill="#207448"/>
+  <text x="1310" y="137" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Who it suits</text>
+
+  
+  
+  <rect x="46" y="170" width="1508" height="204" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+
+  
+  <rect x="50" y="174" width="200" height="196" rx="8" fill="#fdf0e2"/>
+  <text x="150" y="240" font-family="monospace" font-size="44" font-weight="bold" fill="#db8129" text-anchor="middle">022</text>
+  
+  <rect x="62" y="270" width="176" height="42" rx="21" fill="#db8129"/>
+  <text x="150" y="298" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">common default</text>
+
+  
+  <rect x="270" y="174" width="380" height="196" rx="8" fill="#ffffff"/>
+  <text x="290" y="215" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">file 666 - 022 = 644 (rw-r--r--)</text>
+  
+  <rect x="290" y="235" width="340" height="115" rx="6" fill="#e8f1ea"/>
+  <text x="315" y="265" font-family="monospace" font-size="24" fill="#303a36">  6   6   6</text>
+  <text x="315" y="297" font-family="monospace" font-size="24" fill="#db8129">- 0   2   2</text>
+  <line x1="310" y1="309" x2="490" y2="309" stroke="#303a36" stroke-width="2"/>
+  <text x="315" y="337" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">= 6   4   4</text>
+
+  
+  <rect x="670" y="174" width="380" height="196" rx="8" fill="#ffffff"/>
+  <text x="690" y="215" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">directory 777 - 022 = 755 (rwxr-xr-x)</text>
+  
+  <rect x="690" y="235" width="340" height="115" rx="6" fill="#e8f1ea"/>
+  <text x="715" y="265" font-family="monospace" font-size="24" fill="#303a36">  7   7   7</text>
+  <text x="715" y="297" font-family="monospace" font-size="24" fill="#db8129">- 0   2   2</text>
+  <line x1="710" y1="309" x2="890" y2="309" stroke="#303a36" stroke-width="2"/>
+  <text x="715" y="337" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">= 7   5   5</text>
+
+  
+  <rect x="1070" y="174" width="480" height="196" rx="8" fill="#ffffff"/>
+  <text x="1090" y="222" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1090" dy="0">lets others read what you create;</tspan>
+    <tspan x="1090" dy="38">single-user systems and daemons</tspan>
+    <tspan x="1090" dy="38">that run as pseudo-users</tspan>
+  </text>
+
+
+  
+  <rect x="50" y="394" width="200" height="196" rx="8" fill="#e8f1ea"/>
+  <text x="150" y="505" font-family="monospace" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">077</text>
+
+  
+  <rect x="270" y="394" width="380" height="196" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+  <text x="290" y="435" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">file 600 (rw-------)</text>
+  
+  <rect x="290" y="455" width="340" height="115" rx="6" fill="#e8f1ea"/>
+  <text x="315" y="485" font-family="monospace" font-size="24" fill="#303a36">  6   6   6</text>
+  <text x="315" y="517" font-family="monospace" font-size="24" fill="#207448">- 0   7   7</text>
+  <line x1="310" y1="529" x2="490" y2="529" stroke="#303a36" stroke-width="2"/>
+  <text x="315" y="557" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">= 6   0   0</text>
+
+  
+  <rect x="670" y="394" width="380" height="196" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+  <text x="690" y="435" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">directory 700 (rwx------)</text>
+  
+  <rect x="690" y="455" width="340" height="115" rx="6" fill="#e8f1ea"/>
+  <text x="715" y="485" font-family="monospace" font-size="24" fill="#303a36">  7   7   7</text>
+  <text x="715" y="517" font-family="monospace" font-size="24" fill="#207448">- 0   7   7</text>
+  <line x1="710" y1="529" x2="890" y2="529" stroke="#303a36" stroke-width="2"/>
+  <text x="715" y="557" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">= 7   0   0</text>
+
+  
+  <rect x="1070" y="394" width="480" height="196" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+  <text x="1090" y="455" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1090" dy="0">most restrictive; multi-user</tspan>
+    <tspan x="1090" dy="38">machines where others must</tspan>
+    <tspan x="1090" dy="38">not read your files</tspan>
+  </text>
+
+
+  
+  <rect x="50" y="610" width="200" height="196" rx="8" fill="#e8f1ea"/>
+  <text x="150" y="721" font-family="monospace" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">002</text>
+
+  
+  <rect x="270" y="610" width="380" height="196" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+  <text x="290" y="651" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">file 664 (rw-rw-r--)</text>
+  
+  <rect x="290" y="671" width="340" height="115" rx="6" fill="#e8f1ea"/>
+  <text x="315" y="701" font-family="monospace" font-size="24" fill="#303a36">  6   6   6</text>
+  <text x="315" y="733" font-family="monospace" font-size="24" fill="#207448">- 0   0   2</text>
+  <line x1="310" y1="745" x2="490" y2="745" stroke="#303a36" stroke-width="2"/>
+  <text x="315" y="773" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">= 6   6   4</text>
+
+  
+  <rect x="670" y="610" width="380" height="196" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+  <text x="690" y="651" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">directory 775 (rwxrwxr-x)</text>
+  
+  <rect x="690" y="671" width="340" height="115" rx="6" fill="#e8f1ea"/>
+  <text x="715" y="701" font-family="monospace" font-size="24" fill="#303a36">  7   7   7</text>
+  <text x="715" y="733" font-family="monospace" font-size="24" fill="#207448">- 0   0   2</text>
+  <line x1="710" y1="745" x2="890" y2="745" stroke="#303a36" stroke-width="2"/>
+  <text x="715" y="773" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">= 7   7   5</text>
+
+  
+  <rect x="1070" y="610" width="480" height="196" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+  <text x="1090" y="680" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1090" dy="0">collaborative group directories</tspan>
+    <tspan x="1090" dy="38">on systems with user-private</tspan>
+    <tspan x="1090" dy="38">groups</tspan>
+  </text>
+
+
+  
+  <rect x="50" y="836" width="1500" height="290" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="80" y="870" width="450" height="220" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 105 898 L 135 898 L 147 910 L 195 910 L 195 940 L 105 940 Z" fill="none" stroke="#207448" stroke-width="3"/>
+  <rect x="135" y="922" width="30" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 142 922 L 142 915 A 8 8 0 0 1 158 915 L 158 922" fill="none" stroke="#207448" stroke-width="3"/>
+  <text x="105" y="985" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">sudo chmod 2770 /data/projx</text>
+  <text x="105" y="1025" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="105" dy="0">(setgid so new files inherit</tspan>
+    <tspan x="105" dy="32">group projx)</tspan>
+  </text>
+
+  
+  <circle cx="560" cy="980" r="24" fill="#207448"/>
+  <text x="560" y="989" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff" text-anchor="middle">+</text>
+
+  
+  <rect x="610" y="870" width="380" height="220" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="650" cy="912" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 630 940 C 630 926 670 926 670 940" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="680" cy="912" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 665 940 C 665 926 695 926 695 940" fill="none" stroke="#207448" stroke-width="3"/>
+  <text x="640" y="985" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">members use umask 002</text>
+  <text x="640" y="1030" font-family="monospace" font-size="24" fill="#207448">umask 002</text>
+
+  
+  <line x1="1005" y1="980" x2="1055" y2="980" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1075" y="870" width="445" height="220" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="1105" y="895" width="36" height="46" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="1115" y1="910" x2="1131" y2="910" stroke="#207448" stroke-width="3"/>
+  <line x1="1115" y1="924" x2="1131" y2="924" stroke="#207448" stroke-width="3"/>
+  <text x="1105" y="980" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    <tspan x="1105" dy="0">new files created inside:</tspan>
+  </text>
+  <text x="1105" y="1035" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="1105" dy="0">group projx, mode 664</tspan>
+  </text>
+  <text x="1105" y="1070" font-family="monospace" font-size="24" fill="#207448">-rw-rw-r--</text>
+
+
+  
+  <rect x="50" y="1150" width="1500" height="65" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+  <text x="75" y="1191" font-family="sans-serif" font-size="24" fill="#303a36">The umask is really a bit mask rather than a subtraction, but for normal masks the result is the same</text>
+
+</svg>

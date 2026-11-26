@@ -1,0 +1,279 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
+  <title>Pick the algorithm by the unit of work it counts</title>
+  <desc>A visual comparison table matching units of work to load balancing algorithms and pitfalls, with core principles.</desc>
+
+  <rect width="1600" height="1500" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="70" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Pick the algorithm by the unit of work it counts</text>
+
+  
+  <rect x="40" y="110" width="340" height="52" rx="8" fill="#207448"/>
+  <text x="210" y="145" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Unit of Work</text>
+
+  <rect x="395" y="110" width="350" height="52" rx="8" fill="#207448"/>
+  <text x="570" y="145" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Algorithm</text>
+
+  <rect x="760" y="110" width="370" height="52" rx="8" fill="#207448"/>
+  <text x="945" y="145" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Pitfall</text>
+
+  
+  <rect x="1150" y="110" width="410" height="1275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1355" y="152" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Four principles</text>
+
+  
+  <g id="row1">
+    <rect x="40" y="175" width="340" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="60" y="217" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">Short stateless equal</tspan>
+      <tspan x="60" dy="32">requests</tspan>
+    </text>
+
+    <rect x="395" y="175" width="350" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="415" y="217" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="415" dy="0">round robin or weighted</tspan>
+      <tspan x="415" dy="32">round robin</tspan>
+    </text>
+
+    <rect x="760" y="175" width="370" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="780" y="217" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">ignores request cost and</tspan>
+      <tspan x="780" dy="32">backend load</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row2">
+    <rect x="40" y="286" width="340" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="60" y="328" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">Long-lived connections</tspan>
+      <tspan x="60" dy="32">or variable-length requests</tspan>
+    </text>
+
+    <rect x="395" y="286" width="350" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="415" y="344" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">least connections</text>
+
+    <rect x="760" y="286" width="370" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="780" y="318" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">counts connections, not work;</tspan>
+      <tspan x="780" dy="28">needs shared state across</tspan>
+      <tspan x="780" dy="28">LB instances</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row3">
+    <rect x="40" y="397" width="340" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="60" y="455" font-family="sans-serif" font-size="24" fill="#303a36">HTTP or gRPC requests</text>
+
+    <rect x="395" y="397" width="350" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="415" y="440" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="415" dy="0">least outstanding</tspan>
+      <tspan x="415" dy="32">requests</tspan>
+    </text>
+
+    <rect x="760" y="397" width="370" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="780" y="455" font-family="sans-serif" font-size="24" fill="#303a36">same, request-granular</text>
+  </g>
+
+  
+  <g id="row4">
+    <rect x="40" y="508" width="340" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="60" y="566" font-family="sans-serif" font-size="24" fill="#303a36">Heterogeneous backends</text>
+
+    <rect x="395" y="508" width="350" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="415" y="550" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="415" dy="0">least response time,</tspan>
+      <tspan x="415" dy="32">EWMA, peak-EWMA</tspan>
+    </text>
+
+    <rect x="760" y="508" width="370" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="780" y="550" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">needs measurement; can</tspan>
+      <tspan x="780" dy="32">oscillate (herding)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row5">
+    <rect x="40" y="619" width="340" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="60" y="661" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">Large pools with</tspan>
+      <tspan x="60" dy="32">imperfect load info</tspan>
+    </text>
+
+    <rect x="395" y="619" width="350" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="415" y="661" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="415" dy="0">power of two</tspan>
+      <tspan x="415" dy="32">random choices</tspan>
+    </text>
+
+    <rect x="760" y="619" width="370" height="100" rx="8" fill="#fff5ec" stroke="#db8129" stroke-width="3"/>
+    <text x="780" y="661" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="780" dy="0">needs load info per</tspan>
+      <tspan x="780" dy="32">backend</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row6">
+    <rect x="40" y="730" width="340" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="60" y="772" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">Session affinity or</tspan>
+      <tspan x="60" dy="32">cache locality</tspan>
+    </text>
+
+    <rect x="395" y="730" width="350" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="415" y="772" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="415" dy="0">source, URL or</tspan>
+      <tspan x="415" dy="32">header hash</tspan>
+    </text>
+
+    <rect x="760" y="730" width="370" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="780" y="772" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">remaps most keys</tspan>
+      <tspan x="780" dy="32">when N changes</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row7">
+    <rect x="40" y="841" width="340" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="60" y="883" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">Caches, sticky sessions,</tspan>
+      <tspan x="60" dy="32">sharded stores</tspan>
+    </text>
+
+    <rect x="395" y="841" width="350" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="415" y="874" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="415" dy="0">consistent hashing</tspan>
+      <tspan x="415" dy="30">(ring, rendezvous,</tspan>
+      <tspan x="415" dy="30">jump hash)</tspan>
+    </text>
+
+    <rect x="760" y="841" width="370" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="780" y="883" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">load imbalance; virtual</tspan>
+      <tspan x="780" dy="32">nodes help; hot keys</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row8">
+    <rect x="40" y="952" width="340" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="60" y="1010" font-family="sans-serif" font-size="24" fill="#303a36">L4 LBs behind ECMP</text>
+
+    <rect x="395" y="952" width="350" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="415" y="1010" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Maglev hashing</text>
+
+    <rect x="760" y="952" width="370" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="780" y="994" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">table rebuild cost; small</tspan>
+      <tspan x="780" dy="32">disruption on change</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row9">
+    <rect x="40" y="1063" width="340" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="60" y="1121" font-family="sans-serif" font-size="24" fill="#303a36">Cost and latency</text>
+
+    <rect x="395" y="1063" width="350" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="415" y="1121" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">locality or zone-aware</text>
+
+    <rect x="760" y="1063" width="370" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="780" y="1105" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">capacity imbalance</tspan>
+      <tspan x="780" dy="32">across zones</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row10">
+    <rect x="40" y="1174" width="340" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="60" y="1232" font-family="sans-serif" font-size="24" fill="#303a36">DR and spillover</text>
+
+    <rect x="395" y="1174" width="350" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="415" y="1216" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="415" dy="0">priority or failover</tspan>
+      <tspan x="415" dy="32">groups</tspan>
+    </text>
+
+    <rect x="760" y="1174" width="370" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="780" y="1232" font-family="sans-serif" font-size="24" fill="#303a36">cold backups</text>
+  </g>
+
+  
+  <g id="row11">
+    <rect x="40" y="1285" width="340" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="60" y="1343" font-family="sans-serif" font-size="24" fill="#303a36">LLM inference</text>
+
+    <rect x="395" y="1285" width="350" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="415" y="1327" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="415" dy="0">load-aware custom:</tspan>
+      <tspan x="415" dy="32">GPU, queue, KV-cache</tspan>
+    </text>
+
+    <rect x="760" y="1285" width="370" height="100" rx="8" fill="#ffffff" stroke="#e8f1ea" stroke-width="2"/>
+    <text x="780" y="1327" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">needs telemetry;</tspan>
+      <tspan x="780" dy="32">careful staleness handling</tspan>
+    </text>
+  </g>
+
+  
+  
+  <rect x="1170" y="175" width="370" height="235" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="1205" cy="210" r="18" fill="#207448"/>
+  <text x="1205" y="218" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="1195" y="258" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1195" dy="0">choose the metric that</tspan>
+    <tspan x="1195" dy="32">represents work:</tspan>
+    <tspan x="1195" dy="32">connections, requests,</tspan>
+    <tspan x="1195" dy="32">tokens and GPU-seconds</tspan>
+    <tspan x="1195" dy="32">differ</tspan>
+  </text>
+
+  
+  <rect x="1170" y="425" width="370" height="325" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="1205" cy="460" r="18" fill="#207448"/>
+  <text x="1205" y="468" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="1195" y="508" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1195" dy="0">many LB instances each</tspan>
+    <tspan x="1195" dy="32">doing local least</tspan>
+    <tspan x="1195" dy="32">connections herd onto the</tspan>
+    <tspan x="1195" dy="32">same backend, like drivers</tspan>
+    <tspan x="1195" dy="32">following one satnav to one</tspan>
+    <tspan x="1195" dy="32">empty car park; a randomised</tspan>
+    <tspan x="1195" dy="32">pick breaks it up</tspan>
+  </text>
+
+  
+  <rect x="1170" y="765" width="370" height="305" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="1205" cy="800" r="18" fill="#207448"/>
+  <text x="1205" y="808" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="1195" y="848" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1195" dy="0">hash affinity serves cache</tspan>
+    <tspan x="1195" dy="32">locality and state but</tspan>
+    <tspan x="1195" dy="32">accepts uneven load: plan</tspan>
+    <tspan x="1195" dy="32">for reshuffling with</tspan>
+    <tspan x="1195" dy="32">consistent or resilient</tspan>
+    <tspan x="1195" dy="32">hashing</tspan>
+  </text>
+
+  
+  <rect x="1170" y="1085" width="370" height="280" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="1205" cy="1120" r="18" fill="#207448"/>
+  <text x="1205" y="1128" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <text x="1195" y="1168" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1195" dy="0">slow start ramps up the</tspan>
+    <tspan x="1195" dy="32">weight of a new or</tspan>
+    <tspan x="1195" dy="32">recovered backend while its</tspan>
+    <tspan x="1195" dy="32">JIT, caches and GPU warm</tspan>
+    <tspan x="1195" dy="32">up</tspan>
+  </text>
+
+  
+  <rect x="40" y="1410" width="1520" height="65" rx="10" fill="#207448"/>
+  <text x="800" y="1452" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Name the unit of work first, then pick the algorithm that counts it</text>
+</svg>

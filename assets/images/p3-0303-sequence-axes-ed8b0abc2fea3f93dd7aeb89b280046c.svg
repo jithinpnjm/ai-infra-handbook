@@ -1,0 +1,224 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1460" width="1600" height="1460">
+  <title>Sequence types on two axes, and what a list really costs</title>
+  <desc>A 2x2 grid classifying Python sequence types by container vs flat and mutable vs immutable, paired with detailed memory and operational costs of lists and alternatives.</desc>
+
+  <rect width="1600" height="1460" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#207448">Sequence types on two axes, and what a list really costs</text>
+
+  
+  <g id="grid-panel" transform="translate(48, 105)">
+    
+    <rect x="0" y="0" width="692" height="1235" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(192, 20)">
+      
+      <rect x="0" y="0" width="230" height="54" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="115" y="36" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">mutable</text>
+
+      
+      <rect x="250" y="0" width="230" height="54" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="365" y="36" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">immutable</text>
+    </g>
+
+    
+    <g transform="translate(20, 95)">
+      
+      <rect x="0" y="0" width="652" height="470" rx="12" fill="#fafdface" stroke="#207448" stroke-width="1.5"/>
+
+      
+      <rect x="12" y="14" width="628" height="92" rx="8" fill="#e8f1ea"/>
+      
+      <rect x="24" y="32" width="56" height="56" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="52" cy="60" r="8" fill="#207448"/>
+      <path d="M 58 54 L 72 40" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <text x="96" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">container</text>
+      <text x="96" y="82" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(holds references to objects stored elsewhere)</text>
+
+      
+      <rect x="12" y="122" width="304" height="330" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(32, 142)">
+        <rect x="0" y="0" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+        <path d="M 10 24 L 38 24 M 24 10 L 24 38" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      </g>
+      <text x="32" y="240" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">list,</text>
+      <text x="32" y="278" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">collections.deque</text>
+
+      
+      <rect x="336" y="122" width="304" height="330" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(356, 142)">
+        <rect x="6" y="18" width="36" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+        <path d="M 14 18 V 12 A 10 10 0 0 1 34 12 V 18" fill="none" stroke="#207448" stroke-width="3"/>
+      </g>
+      <text x="356" y="240" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#207448">tuple</text>
+    </g>
+
+    
+    <g transform="translate(20, 585)">
+      
+      <rect x="0" y="0" width="652" height="630" rx="12" fill="#fafdface" stroke="#207448" stroke-width="1.5"/>
+
+      
+      <rect x="12" y="14" width="628" height="92" rx="8" fill="#e8f1ea"/>
+      
+      <g transform="translate(24, 32)">
+        <rect x="0" y="8" width="56" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+        <line x1="14" y1="8" x2="14" y2="48" stroke="#207448" stroke-width="2.5"/>
+        <line x1="28" y1="8" x2="28" y2="48" stroke="#207448" stroke-width="2.5"/>
+        <line x1="42" y1="8" x2="42" y2="48" stroke="#207448" stroke-width="2.5"/>
+      </g>
+      <text x="96" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">flat</text>
+      <text x="96" y="82" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(values of one type side by side in memory)</text>
+
+      
+      <rect x="12" y="122" width="304" height="340" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(32, 142)">
+        <rect x="0" y="0" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+        <path d="M 8 24 L 40 24" stroke="#207448" stroke-width="3"/>
+      </g>
+      <text x="32" y="240" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#207448">bytearray,</text>
+      <text x="32" y="278" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#207448">array.array</text>
+
+      
+      <rect x="336" y="122" width="304" height="340" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(356, 142)">
+        <rect x="6" y="18" width="36" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+        <path d="M 14 18 V 12 A 10 10 0 0 1 34 12 V 18" fill="none" stroke="#207448" stroke-width="3"/>
+      </g>
+      <text x="356" y="240" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#207448">str, bytes</text>
+
+      
+      <g transform="translate(12, 480)">
+        <rect x="0" y="0" width="628" height="132" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+        <g transform="translate(20, 24)">
+          
+          <rect x="0" y="4" width="44" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+          <line x1="0" y1="16" x2="44" y2="16" stroke="#207448" stroke-width="2.5"/>
+        </g>
+        <text x="80" y="50" font-family="ui-monospace, monospace" font-size="27" font-weight="bold" fill="#207448">memoryview</text>
+        <rect x="290" y="23" width="150" height="38" rx="8" fill="#207448"/>
+        <text x="365" y="49" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">flat view</text>
+        <text x="80" y="98" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">shares memory without copying bytes</text>
+      </g>
+    </g>
+  </g>
+
+  
+  <g id="costs-panel" transform="translate(762, 105)">
+    
+    <rect x="0" y="0" width="790" height="1235" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(24, 20)">
+      <rect x="0" y="0" width="742" height="54" rx="10" fill="#207448"/>
+      
+      <circle cx="36" cy="27" r="14" fill="none" stroke="#ffffff" stroke-width="3"/>
+      <path d="M 36 17 L 36 27 L 43 27" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+      <text x="66" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Costs</text>
+    </g>
+
+    
+    
+    <g transform="translate(24, 90)">
+      <rect x="0" y="0" width="742" height="130" rx="10" fill="#fafdface" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="30" cy="38" r="14" fill="#207448"/>
+      <text x="30" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+      <text x="60" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="60" dy="0">a list stores 8 byte pointers on a 64-bit system to separate</tspan>
+        <tspan x="60" dy="32">objects: a list of one million floats costs about 32 MB</tspan>
+        <tspan x="60" dy="32">before you count the objects</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(24, 234)">
+      <rect x="0" y="0" width="742" height="116" rx="10" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+      <circle cx="30" cy="38" r="14" fill="#db8129"/>
+      <text x="30" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      <text x="60" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+        <tspan x="60" dy="0">array("f") stores 4 bytes per float, a list stores a float</tspan>
+        <tspan x="60" dy="34">object of about 32 bytes per value</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(24, 364)">
+      <rect x="0" y="0" width="742" height="114" rx="10" fill="#fafdface" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="30" cy="38" r="14" fill="#207448"/>
+      <text x="30" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+      <text x="60" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="60" dy="0">memoryview(bytearray(1024))[100:200] is a zero-copy</tspan>
+        <tspan x="60" dy="34">window for sockets, mmap and NumPy</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(24, 492)">
+      <rect x="0" y="0" width="742" height="144" rx="10" fill="#fafdface" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="30" cy="38" r="14" fill="#207448"/>
+      <text x="30" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+      <text x="60" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="60" dy="0">list.insert(0, x) and list.pop(0) are O(n); deque has</tspan>
+        <tspan x="60" dy="32">appendleft, popleft and maxlen=N ring buffer:</tspan>
+        <tspan x="60" dy="32">deque(maxlen=1000) keeps the last 1000 samples</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(24, 650)">
+      <rect x="0" y="0" width="742" height="198" rx="10" fill="#fafdface" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="30" cy="38" r="14" fill="#207448"/>
+      <text x="30" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+      <text x="60" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="60" dy="0">sort() sorts in place and returns None; sorted() returns a</tspan>
+        <tspan x="60" dy="32">new list; Timsort is stable, O(n log n), O(n) best case on</tspan>
+        <tspan x="60" dy="32">partly ordered data; use key= not a comparison</tspan>
+        <tspan x="60" dy="32">function; tuple comparison is lexicographic</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(24, 862)">
+      <rect x="0" y="0" width="742" height="120" rx="10" fill="#fafdface" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="30" cy="38" r="14" fill="#207448"/>
+      <text x="30" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+      <text x="60" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="60" dy="0">bisect.bisect_left and insort keep a list sorted;</tspan>
+        <tspan x="60" dy="34">heapq.nlargest(5, items) gives top-k without a full sort</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(24, 996)">
+      <rect x="0" y="0" width="742" height="106" rx="10" fill="#fafdface" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="30" cy="38" r="14" fill="#207448"/>
+      <text x="30" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+      <text x="60" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="60" dy="0">x in list is linear: convert to a set when testing membership</tspan>
+        <tspan x="60" dy="34">many times</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(24, 1116)">
+      <rect x="0" y="0" width="742" height="96" rx="10" fill="#fafdface" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="30" cy="38" r="14" fill="#207448"/>
+      <text x="30" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">8</text>
+      <text x="60" y="56" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="60" dy="0">copy.copy, slicing and list() each make a shallow copy</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="bottom-takeaway" transform="translate(48, 1362)">
+    <rect x="0" y="0" width="1504" height="68" rx="12" fill="#207448"/>
+    <text x="752" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">The choice of sequence type affects both memory and speed</text>
+  </g>
+</svg>

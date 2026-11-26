@@ -1,0 +1,231 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1110" width="1600" height="1110">
+  <title>Seeding one node per rack turns a 700 second pull into a 163 second tree</title>
+  <desc>Infographic comparing naive origin download of 700 seconds with two-stage tree distribution of 163 seconds across 10 racks.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1110" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" font-size="38" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+    Seeding one node per rack turns a 700 second pull into a 163 second tree
+  </text>
+
+  
+  <g id="left-panel">
+    <rect x="30" y="115" width="710" height="850" rx="16" fill="#e8f1ea" stroke="#c2daca" stroke-width="2" />
+
+    
+    <text x="145" y="170" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle" font-family="sans-serif">
+      Naive, all 100 nodes<tspan x="145" dy="30">pull from origin: 700 s</tspan>
+    </text>
+    <rect x="100" y="225" width="90" height="495" rx="8" fill="#db8129" />
+
+    
+    
+    <text x="260" y="515" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle" font-family="sans-serif">
+      Tree total: 163 s
+    </text>
+
+    
+    <rect x="220" y="557" width="80" height="93" rx="6" fill="#439e6c" />
+
+    
+    <rect x="220" y="650" width="80" height="70" rx="6" fill="#207448" />
+
+    
+    <line x1="80" y1="720" x2="680" y2="720" stroke="#8fa898" stroke-width="3" stroke-linecap="round" />
+
+    
+    <line x1="300" y1="603" x2="320" y2="603" stroke="#303a36" stroke-width="2" />
+    <text x="330" y="593" font-size="24" font-weight="bold" fill="#303a36" font-family="sans-serif">
+      Rack copy, 4 doubling rounds<tspan x="330" dy="30">at 23.3 s each: 93 s</tspan>
+    </text>
+
+    
+    <line x1="300" y1="685" x2="320" y2="685" stroke="#207448" stroke-width="2" />
+    <text x="330" y="692" font-size="24" font-weight="bold" fill="#207448" font-family="sans-serif">
+      Seed one node per rack: 70 s
+    </text>
+
+    
+    <rect x="50" y="760" width="670" height="175" rx="12" fill="#ffffff" stroke="#c0d8c8" stroke-width="2" />
+    <text x="75" y="805" font-size="24" font-weight="bold" fill="#303a36" font-family="sans-serif">Note:</text>
+    <text x="145" y="805" font-size="24" fill="#303a36" font-family="sans-serif">
+      the rack stage is a sum, an upper bound,
+    </text>
+    <text x="75" y="845" font-size="24" fill="#303a36" font-family="sans-serif">
+      since it overlaps with seeding.
+    </text>
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="760" y="115" width="810" height="850" rx="16" fill="#e8f1ea" stroke="#c2daca" stroke-width="2" />
+
+    
+    <rect x="945" y="140" width="440" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(965, 150)">
+      <ellipse cx="24" cy="14" rx="20" ry="8" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <path d="M 4,14 v 24 a 20,8 0 0 0 40,0 v -24" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 4,26 a 20,8 0 0 0 40,0" fill="none" stroke="#207448" stroke-width="2" />
+    </g>
+
+    
+    <text x="1030" y="185" font-size="24" font-weight="bold" fill="#303a36" font-family="sans-serif">
+      Object store at 10 GB/s origin
+    </text>
+
+    
+    <rect x="815" y="238" width="700" height="56" rx="28" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="845" cy="266" r="22" fill="#207448" />
+    <text x="845" y="274" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" font-family="sans-serif">1<tspan x="885" fill="#303a36" text-anchor="start">origin seeds one node per rack</tspan></text>
+
+    
+    <line x1="1165" y1="214" x2="1165" y2="238" stroke="#207448" stroke-width="3" />
+    <line x1="1165" y1="294" x2="1165" y2="320" stroke="#207448" stroke-width="3" />
+
+    
+    <line x1="818" y1="320" x2="1502" y2="320" stroke="#207448" stroke-width="3" />
+
+    
+    
+    <g transform="translate(785, 345)">
+      <rect width="66" height="150" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="2" />
+      <rect x="10" y="10" width="46" height="34" rx="5" fill="#207448" />
+      <line x1="33" y1="44" x2="18" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <line x1="33" y1="44" x2="48" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <rect x="8" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <rect x="38" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    </g>
+    <line x1="818" y1="320" x2="818" y2="345" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(861, 345)">
+      <rect width="66" height="150" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="2" />
+      <rect x="10" y="10" width="46" height="34" rx="5" fill="#207448" />
+      <line x1="33" y1="44" x2="18" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <line x1="33" y1="44" x2="48" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <rect x="8" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <rect x="38" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    </g>
+    <line x1="894" y1="320" x2="894" y2="345" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(937, 345)">
+      <rect width="66" height="150" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="2" />
+      <rect x="10" y="10" width="46" height="34" rx="5" fill="#207448" />
+      <line x1="33" y1="44" x2="18" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <line x1="33" y1="44" x2="48" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <rect x="8" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <rect x="38" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    </g>
+    <line x1="970" y1="320" x2="970" y2="345" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(1013, 345)">
+      <rect width="66" height="150" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="2" />
+      <rect x="10" y="10" width="46" height="34" rx="5" fill="#207448" />
+      <line x1="33" y1="44" x2="18" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <line x1="33" y1="44" x2="48" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <rect x="8" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <rect x="38" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    </g>
+    <line x1="1046" y1="320" x2="1046" y2="345" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(1089, 345)">
+      <rect width="66" height="150" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="2" />
+      <rect x="10" y="10" width="46" height="34" rx="5" fill="#207448" />
+      <line x1="33" y1="44" x2="18" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <line x1="33" y1="44" x2="48" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <rect x="8" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <rect x="38" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    </g>
+    <line x1="1122" y1="320" x2="1122" y2="345" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(1165, 345)">
+      <rect width="66" height="150" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="2" />
+      <rect x="10" y="10" width="46" height="34" rx="5" fill="#207448" />
+      <line x1="33" y1="44" x2="18" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <line x1="33" y1="44" x2="48" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <rect x="8" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <rect x="38" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    </g>
+    <line x1="1198" y1="320" x2="1198" y2="345" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(1241, 345)">
+      <rect width="66" height="150" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="2" />
+      <rect x="10" y="10" width="46" height="34" rx="5" fill="#207448" />
+      <line x1="33" y1="44" x2="18" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <line x1="33" y1="44" x2="48" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <rect x="8" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <rect x="38" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    </g>
+    <line x1="1274" y1="320" x2="1274" y2="345" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(1317, 345)">
+      <rect width="66" height="150" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="2" />
+      <rect x="10" y="10" width="46" height="34" rx="5" fill="#207448" />
+      <line x1="33" y1="44" x2="18" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <line x1="33" y1="44" x2="48" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <rect x="8" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <rect x="38" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    </g>
+    <line x1="1350" y1="320" x2="1350" y2="345" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(1393, 345)">
+      <rect width="66" height="150" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="2" />
+      <rect x="10" y="10" width="46" height="34" rx="5" fill="#207448" />
+      <line x1="33" y1="44" x2="18" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <line x1="33" y1="44" x2="48" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <rect x="8" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <rect x="38" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    </g>
+    <line x1="1426" y1="320" x2="1426" y2="345" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(1469, 345)">
+      <rect width="66" height="150" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="2" />
+      <rect x="10" y="10" width="46" height="34" rx="5" fill="#207448" />
+      <line x1="33" y1="44" x2="18" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <line x1="33" y1="44" x2="48" y2="100" stroke="#207448" stroke-width="2" marker-end="url(#arrow-green)" />
+      <rect x="8" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <rect x="38" y="105" width="20" height="24" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    </g>
+    <line x1="1502" y1="320" x2="1502" y2="345" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="1010" y="520" width="310" height="46" rx="23" fill="#207448" />
+    <text x="1165" y="551" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" font-family="sans-serif">
+      round 1 to round 4
+    </text>
+
+    
+    <rect x="815" y="595" width="700" height="66" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="850" cy="628" r="24" fill="#207448" />
+    <text x="850" y="636" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" font-family="sans-serif">2<tspan x="890" fill="#303a36" text-anchor="start">racks double copies over the fabric in 4 rounds</tspan></text>
+
+    
+    <rect x="815" y="685" width="700" height="66" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="850" cy="718" r="24" fill="#207448" />
+    <text x="850" y="726" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" font-family="sans-serif">3<tspan x="890" fill="#303a36" text-anchor="start">local disk to GPU at 7 GB/s takes 10 s</tspan></text>
+  </g>
+
+  
+  <rect x="30" y="1000" width="1540" height="75" rx="14" fill="#207448" />
+  <text x="800" y="1047" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" font-family="sans-serif">
+    Origin bandwidth is the bottleneck, so fan out inside the fabric and verify every chunk.
+  </text>
+</svg>

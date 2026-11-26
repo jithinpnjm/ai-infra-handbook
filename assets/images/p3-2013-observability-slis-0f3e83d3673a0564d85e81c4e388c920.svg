@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Platform SLIs and why tenant labels need care</title>
+  <desc>Visual infographic explaining platform SLIs, customer-facing views, Grafana percentile masking, and metric cardinality explosion rules.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Platform SLIs and why tenant labels need care</text>
+
+  
+  <g id="panel-slis">
+    <rect x="60" y="120" width="710" height="440" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(85, 142)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24" />
+      <path d="M12 36 A20 20 0 1 1 44 36" />
+      <line x1="28" y1="28" x2="38" y2="18" />
+      <circle cx="28" cy="28" r="3" fill="#207448" />
+    </g>
+    
+    <text x="160" y="180" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Platform SLIs</text>
+
+    
+    <rect x="85" y="210" width="660" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="112" cy="234" r="6" fill="#207448" />
+    <text x="135" y="242" font-family="sans-serif" font-size="24" fill="#303a36">time to first token</text>
+
+    
+    <rect x="85" y="268" width="660" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="112" cy="292" r="6" fill="#207448" />
+    <text x="135" y="300" font-family="sans-serif" font-size="24" fill="#303a36">inter-token latency</text>
+
+    
+    <rect x="85" y="326" width="660" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="112" cy="350" r="6" fill="#207448" />
+    <text x="135" y="358" font-family="sans-serif" font-size="24" fill="#303a36">end-to-end latency</text>
+
+    
+    <rect x="85" y="384" width="660" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="112" cy="408" r="6" fill="#207448" />
+    <text x="135" y="416" font-family="sans-serif" font-size="24" fill="#303a36">error rate</text>
+
+    
+    <rect x="85" y="442" width="660" height="96" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="112" cy="474" r="6" fill="#207448" />
+    <text x="135" y="478" font-family="sans-serif" font-size="24" fill="#303a36">goodput: share of requests that meet</text>
+    <text x="135" y="512" font-family="sans-serif" font-size="24" fill="#303a36">their latency target</text>
+  </g>
+
+  
+  <g id="panel-nebius">
+    <rect x="60" y="590" width="710" height="460" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(85, 612)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="48" height="44" rx="4" />
+      <line x1="4" y1="18" x2="52" y2="18" />
+      <line x1="28" y1="18" x2="28" y2="48" />
+      <circle cx="12" cy="11" r="2" fill="#207448" />
+      <circle cx="20" cy="11" r="2" fill="#207448" />
+    </g>
+    
+    <text x="160" y="650" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Customer-facing views from Nebius</text>
+
+    
+    <rect x="85" y="680" width="660" height="195" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="110" y="722" font-family="sans-serif" font-size="24" fill="#303a36">latency percentiles, TTFT,</text>
+    <text x="110" y="762" font-family="sans-serif" font-size="24" fill="#303a36">token throughput, active replicas,</text>
+    <text x="110" y="802" font-family="sans-serif" font-size="24" fill="#303a36">errors by status code,</text>
+    <text x="110" y="842" font-family="sans-serif" font-size="24" fill="#303a36">traffic by prompt size and region</text>
+
+    
+    <g transform="translate(85, 895)">
+      
+      <rect x="0" y="0" width="206" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <path d="M 15 95 Q 60 85 105 50 T 190 25" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 15 105 Q 60 100 105 85 T 190 70" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="4,4" />
+
+      
+      <rect x="226" y="0" width="206" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <rect x="246" y="70" width="22" height="40" fill="#207448" opacity="0.4" />
+      <rect x="278" y="50" width="22" height="60" fill="#207448" opacity="0.6" />
+      <rect x="310" y="30" width="22" height="80" fill="#207448" opacity="0.8" />
+      <rect x="342" y="45" width="22" height="65" fill="#207448" opacity="0.6" />
+      <rect x="374" y="60" width="22" height="50" fill="#207448" opacity="0.5" />
+
+      
+      <rect x="452" y="0" width="208" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="505" cy="62" r="32" fill="none" stroke="#207448" stroke-width="8" stroke-dasharray="140 60" />
+      <rect x="560" y="35" width="70" height="12" rx="3" fill="#207448" opacity="0.7" />
+      <rect x="560" y="55" width="55" height="12" rx="3" fill="#207448" opacity="0.5" />
+      <rect x="560" y="75" width="40" height="12" rx="3" fill="#207448" opacity="0.3" />
+    </g>
+  </g>
+
+  
+  <g id="panel-warning">
+    <rect x="830" y="120" width="710" height="440" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(855, 142)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 6 L52 48 L4 48 Z" />
+      <line x1="28" y1="22" x2="28" y2="34" />
+      <circle cx="28" cy="41" r="2" fill="#207448" />
+    </g>
+    
+    <text x="930" y="180" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Warning picture</text>
+
+    
+    <g transform="translate(855, 205)">
+      <rect x="0" y="0" width="660" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      
+      
+      <line x1="20" y1="35" x2="640" y2="35" stroke="#207448" stroke-width="1" stroke-dasharray="4,6" opacity="0.25" />
+      <line x1="20" y1="75" x2="640" y2="75" stroke="#207448" stroke-width="1" stroke-dasharray="4,6" opacity="0.25" />
+      <line x1="20" y1="115" x2="640" y2="115" stroke="#207448" stroke-width="1" stroke-dasharray="4,6" opacity="0.25" />
+
+      
+      <line x1="20" y1="60" x2="640" y2="60" stroke="#207448" stroke-width="2" stroke-dasharray="6,4" />
+
+      
+      <path d="M 20 110 Q 150 108 300 112 T 640 109" fill="none" stroke="#207448" stroke-width="4" />
+
+      
+      <path d="M 20 112 Q 220 110 320 105 L 420 18 L 470 108 L 640 110" fill="none" stroke="#db8129" stroke-width="4.5" stroke-linejoin="round" />
+      <circle cx="420" cy="18" r="6" fill="#db8129" />
+    </g>
+
+    
+    <rect x="855" y="365" width="660" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="880" y="405" font-family="sans-serif" font-size="24" fill="#303a36">a Grafana board with one platform-wide</text>
+    <text x="880" y="443" font-family="sans-serif" font-size="24" fill="#303a36">average looks calm while one tenant is</text>
+    <text x="880" y="481" font-family="sans-serif" font-size="24" fill="#303a36">badly hurt; a percentile tells the value</text>
+    <text x="880" y="519" font-family="sans-serif" font-size="24" fill="#303a36">below which a share of requests fall</text>
+  </g>
+
+  
+  <g id="panel-cardinality">
+    <rect x="830" y="590" width="710" height="460" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(855, 612)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="12" rx="20" ry="7" />
+      <path d="M8 12 v14 c0 4 9 7 20 7 s20 -3 20 -7 v-14" />
+      <path d="M8 26 v14 c0 4 9 7 20 7 s20 -3 20 -7 v-14" />
+    </g>
+    
+    <text x="930" y="650" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Cardinality rule</text>
+
+    
+    <rect x="855" y="680" width="660" height="235" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="875" y="718" font-family="sans-serif" font-size="24" fill="#303a36">per-tenant labels explode metric cardinality</text>
+    <text x="875" y="754" font-family="sans-serif" font-size="24" fill="#303a36">(distinct series), each new label value</text>
+    <text x="875" y="790" font-family="sans-serif" font-size="24" fill="#303a36">multiplies the count; keep tenant labels</text>
+    <text x="875" y="826" font-family="sans-serif" font-size="24" fill="#303a36">on the gateway own metrics for top tenants</text>
+    <text x="875" y="862" font-family="sans-serif" font-size="24" fill="#303a36">only; use traces and logs with sampling</text>
+    <text x="875" y="898" font-family="sans-serif" font-size="24" fill="#303a36">for the long tail</text>
+
+    
+    <g transform="translate(855, 930)">
+      
+      <rect x="0" y="0" width="195" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <line x1="20" y1="25" x2="60" y2="25" stroke="#207448" stroke-width="3" />
+      <path d="M 60 25 L 85 15 M 60 25 L 85 35 M 60 25 L 85 55 M 60 25 L 85 75" stroke="#207448" stroke-width="2" />
+      <circle cx="105" cy="15" r="4" fill="#207448" />
+      <circle cx="105" cy="35" r="4" fill="#207448" />
+      <circle cx="105" cy="55" r="4" fill="#207448" />
+      <circle cx="105" cy="75" r="4" fill="#207448" />
+      <circle cx="140" cy="15" r="3" fill="#207448" opacity="0.6" />
+      <circle cx="140" cy="35" r="3" fill="#207448" opacity="0.6" />
+      <circle cx="140" cy="55" r="3" fill="#207448" opacity="0.6" />
+      <circle cx="140" cy="75" r="3" fill="#207448" opacity="0.6" />
+      <circle cx="170" cy="15" r="2" fill="#207448" opacity="0.3" />
+      <circle cx="170" cy="35" r="2" fill="#207448" opacity="0.3" />
+      <circle cx="170" cy="55" r="2" fill="#207448" opacity="0.3" />
+      <circle cx="170" cy="75" r="2" fill="#207448" opacity="0.3" />
+
+      
+      <rect x="215" y="0" width="225" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <polygon points="235,15 285,35 285,55 235,75" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <line x1="285" y1="35" x2="350" y2="25" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="285" y1="55" x2="350" y2="65" stroke="#207448" stroke-width="2" stroke-dasharray="4,4" stroke-linecap="round" />
+      <rect x="360" y="15" width="60" height="20" rx="4" fill="#207448" />
+      <rect x="360" y="55" width="60" height="20" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+
+      
+      <rect x="460" y="0" width="200" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <path d="M 480 20 h 50 l 15 15 v 40 h -65 z" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 500 35 h 30 M 500 48 h 45 M 500 61 h 25" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+      <circle cx="585" cy="35" r="14" fill="none" stroke="#207448" stroke-width="2.5" />
+      <line x1="595" y1="45" x2="615" y2="65" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+  </g>
+</svg>

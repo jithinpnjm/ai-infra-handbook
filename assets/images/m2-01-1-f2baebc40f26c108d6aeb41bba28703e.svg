@@ -1,0 +1,247 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
+  <title>The whole journey in one picture</title>
+  <desc>Visual sequence diagram depicting curl network communication from DNS resolution, TCP handshake, TLS 1.3 negotiation, HTTP transaction, to connection termination.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M 1 2 L 12 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-green-rev" viewBox="0 0 14 14" refX="2" refY="7" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M 13 2 L 2 7 L 13 12 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M 1 2 L 12 7 L 1 12 Z" fill="#db8129"/>
+    </marker>
+
+    
+    <filter id="shadow" x="-4%" y="-8%" width="108%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1b3022" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1500" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The whole journey in one picture</text>
+
+  
+  
+
+  
+  <line x1="160" y1="180" x2="160" y2="1470" stroke="#cbdcd0" stroke-width="3" stroke-dasharray="8 6"/>
+  <line x1="460" y1="180" x2="460" y2="1470" stroke="#cbdcd0" stroke-width="3" stroke-dasharray="8 6"/>
+  <line x1="760" y1="180" x2="760" y2="1470" stroke="#cbdcd0" stroke-width="3" stroke-dasharray="8 6"/>
+  <line x1="1100" y1="180" x2="1100" y2="1470" stroke="#cbdcd0" stroke-width="3" stroke-dasharray="8 6"/>
+  <line x1="1440" y1="180" x2="1440" y2="1470" stroke="#cbdcd0" stroke-width="3" stroke-dasharray="8 6"/>
+
+  
+  <g transform="translate(30, 80)">
+    <rect width="260" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    
+    <rect x="20" y="24" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 32 40 L 42 48 L 32 56 M 46 56 L 56 56" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="165" y="45" text-anchor="middle" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#303a36">curl</text>
+    <text x="165" y="73" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(user space)</text>
+  </g>
+
+  
+  <g transform="translate(330, 80)">
+    <rect width="260" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    
+    <rect x="20" y="24" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <rect x="32" y="36" width="24" height="24" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="36" y1="20" x2="36" y2="24" stroke="#207448" stroke-width="3"/>
+    <line x1="52" y1="20" x2="52" y2="24" stroke="#207448" stroke-width="3"/>
+    <line x1="36" y1="72" x2="36" y2="76" stroke="#207448" stroke-width="3"/>
+    <line x1="52" y1="72" x2="52" y2="76" stroke="#207448" stroke-width="3"/>
+    <text x="165" y="45" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Linux kernel</text>
+    <text x="165" y="73" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(stack)</text>
+  </g>
+
+  
+  <g transform="translate(630, 80)">
+    <rect width="260" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    
+    <rect x="18" y="28" width="48" height="40" rx="8" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <circle cx="32" cy="48" r="4" fill="#207448"/>
+    <circle cx="42" cy="48" r="4" fill="#207448"/>
+    <circle cx="52" cy="48" r="4" fill="#207448"/>
+    <text x="165" y="45" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">NIC / switch /</text>
+    <text x="165" y="73" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">router path</text>
+  </g>
+
+  
+  <g transform="translate(970, 80)">
+    <rect width="260" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    
+    <ellipse cx="44" cy="36" rx="22" ry="9" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 22 36 v 16 c 0 5 10 9 22 9 s 22 -4 22 -9 v -16" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 22 52 v 16 c 0 5 10 9 22 9 s 22 -4 22 -9 v -16" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <text x="165" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">DNS resolver</text>
+  </g>
+
+  
+  <g transform="translate(1310, 80)">
+    <rect width="260" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    
+    <rect x="18" y="24" width="46" height="48" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="18" y1="40" x2="64" y2="40" stroke="#207448" stroke-width="3"/>
+    <line x1="18" y1="56" x2="64" y2="56" stroke="#207448" stroke-width="3"/>
+    <circle cx="54" cy="32" r="3" fill="#207448"/>
+    <circle cx="54" cy="48" r="3" fill="#207448"/>
+    <circle cx="54" cy="64" r="3" fill="#207448"/>
+    <text x="165" y="45" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">Server</text>
+    <text x="165" y="73" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(example.com)</text>
+  </g>
+
+  
+
+  
+  
+  <g transform="translate(0, 205)">
+    <line x1="160" y1="36" x2="456" y2="36" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <circle cx="160" cy="36" r="18" fill="#207448"/>
+    <text x="160" y="43" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="bold" fill="#ffffff">1</text>
+    <rect x="220" y="8" width="870" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <text x="655" y="44" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">getaddrinfo("example.com") - resolver library, /etc/nsswitch.conf, /etc/hosts</text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 290)">
+    <line x1="460" y1="36" x2="1096" y2="36" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <circle cx="460" cy="36" r="18" fill="#207448"/>
+    <text x="460" y="43" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="bold" fill="#ffffff">2</text>
+    <rect x="510" y="8" width="880" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <text x="950" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">DNS query (UDP/53) to configured resolver, via routing + ARP/ND + Ethernet</text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 375)">
+    <line x1="1100" y1="36" x2="464" y2="36" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-green-rev)"/>
+    <circle cx="1100" cy="36" r="18" fill="#207448"/>
+    <text x="1100" y="43" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="bold" fill="#ffffff">3</text>
+    <rect x="530" y="8" width="500" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <text x="780" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">A / AAAA records (IP addresses, TTL)</text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 460)">
+    <line x1="160" y1="36" x2="456" y2="36" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <circle cx="160" cy="36" r="18" fill="#207448"/>
+    <text x="160" y="43" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="bold" fill="#ffffff">4</text>
+    <rect x="210" y="8" width="370" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <text x="395" y="44" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">socket(), connect(IP:443)</text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 545)">
+    <path d="M 460 20 H 510 V 60 H 464" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <circle cx="460" cy="20" r="18" fill="#207448"/>
+    <text x="460" y="27" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="bold" fill="#ffffff">5</text>
+    <rect x="540" y="12" width="820" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <text x="950" y="48" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">route lookup (longest prefix), source address, ARP/ND for next hop</text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 640)">
+    <line x1="460" y1="36" x2="1436" y2="36" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <circle cx="460" cy="36" r="18" fill="#207448"/>
+    <text x="460" y="43" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="bold" fill="#ffffff">6</text>
+    <rect x="850" y="8" width="190" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <text x="945" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">TCP SYN</text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 725)">
+    <line x1="1440" y1="36" x2="464" y2="36" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-green-rev)"/>
+    <circle cx="1440" cy="36" r="18" fill="#207448"/>
+    <text x="1440" y="43" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="bold" fill="#ffffff">7</text>
+    <rect x="845" y="8" width="200" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <text x="945" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">SYN-ACK</text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 810)">
+    <line x1="460" y1="36" x2="1436" y2="36" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <circle cx="460" cy="36" r="18" fill="#207448"/>
+    <text x="460" y="43" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="bold" fill="#ffffff">8</text>
+    <rect x="760" y="8" width="370" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <text x="945" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">ACK (connection established)</text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 895)">
+    <line x1="160" y1="36" x2="1436" y2="36" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <circle cx="160" cy="36" r="18" fill="#207448"/>
+    <text x="160" y="43" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="bold" fill="#ffffff">9</text>
+    <rect x="615" y="8" width="410" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <text x="820" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">TLS ClientHello (SNI, ALPN)</text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 980)">
+    <line x1="1440" y1="36" x2="164" y2="36" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-green-rev)"/>
+    <circle cx="1440" cy="36" r="18" fill="#207448"/>
+    <text x="1440" y="43" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff">10</text>
+    <rect x="525" y="8" width="630" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <text x="840" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">ServerHello, certificate chain, key share, Finished</text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 1065)">
+    <line x1="160" y1="36" x2="1436" y2="36" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <circle cx="160" cy="36" r="18" fill="#207448"/>
+    <text x="160" y="43" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff">11</text>
+    <rect x="495" y="8" width="710" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <text x="850" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Finished (TLS 1.3: encrypted application data may follow)</text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 1150)">
+    <line x1="160" y1="36" x2="1436" y2="36" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+    <circle cx="160" cy="36" r="18" fill="#db8129"/>
+    <text x="160" y="43" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff">12</text>
+    <rect x="540" y="8" width="580" height="56" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5" filter="url(#shadow)"/>
+    <text x="830" y="44" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">HTTP request: GET / HTTP/1.1 (or HTTP/2)</text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 1235)">
+    <line x1="1440" y1="36" x2="164" y2="36" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-green-rev)"/>
+    <circle cx="1440" cy="36" r="18" fill="#207448"/>
+    <text x="1440" y="43" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff">13</text>
+    <rect x="580" y="8" width="500" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <text x="830" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">HTTP response: status, headers, body</text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 1320)">
+    <line x1="160" y1="36" x2="1436" y2="36" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <circle cx="160" cy="36" r="18" fill="#207448"/>
+    <text x="160" y="43" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff">14</text>
+    <rect x="575" y="8" width="470" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <text x="810" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">FIN / close (or connection reuse)</text>
+  </g>
+
+  
+  <circle cx="160" cy="1435" r="8" fill="#207448"/>
+  <circle cx="460" cy="1435" r="8" fill="#207448"/>
+  <circle cx="760" cy="1435" r="8" fill="#207448"/>
+  <circle cx="1100" cy="1435" r="8" fill="#207448"/>
+  <circle cx="1440" cy="1435" r="8" fill="#207448"/>
+</svg>

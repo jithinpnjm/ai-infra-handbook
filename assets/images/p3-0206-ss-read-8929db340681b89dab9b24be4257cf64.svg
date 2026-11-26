@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Reading ss -ti: which field points at which limit</title>
+  <desc>Visual guide to understanding socket statistics from ss -ti, common diagnostic patterns, and companion ss commands.</desc>
+
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Reading ss -ti: which field points at which limit</text>
+
+  
+  <g id="top-container">
+    <rect x="40" y="100" width="1520" height="310" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    
+    <text x="75" y="152" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">rtt: smoothed value / variance</text>
+    <path d="M 75 165 L 195 165 M 135 165 L 135 200" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <polygon points="135,206 130,196 140,196" fill="#207448"/>
+
+    
+    <text x="525" y="152" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">ssthresh</text>
+    <path d="M 470 165 L 580 165 M 525 165 L 525 200" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <polygon points="525,206 520,196 530,196" fill="#207448"/>
+
+    
+    <text x="980" y="152" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">retrans: current / total</text>
+    <path d="M 890 165 L 1070 165 M 980 165 L 980 200" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <polygon points="980,206 975,196 985,196" fill="#207448"/>
+
+    
+    <rect x="65" y="210" width="1470" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="75" y="242" font-family="monospace" font-size="24" fill="#303a36" textLength="1450" lengthAdjust="spacingAndGlyphs">rtt:12.5/3 mss:1448 cwnd:10 ssthresh:7 bytes_sent bytes_retrans retrans:0/12 delivery_rate pacing_rate send rcv_space</text>
+
+    
+    
+    <path d="M 260 262 L 260 288 M 215 288 L 305 288" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <polygon points="260,256 255,266 265,266" fill="#207448"/>
+    <text x="260" y="322" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">mss</text>
+
+    
+    <path d="M 370 262 L 370 288 M 325 288 L 475 288" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <polygon points="370,256 365,266 375,266" fill="#207448"/>
+    <text x="475" y="322" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">cwnd: congestion window</text>
+
+    
+    <path d="M 1460 262 L 1460 288 M 1400 288 L 1515 288" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <polygon points="1460,256 1455,266 1465,266" fill="#207448"/>
+    <text x="1460" y="322" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">rcv_space</text>
+  </g>
+
+  
+  <g id="reading-patterns">
+    
+    <rect x="40" y="440" width="940" height="98" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(60, 461)">
+      <rect x="0" y="10" width="56" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 14 10 L 14 46 M 28 10 L 28 46 M 42 10 L 42 46" stroke="#207448" stroke-width="2.5"/>
+      <path d="M 46 2 L 56 10 L 46 18" fill="none" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="135" y="482" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="135" dy="0">Persistent non-zero Send-Q with growing retrans:</tspan>
+      <tspan x="135" dy="32" font-weight="normal">loss or a stalled receiver</tspan>
+    </text>
+
+    
+    <rect x="40" y="555" width="940" height="98" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(60, 576)">
+      <rect x="2" y="4" width="52" height="46" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="2" y1="18" x2="54" y2="18" stroke="#207448" stroke-width="2"/>
+      <circle cx="10" cy="11" r="3" fill="#207448"/>
+      <circle cx="18" cy="11" r="3" fill="#207448"/>
+      <line x1="14" y1="32" x2="42" y2="32" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="135" y="597" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="135" dy="0">High Recv-Q on an established socket:</tspan>
+      <tspan x="135" dy="32" font-weight="normal">the local application is not reading</tspan>
+    </text>
+
+    
+    <rect x="40" y="670" width="940" height="98" rx="10" fill="#fdf3eb" stroke="#db8129" stroke-width="3"/>
+    <g transform="translate(60, 691)">
+      <path d="M 28 4 L 54 48 L 2 48 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+      <line x1="28" y1="20" x2="28" y2="34" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="28" cy="41" r="2.5" fill="#db8129"/>
+    </g>
+    <text x="135" y="712" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="135" dy="0">Small cwnd with high retrans:</tspan>
+      <tspan x="135" dy="32" font-weight="bold">congestion or loss</tspan>
+    </text>
+
+    
+    <rect x="40" y="785" width="940" height="98" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(60, 806)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="28" x2="44" y2="16" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="28" cy="28" r="4" fill="#207448"/>
+      <path d="M 12 36 A 20 20 0 0 1 44 20" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="3 3"/>
+    </g>
+    <text x="135" y="827" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="135" dy="0">rwnd_limited, sndbuf_limited, cwnd_limited together</tspan>
+      <tspan x="135" dy="32" font-weight="normal">with rcv_space: which limit constrains the flow</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="1010" y="440" width="550" height="443" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="1030" y="458" width="510" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(1046, 482)">
+      <rect x="0" y="0" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <path d="M 8 12 L 16 18 L 8 24" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="18" y1="24" x2="28" y2="24" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="1096" y="510" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">ss -tan: </tspan>all TCP sockets numeric
+    </text>
+
+    
+    <rect x="1030" y="558" width="510" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(1046, 582)">
+      <rect x="0" y="0" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <path d="M 8 12 L 16 18 L 8 24" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="18" y1="24" x2="28" y2="24" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="1096" y="596" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1096" dy="0"><tspan font-family="monospace" font-weight="bold" fill="#207448">ss -tlnp: </tspan>listeners with</tspan>
+      <tspan x="1096" dy="30">owning process</tspan>
+    </text>
+
+    
+    <rect x="1030" y="658" width="510" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(1046, 688)">
+      <rect x="0" y="0" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <path d="M 8 12 L 16 18 L 8 24" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="18" y1="24" x2="28" y2="24" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="1096" y="694" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1096" dy="0"><tspan font-family="monospace" font-weight="bold" fill="#207448">ss -tm: </tspan>memory skmem</tspan>
+      <tspan x="1096" dy="32" font-family="monospace" font-size="24" fill="#303a36">(rb, tb, f, w, o, bl, d)</tspan>
+    </text>
+
+    
+    <rect x="1030" y="776" width="510" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(1046, 800)">
+      <rect x="0" y="0" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <path d="M 8 12 L 16 18 L 8 24" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="18" y1="24" x2="28" y2="24" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="1096" y="828" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">ss -s: </tspan>summary by state
+    </text>
+  </g>
+
+  
+  <g id="footer-panel">
+    <rect x="40" y="910" width="1520" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="954" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">Flow control protects the receiver, congestion control protects the network;</tspan>
+      <tspan x="800" dy="36">the sender never has more in flight than the smaller of the two windows;</tspan>
+      <tspan x="800" dy="36">when a flow is slow, first ask whether the receiver or the network is the limit</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1080" width="1520" height="68" rx="8" fill="#207448"/>
+    <text x="800" y="1123" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">ss asks the kernel directly instead of guessing from the outside</text>
+  </g>
+</svg>

@@ -1,0 +1,247 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1420" width="1600" height="1420">
+  <title>Recovering a lost state: check versions first, then import in dependency order</title>
+  <desc>Visual flowchart for recovering a lost production state file: checking bucket object versions, restoring or importing resources in dependency order, and prevention best practices.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129"/>
+    </marker>
+    
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="115%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#143622" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1420" fill="#f5f8f5"/>
+
+  
+  <g id="header" text-anchor="middle">
+    <text x="800" y="65" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Recovering a lost state:</text>
+    <text x="800" y="115" font-family="sans-serif" font-size="40" font-weight="bold" fill="#207448">check versions first, then import in dependency order</text>
+  </g>
+
+  
+  <g id="top-box" transform="translate(300, 150)">
+    <rect width="1000" height="120" rx="16" fill="#ffffff" stroke="#c4d8cb" stroke-width="2" filter="url(#card-shadow)"/>
+    
+    <g transform="translate(35, 30)">
+      <polygon points="30,5 58,55 2,55" fill="#fcf3eb" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="30" y1="22" x2="30" y2="38" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="30" cy="47" r="2.5" fill="#db8129"/>
+    </g>
+    <text x="115" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">State file for production is gone or corrupt</text>
+    <text x="115" y="90" font-family="sans-serif" font-size="24" fill="#5b6863">The cluster still runs, so every plan looks like create everything</text>
+  </g>
+
+  
+  <path d="M 800 270 V 320" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="decision-box" transform="translate(450, 320)">
+    <rect width="700" height="90" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#card-shadow)"/>
+    
+    <g transform="translate(30, 20)">
+      <ellipse cx="25" cy="14" rx="20" ry="8" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 5 14 v 14 c 0 4.5 9 8 20 8 s 20 -3.5 20 -8 v -14" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 5 28 v 14 c 0 4.5 9 8 20 8 s 20 -3.5 20 -8 v -14" fill="none" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="95" y="55" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Are old object versions in the bucket?</text>
+  </g>
+
+  
+  
+  <path d="M 450 365 H 400 V 470" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <g id="badge-yes" transform="translate(425, 385)">
+    <rect width="70" height="40" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="35" y="28" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">Yes</text>
+  </g>
+
+  
+  <path d="M 1150 365 H 1200 V 470" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="badge-no" transform="translate(1105, 385)">
+    <rect width="70" height="40" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="35" y="28" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">No</text>
+  </g>
+
+  
+  
+  <g id="node-restore" transform="translate(80, 470)">
+    <rect width="640" height="110" rx="16" fill="#fdf6ee" stroke="#db8129" stroke-width="3" filter="url(#card-shadow)"/>
+    
+    <g transform="translate(30, 28)">
+      <circle cx="26" cy="26" r="22" fill="none" stroke="#db8129" stroke-width="3.5"/>
+      <path d="M 26 14 v 13 l 9 5" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <polygon points="12,18 2,26 12,34" fill="#db8129"/>
+    </g>
+    <text x="95" y="65" font-family="sans-serif" font-size="30" font-weight="bold" fill="#9e5611">Restore the previous object version</text>
+  </g>
+
+  
+  <path d="M 400 580 V 630" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-read-gap" transform="translate(80, 630)">
+    <rect width="640" height="120" rx="16" fill="#ffffff" stroke="#c4d8cb" stroke-width="2" filter="url(#card-shadow)"/>
+    
+    <g transform="translate(30, 30)">
+      <rect x="6" y="4" width="36" height="48" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="14" y1="16" x2="34" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="14" y1="26" x2="28" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="14" y1="36" x2="34" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="42" cy="44" r="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      <line x1="49" y1="51" x2="57" y2="59" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="105" y="55" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Run plan and read the gap</text>
+    <text x="105" y="92" font-family="sans-serif" font-size="24" fill="#5b6863">Shows only changes made since that version</text>
+  </g>
+
+  
+  
+  <g id="node-import" transform="translate(880, 470)">
+    <rect width="640" height="165" rx="16" fill="#ffffff" stroke="#c4d8cb" stroke-width="2" filter="url(#card-shadow)"/>
+    
+    <g transform="translate(30, 30)">
+      <rect x="6" y="6" width="40" height="12" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+      <rect x="6" y="24" width="40" height="12" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+      <rect x="6" y="42" width="40" height="12" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    </g>
+    
+    <text x="95" y="45" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan font-family="monospace" fill="#207448">import</tspan> each object,
+    </text>
+    <text x="95" y="78" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">network first, then cluster, then pools</text>
+    <text x="95" y="115" font-family="sans-serif" font-size="24" fill="#5b6863">
+      Use <tspan font-family="monospace" font-weight="bold" fill="#207448">-generate-config-out</tspan>
+    </text>
+    <text x="95" y="145" font-family="sans-serif" font-size="24" fill="#5b6863">for a draft of the resource</text>
+  </g>
+
+  
+  <path d="M 1200 635 V 680" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-run-plan" transform="translate(970, 680)">
+    <rect width="460" height="90" rx="16" fill="#ffffff" stroke="#c4d8cb" stroke-width="2" filter="url(#card-shadow)"/>
+    
+    <g transform="translate(30, 22)">
+      <rect x="4" y="4" width="44" height="38" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+      <polyline points="14,16 22,23 14,30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="26" y1="30" x2="38" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="95" y="55" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Run plan</text>
+  </g>
+
+  
+  
+  <path d="M 1380 770 V 845 H 1520 V 725 H 1430" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="8 6" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="badge-loop" transform="translate(980, 795)">
+    <rect width="360" height="60" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="180" y="27" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Repeat until plan</text>
+    <text x="180" y="51" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">shows no changes</text>
+  </g>
+
+  
+  
+  <path d="M 400 750 V 960 H 480" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1040 770 V 960 H 1120" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="final-box" transform="translate(480, 910)">
+    <rect width="640" height="100" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#card-shadow)"/>
+    
+    <g transform="translate(35, 25)">
+      <circle cx="25" cy="25" r="24" fill="#207448"/>
+      <polyline points="14,25 22,33 36,18" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="105" y="62" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Plan shows no changes</text>
+  </g>
+
+  
+  <g id="prevention-strip" transform="translate(80, 1070)">
+    
+    <rect width="1440" height="295" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(30, 20)">
+      
+      <g transform="translate(0, 5)">
+        <path d="M 16 2 L 32 8 V 22 C 32 32 16 38 16 38 C 16 38 0 32 0 22 V 8 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+        <polyline points="9,18 14,24 23,13" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <text x="46" y="32" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Prevention</text>
+    </g>
+
+    
+    <g transform="translate(30, 75)">
+      <rect width="325" height="195" rx="12" fill="#ffffff" stroke="#c4d8cb" stroke-width="1.5"/>
+      
+      <g transform="translate(24, 20)">
+        <ellipse cx="20" cy="10" rx="16" ry="6" fill="none" stroke="#207448" stroke-width="2.5"/>
+        <path d="M 4 10 v 10 c 0 3.5 7 6 16 6 s 16 -2.5 16 -6 v -10" fill="none" stroke="#207448" stroke-width="2.5"/>
+        <path d="M 4 20 v 10 c 0 3.5 7 6 16 6 s 16 -2.5 16 -6 v -10" fill="none" stroke="#207448" stroke-width="2.5"/>
+      </g>
+      <text x="24" y="105" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="24" dy="0">Enable bucket</tspan>
+        <tspan x="24" dy="32">versioning</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(380, 75)">
+      <rect width="325" height="195" rx="12" fill="#ffffff" stroke="#c4d8cb" stroke-width="1.5"/>
+      
+      <g transform="translate(24, 20)">
+        <rect x="2" y="8" width="18" height="26" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+        <rect x="24" y="8" width="18" height="26" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+        <line x1="20" y1="21" x2="24" y2="21" stroke="#207448" stroke-width="2.5" stroke-dasharray="2 2"/>
+      </g>
+      <text x="24" y="95" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="24" dy="0">Keep the bucket in a</tspan>
+        <tspan x="24" dy="32">different project</tspan>
+        <tspan x="24" dy="32">or account</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(730, 75)">
+      <rect width="325" height="195" rx="12" fill="#ffffff" stroke="#c4d8cb" stroke-width="1.5"/>
+      
+      <g transform="translate(24, 20)">
+        <path d="M 36 20 A 15 15 0 1 0 32 30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <polyline points="36,12 37,21 28,21" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <text x="24" y="105" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="24" dy="0">Restore drill in a</tspan>
+        <tspan x="24" dy="32">scratch project</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(1080, 75)">
+      <rect width="330" height="195" rx="12" fill="#ffffff" stroke="#c4d8cb" stroke-width="1.5"/>
+      
+      <g transform="translate(24, 20)">
+        <path d="M 20 6 A 12 12 0 0 0 8 18 C 8 26 4 29 4 29 H 36 C 36 29 32 26 32 18 A 12 12 0 0 0 20 6 Z" fill="none" stroke="#207448" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M 17 33 A 3 3 0 0 0 23 33" fill="none" stroke="#207448" stroke-width="2.5"/>
+      </g>
+      <text x="24" y="95" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="24" dy="0">Alert on deletes,</tspan>
+        <tspan x="24" dy="32">policy changes and</tspan>
+        <tspan x="24" dy="32">unexpected access</tspan>
+      </text>
+    </g>
+  </g>
+</svg>

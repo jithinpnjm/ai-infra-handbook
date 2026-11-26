@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1420" width="1600" height="1420">
+  <title>Case study: three silent data bugs and two small Click tools</title>
+  <desc>Architecture and workflow comparison between csv-linter bug isolation and cloud-translate serverless CLI packaging.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1420" fill="#f5f8f5" />
+
+  
+  <text x="800" y="48" font-family="sans-serif" font-size="38" font-weight="bold" fill="#303a36" text-anchor="middle">Case study: three silent data bugs and two small Click tools</text>
+  <text x="800" y="84" font-family="monospace" font-size="24" fill="#506059" text-anchor="middle">Practical MLOps chapter 11, modelled in code/part03/python_clis_agents_exporters.py</text>
+
+  
+  <rect x="50" y="110" width="730" height="1205" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  
+  <rect x="50" y="110" width="730" height="60" rx="16" fill="#207448" />
+  <rect x="50" y="150" width="730" height="20" fill="#207448" />
+  
+  <g transform="translate(75, 122)" stroke="#ffffff" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="28" height="34" rx="3" />
+    <line x1="6" y1="10" x2="22" y2="10" />
+    <line x1="6" y1="18" x2="22" y2="18" />
+    <line x1="6" y1="26" x2="16" y2="26" />
+  </g>
+  <text x="120" y="152" font-family="monospace" font-size="30" font-weight="bold" fill="#ffffff">csv-linter</text>
+
+  
+  <rect x="75" y="185" width="680" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="95" y="222" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">inspect the 32,770-row wine.csv</tspan>
+    <tspan x="95" dy="32" font-family="monospace">with df.describe()</tspan>
+  </text>
+
+  
+  <line x1="415" y1="270" x2="415" y2="300" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="75" y="305" width="680" height="420" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+
+  
+  <rect x="95" y="320" width="640" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1" />
+  <text x="115" y="352" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">grape column count 0.0: 100 percent NaN,</tspan>
+    <tspan x="115" dy="32" font-family="monospace">found by zero_count_columns(df)</tspan>
+    <tspan x="115" dy="32" font-family="monospace">where df[key].count() == 0</tspan>
+  </text>
+
+  
+  <rect x="95" y="445" width="640" height="120" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1" />
+  <text x="115" y="477" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">Unnamed: 0 column added on every round-trip</tspan>
+    <tspan x="115" dy="32" font-family="monospace">because df.to_csv(wine.csv) had no</tspan>
+    <tspan x="115" dy="32" font-family="monospace">index=False, found by unnamed_columns(df)</tspan>
+  </text>
+
+  
+  <rect x="95" y="580" width="640" height="130" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1" />
+  <text x="115" y="612" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">Windows carriage returns \r\n (^M in vim)</tspan>
+    <tspan x="115" dy="30">inside notes fields, found by carriage_returns(df),</tspan>
+    <tspan x="115" dy="30">which returns the first (index, column, field)</tspan>
+    <tspan x="115" dy="30" font-family="monospace">truncated to field[:50]</tspan>
+  </text>
+
+  
+  <line x1="415" y1="725" x2="415" y2="750" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="75" y="755" width="680" height="540" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+
+  
+  <rect x="95" y="770" width="640" height="70" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1" />
+  <text x="115" y="812" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan font-family="monospace">csv_linter/checks.py</tspan>
+    <tspan font-family="sans-serif"> small testable functions</tspan>
+  </text>
+
+  
+  <line x1="415" y1="840" x2="415" y2="860" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="95" y="865" width="640" height="130" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1" />
+  <text x="115" y="897" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">@click.command,</tspan>
+    <tspan x="115" dy="31">@click.argument(filename,</tspan>
+    <tspan x="115" dy="31">  type=click.Path(exists=True))</tspan>
+    <tspan x="115" dy="31">def main(filename)</tspan>
+  </text>
+
+  
+  <line x1="415" y1="995" x2="415" y2="1015" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="95" y="1020" width="640" height="90" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1" />
+  <text x="115" y="1054" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">entry_points: csv-linter=csv_linter.main:main,</tspan>
+    <tspan x="115" dy="32">which is [project.scripts] in pyproject.toml</tspan>
+  </text>
+
+  
+  <line x1="415" y1="1110" x2="415" y2="1130" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="95" y="1135" width="640" height="145" rx="8" fill="#fef5ed" stroke="#db8129" stroke-width="2" />
+  <text x="115" y="1170" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">pip install -e .</text>
+  <text x="115" y="1208" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">rerun after renaming or moving the file,</tspan>
+    <tspan x="115" dy="32">because it regenerates the entry-point wrapper</tspan>
+  </text>
+
+
+  
+  <rect x="820" y="110" width="730" height="1205" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  
+  <rect x="820" y="110" width="730" height="60" rx="16" fill="#207448" />
+  <rect x="820" y="150" width="730" height="20" fill="#207448" />
+  
+  <g transform="translate(845, 122)" stroke="#ffffff" stroke-width="3" fill="none">
+    <path d="M 7 24 A 6 6 0 0 1 12 14 A 10 10 0 0 1 28 14 A 6 6 0 0 1 33 24 z" />
+  </g>
+  <text x="895" y="152" font-family="monospace" font-size="30" font-weight="bold" fill="#ffffff">cloud-translate</text>
+
+  
+  <rect x="845" y="185" width="680" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="865" y="235" font-family="monospace" font-size="24" fill="#303a36">cloud-translate=trigger:main</text>
+
+  
+  <line x1="1185" y1="270" x2="1185" y2="310" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="845" y="315" width="680" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="865" y="352" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="865" dy="0">HTTP Cloud Function with</tspan>
+    <tspan x="865" dy="32" font-family="monospace">google-cloud-translate==3.0.2,</tspan>
+    <tspan x="865" dy="32" font-family="monospace">TranslationServiceClient() in us-central1,</tspan>
+    <tspan x="865" dy="32" font-family="monospace">target_language_code=fr</tspan>
+  </text>
+
+  
+  <line x1="1185" y1="470" x2="1185" y2="505" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="845" y="510" width="680" height="425" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+
+  
+  <rect x="865" y="530" width="640" height="105" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1" />
+  <circle cx="895" cy="565" r="16" fill="#207448" />
+  <text x="895" y="573" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="925" y="565" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="925" dy="0">subprocess.Popen([gcloud, auth,</tspan>
+    <tspan x="925" dy="32">print-identity-token], stdout=PIPE)</tspan>
+  </text>
+
+  
+  <line x1="1185" y1="635" x2="1185" y2="655" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="865" y="660" width="640" height="80" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1" />
+  <circle cx="895" cy="700" r="16" fill="#207448" />
+  <text x="895" y="708" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="925" y="708" font-family="monospace" font-size="24" fill="#303a36">out.decode(utf-8).strip()</text>
+
+  
+  <line x1="1185" y1="740" x2="1185" y2="760" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="865" y="765" width="640" height="145" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1" />
+  <circle cx="895" cy="805" r="16" fill="#207448" />
+  <text x="895" y="813" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="925" y="805" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="925" dy="0">requests.post(url,</tspan>
+    <tspan x="925" dy="32">json={message: text},</tspan>
+    <tspan x="925" dy="32">headers={Authorization: bearer token})</tspan>
+  </text>
+
+  
+  <line x1="1185" y1="935" x2="1185" y2="975" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="845" y="980" width="680" height="300" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  
+  <g transform="translate(875, 1010)" stroke="#207448" stroke-width="3.5" fill="none">
+    <path d="M 20 4 L 4 12 L 4 28 C 4 40 20 50 20 50 C 20 50 36 40 36 28 L 36 12 Z" />
+    <polyline points="12,26 18,32 28,20" />
+  </g>
+  
+  <text x="935" y="1045" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Architecture Insight</text>
+  
+  <text x="875" y="1105" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="875" dy="0">heavy ML weights do not belong inside every CLI;</tspan>
+    <tspan x="875" dy="38">a 20-line Click CLI is a secure client</tspan>
+    <tspan x="875" dy="38">for a cloud microservice</tspan>
+  </text>
+
+  
+  <rect x="50" y="1335" width="1500" height="65" rx="12" fill="#207448" />
+  <text x="800" y="1377" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">A packaged single-purpose CLI beats a notebook or a shell snippet</text>
+</svg>

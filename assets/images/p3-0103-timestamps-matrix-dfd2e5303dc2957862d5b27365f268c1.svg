@@ -1,0 +1,226 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Which timestamp changes when you do what to a file</title>
+  <desc>Matrix showing how mtime, ctime, and atime update across different Linux file operations.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Which timestamp changes when you do what to a file</text>
+
+  
+  <g transform="translate(560, 92)">
+    <rect x="0" y="0" width="480" height="50" rx="25" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="50" cy="25" r="14" fill="#207448"/>
+    <text x="75" y="33" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">changes</text>
+    
+    <circle cx="265" cy="25" r="14" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <text x="290" y="33" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">unchanged</text>
+  </g>
+
+  
+
+  
+  <g transform="translate(535, 165)">
+    <rect width="220" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 92 20 L 118 20 L 128 30 L 128 66 L 92 66 Z"/>
+      <path d="M 118 20 L 118 30 L 128 30"/>
+      <line x1="98" y1="42" x2="114" y2="42"/>
+      <line x1="98" y1="52" x2="122" y2="52"/>
+    </g>
+    
+    <text x="110" y="85" text-anchor="middle" font-family="sans-serif">
+      <tspan x="110" dy="0" font-size="28" font-weight="bold" fill="#207448">mtime</tspan>
+      <tspan x="110" dy="25" font-size="24" fill="#303a36">(contents</tspan>
+      <tspan x="110" dy="24" font-size="24" fill="#303a36">written)</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(765, 165)">
+    <rect width="250" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 125 18 L 145 28 L 145 48 C 145 58 125 67 125 67 C 125 67 105 58 105 48 L 105 28 Z"/>
+      <circle cx="125" cy="40" r="5"/>
+    </g>
+    
+    <text x="125" y="85" text-anchor="middle" font-family="sans-serif">
+      <tspan x="125" dy="0" font-size="28" font-weight="bold" fill="#207448">ctime</tspan>
+      <tspan x="125" dy="25" font-size="24" fill="#303a36">(inode</tspan>
+      <tspan x="125" dy="24" font-size="24" fill="#303a36">changed)</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1025, 165)">
+    <rect width="220" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 110 30 C 100 24 90 24 88 26 L 88 58 C 96 56 104 56 110 60 C 116 56 124 56 132 58 L 132 26 C 130 24 120 24 110 30 Z"/>
+      <line x1="110" y1="30" x2="110" y2="60"/>
+    </g>
+    
+    <text x="110" y="85" text-anchor="middle" font-family="sans-serif">
+      <tspan x="110" dy="0" font-size="28" font-weight="bold" fill="#207448">atime</tspan>
+      <tspan x="110" dy="28" font-size="24" fill="#303a36">(file read)</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1260, 165)">
+    <rect width="305" height="885" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(125, 45)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="-30" y="0" width="60" height="46" rx="6" fill="#ffffff"/>
+      <line x1="-30" y1="14" x2="30" y2="14"/>
+      <circle cx="-20" cy="7" r="2" fill="#207448"/>
+      <circle cx="-13" cy="7" r="2" fill="#207448"/>
+      <circle cx="-6" cy="7" r="2" fill="#207448"/>
+      <path d="M -20 24 L -13 30 L -20 36"/>
+      <line x1="-8" y1="36" x2="0" y2="36"/>
+    </g>
+    
+    <text x="152" y="170" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="152" dy="0">stat shows all three;</tspan>
+    </text>
+    <line x1="30" y1="210" x2="275" y2="210" stroke="#c2d6c7" stroke-width="2"/>
+    <text x="152" y="275" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="152" dy="0">ls -l shows mtime,</tspan>
+      <tspan x="152" dy="60">ls -lc ctime,</tspan>
+      <tspan x="152" dy="60">ls -lu atime</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(35, 315)">
+    
+    <rect width="490" height="125" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text x="50" y="72" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">echo more &gt;&gt; f1</text>
+    
+    <g transform="translate(500, 0)">
+      <rect width="220" height="125" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+      <circle cx="110" cy="62" r="18" fill="#207448"/>
+    </g>
+    
+    <g transform="translate(730, 0)">
+      <rect width="250" height="125" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+      <circle cx="125" cy="62" r="18" fill="#207448"/>
+    </g>
+    
+    <g transform="translate(990, 0)">
+      <rect width="220" height="125" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+      <circle cx="110" cy="62" r="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    </g>
+  </g>
+
+  
+  <g transform="translate(35, 455)">
+    
+    <rect width="490" height="125" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text x="50" y="72" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">chmod 600 f1</text>
+    
+    <g transform="translate(500, 0)">
+      <rect width="220" height="125" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+      <circle cx="110" cy="62" r="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    </g>
+    
+    <g transform="translate(730, 0)">
+      <rect width="250" height="125" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+      <circle cx="125" cy="62" r="18" fill="#207448"/>
+    </g>
+    
+    <g transform="translate(990, 0)">
+      <rect width="220" height="125" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+      <circle cx="110" cy="62" r="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    </g>
+  </g>
+
+  
+  <g transform="translate(35, 595)">
+    
+    <rect width="490" height="135" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text x="50" y="78" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">cat f1</text>
+    
+    <g transform="translate(500, 0)">
+      <rect width="220" height="135" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+      <circle cx="110" cy="67" r="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    </g>
+    
+    <g transform="translate(730, 0)">
+      <rect width="250" height="135" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+      <circle cx="125" cy="67" r="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    </g>
+    
+    <g transform="translate(990, 0)">
+      <rect width="220" height="135" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+      <circle cx="110" cy="42" r="16" fill="#207448"/>
+      <text x="110" y="84" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="110" dy="0">rarely: relatime</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(35, 745)">
+    
+    <rect width="490" height="125" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text x="50" y="72" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">ln f1 f2</text>
+    
+    <g transform="translate(500, 0)">
+      <rect width="220" height="125" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+      <circle cx="110" cy="62" r="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    </g>
+    
+    <g transform="translate(730, 0)">
+      <rect width="250" height="125" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+      <circle cx="125" cy="62" r="18" fill="#207448"/>
+    </g>
+    
+    <g transform="translate(990, 0)">
+      <rect width="220" height="125" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+      <circle cx="110" cy="62" r="18" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    </g>
+  </g>
+
+  
+  <g transform="translate(35, 885)">
+    
+    <rect width="490" height="165" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text x="35" y="92" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">touch -d "2026-01-01 12:00" f1</text>
+    
+    <g transform="translate(500, 0)">
+      <rect width="220" height="165" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+      <circle cx="110" cy="82" r="18" fill="#207448"/>
+    </g>
+    
+    <g transform="translate(730, 0)">
+      <rect width="250" height="165" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+      <circle cx="125" cy="45" r="16" fill="#207448"/>
+      <text x="125" y="90" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="125" dy="0">ctime still moves,</tspan>
+        <tspan x="125" dy="32">cannot be set</tspan>
+      </text>
+    </g>
+    
+    <g transform="translate(990, 0)">
+      <rect width="220" height="165" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+      <circle cx="110" cy="82" r="18" fill="#207448"/>
+    </g>
+  </g>
+
+  
+  <g transform="translate(35, 1080)">
+    <rect width="1530" height="75" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(540, 38)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="0" cy="0" r="18"/>
+      <line x1="0" y1="-2" x2="0" y2="8" stroke-linecap="round"/>
+      <circle cx="0" cy="-8" r="1.5" fill="#207448"/>
+    </g>
+    <text x="800" y="47" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">ctime is not the creation time</text>
+  </g>
+</svg>

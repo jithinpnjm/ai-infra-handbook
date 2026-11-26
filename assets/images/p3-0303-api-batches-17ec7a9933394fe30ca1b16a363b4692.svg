@@ -1,0 +1,241 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1420" width="1600" height="1420">
+  <title>Paginated API into batches of 100: two generators in a row</title>
+  <desc>Visual explanation of chaining generator functions to stream paginated API responses into fixed-size batches with minimal memory footprint.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1420" fill="#f5f8f5" />
+
+  
+  <text x="50" y="70" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    Paginated API into batches of 100: two generators in a row
+  </text>
+
+  
+  
+  
+
+  
+  <g>
+    
+    <rect x="50" y="115" width="1000" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="95" cy="155" r="22" fill="#207448" />
+    <text x="95" y="163" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="135" y="164" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">list_instances(client, project)</text>
+
+    
+    <g transform="translate(980, 132)">
+      <circle cx="25" cy="25" r="16" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="7,3" />
+      <circle cx="25" cy="25" r="8" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    <rect x="80" y="195" width="940" height="235" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    
+    <text x="105" y="235" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="105" dy="0">token = None</tspan>
+      <tspan x="105" dy="36">client.list(project=project, page_token=token, page_size=500)</tspan>
+      <tspan x="105" dy="36">yield from resp[items]</tspan>
+      <tspan x="105" dy="36">token = resp.get(nextPageToken)</tspan>
+      <tspan x="105" dy="36">if not token: break</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <line x1="550" y1="455" x2="550" y2="520" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    
+    <rect x="190" y="468" width="720" height="42" rx="21" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="550" y="497" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      items arrive one at a time, one page of 500 in memory
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="50" y="525" width="1000" height="185" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="95" cy="565" r="22" fill="#207448" />
+    <text x="95" y="573" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    
+    <g transform="translate(135, 545)">
+      <polygon points="5,5 35,5 23,20 23,32 17,28 17,20" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    </g>
+
+    
+    <rect x="800" y="545" width="220" height="40" rx="20" fill="#207448" />
+    <text x="910" y="572" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">no list built</text>
+
+    
+    <rect x="80" y="598" width="940" height="92" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="105" y="634" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="105" dy="0">running = (i for i in list_instances(c, p)</tspan>
+      <tspan x="105" dy="34">           if i[status] == RUNNING)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="550" y1="710" x2="550" y2="745" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <g>
+    
+    <rect x="50" y="750" width="1000" height="245" rx="16" fill="#fcf8f2" stroke="#db8129" stroke-width="3" />
+    
+    
+    <circle cx="95" cy="790" r="22" fill="#db8129" />
+    <text x="95" y="798" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="135" y="800" font-family="monospace" font-size="30" font-weight="bold" fill="#db8129">batched(iterable, n)</text>
+
+    
+    <g transform="translate(980, 768)">
+      <rect x="6" y="6" width="16" height="16" fill="none" stroke="#db8129" stroke-width="2.5" />
+      <rect x="26" y="6" width="16" height="16" fill="none" stroke="#db8129" stroke-width="2.5" />
+      <rect x="16" y="24" width="16" height="16" fill="none" stroke="#db8129" stroke-width="2.5" />
+    </g>
+
+    
+    <rect x="80" y="825" width="940" height="96" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+    <text x="105" y="862" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="105" dy="0">it = iter(iterable); while batch := list(islice(it, n)):</tspan>
+      <tspan x="105" dy="34">    yield batch</tspan>
+    </text>
+
+    
+    <text x="105" y="962" font-family="sans-serif" font-size="24" fill="#303a36">
+      Python 3.12 itertools.batched(iterable, n) yields tuples
+    </text>
+  </g>
+
+  
+  <line x1="550" y1="995" x2="550" y2="1030" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g>
+    
+    <rect x="50" y="1035" width="1000" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="95" cy="1075" r="22" fill="#207448" />
+    <text x="95" y="1083" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+
+    
+    <g transform="translate(135, 1055)">
+      <path d="M 8 28 A 10 10 0 0 1 20 12 A 14 14 0 0 1 42 16 A 10 10 0 0 1 44 28 Z" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    <rect x="570" y="1055" width="450" height="40" rx="20" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="795" y="1082" font-family="sans-serif" font-size="24" fill="#207448" font-weight="bold" text-anchor="middle">
+      matches the API limit of 100 per call
+    </text>
+
+    
+    <rect x="80" y="1110" width="940" height="110" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="105" y="1152" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="105" dy="0">for ids in batched(all_instance_ids, 100):</tspan>
+      <tspan x="105" dy="36">    client.bulk_delete(ids)</tspan>
+    </text>
+  </g>
+
+  
+  
+  
+  <g>
+    
+    <rect x="1090" y="115" width="460" height="1130" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(1125, 145)">
+      
+      <rect x="0" y="0" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="8" y1="16" x2="40" y2="16" stroke="#207448" stroke-width="3" />
+      <line x1="8" y1="32" x2="28" y2="32" stroke="#207448" stroke-width="3" />
+    </g>
+    
+    <text x="1190" y="178" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      Pipeline Pattern
+    </text>
+
+    
+    <g transform="translate(1125, 230)">
+      
+      <rect x="0" y="0" width="390" height="70" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+      <text x="25" y="44" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">files(root) to</text>
+
+      <line x1="195" y1="70" x2="195" y2="95" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+      
+      <rect x="0" y="95" width="390" height="70" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+      <text x="25" y="139" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">lines(paths) to</text>
+
+      <line x1="195" y1="165" x2="195" y2="190" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+      
+      <rect x="0" y="190" width="390" height="70" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+      <text x="25" y="234" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">parse(lines) to</text>
+
+      <line x1="195" y1="260" x2="195" y2="285" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+      
+      <rect x="0" y="285" width="390" height="70" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+      <text x="25" y="329" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">errors(records) to</text>
+
+      <line x1="195" y1="355" x2="195" y2="380" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+      
+      <rect x="0" y="380" width="390" height="85" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+      <text x="20" y="432" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">Counter(...)</text>
+      <text x="20" y="458" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">.most_common(10)</text>
+    </g>
+
+    
+    <rect x="1120" y="735" width="400" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1140" y="775" font-family="monospace" font-size="24" fill="#207448" font-weight="bold">
+      <tspan x="1140" dy="0">files(root) to</tspan>
+      <tspan x="1140" dy="32">lines(paths) to</tspan>
+      <tspan x="1140" dy="32">parse(lines) to</tspan>
+      <tspan x="1140" dy="32">errors(records) to</tspan>
+      <tspan x="1140" dy="32">Counter(...).most_common(10)</tspan>
+    </text>
+
+    
+    <rect x="1120" y="935" width="400" height="280" rx="12" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <g transform="translate(1140, 955)">
+      
+      <rect x="0" y="5" width="36" height="24" rx="4" fill="none" stroke="#207448" stroke-width="2.5" />
+      <circle cx="28" cy="17" r="3" fill="#207448" />
+    </g>
+    <text x="1140" y="1030" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1140" dy="0">one line in memory at</tspan>
+      <tspan x="1140" dy="36">any moment; each stage</tspan>
+      <tspan x="1140" dy="36">is its own function and</tspan>
+      <tspan x="1140" dy="36">can be tested alone</tspan>
+    </text>
+  </g>
+
+  
+  
+  
+  <g>
+    <rect x="50" y="1285" width="1500" height="85" rx="14" fill="#207448" />
+    <text x="800" y="1338" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      Each stage pulls one item from the stage before it
+    </text>
+  </g>
+
+</svg>

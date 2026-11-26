@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The same journey for AI workloads: which steps each one uses</title>
+  <desc>A matrix mapping AI infrastructure workloads across network stages DNS, route and ARP, TCP, TLS, HTTP, and RDMA bypass, highlighting pod overlays, cloud virtualization, and key operational takeaways.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#207448">The same journey for AI workloads: which steps each one uses</text>
+
+  
+  <rect x="35" y="92" width="360" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="215" y="128" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">Workload</text>
+
+  
+  <rect x="405" y="92" width="120" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="465" y="128" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">DNS</text>
+
+  
+  <rect x="533" y="92" width="165" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="615" y="117" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">route and<tspan x="615" dy="25">ARP</tspan></text>
+
+  
+  <rect x="706" y="92" width="110" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="761" y="128" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">TCP</text>
+
+  
+  <rect x="824" y="92" width="265" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="956" y="128" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">TLS</text>
+
+  
+  <rect x="1097" y="92" width="245" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1219" y="128" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">HTTP</text>
+
+  
+  <rect x="1350" y="92" width="215" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1457" y="117" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">RDMA<tspan x="1457" dy="25">bypass</tspan></text>
+
+  
+  
+  <rect x="35" y="156" width="360" height="210" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 60,185 L 85,172 L 110,185 L 85,198 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M 60,185 L 60,215 L 85,228 L 85,198 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M 85,198 L 85,228 L 110,215 L 110,185 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  <text x="130" y="196" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">Container<tspan x="130" dy="32">image pull</tspan></text>
+
+  
+  
+  <rect x="405" y="156" width="120" height="136" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="465" y="192" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan font-weight="bold" fill="#207448">DNS yes</tspan><tspan x="465" dy="30">(registry</tspan><tspan x="465" dy="28">name)</tspan></text>
+
+  
+  <rect x="533" y="156" width="165" height="136" rx="6" fill="#f5f8f5" stroke="#d0ded2" stroke-width="1"/>
+  <text x="615" y="230" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#99aa99">—</text>
+
+  
+  <rect x="706" y="156" width="110" height="136" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="761" y="230" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">TCP yes</text>
+
+  
+  <rect x="824" y="156" width="265" height="136" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="956" y="184" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan font-weight="bold" fill="#207448">TLS yes</tspan><tspan x="956" dy="26">(often through a</tspan><tspan x="956" dy="26">corporate proxy</tspan><tspan x="956" dy="26">or mirror,</tspan><tspan x="956" dy="26">authenticates)</tspan></text>
+
+  
+  <rect x="1097" y="156" width="245" height="136" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1219" y="196" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan font-weight="bold" fill="#207448">HTTP yes</tspan><tspan x="1219" dy="28">(layers over</tspan><tspan x="1219" dy="28">HTTP/2 or</tspan><tspan x="1219" dy="28">HTTP/1.1)</tspan></text>
+
+  
+  <rect x="1350" y="156" width="215" height="136" rx="6" fill="#f5f8f5" stroke="#d0ded2" stroke-width="1"/>
+  <text x="1457" y="230" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#99aa99">—</text>
+
+  
+  <rect x="405" y="300" width="1160" height="66" rx="6" fill="#e8f1ea" stroke="#b8d5bf" stroke-width="1.5"/>
+  <text x="425" y="326" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">slow pulls: DNS, TLS chain or proxy, MTU black holes on cloud overlays,<tspan x="425" dy="27">rate limits, a congested NAT gateway</tspan></text>
+
+  
+  
+  <rect x="35" y="374" width="360" height="165" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <ellipse cx="85" cy="405" rx="25" ry="8" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 60,405 L 60,425 A 25 8 0 0 0 110,425 L 110,405" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 60,425 L 60,445 A 25 8 0 0 0 110,445 L 110,425" fill="none" stroke="#207448" stroke-width="3"/>
+  <text x="128" y="415" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">Object storage<tspan x="128" dy="32">(GCS, S3)</tspan></text>
+
+  
+  <rect x="405" y="374" width="293" height="74" rx="6" fill="#f5f8f5" stroke="#d0ded2" stroke-width="1"/>
+  <text x="551" y="419" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#667766">standard DNS resolution</text>
+
+  
+  <rect x="706" y="374" width="636" height="74" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1024" y="420" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">HTTPS with many parallel connections</text>
+
+  <rect x="1350" y="374" width="215" height="74" rx="6" fill="#f5f8f5" stroke="#d0ded2" stroke-width="1"/>
+  <text x="1457" y="419" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#99aa99">—</text>
+
+  
+  <rect x="405" y="456" width="1160" height="83" rx="6" fill="#ffffff" stroke="#b8d5bf" stroke-width="1.5"/>
+  <text x="425" y="480" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">per-connection throughput limited by RTT and window;<tspan x="425" dy="26">per instance by the NIC and cloud caps; per prefix or bucket by quotas;</tspan><tspan x="425" dy="26">private endpoints change DNS and path</tspan></text>
+
+  
+  
+  <rect x="35" y="547" width="360" height="185" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="85" cy="578" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="65" cy="615" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="105" cy="615" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="85" y1="585" x2="65" y2="608" stroke="#207448" stroke-width="3"/>
+  <line x1="85" y1="585" x2="105" y2="608" stroke="#207448" stroke-width="3"/>
+  <line x1="72" y1="615" x2="98" y2="615" stroke="#207448" stroke-width="3"/>
+  <text x="125" y="582" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">Cluster bootstrap<tspan x="125" dy="28" font-family="monospace, monospace" font-size="24" font-weight="bold">(torchrun, MPI,</tspan><tspan x="125" dy="28" font-family="monospace, monospace" font-size="24" font-weight="bold">NCCL rendezvous)</tspan></text>
+
+  
+  <rect x="405" y="547" width="411" height="80" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="610" y="580" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">TCP on the management<tspan x="610" dy="28">or front-end network</tspan></text>
+
+  <rect x="405" y="635" width="411" height="97" rx="6" fill="#ffffff" stroke="#b8d5bf" stroke-width="1.5"/>
+  <text x="610" y="668" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">depends on hostnames, DNS,<tspan x="610" dy="28" font-family="monospace, monospace">/etc/hosts, NCCL_SOCKET_IFNAME</tspan></text>
+
+  
+  <path d="M 816,635 L 832,635" fill="none" stroke="#db8129" stroke-width="4"/>
+  <polygon points="832,627 844,635 832,643" fill="#db8129"/>
+
+  
+  <rect x="844" y="547" width="721" height="185" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="3.5"/>
+  <text x="864" y="588" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">RDMA verbs over InfiniBand or RoCE bypass<tspan x="864" dy="33">the kernel TCP/IP stack;</tspan><tspan x="864" dy="35">GPUDirect RDMA reads GPU memory</tspan><tspan x="864" dy="33">without CPU copies</tspan></text>
+
+  
+  
+  <rect x="35" y="740" width="360" height="102" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <polygon points="85,762 106,774 106,798 85,810 64,798 64,774" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="85" cy="786" r="5" fill="#207448"/>
+  <text x="125" y="800" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">Pod request</text>
+
+  
+  <rect x="405" y="740" width="1160" height="102" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="425" y="771" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">CoreDNS lookups with <tspan font-family="monospace, monospace">ndots:5</tspan>, service virtual IPs translated by kube-proxy<tspan x="425" dy="28">or eBPF through DNAT, a CNI veth or bridge or a VXLAN overlay,</tspan><tspan x="425" dy="28">NetworkPolicy, then the node's normal path</tspan></text>
+
+  
+  
+  <rect x="35" y="850" width="360" height="84" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 68,900 A 10 10 0 0 1 78,885 A 14 14 0 0 1 102,885 A 11 11 0 0 1 112,900 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  <text x="125" y="901" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">Cloud</text>
+
+  
+  <rect x="405" y="850" width="1160" height="84" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="425" y="884" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">the router and switch are virtual: VPC routing, firewall rules,<tspan x="425" dy="28">NAT gateways, load balancers, peering</tspan></text>
+
+  
+  
+  <rect x="35" y="944" width="750" height="144" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 55,982 L 80,970 L 105,982 L 105,1015 Q 80,1035 55,1015 Z" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="80" y1="984" x2="80" y2="1006" stroke="#207448" stroke-width="3"/>
+  <circle cx="80" cy="1016" r="2.5" fill="#207448"/>
+  <text x="125" y="986" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">A cluster can show healthy RDMA traffic<tspan x="125" dy="30">and still fail to start a job, because</tspan><tspan x="125" dy="30">the ordinary TCP part broke first</tspan></text>
+
+  
+  <rect x="815" y="944" width="750" height="144" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 835,1000 Q 860,980 885,1000 Q 860,1020 835,1000 Z" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="860" cy="1000" r="6" fill="#207448"/>
+  <text x="905" y="986" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">RDMA traffic is not visible to <tspan font-family="monospace, monospace">tcpdump</tspan>,<tspan x="905" dy="30"><tspan font-family="monospace, monospace">iptables</tspan> or <tspan font-family="monospace, monospace">ss</tspan>: use RDMA tools</tspan><tspan x="905" dy="30">and NIC counters</tspan></text>
+
+  
+  <rect x="35" y="1104" width="1530" height="66" rx="10" fill="#207448"/>
+  <text x="800" y="1146" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">List which steps a workload uses before you start troubleshooting its network</text>
+</svg>

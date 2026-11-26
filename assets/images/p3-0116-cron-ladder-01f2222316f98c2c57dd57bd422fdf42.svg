@@ -1,0 +1,201 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1400" width="1600" height="1400">
+  <title>A cron job did not run: five checks in order</title>
+  <desc>Visual diagnostic ladder of five troubleshooting checks for cron job failures, ending in Found it, paired with a safe production wrapper.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1400" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">A cron job did not run: five checks in order</text>
+
+  
+  <rect x="50" y="95" width="1500" height="75" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(80, 112)">
+    <path d="M 20 4 L 38 36 L 2 36 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <line x1="20" y1="16" x2="20" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="20" cy="31" r="2" fill="#207448" />
+  </g>
+  <text x="800" y="142" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">The cron job never runs, runs but fails, or runs twice</text>
+
+  
+  <line x1="490" y1="170" x2="490" y2="208" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="50" y="210" width="880" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="105" cy="248" r="24" fill="#207448" />
+  <text x="105" y="256" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(85, 278)">
+    <circle cx="20" cy="20" r="9" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 20 5 L 20 9 M 20 31 L 20 35 M 5 20 L 9 20 M 31 20 L 35 20 M 9 9 L 12 12 M 28 28 L 31 31 M 9 31 L 12 28 M 28 12 L 31 9" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  
+  <text fill="#303a36">
+    <tspan x="175" y="254" font-family="sans-serif" font-size="28" font-weight="bold">Is the daemon running? </tspan>
+    <tspan x="175" y="296" font-family="monospace" font-size="24">systemctl status cron or crond</tspan>
+  </text>
+
+  
+  <line x1="490" y1="330" x2="490" y2="358" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="50" y="360" width="880" height="220" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="105" cy="410" r="24" fill="#207448" />
+  <text x="105" y="418" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(85, 455)">
+    <path d="M 6 4 L 26 4 L 34 12 L 34 40 L 6 40 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <polyline points="26,4 26,12 34,12" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <line x1="12" y1="20" x2="26" y2="20" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="12" y1="26" x2="26" y2="26" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="12" y1="32" x2="22" y2="32" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  </g>
+  
+  <text fill="#303a36">
+    <tspan x="175" y="402" font-family="sans-serif" font-size="28" font-weight="bold">Did the crontab install cleanly? </tspan>
+    <tspan x="175" y="440" font-family="sans-serif" font-size="24">crontab -l; a missing trailing newline in an /etc/cron.d file </tspan>
+    <tspan x="175" y="476" font-family="sans-serif" font-size="24">breaks it; system files must be owned by root and not writable </tspan>
+    <tspan x="175" y="512" font-family="sans-serif" font-size="24">by group or world; on Debian a file name with a dot in </tspan>
+    <tspan x="175" y="548" font-family="sans-serif" font-size="24">/etc/cron.d is ignored</tspan>
+  </text>
+
+  
+  <line x1="490" y1="580" x2="490" y2="608" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="50" y="610" width="880" height="160" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="105" cy="655" r="24" fill="#207448" />
+  <text x="105" y="663" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(85, 698)">
+    <circle cx="20" cy="20" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <polyline points="20,10 20,20 28,24" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  
+  <text fill="#303a36">
+    <tspan x="175" y="652" font-family="sans-serif" font-size="28" font-weight="bold">Right time and zone? date; </tspan>
+    <tspan x="175" y="692" font-family="sans-serif" font-size="24">then read what cron logged: journalctl -u cron --since -1h, </tspan>
+    <tspan x="175" y="730" font-family="sans-serif" font-size="24">grep CRON /var/log/syslog, or /var/log/cron on RHEL</tspan>
+  </text>
+
+  
+  <line x1="490" y1="770" x2="490" y2="798" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="50" y="800" width="880" height="210" rx="10" fill="#fffaf4" stroke="#db8129" stroke-width="3" />
+  
+  <circle cx="105" cy="850" r="24" fill="#db8129" />
+  <text x="105" y="858" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g transform="translate(85, 900)">
+    <rect x="2" y="4" width="36" height="30" rx="4" fill="none" stroke="#db8129" stroke-width="3" />
+    <polyline points="9,14 16,19 9,24" fill="none" stroke="#db8129" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="20" y1="24" x2="28" y2="24" stroke="#db8129" stroke-width="2.5" stroke-linecap="round" />
+  </g>
+  
+  <text fill="#303a36">
+    <tspan x="175" y="842" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">Run the command exactly as cron does: </tspan>
+    <tspan x="175" y="882" font-family="monospace" font-size="24">env -i HOME=$HOME SHELL=/bin/sh </tspan>
+    <tspan x="175" y="920" font-family="monospace" font-size="24">PATH=/usr/bin:/bin sh -c &quot;command&quot;; </tspan>
+    <tspan x="175" y="958" font-family="sans-serif" font-size="24">does it need a terminal or an environment variable?</tspan>
+  </text>
+
+  
+  <line x1="490" y1="1010" x2="490" y2="1038" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="50" y="1040" width="880" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="105" cy="1085" r="24" fill="#207448" />
+  <text x="105" y="1093" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  
+  <g transform="translate(85, 1120)">
+    <rect x="6" y="14" width="28" height="22" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 12 14 L 12 9 C 12 4.5 28 4.5 28 9 L 28 14" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="20" cy="24" r="2" fill="#207448" />
+  </g>
+  
+  <text fill="#303a36">
+    <tspan x="175" y="1082" font-family="sans-serif" font-size="28" font-weight="bold">Is the account locked: </tspan>
+    <tspan x="175" y="1124" font-family="sans-serif" font-size="24">PAM pam_nologin, an expired password, or /etc/cron.deny</tspan>
+  </text>
+
+  
+  <line x1="490" y1="1170" x2="490" y2="1198" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="290" y="1200" width="400" height="65" rx="12" fill="#207448" stroke="#207448" stroke-width="2" />
+  <text x="490" y="1242" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Found it</text>
+
+  
+  <rect x="970" y="210" width="580" height="975" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="995" y="235" width="530" height="275" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <path d="M 995 243 A 8 8 0 0 1 1003 235 L 1517 235 A 8 8 0 0 1 1525 243 L 1525 272 L 995 272 Z" fill="#d8e8dc" />
+  <circle cx="1015" cy="254" r="5" fill="#207448" />
+  <circle cx="1032" cy="254" r="5" fill="#207448" opacity="0.6" />
+  <circle cx="1049" cy="254" r="5" fill="#207448" opacity="0.4" />
+  
+  <text font-family="monospace" font-size="24" fill="#207448" font-weight="bold">
+    <tspan x="1015" y="306">*/5 * * * * root </tspan>
+    <tspan x="1015" y="346">flock -n /run/lock/gpu-health.lock </tspan>
+    <tspan x="1015" y="386">timeout 120 </tspan>
+    <tspan x="1015" y="426">/usr/local/bin/gpu-health.sh 2&gt;&amp;1 | </tspan>
+    <tspan x="1015" y="466">logger -t gpu-health</tspan>
+  </text>
+
+  
+  <rect x="995" y="540" width="530" height="180" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(1020, 605)">
+    <rect x="4" y="14" width="28" height="22" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 10 14 L 10 8 C 10 3.5 26 3.5 26 8 L 26 14" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="18" cy="25" r="2.5" fill="#207448" />
+  </g>
+  <text fill="#303a36">
+    <tspan x="1075" y="615" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">flock -n </tspan>
+    <tspan x="1075" y="655" font-family="sans-serif" font-size="24">stops overlapping runs</tspan>
+  </text>
+
+  
+  <rect x="995" y="750" width="530" height="180" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(1020, 815)">
+    <circle cx="18" cy="20" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <polyline points="18,10 18,20 25,20" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="14" y1="4" x2="22" y2="4" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text fill="#303a36">
+    <tspan x="1075" y="825" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">timeout </tspan>
+    <tspan x="1075" y="865" font-family="sans-serif" font-size="24">kills a hang</tspan>
+  </text>
+
+  
+  <rect x="995" y="960" width="530" height="180" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(1020, 1025)">
+    <rect x="4" y="4" width="28" height="34" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="10" y1="12" x2="26" y2="12" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="10" y1="18" x2="26" y2="18" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="10" y1="24" x2="20" y2="24" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  </g>
+  <text fill="#303a36">
+    <tspan x="1075" y="1035" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">logger </tspan>
+    <tspan x="1075" y="1075" font-family="sans-serif" font-size="24">keeps the output in the journal</tspan>
+  </text>
+
+  
+  <rect x="50" y="1295" width="1500" height="70" rx="8" fill="#207448" />
+  <text x="800" y="1339" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Make the job safe to run twice before you schedule it</text>
+</svg>

@@ -1,0 +1,224 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1495" width="1600" height="1495">
+  <title>Autoscaling symptom to layer to first check</title>
+  <desc>Troubleshooting guide mapping autoscaling symptoms to layer and first diagnostic check</desc>
+
+  <rect width="1600" height="1495" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">Autoscaling symptom to layer to first check</text>
+
+  
+  
+  <rect x="50" y="85" width="270" height="180" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(157, 105)" stroke="#207448" stroke-width="3.5" fill="none">
+    <path d="M 6 42 A 25 25 0 1 1 50 42"/>
+    <line x1="28" y1="28" x2="42" y2="16"/>
+    <circle cx="28" cy="28" r="3.5" fill="#207448"/>
+  </g>
+  <text x="185" y="195" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">Metrics layer</text>
+
+  
+  <rect x="340" y="85" width="560" height="180" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="360" y="118" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="360" dy="0" font-weight="bold">HPA unknown metric or</tspan>
+    <tspan x="360" dy="28" font-weight="bold">FailedGetResourceMetric:</tspan>
+    <tspan x="360" dy="28">metrics-server missing or</tspan>
+    <tspan x="360" dy="28">unhealthy, no CPU requests,</tspan>
+    <tspan x="360" dy="28">kubelet certs:</tspan>
+  </text>
+
+  
+  <rect x="920" y="85" width="630" height="180" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="940" y="135" font-family="monospace" font-size="24" fill="#207448">
+    <tspan x="940" dy="0">kubectl top pods,</tspan>
+    <tspan x="940" dy="32">metrics-server logs,</tspan>
+    <tspan x="940" dy="32">set requests</tspan>
+  </text>
+
+  
+  
+  <rect x="50" y="273" width="270" height="362" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(157, 400)" stroke="#207448" stroke-width="3.5" fill="none">
+    <circle cx="28" cy="28" r="14"/>
+    <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12"/>
+  </g>
+  <text x="185" y="490" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">HPA layer</text>
+
+  
+  <rect x="340" y="273" width="560" height="130" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+  <text x="360" y="303" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="360" dy="0" font-weight="bold">not scaling despite load:</tspan>
+    <tspan x="360" dy="28">metric below target,</tspan>
+    <tspan x="360" dy="28">tolerance band, readiness</tspan>
+    <tspan x="360" dy="28">delay, maxReplicas hit:</tspan>
+  </text>
+
+  
+  <rect x="920" y="273" width="630" height="130" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="940" y="325" font-family="monospace" font-size="24" fill="#207448">
+    <tspan x="940" dy="0">kubectl describe hpa</tspan>
+    <tspan x="940" dy="32">conditions and events</tspan>
+  </text>
+
+  
+  <rect x="340" y="409" width="560" height="110" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="360" y="440" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="360" dy="0" font-weight="bold">flapping:</tspan>
+    <tspan x="360" dy="28">short scale-down window,</tspan>
+    <tspan x="360" dy="28">noisy metric, readiness lag:</tspan>
+  </text>
+
+  
+  <rect x="920" y="409" width="630" height="110" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="940" y="438" font-family="monospace" font-size="24" fill="#207448">
+    <tspan x="940" dy="0">increase stabilisation,</tspan>
+    <tspan x="940" dy="28">smooth metric with Prometheus</tspan>
+    <tspan x="940" dy="28">avg_over_time</tspan>
+  </text>
+
+  
+  <rect x="340" y="525" width="560" height="110" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="360" y="555" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="360" dy="0" font-weight="bold">over-scaling inference:</tspan>
+    <tspan x="360" dy="28">HPA reacts to queue spikes</tspan>
+    <tspan x="360" dy="28">faster than model start:</tspan>
+  </text>
+
+  
+  <rect x="920" y="525" width="630" height="110" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="940" y="565" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="940" dy="0">cap scale-up rate,</tspan>
+    <tspan x="940" dy="32">per-replica metric, pre-warm</tspan>
+  </text>
+
+  
+  
+  <rect x="50" y="643" width="270" height="443" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(157, 810)" stroke="#207448" stroke-width="3.5" fill="none">
+    <rect x="8" y="10" width="40" height="36" rx="4"/>
+    <line x1="18" y1="22" x2="38" y2="22"/>
+    <line x1="18" y1="32" x2="30" y2="32"/>
+    <line x1="16" y1="4" x2="16" y2="10"/>
+    <line x1="28" y1="4" x2="28" y2="10"/>
+    <line x1="40" y1="4" x2="40" y2="10"/>
+    <line x1="16" y1="46" x2="16" y2="52"/>
+    <line x1="28" y1="46" x2="28" y2="52"/>
+    <line x1="40" y1="46" x2="40" y2="52"/>
+  </g>
+  <text x="185" y="900" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">Node layer</text>
+
+  
+  <rect x="340" y="643" width="560" height="100" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="360" y="673" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="360" dy="0" font-weight="bold">scale-up creates Pending pods:</tspan>
+    <tspan x="360" dy="28">no capacity, CA disabled,</tspan>
+    <tspan x="360" dy="28">quota:</tspan>
+  </text>
+
+  
+  <rect x="920" y="643" width="630" height="100" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="940" y="700" font-family="monospace" font-size="24" fill="#207448">
+    <tspan x="940" dy="0">CA logs, status ConfigMap</tspan>
+  </text>
+
+  
+  <rect x="340" y="749" width="560" height="135" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="360" y="777" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="360" dy="0" font-weight="bold">CA will not scale up:</tspan>
+    <tspan x="360" dy="28">pod fits no node group template</tspan>
+    <tspan x="360" dy="28">(GPU label or taint mismatch),</tspan>
+    <tspan x="360" dy="28">group at max, permissions:</tspan>
+  </text>
+
+  
+  <rect x="920" y="749" width="630" height="135" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="940" y="805" font-family="monospace" font-size="24" fill="#207448">
+    <tspan x="940" dy="0">kubectl -n kube-system logs</tspan>
+    <tspan x="940" dy="32">deploy/cluster-autoscaler</tspan>
+  </text>
+
+  
+  <rect x="340" y="890" width="560" height="110" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="360" y="920" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="360" dy="0" font-weight="bold">CA will not scale down:</tspan>
+    <tspan x="360" dy="28">local storage, PDB, annotations,</tspan>
+    <tspan x="360" dy="28">utilisation above threshold:</tspan>
+  </text>
+
+  
+  <rect x="920" y="890" width="630" height="110" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="940" y="940" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="940" dy="0">add safe-to-evict,</tspan>
+    <tspan x="940" dy="32">adjust thresholds</tspan>
+  </text>
+
+  
+  <rect x="340" y="1006" width="560" height="80" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="360" y="1053" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="360" dy="0" font-weight="bold">Karpenter launches wrong instance:</tspan>
+  </text>
+
+  
+  <rect x="920" y="1006" width="630" height="80" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="940" y="1053" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="940" dy="0">requirements too loose</tspan>
+  </text>
+
+  
+  
+  <rect x="50" y="1094" width="270" height="297" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(157, 1180)" stroke="#207448" stroke-width="3.5" fill="none">
+    <polygon points="28,8 48,18 28,28 8,18"/>
+    <path d="M 8 28 L 28 38 L 48 28"/>
+    <path d="M 8 38 L 28 48 L 48 38"/>
+  </g>
+  <text x="185" y="1275" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">Others</text>
+
+  
+  <rect x="340" y="1094" width="560" height="75" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="360" y="1140" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="360" dy="0" font-weight="bold">VPA evicting repeatedly:</tspan>
+  </text>
+
+  
+  <rect x="920" y="1094" width="630" height="75" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="940" y="1140" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="940" dy="0">Auto mode, use Off or Initial</tspan>
+  </text>
+
+  
+  <rect x="340" y="1175" width="560" height="130" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="360" y="1205" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="360" dy="0" font-weight="bold">KEDA not scaling from zero:</tspan>
+    <tspan x="360" dy="28">trigger authentication,</tspan>
+    <tspan x="360" dy="28">scaler errors, duplicate HPA</tspan>
+    <tspan x="360" dy="28">on same target:</tspan>
+  </text>
+
+  
+  <rect x="920" y="1175" width="630" height="130" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="940" y="1245" font-family="monospace" font-size="24" fill="#207448">
+    <tspan x="940" dy="0">kubectl describe scaledobject</tspan>
+  </text>
+
+  
+  <rect x="340" y="1311" width="560" height="80" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="360" y="1358" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="360" dy="0" font-weight="bold">costs high:</tspan>
+  </text>
+
+  
+  <rect x="920" y="1311" width="630" height="80" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="940" y="1345" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="940" dy="0">minReplicas high, idle pools,</tspan>
+    <tspan x="940" dy="28">spot fallback to on-demand</tspan>
+  </text>
+
+  
+  <rect x="50" y="1405" width="1500" height="65" rx="8" fill="#207448"/>
+  <text x="800" y="1446" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">read the cause before changing a threshold because a threshold change can hide the real fault</text>
+</svg>

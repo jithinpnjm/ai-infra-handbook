@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Why become breaks SSH agent forwarding for git</title>
+  <desc>Visual comparison showing why Ansible become: true breaks SSH agent forwarding by dropping SSH_AUTH_SOCK in sudo.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-dark" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#4a5852" />
+    </marker>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-red" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#b93829" />
+    </marker>
+
+    
+    <filter id="card-shadow" x="-4%" y="-4%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1b2a22" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">Why become breaks SSH agent forwarding for git</text>
+
+  
+  
+  <rect x="25" y="105" width="1550" height="260" rx="20" fill="#e8f1ea" stroke="#d0e2d4" stroke-width="2" />
+  
+  <rect x="25" y="390" width="1550" height="425" rx="20" fill="#fcfdfc" stroke="#e0e8e2" stroke-width="2" />
+
+  
+  
+  
+  <g filter="url(#card-shadow)">
+    <rect x="45" y="125" width="235" height="645" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  </g>
+
+  
+  <g transform="translate(162, 175)">
+    
+    <rect x="-35" y="-30" width="70" height="44" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="-45" y1="14" x2="45" y2="14" stroke="#207448" stroke-width="5" stroke-linecap="round" />
+  </g>
+  <text x="162" y="235" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Your login session</text>
+
+  
+  <g transform="translate(60, 310)">
+    <rect x="0" y="0" width="205" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="50" cy="45" r="14" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 64 45 L 98 45 M 82 45 L 82 55 M 92 45 L 92 53" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="102" y="95" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" font-weight="bold" fill="#207448">ssh-add -L</text>
+  </g>
+
+  
+  <g transform="translate(60, 480)">
+    <rect x="0" y="0" width="205" height="135" rx="12" fill="#ffffff" stroke="#303a36" stroke-width="2" stroke-dasharray="6 4" />
+    
+    <circle cx="102" cy="42" r="18" fill="#e8f1ea" stroke="#303a36" stroke-width="2.5" />
+    <circle cx="95" cy="42" r="3" fill="#303a36" />
+    <circle cx="109" cy="42" r="3" fill="#303a36" />
+    <text x="102" y="100" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" font-weight="bold" fill="#303a36">SSH_AUTH_SOCK</text>
+  </g>
+
+  
+  
+  
+  
+  <path d="M 280 445 L 365 445" fill="none" stroke="#207448" stroke-width="4" />
+
+  
+  <rect x="365" y="420" width="245" height="50" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+  <text x="487" y="454" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" font-weight="bold" fill="#207448">ForwardAgent=yes</text>
+
+  
+  
+  <path d="M 610 445 L 645 445 L 645 235 L 700 235" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  
+  <path d="M 610 445 L 645 445 L 645 560 L 700 560" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  
+  
+  
+  <g filter="url(#card-shadow)">
+    <rect x="715" y="135" width="370" height="200" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  </g>
+  
+  <rect x="745" y="160" width="36" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="771" cy="172" r="2.5" fill="#207448" />
+  <line x1="751" y1="172" x2="761" y2="172" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  
+  <text x="795" y="180" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Target</text>
+  
+  <rect x="745" y="220" width="310" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="900" y="272" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="26" font-weight="bold" fill="#207448">become: false</text>
+
+  
+  <path d="M 1085 235 L 1180 235" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="1195" y="135" width="355" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  </g>
+  
+  <g transform="translate(1235, 235)">
+    <circle cx="0" cy="0" r="32" fill="#207448" />
+    <path d="M -14 0 L -4 10 L 14 -8" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="1290" y="244" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">the clone works</text>
+
+  
+  
+  
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="715" y="445" width="220" height="230" rx="16" fill="#ffffff" stroke="#4a5852" stroke-width="2.5" />
+  </g>
+  
+  <rect x="740" y="475" width="34" height="22" rx="4" fill="none" stroke="#4a5852" stroke-width="3" />
+  <circle cx="764" cy="486" r="2.5" fill="#4a5852" />
+  <line x1="746" y1="486" x2="756" y2="486" stroke="#4a5852" stroke-width="3" stroke-linecap="round" />
+  
+  <rect x="730" y="525" width="190" height="120" rx="12" fill="#f5f8f5" stroke="#4a5852" stroke-width="1.5" />
+  <text x="825" y="595" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" font-weight="bold" fill="#303a36">become: true</text>
+
+  
+  <path d="M 935 560 L 965 560" fill="none" stroke="#4a5852" stroke-width="4" marker-end="url(#arrow-dark)" />
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="980" y="445" width="295" height="230" rx="16" fill="#fffaf5" stroke="#db8129" stroke-width="4" />
+  </g>
+  
+  <path d="M 1010 475 L 1024 469 L 1038 475 L 1038 492 C 1038 502 1024 511 1024 511 C 1024 511 1010 502 1010 492 Z" fill="#fff0e0" stroke="#db8129" stroke-width="2.5" />
+  <text x="1052" y="485" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">sudo starts a</text>
+  <text x="1005" y="515" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">clean environment</text>
+
+  
+  <rect x="995" y="535" width="265" height="120" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5" stroke-dasharray="4 3" />
+  <text x="1127" y="565" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" font-weight="bold" fill="#b93829">SSH_AUTH_SOCK</text>
+  <text x="1127" y="595" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">is dropped unless</text>
+  <text x="1127" y="630" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" font-weight="bold" fill="#303a36">env_keep<tspan font-family="system-ui, -apple-system, sans-serif" font-weight="normal"> keeps it</tspan></text>
+
+  
+  <path d="M 1275 560 L 1305 560" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="1320" y="445" width="235" height="110" rx="14" fill="#ffffff" stroke="#4a5852" stroke-width="2.5" />
+  </g>
+  
+  <circle cx="1345" cy="485" r="10" fill="none" stroke="#4a5852" stroke-width="2.5" />
+  <line x1="1352" y1="492" x2="1360" y2="500" stroke="#4a5852" stroke-width="2.5" stroke-linecap="round" />
+  <text x="1437" y="488" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">git has no</text>
+  <text x="1437" y="525" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">agent to ask</text>
+
+  
+  <path d="M 1437 555 L 1437 590" fill="none" stroke="#b93829" stroke-width="4" marker-end="url(#arrow-red)" />
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="1275" y="605" width="280" height="115" rx="14" fill="#fdf3f2" stroke="#b93829" stroke-width="3" />
+  </g>
+  
+  <rect x="1300" y="650" width="26" height="20" rx="3" fill="#b93829" />
+  <path d="M 1305 650 L 1305 642 C 1305 636 1321 636 1321 642 L 1321 650" fill="none" stroke="#b93829" stroke-width="3" />
+  <text x="1432" y="652" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#b93829">Permission denied</text>
+  <text x="1432" y="688" text-anchor="middle" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" font-weight="bold" fill="#b93829">(publickey)</text>
+
+  
+  <text x="915" y="760" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-style="italic" fill="#586861">the key was fine, the environment was not.</text>
+
+  
+  
+  
+  <g filter="url(#card-shadow)">
+    <rect x="45" y="855" width="1510" height="145" rx="16" fill="#207448" />
+  </g>
+  <text x="800" y="915" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Check 3 is about privilege, and it is the one that catches most people,</text>
+  <text x="800" y="960" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">so make sure the git task does not set <tspan font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="27" fill="#a4f0c4">become: true</tspan>.</text>
+</svg>

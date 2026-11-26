@@ -1,0 +1,207 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1480" width="1600" height="1480">
+  <title>cert-manager flow and the three ways an ingress handles TLS</title>
+  <desc>Visual architecture infographic of cert-manager flow, ingress TLS termination strategies, and cluster PKI.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1480" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="38" font-weight="bold" fill="#207448">cert-manager flow and the three ways an ingress handles TLS</text>
+
+  
+
+  
+  <rect x="50" y="115" width="355" height="315" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="95" cy="160" r="24" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 95 146 L 85 152 L 85 166 C 85 174 95 178 95 178 C 95 178 105 174 105 166 L 105 152 Z" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <text x="135" y="155" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="135" dy="0">Issuer or</tspan>
+    <tspan x="135" dy="28">ClusterIssuer:</tspan>
+  </text>
+  <text x="75" y="235" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0">ACME with</tspan>
+    <tspan x="75" dy="32">Let's Encrypt</tspan>
+    <tspan x="75" dy="32">(HTTP-01 or DNS-01),</tspan>
+    <tspan x="75" dy="32">Vault, a private CA,</tspan>
+    <tspan x="75" dy="32">or self-signed</tspan>
+  </text>
+
+  
+  <line x1="405" y1="272" x2="425" y2="272" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="430" y="115" width="250" height="315" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="475" cy="160" r="24" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="465" y="148" width="20" height="25" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <line x1="470" y1="156" x2="480" y2="156" stroke="#207448" stroke-width="2"/>
+  <line x1="470" y1="162" x2="480" y2="162" stroke="#207448" stroke-width="2"/>
+  <text x="515" y="155" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="515" dy="0">Certificate</tspan>
+    <tspan x="515" dy="28">object:</tspan>
+  </text>
+  <text x="450" y="240" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="450" dy="0">declares the</tspan>
+    <tspan x="450" dy="34">names and</tspan>
+    <tspan x="450" dy="34">renewal</tspan>
+    <tspan x="450" dy="34">windows</tspan>
+  </text>
+
+  
+  <line x1="680" y1="272" x2="700" y2="272" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="705" y="115" width="265" height="315" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="750" cy="160" r="24" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="750" cy="160" r="10" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <path d="M 750 144 L 750 148 M 750 172 L 750 176 M 734 160 L 738 160 M 762 160 L 766 160" stroke="#207448" stroke-width="3"/>
+  <text x="790" y="155" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="790" dy="0">cert-manager</tspan>
+    <tspan x="790" dy="28">controller</tspan>
+  </text>
+  <text x="725" y="245" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="725" dy="0">issues and</tspan>
+    <tspan x="725" dy="34">renews</tspan>
+  </text>
+
+  
+  <line x1="970" y1="272" x2="990" y2="272" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="995" y="115" width="220" height="315" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1040" cy="160" r="24" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="1032" y="156" width="16" height="14" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <path d="M 1035 156 L 1035 150 C 1035 146 1045 146 1045 150 L 1045 156" fill="none" stroke="#207448" stroke-width="2"/>
+  <text x="1075" y="168" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1075" dy="0">Secret</tspan>
+    <tspan x="1075" dy="28">object</tspan>
+  </text>
+
+  
+  <line x1="1215" y1="272" x2="1235" y2="272" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1240" y="115" width="310" height="315" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1285" cy="160" r="24" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="1275" y="150" width="20" height="20" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <text x="1320" y="168" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Workload</text>
+  <text x="1260" y="240" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1260" dy="0">consumed by</tspan>
+    <tspan x="1260" dy="34">Ingress, Gateway</tspan>
+    <tspan x="1260" dy="34">or pods</tspan>
+  </text>
+
+  
+  <rect x="50" y="455" width="1500" height="65" rx="8" fill="#fff5eb" stroke="#db8129" stroke-width="2"/>
+  <text x="800" y="496" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    DNS-01 is needed for wildcards and for clusters the Internet cannot reach
+  </text>
+
+  
+
+  
+  <rect x="50" y="545" width="970" height="785" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="85" y="590" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Client to ingress to backend</text>
+
+  
+  <rect x="70" y="615" width="930" height="220" rx="8" fill="#f5f8f5" stroke="#b0ccb7" stroke-width="1.5"/>
+  <text x="95" y="650" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Terminate at the edge</text>
+  <text x="95" y="685" font-family="sans-serif" font-size="24" fill="#303a36">TLS ends at the ingress, simple, but the traffic is plaintext inside</text>
+  
+  <rect x="95" y="725" width="130" height="85" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="160" y="775" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Client</text>
+  <line x1="225" y1="767" x2="445" y2="767" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="270" y="735" width="130" height="30" rx="4" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="335" y="757" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#207448">TLS</text>
+  <rect x="450" y="725" width="160" height="85" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="530" y="775" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Ingress</text>
+  <line x1="610" y1="767" x2="795" y2="767" stroke="#303a36" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <rect x="635" y="735" width="145" height="30" rx="4" fill="#ffffff" stroke="#303a36" stroke-width="1"/>
+  <text x="707" y="757" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">plaintext</text>
+  <rect x="800" y="725" width="180" height="85" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="890" y="775" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Backend</text>
+
+  
+  <rect x="70" y="855" width="930" height="220" rx="8" fill="#f5f8f5" stroke="#b0ccb7" stroke-width="1.5"/>
+  <text x="95" y="890" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Re-encrypt to the backends</text>
+  <text x="95" y="925" font-family="sans-serif" font-size="24" fill="#303a36">TLS ends at the ingress and a second TLS session runs to the backend</text>
+  
+  <rect x="95" y="965" width="130" height="85" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="160" y="1015" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Client</text>
+  <line x1="225" y1="1007" x2="445" y2="1007" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="255" y="975" width="160" height="30" rx="4" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="335" y="997" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#207448">TLS session 1</text>
+  <rect x="450" y="965" width="160" height="85" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="530" y="1015" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Ingress</text>
+  <line x1="610" y1="1007" x2="795" y2="1007" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="625" y="975" width="160" height="30" rx="4" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="705" y="997" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#207448">TLS session 2</text>
+  <rect x="800" y="965" width="180" height="85" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="890" y="1015" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Backend</text>
+
+  
+  <rect x="70" y="1095" width="930" height="215" rx="8" fill="#f5f8f5" stroke="#b0ccb7" stroke-width="1.5"/>
+  <text x="95" y="1130" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Pass through at layer 4</text>
+  <text x="95" y="1165" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">the ingress forwards encrypted bytes and the backend terminates,</tspan>
+    <tspan x="95" dy="30">needed for end-to-end mTLS</tspan>
+  </text>
+  
+  <rect x="95" y="1215" width="130" height="80" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="160" y="1262" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Client</text>
+  <line x1="225" y1="1255" x2="445" y2="1255" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="250" y="1225" width="170" height="30" rx="4" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="335" y="1247" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#207448">Layer 4 bytes</text>
+  <rect x="450" y="1215" width="160" height="80" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="530" y="1262" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Ingress</text>
+  <line x1="610" y1="1255" x2="795" y2="1255" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="625" y="1225" width="160" height="30" rx="4" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="705" y="1247" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#207448">End-to-end</text>
+  <rect x="800" y="1215" width="180" height="80" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="890" y="1262" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Backend</text>
+
+  
+
+  
+  <rect x="1050" y="545" width="500" height="340" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1080" y="590" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Cluster side strip</text>
+  <text x="1080" y="635" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1080" dy="0">kubeadm creates the cluster CA,</tspan>
+    <tspan x="1080" dy="36">API server serving certificate,</tspan>
+    <tspan x="1080" dy="36">kubelet client and serving</tspan>
+    <tspan x="1080" dy="36">certificates, an etcd CA with</tspan>
+    <tspan x="1080" dy="36">peer certificates, in</tspan>
+    <tspan x="1080" dy="36" font-family="monospace">/etc/kubernetes/pki</tspan>
+  </text>
+
+  
+  <rect x="1050" y="905" width="500" height="425" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1080" y="950" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    <tspan x="1080" dy="0">Service meshes</tspan>
+    <tspan x="1080" dy="32">(Istio, Linkerd, Cilium)</tspan>
+  </text>
+  <text x="1080" y="1030" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1080" dy="0">sidecars or per-node proxies issue</tspan>
+    <tspan x="1080" dy="34">short-lived workload certificates</tspan>
+    <tspan x="1080" dy="34">with SPIFFE identities and enforce</tspan>
+    <tspan x="1080" dy="34">mTLS and authorization policies;</tspan>
+    <tspan x="1080" dy="34">watch CPU overhead and latency,</tspan>
+    <tspan x="1080" dy="34">especially for token streaming</tspan>
+    <tspan x="1080" dy="34">and large payloads</tspan>
+  </text>
+
+  
+  <rect x="50" y="1355" width="1500" height="85" rx="10" fill="#207448"/>
+  <text x="800" y="1408" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+    cert-manager takes the repetitive job of asking for and renewing certificates off people
+  </text>
+
+</svg>

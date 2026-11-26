@@ -1,0 +1,266 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1480" width="1600" height="1480">
+  <title>Finding and fixing a PMTU black hole: the step-down test and the order of fixes</title>
+  <desc>Visual infographic explaining PMTU black hole symptoms, the step-down ping test, detection tools, and the ordered sequence of fixes from cleanest to roughest.</desc>
+
+  <rect width="1600" height="1480" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">Finding and fixing a PMTU black hole:</text>
+  <text x="800" y="102" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36" text-anchor="middle">the step-down test and the order of fixes</text>
+
+  
+  <rect x="40" y="130" width="440" height="1060" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(60, 150)">
+    <rect x="0" y="0" width="400" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="65" r="24" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 35 65 L 43 73 L 57 57" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="85" y="52" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">ssh connects but</tspan>
+      <tspan x="85" dy="32">hangs after</tspan>
+      <tspan x="85" dy="32">SSH2_MSG_KEXINIT</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 295)">
+    <rect x="0" y="0" width="400" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="25" y="40" width="40" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="25" y1="50" x2="65" y2="50" stroke="#207448" stroke-width="2"/>
+    <text x="85" y="52" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">curl https hangs</tspan>
+      <tspan x="85" dy="32">after Connected</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 420)">
+    <rect x="0" y="0" width="400" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="25" y="35" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 25 35 L 65 75" stroke="#207448" stroke-width="2"/>
+    <text x="85" y="52" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">a website loads</tspan>
+      <tspan x="85" dy="32">only partly</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 545)">
+    <rect x="0" y="0" width="400" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="35" cy="45" r="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="55" cy="35" r="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 35 45 C 45 45, 45 35, 55 35" fill="none" stroke="#207448" stroke-width="2"/>
+    <text x="85" y="54" font-family="sans-serif" font-size="24" fill="#303a36">git clone stalls</text>
+  </g>
+
+  
+  <g transform="translate(60, 650)">
+    <rect x="0" y="0" width="400" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="75" r="22" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="33" y1="75" x2="57" y2="75" stroke="#207448" stroke-width="3"/>
+    <text x="85" y="44" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">a small ping works</tspan>
+      <tspan x="85" dy="32">while ping -s 1472</tspan>
+      <tspan x="85" dy="32">-M do fails</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 815)">
+    <rect x="0" y="0" width="400" height="350" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="25" y="40" width="36" height="46" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="33" y1="54" x2="53" y2="54" stroke="#207448" stroke-width="2"/>
+    <line x1="33" y1="64" x2="53" y2="64" stroke="#207448" stroke-width="2"/>
+    <line x1="33" y1="74" x2="47" y2="74" stroke="#207448" stroke-width="2"/>
+    <text x="85" y="46" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">TLS handshakes with</tspan>
+      <tspan x="85" dy="34">big certificates</tspan>
+      <tspan x="85" dy="34">(the ServerHello</tspan>
+      <tspan x="85" dy="34">flight) and scp of</tspan>
+      <tspan x="85" dy="34">big files hang</tspan>
+    </text>
+  </g>
+
+
+  
+
+  
+  <rect x="510" y="130" width="540" height="470" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(530, 150)">
+    <rect x="0" y="0" width="500" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <line x1="455" y1="20" x2="485" y2="45" stroke="#d9534f" stroke-width="4" stroke-linecap="round"/>
+    <line x1="485" y1="20" x2="455" y2="45" stroke="#d9534f" stroke-width="4" stroke-linecap="round"/>
+    <text x="24" y="42" font-family="monospace" font-size="25" fill="#303a36">ping -M do -s 1472</text>
+  </g>
+
+  
+  <g transform="translate(560, 225)">
+    <rect x="0" y="0" width="470" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <line x1="425" y1="20" x2="455" y2="45" stroke="#d9534f" stroke-width="4" stroke-linecap="round"/>
+    <line x1="455" y1="20" x2="425" y2="45" stroke="#d9534f" stroke-width="4" stroke-linecap="round"/>
+    <text x="24" y="42" font-family="monospace" font-size="25" fill="#303a36">1452</text>
+  </g>
+
+  
+  <g transform="translate(590, 300)">
+    <rect x="0" y="0" width="440" height="180" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <path d="M 390 35 L 405 50 L 425 25" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="24" y="44" font-family="monospace" font-size="28" font-weight="bold" fill="#db8129">1432</text>
+
+    
+    <rect x="15" y="70" width="410" height="95" rx="8" fill="#db8129"/>
+    <text x="220" y="108" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      <tspan x="220" dy="0">largest that passes:</tspan>
+      <tspan x="220" dy="32">the doorway width</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(620, 490)">
+    <rect x="0" y="0" width="410" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 365 25 L 378 38 L 395 18" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="24" y="42" font-family="monospace" font-size="25" fill="#303a36">1400</text>
+  </g>
+
+  
+  <rect x="510" y="615" width="540" height="575" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(530, 635)">
+    <rect x="0" y="0" width="500" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="20" y="34" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="20" dy="0">tracepath -n host</tspan>
+      <tspan x="20" dy="32">shows pmtu per hop</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(530, 730)">
+    <rect x="0" y="0" width="500" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="20" y="34" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="20" dy="0">ip route get host</tspan>
+      <tspan x="20" dy="32">shows a cached PMTU</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(530, 825)">
+    <rect x="0" y="0" width="500" height="175" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="20" y="34" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="20" dy="0">tcpdump -ni any</tspan>
+      <tspan x="20" dy="32">icmp[icmptype]==3 and</tspan>
+      <tspan x="20" dy="32">icmp[icmpcode]==4 shows</tspan>
+      <tspan x="20" dy="32">whether need-frag</tspan>
+      <tspan x="20" dy="32">messages arrive</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(530, 1010)">
+    <rect x="0" y="0" width="500" height="165" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(435, 15)">
+      <circle cx="22" cy="22" r="18" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 22 10 L 22 22 L 30 26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="20" y="35" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="20" dy="0">tcp_mtu_probing:</tspan>
+      <tspan x="20" dy="30">0 off,</tspan>
+      <tspan x="20" dy="30">1 on after a black hole</tspan>
+      <tspan x="20" dy="30">is detected,</tspan>
+      <tspan x="20" dy="30">2 always</tspan>
+    </text>
+  </g>
+
+
+  
+  <rect x="1080" y="130" width="480" height="1060" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1100, 150)">
+    <rect x="0" y="0" width="440" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="36" cy="40" r="18" fill="#207448"/>
+    <text x="36" y="47" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="70" y="40" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="70" dy="0">1 make MTUs consistent</tspan>
+      <tspan x="70" dy="32">end to end, overlay MTU</tspan>
+      <tspan x="70" dy="32">= underlay minus</tspan>
+      <tspan x="70" dy="32">overhead</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1100, 310)">
+    <rect x="0" y="0" width="440" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="36" cy="40" r="18" fill="#207448"/>
+    <text x="36" y="47" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="70" y="40" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="70" dy="0">2 allow ICMP type 3</tspan>
+      <tspan x="70" dy="32">code 4 and ICMPv6</tspan>
+      <tspan x="70" dy="32">type 2 through every</tspan>
+      <tspan x="70" dy="32">firewall</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1100, 470)">
+    <rect x="0" y="0" width="440" height="385" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="36" cy="40" r="18" fill="#207448"/>
+    <text x="36" y="47" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="70" y="38" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="70" dy="0">3 clamp MSS at the</tspan>
+      <tspan x="70" dy="30">tunnel or NAT gateway:</tspan>
+      <tspan x="70" dy="30" font-family="monospace" font-size="24">iptables -t mangle</tspan>
+      <tspan x="70" dy="30" font-family="monospace" font-size="24">-A FORWARD -p tcp</tspan>
+      <tspan x="70" dy="30" font-family="monospace" font-size="24">--tcp-flags SYN,RST</tspan>
+      <tspan x="70" dy="30" font-family="monospace" font-size="24">SYN -j TCPMSS</tspan>
+      <tspan x="70" dy="30" font-family="monospace" font-size="24">--clamp-mss-to-pmtu,</tspan>
+      <tspan x="70" dy="30">or</tspan>
+      <tspan x="70" dy="30" font-family="monospace" font-size="24">nftables tcp option</tspan>
+      <tspan x="70" dy="30" font-family="monospace" font-size="24">maxseg size set rt mtu</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1100, 865)">
+    <rect x="0" y="0" width="440" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="36" cy="40" r="18" fill="#207448"/>
+    <text x="36" y="47" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="70" y="40" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="70" dy="0">4 tcp_mtu_probing=1</tspan>
+      <tspan x="70" dy="32">on the client as a</tspan>
+      <tspan x="70" dy="32">safety net</tspan>
+      <tspan x="70" dy="32">(Packetization-Layer</tspan>
+      <tspan x="70" dy="32">PMTUD, RFC 4821)</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1100, 1080)">
+    <rect x="0" y="0" width="440" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="36" cy="48" r="18" fill="#207448"/>
+    <text x="36" y="55" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    <text x="70" y="40" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="70" dy="0">5 lower the interface</tspan>
+      <tspan x="70" dy="32">MTU, last resort</tspan>
+    </text>
+  </g>
+
+
+  
+  <rect x="40" y="1210" width="1520" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="65" y="1255" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="65" dy="0">Where black holes appear: VPNs, GRE, IPsec and WireGuard tunnels, VXLAN and Geneve overlays,</tspan>
+    <tspan x="65" dy="36">cloud interconnects such as the GCP default VPC MTU of 1460, PPPoE,</tspan>
+    <tspan x="65" dy="36">any firewall that drops ICMP</tspan>
+  </text>
+
+
+  
+  <rect x="40" y="1380" width="1520" height="70" rx="10" fill="#207448"/>
+  <text x="800" y="1424" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">A black hole costs nothing for small packets and everything for big ones</text>
+
+</svg>

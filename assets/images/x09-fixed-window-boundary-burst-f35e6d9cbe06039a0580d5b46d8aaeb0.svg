@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Fixed window: 20 requests in 10 milliseconds across a boundary</title>
+  <desc>Diagram showing how fixed window rate limiting allows a burst of twice the limit across a window boundary.</desc>
+
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, sans-serif" font-size="44" font-weight="bold" fill="#303a36">Fixed window: 20 requests in 10 milliseconds across a boundary</text>
+
+  
+  <rect x="120" y="140" width="650" height="310" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="150" y="165" width="50" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="150" y1="180" x2="200" y2="180" stroke="#207448" stroke-width="3"/>
+  <circle x="162" y="173" r="2.5" fill="#207448"/>
+  <circle x="172" y="173" r="2.5" fill="#207448"/>
+  
+  <text x="215" y="196" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">window one</text>
+
+  
+  <line x1="150" y1="240" x2="740" y2="240" stroke="#207448" stroke-dasharray="8 6" stroke-width="2"/>
+  <text x="150" y="232" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">limit 10</text>
+
+  
+  <rect x="830" y="140" width="650" height="310" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="860" y="165" width="50" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="860" y1="180" x2="910" y2="180" stroke="#207448" stroke-width="3"/>
+  <circle x="872" y="173" r="2.5" fill="#207448"/>
+  <circle x="882" y="173" r="2.5" fill="#207448"/>
+  
+  <text x="925" y="196" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">window two</text>
+
+  
+  <line x1="860" y1="240" x2="1450" y2="240" stroke="#207448" stroke-dasharray="8 6" stroke-width="2"/>
+  <text x="1330" y="232" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">limit 10</text>
+
+  
+  <line x1="800" y1="120" x2="800" y2="480" stroke="#303a36" stroke-dasharray="6 6" stroke-width="3"/>
+  <rect x="705" y="105" width="190" height="38" rx="8" fill="#303a36"/>
+  <text x="800" y="131" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">window reset</text>
+
+  
+  <g transform="translate(685, 275)">
+    
+    <circle cx="10" cy="12" r="9" fill="#207448"/>
+    <path d="M7 12 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="28" cy="12" r="9" fill="#207448"/>
+    <path d="M25 12 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="46" cy="12" r="9" fill="#207448"/>
+    <path d="M43 12 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="64" cy="12" r="9" fill="#207448"/>
+    <path d="M61 12 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="82" cy="12" r="9" fill="#207448"/>
+    <path d="M79 12 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    
+    <circle cx="10" cy="34" r="9" fill="#207448"/>
+    <path d="M7 34 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="28" cy="34" r="9" fill="#207448"/>
+    <path d="M25 34 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="46" cy="34" r="9" fill="#207448"/>
+    <path d="M43 34 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="64" cy="34" r="9" fill="#207448"/>
+    <path d="M61 34 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="82" cy="34" r="9" fill="#207448"/>
+    <path d="M79 34 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  
+  <text x="670" y="305" text-anchor="end" font-family="system-ui, sans-serif" font-size="25" font-weight="bold" fill="#207448">10 requests at <tspan font-family="ui-monospace, monospace">0.99</tspan></text>
+
+  
+  <g transform="translate(825, 275)">
+    
+    <circle cx="10" cy="12" r="9" fill="#207448"/>
+    <path d="M7 12 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="28" cy="12" r="9" fill="#207448"/>
+    <path d="M25 12 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="46" cy="12" r="9" fill="#207448"/>
+    <path d="M43 12 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="64" cy="12" r="9" fill="#207448"/>
+    <path d="M61 12 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="82" cy="12" r="9" fill="#207448"/>
+    <path d="M79 12 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    
+    <circle cx="10" cy="34" r="9" fill="#207448"/>
+    <path d="M7 34 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="28" cy="34" r="9" fill="#207448"/>
+    <path d="M25 34 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="46" cy="34" r="9" fill="#207448"/>
+    <path d="M43 34 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="64" cy="34" r="9" fill="#207448"/>
+    <path d="M61 34 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="82" cy="34" r="9" fill="#207448"/>
+    <path d="M79 34 l2 2 l4 -4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  
+  <text x="930" y="305" text-anchor="start" font-family="system-ui, sans-serif" font-size="25" font-weight="bold" fill="#207448">10 requests at <tspan font-family="ui-monospace, monospace">1.0</tspan></text>
+
+  
+  <path d="M 685,345 L 685,365 L 795,365 L 800,373 L 805,365 L 915,365 L 915,345" fill="none" stroke="#db8129" stroke-width="3"/>
+  <rect x="640" y="380" width="320" height="42" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+  <text x="800" y="409" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#db8129">within 10 milliseconds</text>
+
+  
+  <line x1="120" y1="480" x2="1480" y2="480" stroke="#303a36" stroke-width="3"/>
+  
+  <line x1="200" y1="480" x2="200" y2="495" stroke="#303a36" stroke-width="3"/>
+  <text x="200" y="525" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">0.9</text>
+  
+  <line x1="800" y1="480" x2="800" y2="495" stroke="#303a36" stroke-width="3"/>
+  <text x="800" y="525" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">1.0</text>
+  
+  <line x1="1400" y1="480" x2="1400" y2="495" stroke="#303a36" stroke-width="3"/>
+  <text x="1400" y="525" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">1.1</text>
+
+  
+  <rect x="120" y="560" width="1360" height="320" rx="14" fill="#ffffff" stroke="#d1ded4" stroke-width="2"/>
+
+  
+  <rect x="140" y="580" width="1320" height="60" rx="8" fill="#f5f8f5"/>
+  <rect x="155" y="590" width="260" height="40" rx="6" fill="#e8f1ea"/>
+  <text x="285" y="618" text-anchor="middle" font-family="system-ui, sans-serif" font-size="25" font-weight="bold" fill="#207448">sliding log</text>
+  <text x="450" y="618" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">lets exactly 10 through in any window</text>
+
+  
+  <rect x="140" y="655" width="1320" height="60" rx="8" fill="#f5f8f5"/>
+  <rect x="155" y="665" width="260" height="40" rx="6" fill="#e8f1ea"/>
+  <text x="285" y="693" text-anchor="middle" font-family="system-ui, sans-serif" font-size="25" font-weight="bold" fill="#207448">sliding counter</text>
+  <text x="450" y="693" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">lets at most 11 in the test</text>
+
+  
+  <rect x="140" y="730" width="1320" height="60" rx="8" fill="#f5f8f5"/>
+  <rect x="155" y="740" width="260" height="40" rx="6" fill="#e8f1ea"/>
+  <text x="285" y="768" text-anchor="middle" font-family="system-ui, sans-serif" font-size="25" font-weight="bold" fill="#207448">token bucket</text>
+  <text x="450" y="768" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">allows a burst up to bucket size</text>
+
+  
+  <rect x="140" y="805" width="1320" height="60" rx="8" fill="#fdf3e8" stroke="#db8129" stroke-width="1.5"/>
+  <rect x="155" y="815" width="260" height="40" rx="6" fill="#fae2cd"/>
+  <text x="285" y="843" text-anchor="middle" font-family="system-ui, sans-serif" font-size="25" font-weight="bold" fill="#db8129">fixed window</text>
+  <text x="450" y="843" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#db8129">allows 20 across the boundary</text>
+
+  
+  
+  <circle cx="160" cy="940" r="24" fill="#207448"/>
+  <text x="160" y="949" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  <text x="200" y="948" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#303a36">name the boundary burst</text>
+
+  
+  <circle cx="860" cy="940" r="24" fill="#207448"/>
+  <text x="860" y="949" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  <text x="900" y="948" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#303a36">offer a token bucket for APIs</text>
+
+  
+  <rect x="120" y="1010" width="1360" height="75" rx="12" fill="#207448"/>
+  <text x="800" y="1057" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">The fixed window lets a client send the full limit twice in a row across the boundary.</text>
+</svg>

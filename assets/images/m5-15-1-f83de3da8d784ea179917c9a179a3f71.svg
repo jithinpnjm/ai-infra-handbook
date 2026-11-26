@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
+  <title>How enforcement works in the kernel</title>
+  <desc>Flowchart showing packet processing stages in kernel network policy enforcement including conntrack, AdminNetworkPolicy, Namespace NetworkPolicy, and BaselineAdminNetworkPolicy.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-red" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#c53030" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1500" fill="#f5f8f5" />
+
+  
+  <text x="800" y="48" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#207448" text-anchor="middle">How enforcement works in the kernel</text>
+
+  
+
+  
+  <line x1="800" y1="200" x2="800" y2="238" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="1000" y1="305" x2="1268" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="800" y1="370" x2="800" y2="518" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="600" y1="590" x2="342" y2="590" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="800" y1="660" x2="800" y2="808" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="1020" y1="880" x2="1258" y2="880" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="800" y1="950" x2="800" y2="1088" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="560" y1="1160" x2="382" y2="1160" stroke="#c53030" stroke-width="4" marker-end="url(#arrow-red)" />
+
+  
+  <line x1="800" y1="1230" x2="800" y2="1338" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+
+  
+
+  
+  <rect x="1020" y="248" width="240" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1140" y="278" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">Yes: Stateful Reply</text>
+
+  
+  <rect x="830" y="425" width="320" height="42" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="990" y="455" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#db8129" text-anchor="middle">No: New Connection (SYN)</text>
+
+  
+  <rect x="350" y="534" width="240" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="470" y="564" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">Action: Allow / Deny</text>
+
+  
+  <rect x="830" y="715" width="310" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="985" y="745" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">Action: Pass / No Match</text>
+
+  
+  <rect x="1035" y="824" width="210" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1140" y="854" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">No: Non-Isolated</text>
+
+  
+  <rect x="610" y="1000" width="170" height="42" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="695" y="1030" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#db8129" text-anchor="middle">Yes: Isolated</text>
+
+  
+  <rect x="425" y="1104" width="90" height="42" rx="8" fill="#ffffff" stroke="#c53030" stroke-width="2" />
+  <text x="470" y="1134" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#c53030" text-anchor="middle">No</text>
+
+  
+  <rect x="830" y="1264" width="90" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="875" y="1294" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">Yes</text>
+
+
+  
+
+  
+  <g>
+    <rect x="580" y="80" width="440" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="782" y="94" width="36" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 782 101 L 800 112 L 818 101" fill="none" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="800" y="152" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">Packet Leaving Source Pod</text>
+    <text x="800" y="184" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">or Arriving at Dest Pod</text>
+  </g>
+
+  
+  <g>
+    <rect x="600" y="240" width="400" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="784" y="254" width="32" height="26" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="784" y1="264" x2="816" y2="264" stroke="#207448" stroke-width="2" />
+    <line x1="800" y1="264" x2="800" y2="280" stroke="#207448" stroke-width="2" />
+    
+    <text x="800" y="316" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">Existing Established Flow</text>
+    <text x="800" y="350" font-family="monospace" font-size="24px" fill="#303a36" text-anchor="middle">in conntrack / BPF CT Map?</text>
+  </g>
+
+  
+  <g>
+    <rect x="1270" y="240" width="310" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="1425" cy="272" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 1417 272 L 1423 278 L 1434 266" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="1425" y="332" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">ALLOW immediately</text>
+  </g>
+
+  
+  <g>
+    <rect x="600" y="520" width="400" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 800 534 L 816 542 L 816 556 C 816 566 800 572 800 572 C 800 572 784 566 784 556 L 784 542 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    
+    <text x="800" y="608" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448" text-anchor="middle">1. AdminNetworkPolicy</text>
+    <text x="800" y="642" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">(Cluster Guardrails)</text>
+  </g>
+
+  
+  <g>
+    <rect x="20" y="520" width="320" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="165" y="536" width="30" height="14" rx="2" transform="rotate(-30 180 543)" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="180" y1="545" x2="195" y2="568" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="180" y="622" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36" text-anchor="middle">Enforce Admin Verdict</text>
+  </g>
+
+  
+  <g>
+    <rect x="580" y="810" width="440" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="790" cy="838" r="8" fill="none" stroke="#207448" stroke-width="2.5" />
+    <circle cx="810" cy="838" r="8" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 782 856 C 782 848 818 848 818 856" fill="none" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="800" y="896" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">2. Namespace NetworkPolicy</text>
+    <text x="800" y="930" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">Is Pod Isolated for Direction?</text>
+  </g>
+
+  
+  <g>
+    <rect x="1260" y="810" width="320" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 1420 826 L 1434 834 L 1434 846 C 1434 855 1420 860 1420 860 C 1420 860 1406 855 1406 846 L 1406 834 Z" fill="none" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+    <line x1="1402" y1="864" x2="1438" y2="864" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="1420" y="896" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">3. BaselineAdminNetworkPolicy</text>
+    <text x="1420" y="930" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">(Default Cluster Posture)</text>
+  </g>
+
+  
+  <g>
+    <rect x="560" y="1090" width="480" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="792" cy="1120" r="14" fill="none" stroke="#207448" stroke-width="2.5" />
+    <circle cx="808" cy="1120" r="14" fill="none" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="800" y="1174" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">Matches Union of</text>
+    <text x="800" y="1208" font-family="monospace" font-size="24px" fill="#303a36" text-anchor="middle">Calico ipsets / Cilium Identities?</text>
+  </g>
+
+  
+  <g>
+    <rect x="20" y="1090" width="360" height="140" rx="12" fill="#fbebe8" stroke="#c53030" stroke-width="3" />
+    
+    <circle cx="200" cy="1124" r="16" fill="none" stroke="#c53030" stroke-width="3" />
+    <line x1="190" y1="1114" x2="210" y2="1134" stroke="#c53030" stroke-width="3" stroke-linecap="round" />
+    <line x1="210" y1="1114" x2="190" y2="1134" stroke="#c53030" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="200" y="1195" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#c53030" text-anchor="middle">DROP (Log / Hubble DROPPED)</text>
+  </g>
+
+  
+  <g>
+    <rect x="580" y="1340" width="440" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="800" cy="1374" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 792 1374 L 797 1380 L 808 1368" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="800" y="1434" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">ALLOW + Create CT Entry</text>
+  </g>
+
+</svg>

@@ -1,0 +1,300 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The big picture</title>
+  <desc>Visual architecture of Kubernetes showing the control plane components, worker node components, and client interactions.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#db8129" />
+    </marker>
+
+    
+    <filter id="shadow" x="-3%" y="-4%" width="106%" height="108%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#207448" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="80" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The big picture</text>
+
+  
+  <g transform="translate(300, 75)" filter="url(#shadow)">
+    <rect width="1000" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(28, 16)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="52" height="46" rx="6" />
+      <line x1="0" y1="14" x2="52" y2="14" />
+      <polyline points="12,24 20,30 12,36" />
+      <line x1="26" y1="36" x2="38" y2="36" />
+    </g>
+    <text x="105" y="50" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">kubectl, CI, operators, dashboards</text>
+  </g>
+
+  
+  <g transform="translate(40, 195)">
+    <rect width="1520" height="445" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+    <text x="36" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Control plane (one or more nodes)</text>
+
+    
+    <g transform="translate(30, 65)" filter="url(#shadow)">
+      <rect width="360" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(20, 20)" stroke="#207448" stroke-width="3" fill="none">
+        <circle cx="22" cy="22" r="9" />
+        <path d="M22 2 L22 8 M22 36 L22 42 M2 22 L8 22 M36 22 L42 22 M8 8 L12 12 M32 32 L36 36 M8 36 L12 32 M32 12 L36 8" />
+      </g>
+      <text x="75" y="48" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="25" font-weight="bold" fill="#303a36">kube-controller-manager</text>
+      <text x="20" y="85" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="20" dy="0">(many controllers: node,</tspan>
+        <tspan x="20" dy="28">deployment, replicaset,</tspan>
+        <tspan x="20" dy="28">endpoints, job, namespace, SA ...)</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(30, 255)" filter="url(#shadow)">
+      <rect width="360" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(20, 20)" stroke="#207448" stroke-width="3" fill="none">
+        <path d="M12 34 C6 34 2 30 2 24 C2 19 6 15 11 15 C13 9 19 5 26 5 C34 5 40 10 41 17 C45 17 49 20 49 25 C49 30 45 34 39 34 Z" />
+      </g>
+      <text x="78" y="48" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">cloud-controller-manager</text>
+      <text x="20" y="86" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="20" dy="0">(load balancers, routes,</tspan>
+        <tspan x="20" dy="30">node lifecycle with the cloud)</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(560, 60)" filter="url(#shadow)">
+      <rect width="400" height="355" rx="14" fill="#fffaf5" stroke="#db8129" stroke-width="3.5" />
+      
+      <g transform="translate(24, 20)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="16" />
+        <circle cx="24" cy="24" r="6" fill="#db8129" />
+        <line x1="24" y1="2" x2="24" y2="8" />
+        <line x1="24" y1="40" x2="24" y2="46" />
+        <line x1="2" y1="24" x2="8" y2="24" />
+        <line x1="40" y1="24" x2="46" y2="24" />
+      </g>
+      <text x="86" y="52" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="30" font-weight="bold" fill="#db8129">kube-apiserver</text>
+      <text x="24" y="112" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0">(REST + watch,</tspan>
+        <tspan x="24" dy="36">authn/authz/admission,</tspan>
+        <tspan x="24" dy="36">only component that</tspan>
+        <tspan x="24" dy="36">talks to etcd)</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(1130, 65)" filter="url(#shadow)">
+      <rect width="360" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(22, 18)" stroke="#207448" stroke-width="3" fill="none">
+        <ellipse cx="22" cy="10" rx="18" ry="6" />
+        <path d="M4 10 L4 22 C4 26 12 28 22 28 C32 28 40 26 40 22 L40 10" />
+        <path d="M4 22 L4 34 C4 38 12 40 22 40 C32 40 40 38 40 34 L40 22" />
+      </g>
+      <text x="75" y="48" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">etcd</text>
+      <text x="22" y="88" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="22" dy="0">(Raft-replicated</tspan>
+        <tspan x="22" dy="30">key-value store)</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(1130, 255)" filter="url(#shadow)">
+      <rect width="360" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(22, 18)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+        <circle cx="22" cy="22" r="18" />
+        <polyline points="22,10 22,22 30,22" />
+      </g>
+      <text x="75" y="48" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">kube-scheduler</text>
+      <text x="22" y="88" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="22" dy="0">(binds pending pods</tspan>
+        <tspan x="22" dy="30">to nodes)</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(40, 710)">
+    <rect width="1520" height="465" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+    <text x="36" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Worker node</text>
+
+    
+    <g transform="translate(540, 60)" filter="url(#shadow)">
+      <rect width="260" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      
+      <g transform="translate(20, 22)" stroke="#207448" stroke-width="3" fill="none">
+        <circle cx="25" cy="25" r="14" />
+        <circle cx="25" cy="25" r="5" />
+        <line x1="25" y1="3" x2="25" y2="11" />
+        <line x1="25" y1="39" x2="25" y2="47" />
+        <line x1="3" y1="25" x2="11" y2="25" />
+        <line x1="39" y1="25" x2="47" y2="25" />
+      </g>
+      <text x="82" y="58" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">kubelet</text>
+    </g>
+
+    
+    <g transform="translate(870, 60)" filter="url(#shadow)">
+      <rect width="470" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      
+      <g transform="translate(22, 22)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="8" width="44" height="32" rx="6" />
+        <circle cx="12" cy="24" r="3" fill="#207448" />
+        <circle cx="24" cy="24" r="3" fill="#207448" />
+        <circle cx="36" cy="24" r="3" fill="#207448" />
+      </g>
+      <text x="80" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">kube-proxy (or eBPF CNI)</text>
+    </g>
+
+    
+    <g transform="translate(30, 215)" filter="url(#shadow)">
+      <rect width="440" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(20, 24)" stroke="#207448" stroke-width="3" fill="none">
+        <rect x="10" y="10" width="30" height="30" rx="4" />
+        <line x1="16" y1="3" x2="16" y2="10" />
+        <line x1="25" y1="3" x2="25" y2="10" />
+        <line x1="34" y1="3" x2="34" y2="10" />
+        <line x1="16" y1="40" x2="16" y2="47" />
+        <line x1="25" y1="40" x2="25" y2="47" />
+        <line x1="34" y1="40" x2="34" y2="47" />
+        <line x1="3" y1="16" x2="10" y2="16" />
+        <line x1="3" y1="25" x2="10" y2="25" />
+        <line x1="3" y1="34" x2="10" y2="34" />
+        <line x1="40" y1="16" x2="47" y2="16" />
+        <line x1="40" y1="25" x2="47" y2="25" />
+        <line x1="40" y1="34" x2="47" y2="34" />
+      </g>
+      <text x="78" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+        <tspan x="78" dy="0">device plugins /</tspan>
+        <tspan x="78" dy="32">DRA driver (GPU, RDMA)</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(540, 215)" filter="url(#shadow)">
+      <rect width="470" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(20, 25)" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round">
+        <polygon points="24,4 44,14 44,36 24,46 4,36 4,14" />
+        <line x1="24" y1="4" x2="24" y2="46" />
+        <line x1="4" y1="14" x2="44" y2="36" />
+        <line x1="44" y1="14" x2="4" y2="36" />
+      </g>
+      <text x="78" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+        <tspan x="78" dy="0">container runtime</tspan>
+        <tspan x="78" dy="32" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="24">(containerd/CRI-O)</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(1080, 215)" filter="url(#shadow)">
+      <rect width="410" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(20, 25)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+        <rect x="8" y="14" width="26" height="24" rx="4" />
+        <line x1="16" y1="4" x2="16" y2="14" />
+        <line x1="26" y1="4" x2="26" y2="14" />
+        <path d="M21 38 L21 48" />
+      </g>
+      <text x="75" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">CNI plugin (agent)</text>
+    </g>
+
+    
+    <g transform="translate(540, 355)" filter="url(#shadow)">
+      <rect width="470" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(150, 18)" stroke="#207448" stroke-width="3" fill="none">
+        <circle cx="16" cy="24" r="12" />
+        <circle cx="34" cy="14" r="10" />
+        <circle cx="48" cy="26" r="11" />
+      </g>
+      <text x="235" y="54" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pods</text>
+    </g>
+  </g>
+
+  
+
+   API: HTTPS (REST) -->
+  <path d="M 800 155 L 800 255" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <g transform="translate(800, 205)">
+    <rect x="-95" y="-18" width="190" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="0" y="7" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">HTTPS (REST)</text>
+  </g>
+
+   ETCD -->
+  <path d="M 1000 345 L 1170 345" fill="none" stroke="#207448" stroke-width="3" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+
+   API: watch/write -->
+  <path d="M 430 345 L 600 345" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <g transform="translate(515, 345)">
+    <rect x="-75" y="-18" width="150" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="0" y="7" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">watch/write</text>
+  </g>
+
+   API: watch/write -->
+  <path d="M 430 535 L 600 535" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <g transform="translate(515, 535)">
+    <rect x="-75" y="-18" width="150" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="0" y="7" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">watch/write</text>
+  </g>
+
+   API: watch pods, nodes; write bindings -->
+  <path d="M 1170 535 L 1000 535" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <g transform="translate(1085, 535)">
+    <rect x="-110" y="-30" width="220" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="0" y="-5" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">watch pods, nodes;</text>
+    <text x="0" y="21" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">write bindings</text>
+  </g>
+
+   API: watch pods for its node; update status, leases -->
+  <path d="M 680 770 L 680 615" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <g transform="translate(520, 672)">
+    <rect x="-150" y="-30" width="300" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="0" y="-5" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">watch pods for its node;</text>
+    <text x="0" y="21" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">update status, leases</text>
+  </g>
+
+   API: watch Services/EndpointSlices -->
+  <path d="M 940 770 L 940 615" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <g transform="translate(1125, 672)">
+    <rect x="-175" y="-18" width="350" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="0" y="7" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">watch Services/EndpointSlices</text>
+  </g>
+
+   DP: device plugin gRPC -->
+  <path d="M 580 815 L 290 815 L 290 925" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <g transform="translate(415, 815)">
+    <rect x="-115" y="-18" width="230" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="0" y="7" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">device plugin gRPC</text>
+  </g>
+
+   RT: CRI gRPC -->
+  <path d="M 710 865 L 710 925" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <g transform="translate(710, 895)">
+    <rect x="-65" y="-17" width="130" height="34" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="0" y="7" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">CRI gRPC</text>
+  </g>
+
+   CNI: CNI exec -->
+  <path d="M 1050 975 L 1120 975" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <g transform="translate(1085, 938)">
+    <rect x="-60" y="-17" width="120" height="34" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="0" y="7" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">CNI exec</text>
+  </g>
+
+   PODS -->
+  <path d="M 775 1030 L 775 1065" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+</svg>

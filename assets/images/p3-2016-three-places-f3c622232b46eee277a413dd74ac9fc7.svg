@@ -1,0 +1,246 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1330" width="1600" height="1330">
+  <title>Three places a failing GPU shows up</title>
+  <desc>Infographic explaining where GPU failures manifest across hardware reports, physical state, and workload effects.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1330" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Three places a failing GPU shows up</text>
+
+  
+  <rect x="50" y="95" width="1500" height="235" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="70" y="112" width="280" height="200" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+  <circle cx="210" cy="152" r="24" fill="#207448" />
+  <text x="210" y="160" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="210" y="210" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="210" dy="0">one GPU overheats</tspan>
+    <tspan x="210" dy="34">and slows;</tspan>
+  </text>
+
+  
+  <path d="M 350 212 L 380 212" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="390" y="112" width="410" height="200" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+  <circle cx="595" cy="152" r="24" fill="#207448" />
+  <text x="595" y="160" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="595" y="202" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="595" dy="0">every token step waits</tspan>
+    <tspan x="595" dy="32">for the slowest GPU, so</tspan>
+    <tspan x="595" dy="32">the whole replica slows;</tspan>
+  </text>
+
+  
+  <path d="M 800 212 L 830 212" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="840" y="112" width="425" height="200" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+  <circle cx="1052" cy="152" r="24" fill="#207448" />
+  <text x="1052" y="160" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <text x="1052" y="202" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1052" dy="0">customer sees worse time</tspan>
+    <tspan x="1052" dy="32">to first token long</tspan>
+    <tspan x="1052" dy="32">before any crash;</tspan>
+  </text>
+
+  
+  <path d="M 1265 212 L 1295 212" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="1305" y="112" width="225" height="200" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+  <circle cx="1417" cy="152" r="24" fill="#207448" />
+  <text x="1417" y="160" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  <text x="1417" y="202" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1417" dy="0">no error</tspan>
+    <tspan x="1417" dy="32">appears</tspan>
+    <tspan x="1417" dy="32">anywhere</tspan>
+  </text>
+
+  
+
+  
+  <g id="col-hardware">
+    <rect x="50" y="355" width="470" height="845" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(257, 385)">
+      <rect x="6" y="6" width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+      <rect x="16" y="16" width="24" height="24" rx="2" fill="none" stroke="#207448" stroke-width="2" />
+      <line x1="14" y1="0" x2="14" y2="6" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="28" y1="0" x2="28" y2="6" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="42" y1="0" x2="42" y2="6" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="50" x2="14" y2="56" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="28" y1="50" x2="28" y2="56" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="42" y1="50" x2="42" y2="56" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="0" y1="14" x2="6" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="0" y1="28" x2="6" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="0" y1="42" x2="6" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="50" y1="14" x2="56" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="50" y1="28" x2="56" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="50" y1="42" x2="56" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="285" y="480" text-anchor="middle" font-family="sans-serif">
+      <tspan x="285" dy="0" font-size="30" font-weight="bold" fill="#207448">Hardware reports:</tspan>
+      <tspan x="285" dy="44" font-size="24" fill="#303a36">Xid messages, ECC counters,</tspan>
+      <tspan x="285" dy="38" font-size="24" fill="#303a36">PCIe replays, NVLink errors</tspan>
+    </text>
+
+    
+    <rect x="80" y="600" width="410" height="570" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+
+    
+    <g transform="translate(105, 630)">
+      <rect x="0" y="0" width="360" height="90" rx="8" fill="#f5f8f5" stroke="#b8d5c2" stroke-width="1.5" />
+      <circle cx="35" cy="45" r="14" fill="#207448" opacity="0.15" />
+      <circle cx="35" cy="45" r="6" fill="#207448" />
+      <line x1="75" y1="35" x2="280" y2="35" stroke="#207448" stroke-width="5" stroke-linecap="round" />
+      <line x1="75" y1="55" x2="190" y2="55" stroke="#b8d5c2" stroke-width="4" stroke-linecap="round" />
+      <circle cx="325" cy="45" r="8" fill="none" stroke="#207448" stroke-width="2" />
+    </g>
+
+    <g transform="translate(105, 745)">
+      <rect x="0" y="0" width="360" height="90" rx="8" fill="#f5f8f5" stroke="#b8d5c2" stroke-width="1.5" />
+      <circle cx="35" cy="45" r="14" fill="#207448" opacity="0.15" />
+      <circle cx="35" cy="45" r="6" fill="#207448" />
+      <line x1="75" y1="35" x2="250" y2="35" stroke="#207448" stroke-width="5" stroke-linecap="round" />
+      <line x1="75" y1="55" x2="210" y2="55" stroke="#b8d5c2" stroke-width="4" stroke-linecap="round" />
+      <circle cx="325" cy="45" r="8" fill="none" stroke="#207448" stroke-width="2" />
+    </g>
+
+    <g transform="translate(105, 860)">
+      <rect x="0" y="0" width="360" height="90" rx="8" fill="#f5f8f5" stroke="#b8d5c2" stroke-width="1.5" />
+      <circle cx="35" cy="45" r="14" fill="#207448" opacity="0.15" />
+      <circle cx="35" cy="45" r="6" fill="#207448" />
+      <line x1="75" y1="35" x2="270" y2="35" stroke="#207448" stroke-width="5" stroke-linecap="round" />
+      <line x1="75" y1="55" x2="170" y2="55" stroke="#b8d5c2" stroke-width="4" stroke-linecap="round" />
+      <circle cx="325" cy="45" r="8" fill="none" stroke="#207448" stroke-width="2" />
+    </g>
+
+    <g transform="translate(105, 975)">
+      <rect x="0" y="0" width="360" height="90" rx="8" fill="#f5f8f5" stroke="#b8d5c2" stroke-width="1.5" />
+      <circle cx="35" cy="45" r="14" fill="#207448" opacity="0.15" />
+      <circle cx="35" cy="45" r="6" fill="#207448" />
+      <line x1="75" y1="35" x2="230" y2="35" stroke="#207448" stroke-width="5" stroke-linecap="round" />
+      <line x1="75" y1="55" x2="180" y2="55" stroke="#b8d5c2" stroke-width="4" stroke-linecap="round" />
+      <circle cx="325" cy="45" r="8" fill="none" stroke="#207448" stroke-width="2" />
+    </g>
+
+    
+    <path d="M 125 1115 L 445 1115" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" />
+    <circle cx="285" cy="1115" r="10" fill="#207448" />
+  </g>
+
+  
+  <g id="col-physical">
+    <rect x="565" y="355" width="470" height="845" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(772, 385)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 14 36 A 18 18 0 1 1 42 36" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="28" y1="28" x2="38" y2="18" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <circle cx="28" cy="28" r="4" fill="#207448" />
+    </g>
+
+    
+    <text x="800" y="480" text-anchor="middle" font-family="sans-serif">
+      <tspan x="800" dy="0" font-size="30" font-weight="bold" fill="#207448">Physical state:</tspan>
+      <tspan x="800" dy="44" font-size="24" fill="#303a36">temperature, power,</tspan>
+      <tspan x="800" dy="38" font-size="24" fill="#303a36">clock throttling</tspan>
+    </text>
+
+    
+    <rect x="595" y="600" width="410" height="570" rx="10" fill="#ffffff" stroke="#b8d5c2" stroke-width="1.5" />
+
+    
+    <g transform="translate(620, 630)">
+      <rect x="0" y="0" width="360" height="150" rx="8" fill="#f5f8f5" stroke="#b8d5c2" stroke-width="1.5" />
+      <line x1="40" y1="125" x2="330" y2="125" stroke="#b8d5c2" stroke-width="2" />
+      <line x1="40" y1="25" x2="40" y2="125" stroke="#b8d5c2" stroke-width="2" />
+      
+      <path d="M 40 115 Q 150 110 210 55 T 320 35" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="40" y1="40" x2="330" y2="40" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" opacity="0.6" />
+    </g>
+
+    
+    <g transform="translate(620, 805)">
+      <rect x="0" y="0" width="360" height="150" rx="8" fill="#f5f8f5" stroke="#b8d5c2" stroke-width="1.5" />
+      <line x1="40" y1="125" x2="330" y2="125" stroke="#b8d5c2" stroke-width="2" />
+      <line x1="40" y1="25" x2="40" y2="125" stroke="#b8d5c2" stroke-width="2" />
+      
+      <path d="M 40 100 L 140 45 L 320 45" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="140" cy="45" r="6" fill="#207448" />
+    </g>
+
+    
+    <g transform="translate(620, 980)">
+      <rect x="0" y="0" width="360" height="160" rx="8" fill="#f5f8f5" stroke="#b8d5c2" stroke-width="1.5" />
+      <line x1="40" y1="135" x2="330" y2="135" stroke="#b8d5c2" stroke-width="2" />
+      <line x1="40" y1="25" x2="40" y2="135" stroke="#b8d5c2" stroke-width="2" />
+      
+      <path d="M 40 45 L 150 45 L 170 105 L 320 105" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="170" cy="105" r="6" fill="#207448" />
+    </g>
+  </g>
+
+  
+  <g id="col-workload">
+    <rect x="1080" y="355" width="470" height="845" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(1287, 385)">
+      <rect x="4" y="6" width="48" height="44" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+      <line x1="16" y1="38" x2="16" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="38" x2="28" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="40" y1="38" x2="40" y2="30" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="1315" y="475" text-anchor="middle" font-family="sans-serif">
+      <tspan x="1315" dy="0" font-size="30" font-weight="bold" fill="#207448">Workload effect:</tspan>
+      <tspan x="1315" dy="38" font-size="24" fill="#303a36">per-replica tokens per</tspan>
+      <tspan x="1315" dy="34" font-size="24" fill="#303a36">second compared with the</tspan>
+      <tspan x="1315" dy="34" font-size="24" fill="#303a36">fleet median for the</tspan>
+      <tspan x="1315" dy="34" font-size="24" fill="#303a36">same model and GPU type</tspan>
+    </text>
+
+    
+    <rect x="1105" y="650" width="420" height="520" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+
+    
+    <g transform="translate(1291, 672)">
+      <polygon points="24,4 46,42 2,42" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" />
+      <line x1="24" y1="18" x2="24" y2="28" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+      <circle cx="24" cy="35" r="2.5" fill="#db8129" />
+    </g>
+
+    
+    <text x="1315" y="748" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1315" dy="0">a throttled GPU raises</tspan>
+      <tspan x="1315" dy="36">no Xid so the error log</tspan>
+      <tspan x="1315" dy="36">stays clean; a replica</tspan>
+      <tspan x="1315" dy="36">30 percent slower than</tspan>
+      <tspan x="1315" dy="36">the fleet median for</tspan>
+      <tspan x="1315" dy="36">an hour is suspect</tspan>
+      <tspan x="1315" dy="36">even when every</tspan>
+      <tspan x="1315" dy="36">hardware counter</tspan>
+      <tspan x="1315" dy="38" font-weight="bold" fill="#db8129">is quiet</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="50" y="1225" width="1500" height="75" rx="10" fill="#207448" />
+  <text x="800" y="1272" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">each place hides failures from the other two, so watch all three</text>
+
+</svg>

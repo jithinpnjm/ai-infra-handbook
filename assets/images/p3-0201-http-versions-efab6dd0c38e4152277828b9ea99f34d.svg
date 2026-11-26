@@ -1,0 +1,266 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>HTTP/1.1, HTTP/2 and HTTP/3 compared: how the request travels</title>
+  <desc>Visual comparison of HTTP/1.1, HTTP/2, and HTTP/3 transport stacks, features, multiplexing, and request-response lifecycle.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">HTTP/1.1, HTTP/2 and HTTP/3 compared: how the request travels</text>
+
+  
+  <g id="col-http1">
+    
+    <rect x="32" y="85" width="496" height="765" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="32" y="85" width="496" height="75" rx="12" fill="#e8f1ea" />
+    <path d="M 32 148 L 32 160 Q 32 160 32 160 L 528 160 L 528 148 Z" fill="#e8f1ea" />
+    
+    <g transform="translate(56, 96)">
+      <rect x="0" y="0" width="42" height="52" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="8" y1="14" x2="34" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="8" y1="24" x2="34" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="8" y1="34" x2="24" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="116" y="136" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#207448">HTTP/1.1</text>
+
+    
+    <rect x="48" y="175" width="464" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="280" y="213" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">HTTP text over TLS over TCP</text>
+
+    
+    <rect x="48" y="250" width="464" height="235" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(68, 275)">
+      <text x="0" y="10" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">GET / HTTP/1.1</text>
+      <text x="0" y="46" font-family="monospace" font-size="24" fill="#303a36">Host: example.com</text>
+      <text x="0" y="82" font-family="monospace" font-size="24" fill="#303a36">User-Agent</text>
+      <text x="0" y="118" font-family="monospace" font-size="24" fill="#303a36">Accept</text>
+      <text x="0" y="154" font-family="monospace" font-size="24" fill="#303a36">Authorization</text>
+      <line x1="0" y1="184" x2="424" y2="184" stroke="#207448" stroke-width="1.5" stroke-dasharray="6,4" />
+    </g>
+
+    
+    <rect x="48" y="500" width="464" height="240" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(68, 526)">
+      <text x="0" y="10" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">HTTP/1.1 200 OK</text>
+      <text x="0" y="46" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="0" dy="0">Content-Type, Content-Length or</tspan>
+        <tspan x="0" dy="32">Transfer-Encoding: chunked,</tspan>
+        <tspan x="0" dy="32">caching headers, Set-Cookie</tspan>
+      </text>
+      <line x1="0" y1="152" x2="424" y2="152" stroke="#207448" stroke-width="1.5" stroke-dasharray="6,4" />
+      <text x="0" y="190" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">body</text>
+    </g>
+
+    
+    <rect x="48" y="755" width="464" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="280" y="788" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="280" dy="0">keep-alive reuses the TCP and TLS</tspan>
+      <tspan x="280" dy="30">connection for several requests</tspan>
+    </text>
+  </g>
+
+  
+  <g id="col-http2">
+    
+    <rect x="552" y="85" width="496" height="765" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="552" y="85" width="496" height="75" rx="12" fill="#e8f1ea" />
+    
+    <g transform="translate(576, 96)">
+      <rect x="0" y="4" width="14" height="12" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+      <rect x="0" y="20" width="14" height="12" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+      <rect x="0" y="36" width="14" height="12" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+      <path d="M 18 10 L 30 26 L 42 26" fill="none" stroke="#207448" stroke-width="2.5" />
+      <path d="M 18 26 L 42 26" fill="none" stroke="#207448" stroke-width="2.5" />
+      <path d="M 18 42 L 30 26" fill="none" stroke="#207448" stroke-width="2.5" />
+    </g>
+    <text x="636" y="136" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#207448">HTTP/2</text>
+
+    
+    <rect x="568" y="175" width="464" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="800" y="206" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="800" dy="0">binary HTTP over TLS (ALPN h2)</tspan>
+      <tspan x="800" dy="28">over TCP</tspan>
+    </text>
+
+    
+    <rect x="568" y="260" width="464" height="315" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <g id="multiplex-diagram">
+      
+      <line x1="588" y1="310" x2="710" y2="310" stroke="#207448" stroke-width="3" stroke-dasharray="4,4" />
+      <rect x="600" y="294" width="44" height="32" rx="4" fill="#207448" />
+      <text x="622" y="318" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+      <rect x="654" y="294" width="44" height="32" rx="4" fill="#207448" />
+      <text x="676" y="318" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+
+      
+      <line x1="588" y1="365" x2="710" y2="365" stroke="#2d6a4f" stroke-width="3" stroke-dasharray="4,4" />
+      <rect x="620" y="349" width="44" height="32" rx="4" fill="#52b788" />
+      <text x="642" y="373" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+      <rect x="674" y="349" width="44" height="32" rx="4" fill="#52b788" />
+      <text x="696" y="373" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+
+      
+      <line x1="588" y1="420" x2="710" y2="420" stroke="#1b4332" stroke-width="3" stroke-dasharray="4,4" />
+      <rect x="600" y="404" width="44" height="32" rx="4" fill="#74c69d" />
+      <text x="622" y="428" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+      <rect x="654" y="404" width="44" height="32" rx="4" fill="#74c69d" />
+      <text x="676" y="428" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+
+      
+      <path d="M 710 310 Q 745 310 755 350" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 710 365 L 755 365" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 710 420 Q 745 420 755 380" fill="none" stroke="#207448" stroke-width="3" />
+
+      
+      <rect x="755" y="335" width="260" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+      
+      
+      <rect x="768" y="347" width="34" height="36" rx="4" fill="#207448" />
+      <text x="785" y="373" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+
+      <rect x="808" y="347" width="34" height="36" rx="4" fill="#52b788" />
+      <text x="825" y="373" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+
+      <rect x="848" y="347" width="34" height="36" rx="4" fill="#74c69d" />
+      <text x="865" y="373" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+
+      <rect x="888" y="347" width="34" height="36" rx="4" fill="#207448" />
+      <text x="905" y="373" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+
+      <rect x="928" y="347" width="34" height="36" rx="4" fill="#52b788" />
+      <text x="945" y="373" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+
+      <rect x="968" y="347" width="34" height="36" rx="4" fill="#74c69d" />
+      <text x="985" y="373" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+
+      
+      <path d="M 640 465 L 960 465" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    </g>
+
+    
+    <rect x="568" y="590" width="464" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="800" y="628" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">compresses headers</text>
+
+    
+    <rect x="568" y="665" width="464" height="170" rx="8" fill="#fff7ed" stroke="#db8129" stroke-width="2.5" />
+    
+    <g transform="translate(775, 680)">
+      <polygon points="25,4 47,42 3,42" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round" />
+      <line x1="25" y1="18" x2="25" y2="28" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <circle cx="25" cy="35" r="2" fill="#db8129" />
+    </g>
+    <text x="800" y="748" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="800" dy="0">head-of-line blocking now happens</tspan>
+      <tspan x="800" dy="30">at the TCP level: one stalled TCP</tspan>
+      <tspan x="800" dy="30">packet holds up every stream</tspan>
+    </text>
+  </g>
+
+  
+  <g id="col-http3">
+    
+    <rect x="1072" y="85" width="496" height="765" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="1072" y="85" width="496" height="75" rx="12" fill="#e8f1ea" />
+    
+    <g transform="translate(1096, 96)">
+      <polygon points="26,2 8,28 24,28 18,50 38,20 22,20" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    </g>
+    <text x="1156" y="136" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#207448">HTTP/3</text>
+
+    
+    <rect x="1088" y="175" width="464" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1320" y="206" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1320" dy="0">HTTP over QUIC (includes TLS 1.3)</tspan>
+      <tspan x="1320" dy="28">over UDP/443</tspan>
+    </text>
+
+    
+
+    
+    <rect x="1088" y="260" width="464" height="125" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(1112, 298)">
+      <rect x="0" y="6" width="36" height="36" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 10 24 L 16 30 L 28 16" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="1170" y="333" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">recovers from loss per stream</text>
+
+    
+    <rect x="1088" y="405" width="464" height="125" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(1112, 443)">
+      <circle cx="20" cy="24" r="18" fill="none" stroke="#207448" stroke-width="3" />
+      <polyline points="20,14 20,24 28,24" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="1170" y="478" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">faster connection setup</text>
+
+    
+    <rect x="1088" y="550" width="464" height="125" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(1112, 588)">
+      
+      <path d="M 6 36 A 20 20 0 0 1 34 36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <path d="M 12 36 A 12 12 0 0 1 28 36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <circle cx="20" cy="36" r="3" fill="#207448" />
+    </g>
+    <text x="1170" y="623" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">supports connection migration</text>
+
+    
+    <rect x="1088" y="695" width="464" height="140" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(1112, 735)">
+      <rect x="0" y="0" width="42" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 8 10 L 16 17 L 8 24" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="20" y1="24" x2="30" y2="24" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    </g>
+    <text x="1170" y="753" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1170" dy="0" font-family="monospace">try curl --http3</tspan>
+      <tspan x="1170" dy="32">if your build supports it</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-strip-redirects">
+    <rect x="32" y="870" width="1536" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(56, 888)">
+      <path d="M 28 6 L 10 14 L 10 32 C 10 44 28 54 28 54 C 28 54 46 44 46 32 L 46 14 Z" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="126" y="908" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="126" dy="0">Redirects 301, 302, 307, 308 trigger a new request, maybe a new connection: curl -L;</tspan>
+      <tspan x="126" dy="34">proxies, CDNs and load balancers may terminate TLS, rewrite headers such as X-Forwarded-For, cache and retry</tspan>
+    </text>
+  </g>
+
+  
+  <g id="timing-strip">
+    <rect x="32" y="980" width="1536" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(56, 998)">
+      <circle cx="28" cy="30" r="20" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="28" y1="4" x2="28" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <polyline points="28,20 28,30 38,30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="126" y="1018" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="126" dy="0">TTFB = time_starttransfer = DNS + connect + TLS + server think time + one RTT;</tspan>
+      <tspan x="126" dy="34">time_total adds the body transfer</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-takeaway-bar">
+    <rect x="32" y="1090" width="1536" height="75" rx="10" fill="#207448" />
+    <text x="800" y="1137" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">If headers look right but the page is slow, compare time_starttransfer with time_total</text>
+  </g>
+</svg>

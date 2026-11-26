@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Which side is at fault: reading the ss state counts</title>
+  <desc>Visual infographic explaining how to interpret ss connection states and diagnostic flags to identify network faults.</desc>
+
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="65" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Which side is at fault: reading the ss state counts</text>
+
+  
+  
+  <rect x="60" y="105" width="1480" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <rect x="70" y="113" width="240" height="69" rx="8" fill="#207448"/>
+  <text x="190" y="156" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Client socket</text>
+
+  
+  <g transform="translate(330, 113)">
+    <rect x="0" y="0" width="270" height="69" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="135" y="44" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">SYN-SENT</text>
+
+    
+    <path d="M 275 35 L 295 35" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+
+    <rect x="305" y="0" width="270" height="69" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="440" y="44" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">ESTABLISHED</text>
+
+    <path d="M 580 35 L 600 35" stroke="#207448" stroke-width="3" fill="none"/>
+
+    <rect x="610" y="0" width="270" height="69" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="745" y="44" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">FIN-WAIT-2</text>
+
+    <path d="M 885 35 L 905 35" stroke="#207448" stroke-width="3" fill="none"/>
+
+    <rect x="915" y="0" width="270" height="69" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1050" y="44" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">TIME-WAIT</text>
+  </g>
+
+  
+  <rect x="60" y="205" width="1480" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <rect x="70" y="213" width="240" height="69" rx="8" fill="#207448"/>
+  <text x="190" y="256" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Server socket</text>
+
+  
+  <g transform="translate(330, 213)">
+    <rect x="0" y="0" width="270" height="69" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="135" y="44" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">LISTEN</text>
+
+    <path d="M 275 35 L 295 35" stroke="#207448" stroke-width="3" fill="none"/>
+
+    <rect x="305" y="0" width="270" height="69" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="440" y="44" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">SYN-RECV</text>
+
+    <path d="M 580 35 L 600 35" stroke="#207448" stroke-width="3" fill="none"/>
+
+    <rect x="610" y="0" width="270" height="69" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="745" y="44" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">ESTABLISHED</text>
+
+    <path d="M 885 35 L 905 35" stroke="#207448" stroke-width="3" fill="none"/>
+
+    <rect x="915" y="0" width="270" height="69" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1050" y="44" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">CLOSE-WAIT</text>
+  </g>
+
+  
+  
+  <g transform="translate(60, 315)">
+    <rect x="0" y="0" width="900" height="92" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="46" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <path d="M 37 46 L 53 46 M 47 40 L 53 46 L 47 52" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <text x="85" y="54" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">SYN-SENT: </tspan>remote drops or ignores us, or the path is cut
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 422)">
+    <rect x="0" y="0" width="900" height="92" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="46" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <path d="M 53 46 L 37 46 M 43 40 L 37 46 L 43 52" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <text x="85" y="54" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">SYN-RECV: </tspan>a SYN flood, or clients that vanish
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 529)">
+    <rect x="0" y="0" width="900" height="92" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="46" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <path d="M 36 46 L 54 46 M 41 38 L 49 54" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <text x="85" y="54" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">ESTABLISHED: </tspan>normal, idle ones may hide a dead peer
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 636)">
+    <rect x="0" y="0" width="900" height="120" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="3.5"/>
+    <circle cx="45" cy="60" r="24" fill="#feefe3" stroke="#db8129" stroke-width="2.5"/>
+    <path d="M 45 46 L 45 62 M 45 71 L 45 74" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <text x="85" y="48" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#db8129">CLOSE-WAIT: </tspan>the peer closed, our application has not:
+    </text>
+    <text x="85" y="86" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      a leaked connection in our code
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 771)">
+    <rect x="0" y="0" width="900" height="92" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="46" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="46" r="12" stroke="#207448" stroke-width="2.5" fill="none"/>
+    <path d="M 45 39 L 45 46 L 50 49" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <text x="85" y="54" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">FIN-WAIT-2: </tspan>a slow or stuck peer
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 878)">
+    <rect x="0" y="0" width="900" height="92" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="45" cy="46" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <path d="M 37 53 C 37 43, 53 43, 53 53 M 37 39 C 37 49, 53 49, 53 39" stroke="#207448" stroke-width="2.5" fill="none"/>
+    <text x="85" y="54" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">TIME-WAIT: </tspan>many short connections
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(990, 315)">
+    <rect x="0" y="0" width="550" height="315" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="30" y="50" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">LISTEN row, two numbers</text>
+
+    
+    <rect x="25" y="75" width="500" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="45" y="116" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">Recv-Q</tspan> = connections waiting to be accepted
+    </text>
+
+    
+    <rect x="25" y="153" width="500" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="45" y="192" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">Send-Q</tspan> = the limit
+    </text>
+
+    
+    <rect x="25" y="227" width="500" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="45" y="269" font-family="sans-serif" font-size="24" fill="#303a36">
+      flag a listener whose Recv-Q has reached its Send-Q
+    </text>
+  </g>
+
+  
+  <g transform="translate(990, 650)">
+    <rect x="0" y="0" width="550" height="320" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="30" y="50" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">ss -tiepm flags</text>
+
+    
+    <rect x="25" y="72" width="500" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="40" y="103" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">app_limited: </tspan>application not handing
+    </text>
+    <text x="40" y="130" font-family="sans-serif" font-size="24" fill="#303a36">data over fast enough</text>
+
+    
+    <rect x="25" y="152" width="500" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="40" y="195" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">rwnd_limited: </tspan>receiver window is the limit
+    </text>
+
+    
+    <rect x="25" y="232" width="500" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="40" y="275" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">sndbuf_limited: </tspan>sender buffer is full
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 1000)">
+    <rect x="0" y="0" width="1480" height="85" rx="12" fill="#207448"/>
+    <text x="740" y="53" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      Start every network incident with ss, then say which states dominate and what that means.
+    </text>
+  </g>
+</svg>

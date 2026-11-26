@@ -1,0 +1,247 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1340" width="1600" height="1340">
+  <title>When a backend leaves: modulo hashing versus consistent hashing</title>
+  <desc>Visual comparison between modulo hashing and consistent hashing when backends fail or leave, including Maglev hashing and real-world infrastructure applications.</desc>
+
+  <defs>
+    
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1340" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    When a backend leaves: modulo hashing versus consistent hashing
+  </text>
+
+  
+  <g transform="translate(50, 95)">
+    <rect width="1500" height="85" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="45" cy="42" r="22" fill="#207448" />
+    <path d="M 38 32 L 52 32 M 45 32 L 45 42 L 35 55 L 55 55 L 45 42" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="85" y="50" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      lab check: rendezvous (HRW) hashing moves about 1/N of keys; bounded-load spillover
+    </text>
+  </g>
+
+  
+
+  
+  <g transform="translate(50, 210)">
+    
+    <rect width="470" height="600" rx="20" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    
+    <rect x="25" y="25" width="420" height="58" rx="12" fill="#fff4e8" stroke="#db8129" stroke-width="2" />
+    
+    <circle cx="58" cy="54" r="16" fill="none" stroke="#db8129" stroke-width="3" />
+    <path d="M 50 54 L 66 54 M 58 46 L 58 62" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <text x="90" y="63" font-family="monospace" font-size="28" font-weight="bold" fill="#db8129">Hash(key) mod N</text>
+
+    
+    <rect x="25" y="105" width="420" height="80" rx="12" fill="#f8faf8" stroke="#d5ded7" stroke-width="2" />
+    <text x="45" y="152" font-family="sans-serif" font-size="24" fill="#303a36">
+      N backends, a row of keys assigned
+    </text>
+
+    
+    <g transform="translate(35, 205)">
+      <rect x="0" y="0" width="85" height="54" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="42" y="35" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">B0</text>
+
+      <rect x="105" y="0" width="85" height="54" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="147" y="35" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">B1</text>
+
+      <rect x="210" y="0" width="85" height="54" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="252" y="35" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">B2</text>
+
+      
+      <rect x="315" y="0" width="85" height="54" rx="8" fill="#ffece8" stroke="#db8129" stroke-width="2" stroke-dasharray="6,4"/>
+      <text x="357" y="35" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">BN-1</text>
+    </g>
+
+    
+    <rect x="25" y="280" width="420" height="100" rx="12" fill="#fff5f2" stroke="#db8129" stroke-width="2" />
+    <text x="45" y="322" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="45" dy="0">one backend removed,</tspan>
+      <tspan x="45" dy="36">N becomes N minus 1</tspan>
+    </text>
+
+    
+    <path d="M 235 395 L 235 480" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+    <rect x="95" y="415" width="280" height="50" rx="25" fill="#db8129" />
+    <text x="235" y="448" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      most keys remapped
+    </text>
+
+    
+    <g transform="translate(35, 505)">
+      <rect x="0" y="0" width="120" height="60" rx="8" fill="#fff0e6" stroke="#db8129" stroke-width="2"/>
+      <text x="60" y="38" text-anchor="middle" font-family="monospace" font-size="24" fill="#db8129">mod N-1</text>
+
+      <rect x="140" y="0" width="120" height="60" rx="8" fill="#fff0e6" stroke="#db8129" stroke-width="2"/>
+      <text x="200" y="38" text-anchor="middle" font-family="monospace" font-size="24" fill="#db8129">mod N-1</text>
+
+      <rect x="280" y="0" width="120" height="60" rx="8" fill="#fff0e6" stroke="#db8129" stroke-width="2"/>
+      <text x="340" y="38" text-anchor="middle" font-family="monospace" font-size="24" fill="#db8129">mod N-1</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(565, 210)">
+    
+    <rect width="470" height="600" rx="20" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <rect x="20" y="25" width="430" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="52" cy="67" r="18" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="52" cy="49" r="4" fill="#207448" />
+    <circle cx="68" cy="73" r="4" fill="#207448" />
+    <circle cx="37" cy="74" r="4" fill="#207448" />
+    <text x="85" y="58" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="85" dy="0">Consistent hashing</tspan>
+      <tspan x="85" dy="32">(ring, rendezvous, jump hash)</tspan>
+    </text>
+
+    
+    <rect x="20" y="125" width="430" height="100" rx="12" fill="#f8faf8" stroke="#d5ded7" stroke-width="2" />
+    <text x="38" y="166" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="38" dy="0">keys and backends mapped</tspan>
+      <tspan x="38" dy="36">on a ring or score space</tspan>
+    </text>
+
+    
+    <rect x="20" y="240" width="430" height="65" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="40" y="281" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      one backend removed
+    </text>
+
+    
+    <path d="M 235 315 L 235 365" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="20" y="380" width="430" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="38" y="426" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="38" dy="0">only the keys on that</tspan>
+      <tspan x="38" dy="36">backend move</tspan>
+    </text>
+
+    
+    <rect x="85" y="515" width="300" height="60" rx="30" fill="#207448" />
+    <text x="235" y="553" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      about 1/N of keys
+    </text>
+  </g>
+
+  
+  <g transform="translate(1080, 210)">
+    
+    <rect width="470" height="600" rx="20" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <rect x="25" y="25" width="420" height="58" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="42" y="40" width="28" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 42 54 L 70 54 M 56 40 L 56 68" stroke="#207448" stroke-width="2"/>
+    <text x="85" y="63" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Maglev hashing</text>
+
+    
+    <rect x="25" y="100" width="420" height="475" rx="14" fill="#f8faf8" stroke="#d5ded7" stroke-width="2" />
+
+    <text x="45" y="142" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="45" dy="0" font-weight="bold" fill="#207448">Maglev hashing: a lookup</tspan>
+      <tspan x="45" dy="38" font-weight="bold" fill="#207448">table built from backend</tspan>
+      <tspan x="45" dy="38" font-weight="bold" fill="#207448">preference permutations;</tspan>
+      <tspan x="45" dy="48">near-uniform load with</tspan>
+      <tspan x="45" dy="38">minimal disruption;</tspan>
+      <tspan x="45" dy="48">used by L4 LBs behind ECMP</tspan>
+      <tspan x="45" dy="38">(Google Maglev, Meta Katran);</tspan>
+      <tspan x="45" dy="48" fill="#db8129">table rebuild cost,</tspan>
+      <tspan x="45" dy="38" fill="#db8129">small disruption on change</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(50, 840)">
+    
+    <text x="0" y="32" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">
+      Why it matters in three places
+    </text>
+
+    
+    
+    <g transform="translate(0, 55)">
+      <rect width="470" height="320" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      
+      <circle cx="50" cy="48" r="20" fill="#e8f1ea" />
+      <path d="M 40 42 C 40 38, 60 38, 60 42 C 60 46, 40 46, 40 42 Z M 40 48 C 40 52, 60 52, 60 48 M 40 54 C 40 58, 60 58, 60 54" stroke="#207448" stroke-width="2.5" fill="none"/>
+      <text x="82" y="55" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+        Application Caches
+      </text>
+
+      <rect x="25" y="95" width="420" height="200" rx="12" fill="#f8faf8" stroke="#d5ded7" stroke-width="1.5" />
+      <text x="45" y="165" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+        <tspan x="45" dy="0">cache locality and</tspan>
+        <tspan x="45" dy="42">sticky sessions</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(515, 55)">
+      <rect width="470" height="320" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      
+      <circle cx="50" cy="48" r="20" fill="#e8f1ea" />
+      <path d="M 40 48 L 60 48 M 46 42 L 40 48 L 46 54 M 54 42 L 60 48 L 54 54" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <text x="82" y="55" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+        Network Layer 4
+      </text>
+
+      <rect x="25" y="95" width="420" height="200" rx="12" fill="#f8faf8" stroke="#d5ded7" stroke-width="1.5" />
+      <text x="45" y="138" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="45" dy="0" font-weight="bold">L4 tier behind ECMP:</tspan>
+        <tspan x="45" dy="36">any node computes the same</tspan>
+        <tspan x="45" dy="36">backend for the same</tspan>
+        <tspan x="45" dy="36">5-tuple without</tspan>
+        <tspan x="45" dy="36">synchronised state</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(1030, 55)">
+      <rect width="470" height="320" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      
+      <circle cx="50" cy="48" r="20" fill="#e8f1ea" />
+      <path d="M 50 38 L 52 45 L 59 48 L 52 51 L 50 58 L 48 51 L 41 48 L 48 45 Z" fill="#207448"/>
+      <text x="82" y="55" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+        LLM Inference
+      </text>
+
+      <rect x="25" y="95" width="420" height="200" rx="12" fill="#f8faf8" stroke="#d5ded7" stroke-width="1.5" />
+      <text x="45" y="132" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="45" dy="0" font-weight="bold">LLM prefix cache:</tspan>
+        <tspan x="45" dy="32">consistent hashing on a</tspan>
+        <tspan x="45" dy="32">session ID or prompt-prefix</tspan>
+        <tspan x="45" dy="32">hash, with bounded loads</tspan>
+        <tspan x="45" dy="32">that spill to the next replica</tspan>
+        <tspan x="45" dy="32">when one exceeds its share</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(50, 1245)">
+    <rect width="1500" height="65" rx="14" fill="#207448" />
+    <text x="750" y="41" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      Hash affinity accepts uneven load, so plan for reshuffling
+    </text>
+  </g>
+</svg>

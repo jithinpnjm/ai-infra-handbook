@@ -1,0 +1,202 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading an Ethernet standard name and picking the medium</title>
+  <desc>Visual infographic explaining Ethernet naming decomposition, distance ladder of physical media, transceiver form factors, lane encodings with FEC, and breakout cables.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Reading an Ethernet standard name and picking the medium</text>
+
+  
+  <rect x="40" y="78" width="1520" height="246" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  
+  <rect x="130" y="94" width="160" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="210" y="123" text-anchor="middle" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448">100G</text>
+
+  <rect x="500" y="94" width="170" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="585" y="123" text-anchor="middle" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448">BASE</text>
+
+  <text x="798" y="123" text-anchor="middle" font-family="monospace" font-size="28px" font-weight="bold" fill="#303a36">-</text>
+
+  <rect x="895" y="94" width="170" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="980" y="123" text-anchor="middle" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448">L</text>
+
+  <rect x="1270" y="94" width="170" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1355" y="123" text-anchor="middle" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448">4</text>
+
+  
+  <line x1="210" y1="134" x2="210" y2="149" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="585" y1="134" x2="585" y2="149" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="980" y1="134" x2="980" y2="149" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="1355" y1="134" x2="1355" y2="149" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="60" y="152" width="300" height="44" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="210" y="182" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">100G = speed</text>
+
+  <rect x="380" y="152" width="410" height="44" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="585" y="182" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">BASE = baseband signalling</text>
+
+  <rect x="810" y="152" width="340" height="44" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="980" y="182" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">L = long reach</text>
+
+  <rect x="1170" y="152" width="370" height="44" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="1355" y="182" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">4 = four lanes</text>
+
+  
+  
+  <rect x="130" y="210" width="160" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="210" y="239" text-anchor="middle" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448">400G</text>
+
+  <rect x="500" y="210" width="170" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="585" y="239" text-anchor="middle" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448">BASE</text>
+
+  <text x="798" y="239" text-anchor="middle" font-family="monospace" font-size="28px" font-weight="bold" fill="#303a36">-</text>
+
+  <rect x="895" y="210" width="170" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="980" y="239" text-anchor="middle" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448">D</text>
+
+  <rect x="1270" y="210" width="170" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1355" y="239" text-anchor="middle" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448">4</text>
+
+  
+  <line x1="210" y1="250" x2="210" y2="265" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="585" y1="250" x2="585" y2="265" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="980" y1="250" x2="980" y2="265" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="1355" y1="250" x2="1355" y2="265" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="60" y="268" width="300" height="44" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="6,4" />
+  <text x="210" y="298" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">400G = speed</text>
+
+  <rect x="380" y="268" width="410" height="44" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="6,4" />
+  <text x="585" y="298" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">BASE = baseband signalling</text>
+
+  <rect x="810" y="268" width="340" height="44" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="6,4" />
+  <text x="980" y="298" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">D = 500 m reach</text>
+
+  <rect x="1170" y="268" width="370" height="44" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="6,4" />
+  <text x="1355" y="298" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">4 = four lanes</text>
+
+  
+  <rect x="40" y="342" width="820" height="606" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="64" y="362" width="772" height="96" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="106" cy="410" r="24" fill="#207448" />
+  <text x="106" y="419" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">1</text>
+  <text x="146" y="401" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="146" dy="0">DAC, direct-attach copper twinax:</tspan>
+    <tspan x="146" dy="32">in-rack, 3 to 5 m for 25GBASE-CR, 10 to 400G</tspan>
+  </text>
+
+  
+  <rect x="64" y="476" width="772" height="96" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <circle cx="106" cy="524" r="24" fill="#207448" />
+  <text x="106" y="533" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">2</text>
+  <text x="146" y="515" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="146" dy="0">AOC, active optical cable with optics attached:</tspan>
+    <tspan x="146" dy="32">5 to 100 m</tspan>
+  </text>
+
+  
+  <rect x="64" y="590" width="772" height="96" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="106" cy="638" r="24" fill="#207448" />
+  <text x="106" y="647" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">3</text>
+  <text x="146" y="629" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="146" dy="0">Multi-mode fibre OM3/OM4/OM5 at 850 nm:</tspan>
+    <tspan x="146" dy="32">about 100 m, cheaper optics (SR)</tspan>
+  </text>
+
+  
+  <rect x="64" y="704" width="772" height="96" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <circle cx="106" cy="752" r="24" fill="#207448" />
+  <text x="106" y="761" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">4</text>
+  <text x="146" y="743" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="146" dy="0">Copper twisted pair Cat5e/6/6a:</tspan>
+    <tspan x="146" dy="32">100 m at 1 to 10 Gb/s</tspan>
+  </text>
+
+  
+  <rect x="64" y="818" width="772" height="112" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="106" cy="874" r="24" fill="#207448" />
+  <text x="106" y="883" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">5</text>
+  <text x="146" y="857" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="146" dy="0">Single-mode fibre OS2 at 1310 or 1550 nm:</tspan>
+    <tspan x="146" dy="32">500 m (DR), 2 km (FR), 10 km (LR)</tspan>
+  </text>
+
+  
+  <rect x="880" y="342" width="680" height="268" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="904" y="360" width="632" height="72" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="924" y="391" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="924" dy="0">SFP, SFP+, SFP28:</tspan>
+    <tspan x="924" dy="30">one lane at 1, 10, 25G</tspan>
+  </text>
+
+  
+  <rect x="904" y="444" width="632" height="72" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="924" y="475" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="924" dy="0">QSFP+, QSFP28, QSFP56:</tspan>
+    <tspan x="924" dy="30">four lanes at 40, 100, 200G</tspan>
+  </text>
+
+  
+  <rect x="904" y="526" width="632" height="72" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="924" y="557" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="924" dy="0">QSFP-DD, OSFP:</tspan>
+    <tspan x="924" dy="30">eight lanes at 400 and 800G</tspan>
+  </text>
+
+  
+  <rect x="880" y="624" width="680" height="324" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="904" y="642" width="632" height="82" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="924" y="675" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="924" dy="0">Encoding per lane: NRZ up to 25G,</tspan>
+    <tspan x="924" dy="32">two levels, one bit per symbol</tspan>
+  </text>
+
+  
+  <rect x="904" y="736" width="632" height="196" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="924" y="770" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="924" dy="0">PAM4 at 50G and 100G, four levels,</tspan>
+    <tspan x="924" dy="34">two bits per symbol, smaller noise margin,</tspan>
+    <tspan x="924" dy="34">needs <tspan fill="#db8129">RS-FEC (KP4)</tspan>, about 100 to 250 ns latency,</tspan>
+    <tspan x="924" dy="34">both ends must use the same FEC mode</tspan>
+  </text>
+
+  
+  <rect x="40" y="962" width="1520" height="136" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(64, 1002)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="16" width="24" height="24" rx="4" fill="#207448" />
+    <path d="M 24 28 L 56 28 M 56 28 L 84 4 M 56 28 L 84 20 M 56 28 L 84 36 M 56 28 L 84 52" />
+    <circle cx="88" cy="4" r="4" fill="#207448" />
+    <circle cx="88" cy="20" r="4" fill="#207448" />
+    <circle cx="88" cy="36" r="4" fill="#207448" />
+    <circle cx="88" cy="52" r="4" fill="#207448" />
+  </g>
+
+  <text x="180" y="1018" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="180" dy="0">Breakout cable: one 400G port into four 100G links; the same speed can have different reach,</tspan>
+    <tspan x="180" dy="36">100GBASE-LR4 10 km versus 100GBASE-DR 500 m, so read the reach as well</tspan>
+  </text>
+
+  
+  <rect x="40" y="1114" width="1520" height="58" rx="10" fill="#207448" />
+  <text x="800" y="1152" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff">Check speed, FEC mode and error counters, not just link state</text>
+</svg>

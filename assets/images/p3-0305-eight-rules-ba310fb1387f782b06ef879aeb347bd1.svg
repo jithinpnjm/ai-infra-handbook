@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1440" width="1600" height="1440">
+  <title>Eight rules for error handling in tools and services</title>
+  <desc>Visual guide and reference table for the eight fundamental error handling rules and conventional process exit codes.</desc>
+
+  
+  <rect width="1600" height="1440" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Eight rules for error handling in tools and services</text>
+
+  
+
+  
+  <g id="rule-1">
+    <rect x="40" y="110" width="980" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="85" cy="170" r="26" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <path d="M73 170 L82 179 L98 163" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="135" y="152" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">1 Fail fast on programmer errors and invalid input:</text>
+    <text x="135" y="192" font-family="sans-serif" font-size="24" fill="#303a36">validate config and arguments at the boundary, right away, with clear messages</text>
+  </g>
+
+  
+  <g id="rule-2">
+    <rect x="40" y="245" width="980" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="85" cy="322" r="26" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <path d="M75 322 A10 10 0 1 1 95 322" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <polyline points="91,313 97,322 88,325" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="135" y="285" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">2 Handle expected operational failures where you can do something sensible:</text>
+    <text x="135" y="325" font-family="sans-serif" font-size="24" fill="#303a36">network timeouts, missing files, 404s, lock contention; retry with backoff,</text>
+    <text x="135" y="365" font-family="sans-serif" font-size="24" fill="#303a36">skip with a log, fall back, or translate into a domain error</text>
+  </g>
+
+  
+  <g id="rule-3">
+    <rect x="40" y="415" width="980" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="85" cy="482" r="26" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <path d="M85 498 L85 466 M75 476 L85 466 L95 476" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="135" y="455" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">3 Do not catch what you cannot handle:</text>
+    <text x="135" y="495" font-family="sans-serif" font-size="24" fill="#303a36">let unexpected exceptions bubble up to one top-level handler</text>
+    <text x="135" y="530" font-family="sans-serif" font-size="24" fill="#303a36">that logs the traceback and exits non-zero</text>
+  </g>
+
+  
+  <g id="rule-4">
+    <rect x="40" y="565" width="980" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="85" cy="632" r="26" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <rect x="73" y="624" width="14" height="16" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="83" y="624" width="14" height="16" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="135" y="605" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">4 Preserve information:</text>
+    <text x="135" y="645" font-family="sans-serif" font-size="24" fill="#303a36">chain exceptions, include host, path or request id,</text>
+    <text x="135" y="680" font-family="sans-serif" font-size="24" fill="#303a36">log tracebacks once rather than at every level</text>
+  </g>
+
+  
+  <g id="rule-5">
+    <rect x="40" y="715" width="980" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="85" cy="770" r="26" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <path d="M75 782 L95 782 M85 756 L85 776 M78 776 L92 776" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="135" y="755" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">5 Make cleanup unconditional and idempotent:</text>
+    <text x="135" y="795" font-family="monospace" font-size="24" fill="#303a36">with or finally</text>
+  </g>
+
+  
+  <g id="rule-6">
+    <rect x="40" y="840" width="980" height="165" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+    
+    <circle cx="85" cy="922" r="26" fill="#fdebd9" stroke="#db8129" stroke-width="3"/>
+    <path d="M85 908 L85 925 M85 933 L85 935" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="135" y="878" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">6 Be explicit about partial failure:</text>
+    <text x="135" y="916" font-family="sans-serif" font-size="24" fill="#303a36">processing 500 hosts, collect results per host, report a summary,</text>
+    <text x="135" y="954" font-family="sans-serif" font-size="24" fill="#303a36">exit non-zero if any failed; do not abort at the first error,</text>
+    <text x="135" y="990" font-family="sans-serif" font-size="24" fill="#303a36">do not hide failures</text>
+  </g>
+
+  
+  <g id="rule-7">
+    <rect x="40" y="1020" width="980" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="85" cy="1102" r="26" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <path d="M74 1102 A11 11 0 1 1 94 1107" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <polyline points="96,1098 94,1108 84,1108" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="135" y="1058" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">7 Limit retries to transient errors and idempotent operations:</text>
+    <text x="135" y="1096" font-family="sans-serif" font-size="24" fill="#303a36">exponential backoff with jitter and a cap, limit attempts and total time,</text>
+    <text x="135" y="1134" font-family="sans-serif" font-size="24" fill="#303a36">log each attempt; tenacity, backoff or a small helper</text>
+    <text x="135" y="1170" font-family="sans-serif" font-size="24" fill="#303a36">from chapter 3.1</text>
+  </g>
+
+  
+  <g id="rule-8">
+    <rect x="40" y="1200" width="980" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="85" cy="1257" r="26" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <path d="M85 1242 L85 1257 L96 1257" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="135" y="1245" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">8 Set timeouts everywhere,</text>
+    <text x="135" y="1285" font-family="sans-serif" font-size="24" fill="#303a36">on network and subprocess calls, because the default is often forever</text>
+  </g>
+
+
+  
+  <g id="right-panel">
+    
+    <rect x="1050" y="110" width="510" height="1205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1305" y="160" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Conventional exit codes</text>
+
+    
+    <g id="code-0">
+      <rect x="1075" y="185" width="460" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="1105" y="238" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">0</text>
+      <text x="1145" y="238" font-family="sans-serif" font-size="24" fill="#303a36">success</text>
+    </g>
+
+    
+    <g id="code-1">
+      <rect x="1075" y="285" width="460" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="1105" y="338" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">1</text>
+      <text x="1145" y="338" font-family="sans-serif" font-size="24" fill="#303a36">general error</text>
+    </g>
+
+    
+    <g id="code-2">
+      <rect x="1075" y="385" width="460" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="1105" y="428" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">2</text>
+      <text x="1145" y="428" font-family="sans-serif" font-size="24" fill="#303a36">usage or argument error,</text>
+      <text x="1145" y="468" font-family="sans-serif" font-size="24" fill="#303a36">also used by argparse</text>
+    </g>
+
+    
+    <g id="code-126-127">
+      <rect x="1075" y="520" width="460" height="125" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="1105" y="562" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">126 or 127</text>
+      <text x="1105" y="600" font-family="sans-serif" font-size="24" fill="#303a36">command not executable</text>
+      <text x="1105" y="632" font-family="sans-serif" font-size="24" fill="#303a36">or not found</text>
+    </g>
+
+    
+    <g id="code-128-n">
+      <rect x="1075" y="660" width="460" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="1105" y="700" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">128+N</text>
+      <text x="1185" y="700" font-family="sans-serif" font-size="24" fill="#303a36">killed by signal N:</text>
+      <text x="1105" y="750" font-family="sans-serif" font-size="24" fill="#303a36">130 is SIGINT,</text>
+      <text x="1105" y="795" font-family="sans-serif" font-size="24" fill="#303a36">143 is SIGTERM</text>
+    </g>
+
+    
+    <g id="code-75">
+      <rect x="1075" y="860" width="460" height="115" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="1105" y="905" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">EX_TEMPFAIL 75</text>
+      <text x="1105" y="945" font-family="sans-serif" font-size="24" fill="#303a36">requests a retry</text>
+    </g>
+
+    
+    <g id="code-note">
+      <rect x="1075" y="990" width="460" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="1105" y="1035" font-family="sans-serif" font-size="24" fill="#303a36">use documented codes</text>
+      <text x="1105" y="1075" font-family="sans-serif" font-size="24" fill="#303a36">when CI, systemd or</text>
+      <text x="1105" y="1115" font-family="sans-serif" font-size="24" fill="#303a36">schedulers must tell</text>
+      <text x="1105" y="1150" font-family="sans-serif" font-size="24" fill="#303a36">them apart</text>
+    </g>
+  </g>
+
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1340" width="1520" height="68" rx="10" fill="#207448"/>
+    <text x="800" y="1383" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">The exit code is the only part of a failure that the caller always sees</text>
+  </g>
+</svg>

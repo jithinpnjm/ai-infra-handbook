@@ -1,0 +1,220 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1450" width="1600" height="1450">
+  <title>Silent shrink: eight replicas became five, nothing is red</title>
+  <desc>Visual infographic explaining how healthy busy pods get killed by liveness probes and fail silently</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1450" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="38" font-weight="bold" fill="#207448">Silent shrink: eight replicas became five, nothing is red</text>
+
+  
+  <rect x="50" y="105" width="1500" height="75" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <line x1="85" y1="125" x2="85" y2="160"/>
+    <line x1="70" y1="135" x2="100" y2="135"/>
+    <path d="M 65 152 L 75 152 L 70 135 Z"/>
+    <path d="M 95 152 L 105 152 L 100 135 Z"/>
+  </g>
+  <text x="800" y="152" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">liveness answers should this process be killed, readiness answers should it get traffic</text>
+
+  
+
+  
+  <rect x="50" y="210" width="530" height="300" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="100" cy="260" r="24" fill="#207448"/>
+  <text x="100" y="268" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+    <circle cx="165" cy="260" r="22"/>
+    <polyline points="165,246 165,260 177,260"/>
+  </g>
+  <text x="80" y="325" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="80" dy="0">Liveness probe with a short timeout</tspan>
+    <tspan x="80" dy="36">(default probe timeout is 1 second) or</tspan>
+    <tspan x="80" dy="36">a path that waits behind generation</tspan>
+    <tspan x="80" dy="36">work fails</tspan>
+    <tspan x="80" dy="36">on a healthy busy pod</tspan>
+  </text>
+
+  
+  <path d="M 315 510 L 315 548" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+
+  
+  <rect x="50" y="550" width="530" height="230" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="100" cy="595" r="24" fill="#207448"/>
+  <text x="100" y="603" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+    <path d="M 182 585 A 18 18 0 1 0 185 605"/>
+    <polyline points="182,575 182,588 195,588"/>
+  </g>
+  <text x="80" y="665" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="80" dy="0">Kubernetes restarts it and drops</tspan>
+    <tspan x="80" dy="38">every in-flight request</tspan>
+  </text>
+
+  
+  <path d="M 315 780 L 315 818" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+
+  
+  <rect x="50" y="820" width="530" height="370" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="100" cy="865" r="24" fill="#207448"/>
+  <text x="100" y="873" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+    <rect x="145" y="850" width="40" height="28" rx="4"/>
+    <line x1="155" y1="840" x2="155" y2="850"/>
+    <line x1="175" y1="840" x2="175" y2="850"/>
+    <line x1="140" y1="890" x2="190" y2="890" stroke-dasharray="6 4"/>
+  </g>
+  <text x="80" y="935" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="80" dy="0">restarted worker must pass readiness</tspan>
+    <tspan x="80" dy="38">and re-register with router discovery;</tspan>
+    <tspan x="80" dy="38">if registration fails the pod looks</tspan>
+    <tspan x="80" dy="38">fine to Kubernetes but receives</tspan>
+    <tspan x="80" dy="38">no traffic</tspan>
+  </text>
+
+  
+
+  <rect x="610" y="210" width="380" height="980" rx="12" fill="#f5f8f5" stroke="#db8129" stroke-width="3"/>
+
+  
+  
+  <g>
+    <rect x="645" y="245" width="140" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <polyline points="705,278 713,286 727,270" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+    
+    <rect x="805" y="245" width="140" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <polyline points="865,278 873,286 887,270" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </g>
+  
+  <g>
+    <rect x="645" y="325" width="140" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <polyline points="705,358 713,366 727,350" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+    <rect x="805" y="325" width="140" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <polyline points="865,358 873,366 887,350" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </g>
+  
+  <g>
+    <rect x="645" y="405" width="140" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <polyline points="705,438 713,446 727,430" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+    
+    <rect x="805" y="405" width="140" height="65" rx="8" fill="#fdf6ee" stroke="#db8129" stroke-width="2" stroke-dasharray="6 4"/>
+    <line x1="860" y1="425" x2="890" y2="455" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="890" y1="425" x2="860" y2="455" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  
+  <g>
+    
+    <rect x="645" y="485" width="140" height="65" rx="8" fill="#fdf6ee" stroke="#db8129" stroke-width="2" stroke-dasharray="6 4"/>
+    <line x1="700" y1="505" x2="730" y2="535" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="730" y1="505" x2="700" y2="535" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+
+    
+    <rect x="805" y="485" width="140" height="65" rx="8" fill="#fdf6ee" stroke="#db8129" stroke-width="2" stroke-dasharray="6 4"/>
+    <line x1="860" y1="505" x2="890" y2="535" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="890" y1="505" x2="860" y2="535" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <g stroke="#db8129" stroke-width="4" fill="none" stroke-linejoin="round">
+    <path d="M 800 600 L 835 660 L 765 660 Z"/>
+    <line x1="800" y1="620" x2="800" y2="638" stroke-linecap="round"/>
+    <circle cx="800" cy="648" r="2" fill="#db8129"/>
+  </g>
+
+  
+  <text x="800" y="730" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">
+    <tspan x="800" dy="0">capacity drops</tspan>
+    <tspan x="800" dy="46">from eight replicas</tspan>
+    <tspan x="800" dy="46">to five;</tspan>
+    <tspan x="800" dy="46">latency alerts</tspan>
+    <tspan x="800" dy="46">stay quiet until</tspan>
+    <tspan x="800" dy="46">load rises</tspan>
+  </text>
+
+  
+
+  
+  <rect x="1020" y="210" width="530" height="180" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+    <path d="M 1045 270 A 20 20 0 1 1 1085 270"/>
+    <line x1="1065" y1="270" x2="1078" y2="255"/>
+  </g>
+  <text x="1050" y="325" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1050" dy="0">ready less than</tspan>
+    <tspan x="1050" dy="38">desired replicas</tspan>
+  </text>
+
+  
+  <rect x="1020" y="415" width="530" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <rect x="1045" y="440" width="18" height="26" rx="2"/>
+    <rect x="1070" y="440" width="18" height="26" rx="2"/>
+    <line x1="1063" y1="445" x2="1063" y2="465" stroke-dasharray="3 3"/>
+  </g>
+  <text x="1050" y="515" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1050" dy="0">router backend list compared</tspan>
+    <tspan x="1050" dy="38">with ready pods: the gap is</tspan>
+    <tspan x="1050" dy="38">where the silence lives</tspan>
+  </text>
+
+  
+  <rect x="1020" y="650" width="530" height="180" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <line x1="1045" y1="695" x2="1045" y2="665"/>
+    <line x1="1045" y1="695" x2="1090" y2="695"/>
+    <line x1="1045" y1="690" x2="1090" y2="690" stroke="#db8129" stroke-width="4"/>
+  </g>
+  <text x="1050" y="750" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1050" dy="0">per-replica request rate of</tspan>
+    <tspan x="1050" dy="38">zero for a ready pod</tspan>
+  </text>
+
+  
+  <rect x="1020" y="855" width="530" height="335" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <rect x="1045" y="875" width="28" height="36" rx="2"/>
+    <line x1="1052" y1="886" x2="1066" y2="886"/>
+    <line x1="1052" y1="894" x2="1066" y2="894"/>
+    <line x1="1052" y1="902" x2="1060" y2="902"/>
+  </g>
+  <text x="1050" y="955" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1050" dy="0">pod last state and events: restart</tspan>
+    <tspan x="1050" dy="38">reason names the failed probe;</tspan>
+    <tspan x="1050" dy="38">tokens flowing just before the</tspan>
+    <tspan x="1050" dy="38">restart means the worker was</tspan>
+    <tspan x="1050" dy="38">healthy and busy</tspan>
+  </text>
+
+  
+
+  <rect x="50" y="1220" width="1500" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 95 1290 L 115 1310"/>
+    <path d="M 110 1285 C 105 1275 95 1275 90 1280 C 85 1285 85 1295 95 1300"/>
+    <circle cx="125" cy="1320" r="16"/>
+  </g>
+  <text x="160" y="1275" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="160" dy="0">relax the liveness timeout and raise failureThreshold to 3 or higher;</tspan>
+    <tspan x="160" dy="44">move load checks to readiness; add a startup probe;</tspan>
+    <tspan x="160" dy="44">restart workers that are ready but unregistered; X+1 spare capacity [vendor]</tspan>
+  </text>
+
+</svg>

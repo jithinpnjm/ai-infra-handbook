@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1480" width="1600" height="1480">
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 14 8 L 1 14 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 14 8 L 1 14 Z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 14 8 L 1 14 Z" fill="#b91c1c" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1480" fill="#f5f8f5" />
+
+  
+  <text x="50" y="65" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Streaming answers: where a proxy can hold the words back</text>
+
+  
+  
+  <g transform="translate(50, 95)">
+    <rect width="280" height="70" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="20" y="16" width="36" height="16" rx="3" fill="none" stroke="#207448" stroke-width="2.5" />
+    <circle cx="28" cy="24" r="2.5" fill="#207448" />
+    <rect x="20" y="38" width="36" height="16" rx="3" fill="none" stroke="#207448" stroke-width="2.5" />
+    <circle cx="28" cy="46" r="2.5" fill="#207448" />
+    <text x="75" y="44" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Model server</text>
+  </g>
+
+  
+  <path d="M 335 130 L 400 130" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" fill="none" />
+
+  
+  <g transform="translate(415, 95)">
+    <rect width="300" height="70" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="20" y="16" width="36" height="38" rx="4" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 28 26 L 48 26 M 28 35 L 48 35 M 28 44 L 48 44" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <text x="70" y="44" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Proxy or ingress</text>
+  </g>
+
+  
+  <path d="M 720 130 L 785 130" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" fill="none" />
+
+  
+  <g transform="translate(800, 95)">
+    <rect width="250" height="70" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="20" y="16" width="36" height="26" rx="3" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 38 42 L 38 49 M 28 49 L 48 49" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <text x="75" y="44" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Client</text>
+  </g>
+
+  
+  <g transform="translate(50, 185)">
+    <rect width="1000" height="255" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="25" y="40" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Proxy does not buffer, read timeout raised</text>
+
+    
+    <path d="M 190 95 L 430 95" stroke="#207448" stroke-width="3" stroke-dasharray="6,6" fill="none" />
+    
+    
+    <rect x="220" y="73" width="95" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="232" y="103" font-family="monospace" font-size="24" fill="#303a36">word 1</text>
+
+    
+    <rect x="475" y="73" width="95" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="487" y="103" font-family="monospace" font-size="24" fill="#303a36">word 2</text>
+
+    <path d="M 575 95 L 740 95" stroke="#207448" stroke-width="3" stroke-dasharray="6,6" marker-end="url(#arrow)" fill="none" />
+
+    
+    <rect x="640" y="73" width="95" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="652" y="103" font-family="monospace" font-size="24" fill="#303a36">word 3</text>
+
+    
+    <rect x="25" y="145" width="530" height="46" rx="8" fill="#e8f1ea" />
+    <text x="40" y="177" font-family="sans-serif" font-size="24" fill="#303a36">the client sees each word as it is produced</text>
+
+    <rect x="25" y="200" width="375" height="44" rx="8" fill="#e8f1ea" />
+    <text x="40" y="231" font-family="sans-serif" font-size="24" fill="#303a36">plus heartbeats between messages</text>
+  </g>
+
+  
+  <g transform="translate(50, 460)">
+    <rect width="1000" height="255" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+    <text x="25" y="40" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">Proxy buffers the response</text>
+
+    
+    <path d="M 180 100 L 410 100" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" fill="none" />
+
+    
+    <rect x="420" y="65" width="220" height="90" rx="8" fill="#fdf2e9" stroke="#db8129" stroke-width="2" />
+    <text x="432" y="102" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">words pile up inside</text>
+    <text x="450" y="134" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">the proxy box</text>
+
+    
+    <path d="M 645 100 L 760 100" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)" fill="none" />
+
+    
+    <rect x="25" y="180" width="870" height="52" rx="8" fill="#fdf2e9" />
+    <text x="40" y="214" font-family="sans-serif" font-size="24" fill="#303a36">the client sees nothing for a long time and then everything at once</text>
+  </g>
+
+  
+  <g transform="translate(50, 735)">
+    <rect width="1000" height="230" rx="12" fill="#ffffff" stroke="#b91c1c" stroke-width="2" />
+    <text x="25" y="40" font-family="sans-serif" font-size="26" font-weight="bold" fill="#b91c1c">Proxy read timeout shorter than the generation</text>
+
+    
+    <path d="M 180 95 L 430 95" stroke="#b91c1c" stroke-width="3" fill="none" />
+
+    
+    <g transform="translate(450, 72)">
+      <circle cx="24" cy="24" r="22" fill="#fee2e2" stroke="#b91c1c" stroke-width="2" />
+      <path d="M 14 14 L 34 34 M 34 14 L 14 34" stroke="#b91c1c" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+
+    
+    <path d="M 505 95 L 620 95" stroke="#b91c1c" stroke-width="3" stroke-dasharray="6,6" marker-end="url(#arrow-red)" fill="none" />
+
+    
+    <rect x="25" y="150" width="280" height="50" rx="8" fill="#fee2e2" />
+    <text x="40" y="183" font-family="sans-serif" font-size="24" fill="#303a36">the connection is cut with</text>
+
+    <rect x="320" y="150" width="370" height="50" rx="8" fill="#b91c1c" />
+    <text x="335" y="183" font-family="monospace" font-size="25" font-weight="bold" fill="#ffffff">a 504 on long generations</text>
+  </g>
+
+  
+  <g transform="translate(1080, 95)">
+    <rect width="470" height="870" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <rect x="25" y="24" width="46" height="46" rx="8" fill="#207448" />
+    <path d="M 36 47 L 44 55 L 60 39" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" />
+    <text x="85" y="57" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Long-lived connections</text>
+
+    
+    <g transform="translate(25, 95)">
+      <rect width="420" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <text x="20" y="44" font-family="sans-serif" font-size="24" fill="#303a36">WebSocket, Server-Sent</text>
+      <text x="20" y="74" font-family="sans-serif" font-size="24" fill="#303a36">Events (SSE) and token</text>
+      <text x="20" y="104" font-family="sans-serif" font-size="24" fill="#303a36">streams need care</text>
+    </g>
+
+    
+    <g transform="translate(25, 235)">
+      <rect width="420" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <text x="20" y="46" font-family="sans-serif" font-size="24" fill="#303a36">proxies must not buffer</text>
+      <text x="20" y="78" font-family="sans-serif" font-size="24" fill="#303a36">the stream</text>
+    </g>
+
+    
+    <g transform="translate(25, 355)">
+      <rect width="420" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <text x="20" y="48" font-family="sans-serif" font-size="24" fill="#303a36">raise their read timeouts</text>
+    </g>
+
+    
+    <g transform="translate(25, 455)">
+      <rect width="420" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <text x="20" y="44" font-family="sans-serif" font-size="24" fill="#303a36">heartbeats keep the</text>
+      <text x="20" y="74" font-family="sans-serif" font-size="24" fill="#303a36">connection alive between</text>
+      <text x="20" y="104" font-family="sans-serif" font-size="24" fill="#303a36">messages</text>
+    </g>
+
+    
+    <g transform="translate(25, 595)">
+      <rect width="420" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <text x="20" y="44" font-family="sans-serif" font-size="24" fill="#303a36">chunked transfer</text>
+      <text x="20" y="74" font-family="sans-serif" font-size="24" fill="#303a36">encoding or SSE for token</text>
+      <text x="20" y="104" font-family="sans-serif" font-size="24" fill="#303a36">streams</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(50, 995)">
+    <rect width="1500" height="340" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <text x="35" y="46" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Inference checklist</text>
+
+    
+    
+    <g transform="translate(35, 75)">
+      <circle cx="16" cy="22" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 10 22 L 15 27 L 23 17" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" />
+      <text x="42" y="30" font-family="sans-serif" font-size="24" fill="#303a36">terminate TLS at the gateway;</text>
+    </g>
+
+    
+    <g transform="translate(35, 155)">
+      <circle cx="16" cy="22" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 10 22 L 15 27 L 23 17" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" />
+      <text x="42" y="30" font-family="sans-serif" font-size="24" fill="#303a36">keep HTTP/2 or gRPC connections warm;</text>
+    </g>
+
+    
+    <g transform="translate(35, 235)">
+      <circle cx="16" cy="22" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 10 22 L 15 27 L 23 17" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" />
+      <text x="42" y="30" font-family="sans-serif" font-size="24" fill="#303a36">align idle timeouts across the path;</text>
+    </g>
+
+    
+    <g transform="translate(680, 75)">
+      <circle cx="16" cy="22" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 10 22 L 15 27 L 23 17" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" />
+      <text x="42" y="30" font-family="sans-serif" font-size="24" fill="#303a36">generous read timeouts;</text>
+    </g>
+
+    
+    <g transform="translate(680, 155)">
+      <circle cx="16" cy="22" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 10 22 L 15 27 L 23 17" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" />
+      <text x="42" y="30" font-family="sans-serif" font-size="24" fill="#303a36">disable response buffering for streaming;</text>
+    </g>
+
+    
+    <g transform="translate(680, 235)">
+      <circle cx="16" cy="22" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 10 22 L 15 27 L 23 17" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" />
+      <text x="42" y="16" font-family="sans-serif" font-size="24" fill="#303a36">authenticate with API keys or JWT and OIDC</text>
+      <text x="42" y="48" font-family="sans-serif" font-size="24" fill="#303a36">in addition to TLS</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(50, 1365)">
+    <rect width="1500" height="75" rx="10" fill="#207448" />
+    <text x="750" y="47" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">A chatbot that streams word by word looks frozen if a proxy holds the words back</text>
+  </g>
+</svg>

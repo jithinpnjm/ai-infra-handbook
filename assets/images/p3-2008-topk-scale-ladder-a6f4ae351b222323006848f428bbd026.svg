@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1480" width="1600" height="1480">
+  <title>Top error endpoints: three layers as the log gets bigger</title>
+  <desc>Visual explanation of scaling an error-endpoint counter across three layers: in-memory Counter, heap over counts, and sharding by hash.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1480" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" font-family="system-ui, sans-serif" font-size="48px" font-weight="bold" fill="#207448" text-anchor="middle">Top error endpoints: three layers as the log gets bigger</text>
+
+  
+  
+  <rect x="40" y="105" width="540" height="885" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+
+  
+  <g transform="translate(60, 130)">
+    <rect width="500" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="20" y="18" width="48" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="20" y1="32" x2="68" y2="32" stroke="#207448" stroke-width="3"/>
+    <circle cx="28" cy="25" r="2.5" fill="#207448"/>
+    <circle cx="36" cy="25" r="2.5" fill="#207448"/>
+    
+    
+    <text x="80" y="45" font-family="ui-monospace, monospace" font-size="24px" font-weight="bold" fill="#303a36">parse: 10.0.0.7 - GET /v1/chat 503 12ms</text>
+    
+    
+    <rect x="20" y="90" width="140" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="90" y="125" font-family="system-ui, sans-serif" font-size="24px" fill="#207448" text-anchor="middle" font-weight="bold">address</text>
+
+    <rect x="180" y="90" width="130" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="245" y="125" font-family="system-ui, sans-serif" font-size="24px" fill="#207448" text-anchor="middle" font-weight="bold">status</text>
+
+    <rect x="330" y="90" width="150" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="405" y="125" font-family="system-ui, sans-serif" font-size="24px" fill="#207448" text-anchor="middle" font-weight="bold">latency</text>
+
+    <text x="250" y="195" font-family="system-ui, sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">extract tokens into named fields</text>
+  </g>
+
+  
+  <line x1="310" y1="365" x2="310" y2="445" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g transform="translate(60, 445)">
+    <rect width="500" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 22 25 L 66 25 L 48 55 L 48 80 L 40 80 L 40 55 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <text x="80" y="60" font-family="system-ui, sans-serif" font-size="32px" font-weight="bold" fill="#303a36">keep 5xx only</text>
+    <text x="80" y="105" font-family="system-ui, sans-serif" font-size="24px" fill="#303a36">discard 2xx, 3xx, 4xx responses</text>
+  </g>
+
+  
+  <line x1="310" y1="595" x2="310" y2="675" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g transform="translate(60, 675)">
+    <rect width="500" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="22" y="25" width="46" height="55" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="22" y1="43" x2="68" y2="43" stroke="#207448" stroke-width="3"/>
+    <line x1="22" y1="61" x2="68" y2="61" stroke="#207448" stroke-width="3"/>
+    <circle cx="35" cy="43" r="4" fill="#207448"/>
+    <circle cx="55" cy="61" r="4" fill="#207448"/>
+    <text x="80" y="60" font-family="system-ui, sans-serif" font-size="32px" font-weight="bold" fill="#303a36">count by endpoint</text>
+    <text x="80" y="105" font-family="system-ui, sans-serif" font-size="24px" fill="#303a36">aggregate error occurrences</text>
+  </g>
+
+  
+
+  
+  <g transform="translate(620, 105)">
+    <rect width="940" height="205" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    
+    <circle cx="55" cy="55" r="18" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 55 25 L 55 37 M 55 73 L 55 85 M 25 55 L 37 55 M 73 55 L 85 55 M 34 34 L 42 42 M 68 68 L 76 76 M 34 76 L 42 68 M 68 34 L 76 42" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <text x="95" y="62" font-family="system-ui, sans-serif" font-size="32px" font-weight="bold" fill="#207448">Counter, then take the top k</text>
+    
+    <text x="35" y="125" font-family="system-ui, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="35" dy="0">fine at any log size when the endpoint set is bounded; memory depends on</tspan>
+      <tspan x="35" dy="38">distinct endpoints, not lines</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1090" y1="310" x2="1090" y2="415" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="940" y="338" width="300" height="48" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1090" y="371" font-family="system-ui, sans-serif" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">too many keys to sort</text>
+
+  
+  <g transform="translate(620, 415)">
+    <rect width="940" height="205" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    
+    <polygon points="55,28 30,76 80,76" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="55" cy="45" r="4" fill="#207448"/>
+    <circle cx="43" cy="65" r="4" fill="#207448"/>
+    <circle cx="67" cy="65" r="4" fill="#207448"/>
+
+    <text x="95" y="62" font-family="system-ui, sans-serif" font-size="32px" font-weight="bold" fill="#207448">Heap of size k over the counts</text>
+
+    <text x="35" y="125" font-family="system-ui, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="35" dy="0">keeps only k items; counting is linear in n and the heap step is</tspan>
+      <tspan x="35" dy="38">about n log k in the worst case</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1090" y1="620" x2="1090" y2="725" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="805" y="648" width="570" height="48" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1090" y="681" font-family="system-ui, sans-serif" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">distinct endpoints no longer fit in memory</text>
+
+  
+  <g transform="translate(620, 725)">
+    <rect width="940" height="430" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    
+    <rect x="35" y="25" width="22" height="22" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="18" y="62" width="22" height="22" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="52" y="62" width="22" height="22" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="46" y1="47" x2="29" y2="62" stroke="#207448" stroke-width="2"/>
+    <line x1="46" y1="47" x2="63" y2="62" stroke="#207448" stroke-width="2"/>
+
+    <text x="95" y="62" font-family="system-ui, sans-serif" font-size="32px" font-weight="bold" fill="#207448">Shard by a hash of the endpoint</text>
+
+    
+    <rect x="520" y="28" width="390" height="46" rx="8" fill="#fff7f0" stroke="#db8129" stroke-width="3"/>
+    <text x="715" y="60" font-family="system-ui, sans-serif" font-size="24px" font-weight="bold" fill="#db8129" text-anchor="middle">my reasoning, not a Nebius answer</text>
+
+    
+    <g transform="translate(30, 110)">
+      <rect width="265" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="132" y="45" font-family="system-ui, sans-serif" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">worker 1</text>
+      <text x="132" y="85" font-family="system-ui, sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">keys hash % 3 == 0</text>
+    </g>
+
+    <g transform="translate(337, 110)">
+      <rect width="265" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="132" y="45" font-family="system-ui, sans-serif" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">worker 2</text>
+      <text x="132" y="85" font-family="system-ui, sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">keys hash % 3 == 1</text>
+    </g>
+
+    <g transform="translate(645, 110)">
+      <rect width="265" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="132" y="45" font-family="system-ui, sans-serif" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">worker 3</text>
+      <text x="132" y="85" font-family="system-ui, sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">keys hash % 3 == 2</text>
+    </g>
+
+    
+    <text x="470" y="258" font-family="system-ui, sans-serif" font-size="24px" font-style="italic" fill="#303a36" text-anchor="middle">each holding its share of keys</text>
+
+    
+    <line x1="162" y1="270" x2="360" y2="330" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+    <line x1="470" y1="270" x2="470" y2="330" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+    <line x1="777" y1="270" x2="580" y2="330" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+    
+    <g transform="translate(200, 335)">
+      <rect width="540" height="70" rx="10" fill="#207448"/>
+      <text x="270" y="45" font-family="system-ui, sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">merge the per-worker top k lists</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(40, 1195)">
+    <rect width="1520" height="145" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" filter="url(#shadow)"/>
+    
+    <path d="M 45 45 L 75 45 L 75 75 L 45 75 Z" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="60" cy="55" r="4" fill="#207448"/>
+    <line x1="60" y1="59" x2="60" y2="67" stroke="#207448" stroke-width="3"/>
+    <text x="95" y="55" font-family="system-ui, sans-serif" font-size="26px" font-weight="bold" fill="#207448">Tie rule callout:</text>
+    <text x="95" y="95" font-family="system-ui, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="95" dy="0">ties go to the alphabetically smaller endpoint, key = negative count then name via heapq.nsmallest; most_common gives first-seen order</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 1370)">
+    <rect width="1520" height="75" rx="10" fill="#207448"/>
+    <text x="760" y="47" font-family="system-ui, sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">When the parameters change, say what assumption in your solution just broke.</text>
+  </g>
+
+</svg>

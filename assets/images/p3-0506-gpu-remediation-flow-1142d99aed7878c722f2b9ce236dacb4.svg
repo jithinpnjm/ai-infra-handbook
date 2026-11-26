@@ -1,0 +1,207 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Safe GPU fault controller: the gpu7 walk-through</title>
+  <desc>Decision tree and safety invariants for automated GPU node remediation on node gpu7</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5" />
+
+  
+  <text x="70" y="75" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#207448">Safe GPU fault controller: the gpu7 walk-through</text>
+
+  
+
+  
+  <g id="start-node">
+    <rect x="70" y="130" width="950" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(95, 157)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="56" height="56" rx="6" />
+      <path d="M14 0 V-8 M28 0 V-8 M42 0 V-8 M14 56 V64 M28 56 V64 M42 56 V64" />
+      <path d="M0 14 H-8 M0 28 H-8 M0 42 H-8 M56 14 H64 M56 28 H64 M56 42 H64" />
+      <circle cx="28" cy="28" r="10" fill="#207448" />
+    </g>
+    
+    <text x="180" y="177" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">Node gpu7 reports Xid errors for several minutes in a row</text>
+    <text x="180" y="213" font-family="sans-serif" font-size="24px" fill="#303a36">(sustained, not one blip)</text>
+  </g>
+
+  
+  <line x1="350" y1="240" x2="350" y2="280" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <g id="decision-1">
+    <rect x="70" y="280" width="560" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(95, 320)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="28" cy="28" r="26" />
+      <path d="M28 28 L42 16" stroke-linecap="round" />
+      <circle cx="28" cy="28" r="4" fill="#207448" />
+    </g>
+    <text x="175" y="328" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">Global budget free?</text>
+    <text x="175" y="372" font-family="monospace" font-size="24px" fill="#207448">(max_concurrent_cordons)</text>
+  </g>
+
+  
+  <line x1="630" y1="347" x2="700" y2="347" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+  <rect x="643" y="332" width="44" height="30" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="665" y="354" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">No</text>
+
+  
+  <g id="branch-no-budget">
+    <rect x="700" y="280" width="320" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(720, 323)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="25" cy="25" r="23" />
+      <path d="M16 25 H34" stroke-linecap="round" />
+    </g>
+    <text x="780" y="328" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Record a condition</text>
+    <text x="780" y="362" font-family="sans-serif" font-size="24px" fill="#303a36">on gpu7: waiting for</text>
+    <text x="780" y="396" font-family="sans-serif" font-size="24px" fill="#303a36">budget, stop</text>
+  </g>
+
+  
+  <line x1="350" y1="415" x2="350" y2="470" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+  <rect x="325" y="428" width="50" height="30" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="350" y="450" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">Yes</text>
+
+  
+  <g id="step-cordon">
+    <rect x="70" y="470" width="560" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(95, 510)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="8" y="22" width="40" height="30" rx="4" />
+      <path d="M18 22 V14 A10 10 0 0 1 38 14 V22" />
+    </g>
+    <text x="175" y="520" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">Cordon node, annotate the</text>
+    <text x="175" y="556" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">reason, create drain request</text>
+  </g>
+
+  
+  <line x1="350" y1="605" x2="350" y2="655" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <g id="decision-2">
+    <rect x="70" y="655" width="560" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(95, 692)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M28 4 L6 14 V28 C6 44 28 54 28 54 C28 54 50 44 50 28 V14 Z" />
+      <path d="M28 20 V32 M28 38 V40" stroke-linecap="round" />
+    </g>
+    <text x="175" y="708" font-family="sans-serif" font-size="27px" font-weight="bold" fill="#303a36">Drain blocked by a</text>
+    <text x="175" y="748" font-family="sans-serif" font-size="27px" font-weight="bold" fill="#303a36">PodDisruptionBudget?</text>
+  </g>
+
+  
+  <line x1="630" y1="720" x2="700" y2="720" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+  <rect x="643" y="705" width="50" height="30" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="668" y="727" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">Yes</text>
+
+  
+  <g id="branch-blocked">
+    <rect x="700" y="655" width="320" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(720, 695)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="25" cy="25" r="23" />
+      <polyline points="25,12 25,25 34,30" stroke-linecap="round" />
+    </g>
+    <text x="780" y="710" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">wait and report,</text>
+    <text x="780" y="748" font-family="sans-serif" font-size="24px" fill="#303a36">do not force eviction</text>
+  </g>
+
+  
+  <line x1="350" y1="785" x2="350" y2="840" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+  <rect x="328" y="798" width="44" height="30" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="350" y="820" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">No</text>
+
+  
+  <g id="step-drain-proceeds">
+    <rect x="70" y="840" width="560" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(95, 858)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="27" cy="27" r="24" />
+      <polyline points="17,27 24,34 38,19" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="175" y="897" font-family="sans-serif" font-size="27px" font-weight="bold" fill="#303a36">drain proceeds</text>
+  </g>
+
+  
+  <line x1="350" y1="930" x2="350" y2="985" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <g id="step-uncordon">
+    <rect x="70" y="985" width="560" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(95, 1022)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="6" y="8" width="44" height="46" rx="5" />
+      <path d="M18 8 V4 H38 V8" />
+      <path d="M16 32 L24 40 L40 22" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="175" y="1038" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">Uncordon only after a</text>
+    <text x="175" y="1076" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">health-check Job passes</text>
+  </g>
+
+
+  
+
+  
+  <g id="callout-blast-radius">
+    <rect x="1070" y="130" width="460" height="235" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(1095, 155)" stroke="#db8129" stroke-width="3" fill="none">
+      <path d="M28 4 L6 14 V28 C6 44 28 54 28 54 C28 54 50 44 50 28 V14 Z" fill="#fff5ec" />
+      <path d="M28 18 V34 M28 40 V42" stroke-linecap="round" />
+    </g>
+    <text x="1170" y="185" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#db8129">Blast radius: if 80</text>
+    <text x="1095" y="235" font-family="sans-serif" font-size="24px" fill="#303a36">percent of 500 nodes alert</text>
+    <text x="1095" y="275" font-family="sans-serif" font-size="24px" fill="#303a36">at once (400 nodes) the</text>
+    <text x="1095" y="315" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">budget stops a total outage</text>
+  </g>
+
+  
+  <g id="callout-idempotent">
+    <rect x="1070" y="395" width="460" height="225" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1095, 420)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M12 28 A16 16 0 1 1 28 44" stroke-linecap="round" />
+      <polyline points="22,44 28,44 28,38" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="28" cy="28" r="6" />
+    </g>
+    <text x="1170" y="450" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">State-Aware Reconcile</text>
+    <text x="1095" y="495" font-family="sans-serif" font-size="24px" fill="#303a36">Every pass starts from the</text>
+    <text x="1095" y="535" font-family="sans-serif" font-size="24px" fill="#303a36">cluster as it is now; if the</text>
+    <text x="1095" y="575" font-family="sans-serif" font-size="24px" fill="#303a36">cordon exists do nothing new</text>
+  </g>
+
+  
+  <g id="callout-stateless">
+    <rect x="1070" y="650" width="460" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1095, 675)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M44 28 A16 16 0 1 1 38 16" stroke-linecap="round" />
+      <polyline points="38,8 38,16 46,16" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="1170" y="705" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">Stateless Recovery</text>
+    <text x="1095" y="750" font-family="sans-serif" font-size="24px" fill="#303a36">Restart halfway is safe, no</text>
+    <text x="1095" y="790" font-family="sans-serif" font-size="24px" fill="#303a36">memory of earlier actions</text>
+  </g>
+
+  
+  <g id="callout-override">
+    <rect x="1070" y="860" width="460" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1095, 885)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="6" y="16" width="44" height="24" rx="12" />
+      <circle cx="18" cy="28" r="7" fill="#207448" />
+    </g>
+    <text x="1170" y="915" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">Manual Kill-Switch</text>
+    <text x="1095" y="960" font-family="sans-serif" font-size="24px" fill="#303a36">Keep a flag or label that</text>
+    <text x="1095" y="1000" font-family="sans-serif" font-size="24px" fill="#303a36">switches automation off</text>
+  </g>
+
+</svg>

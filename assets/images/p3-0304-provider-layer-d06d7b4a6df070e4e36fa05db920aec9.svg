@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
+  <title>The typed provider layer: enum, frozen dataclass, Protocol and a fake</title>
+  <desc>Visual explanation of the typed provider architecture using Python enums, frozen dataclasses, protocols, and test fakes along with twelve core design habits.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129" />
+    </marker>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="106%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#207448" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1500" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="40" font-weight="bold" fill="#207448">The typed provider layer: enum, frozen dataclass, Protocol and a fake</text>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="120" y="75" width="1360" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <path d="M 145 92 L 157 92 L 157 110 L 145 110 Z M 163 92 L 175 92 L 175 110 L 163 110 Z" fill="none" stroke="#207448" stroke-width="2.5" />
+    <text x="800" y="110" text-anchor="middle" font-family="'SFMono-Regular', Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">State(StrEnum): PENDING, RUNNING, STOPPED</text>
+  </g>
+
+  
+  <line x1="800" y1="127" x2="800" y2="147" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="80" y="149" width="1440" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="105" y="165" width="22" height="20" rx="3" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 112 165 L 112 160 C 112 157 120 157 120 160 L 120 165" fill="none" stroke="#207448" stroke-width="2" />
+    <text x="800" y="184" text-anchor="middle" font-family="'SFMono-Regular', Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">Instance: frozen, slots dataclass with id, name, state, ip: str | None = None</text>
+  </g>
+
+  
+  <line x1="800" y1="201" x2="800" y2="221" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="80" y="223" width="1440" height="84" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <circle cx="115" cy="265" r="14" fill="none" stroke="#207448" stroke-width="2.5" stroke-dasharray="4 3" />
+    <text x="800" y="256" text-anchor="middle" font-family="'SFMono-Regular', Consolas, monospace" font-size="24" font-weight="bold" fill="#207448"><tspan x="800" dy="0">Compute(Protocol): list_instances(project) -&gt; list[Instance]; </tspan><tspan x="800" dy="30">start(project, instance_id) -&gt; None</tspan></text>
+  </g>
+
+  
+  <path d="M 450 307 L 450 338" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-green)" />
+  <path d="M 1150 307 L 1150 338" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-orange)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="80" y="340" width="700" height="76" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <path d="M 120 382 C 115 382 110 377 110 372 C 110 367 115 363 120 363 C 122 357 128 353 135 353 C 143 353 150 358 152 365 C 156 365 160 368 160 373 C 160 378 156 382 150 382 Z" fill="none" stroke="#207448" stroke-width="2.5" />
+    <text x="440" y="386" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">a real cloud client</text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="820" y="340" width="700" height="76" rx="10" fill="#fffbf5" stroke="#db8129" stroke-width="3" />
+    <circle cx="855" cy="378" r="14" fill="none" stroke="#db8129" stroke-width="2.5" />
+    <path d="M 855 369 L 855 378 L 862 382" fill="none" stroke="#db8129" stroke-width="2.5" />
+    <text x="1180" y="371" text-anchor="middle" font-family="'SFMono-Regular', Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36"><tspan x="1180" dy="0">FakeCompute: instances and </tspan><tspan x="1180" dy="28">started lists, no inheritance</tspan></text>
+  </g>
+
+  
+  <path d="M 450 416 L 450 436" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 1150 416 L 1150 436" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="80" y="438" width="1440" height="126" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <path d="M 105 458 L 125 458 L 125 478 L 105 478 Z" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 110 468 L 120 468" stroke="#207448" stroke-width="2" />
+    <text x="800" y="468" text-anchor="middle" font-family="'SFMono-Regular', Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36"><tspan x="800" dy="0">ensure_running(c: Compute, project, names: set[str]) -&gt; list[str]: </tspan><tspan x="800" dy="28">for inst in c.list_instances(project): </tspan><tspan x="800" dy="28">if inst.name in names and inst.state is not State.RUNNING: </tspan><tspan x="800" dy="28">c.start(project, inst.id); started.append(inst.name)</tspan></text>
+  </g>
+
+  
+  <line x1="800" y1="564" x2="800" y2="580" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="80" y="582" width="1440" height="98" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <path d="M 110 635 L 120 645 L 135 625" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="800" y="612" text-anchor="middle" font-family="'SFMono-Regular', Consolas, monospace" font-size="24" font-weight="bold" fill="#207448"><tspan x="800" dy="0">FakeCompute([Instance(1, a, STOPPED), Instance(2, b, RUNNING)]); </tspan><tspan x="800" dy="28">ensure_running(fake, p, {a, b}) == [a] and fake.started == [1]: </tspan><tspan x="800" dy="28">only the stopped instance a needs to start, and no cloud API is touched</tspan></text>
+  </g>
+
+  
+  <rect x="60" y="694" width="1480" height="716" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="85" y="710" width="695" height="102" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="432" y="752" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="432" dy="0">1 functions until state or </tspan><tspan x="432" dy="28">polymorphism appears</tspan></text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="820" y="710" width="695" height="102" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1167" y="752" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="1167" dy="0">7 avoid deep inheritance: </tspan><tspan x="1167" dy="28">one or two levels</tspan></text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="85" y="826" width="695" height="102" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="432" y="868" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="432" dy="0">2 separate IO from logic: </tspan><tspan x="432" dy="28">functional core, imperative shell</tspan></text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="820" y="826" width="695" height="102" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1167" y="868" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="1167" dy="0">8 enums for fixed choices; </tspan><tspan x="1167" dy="28">auto(), Flag for bit flags</tspan></text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="85" y="942" width="695" height="102" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="432" y="972" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="432" dy="0">3 make illegal states unrepresentable: </tspan><tspan x="432" dy="27">enums, Literals, frozen dataclasses, </tspan><tspan x="432" dy="27">validation at construction</tspan></text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="820" y="942" width="695" height="102" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1167" y="1000" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">9 useful __repr__ and log with %r</text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="85" y="1058" width="695" height="102" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="432" y="1100" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="432" dy="0">4 small explicit interfaces: depend on a </tspan><tspan x="432" dy="28">two-method Protocol and inject it</tspan></text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="820" y="1058" width="695" height="102" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1167" y="1116" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">10 no global mutable singletons</text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="85" y="1174" width="695" height="102" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="432" y="1216" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="432" dy="0">5 immutable configuration and </tspan><tspan x="432" dy="28">value objects</tspan></text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="820" y="1174" width="695" height="102" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1167" y="1216" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="1167" dy="0">11 docstrings and types; deprecate with </tspan><tspan x="1167" dy="28">warnings.warn(..., DeprecationWarning)</tspan></text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="85" y="1290" width="695" height="102" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="432" y="1332" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="432" dy="0">6 errors are part of the API: </tspan><tspan x="432" dy="28">MyOpsError with NodeNotFound beneath it</tspan></text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="820" y="1290" width="695" height="102" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1167" y="1320" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="1167" dy="0">12 SOLID: one responsibility, </tspan><tspan x="1167" dy="27">registries or plugins, contracts, </tspan><tspan x="1167" dy="27">Protocols, injection</tspan></text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="60" y="1425" width="1480" height="55" rx="10" fill="#207448" />
+    <text x="800" y="1461" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Pass the collaborator in, and the test needs no cloud</text>
+  </g>
+</svg>

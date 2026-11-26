@@ -1,0 +1,222 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1230" width="1600" height="1230">
+  <title>A main function maps each class of failure to one exit code</title>
+  <desc>Flowchart mapping main(argv) through arg parsing and four failure/success classes to distinct exit codes.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1230" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#207448">A main function maps each class of failure to one exit code</text>
+  <text x="800" y="98" text-anchor="middle" font-family="sans-serif" font-size="26px" fill="#4a5c54">Expected errors get a message, bugs get a traceback.</text>
+
+  
+
+  
+  <rect x="65" y="125" width="260" height="72" rx="36" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="85" y="143" width="34" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="85" y1="154" x2="119" y2="154" stroke="#207448" stroke-width="2"/>
+  <polyline points="92,163 97,167 92,171" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="212" y="171" text-anchor="middle" font-family="monospace" font-size="28px" font-weight="bold" fill="#207448">main(argv)</text>
+
+  
+  <line x1="195" y1="197" x2="195" y2="225" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="65" y="235" width="260" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(100, 283)">
+    <circle cx="0" cy="0" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="0" cy="0" r="5" fill="#207448"/>
+    <line x1="0" y1="-19" x2="0" y2="-14" stroke="#207448" stroke-width="3"/>
+    <line x1="0" y1="14" x2="0" y2="19" stroke="#207448" stroke-width="3"/>
+    <line x1="-19" y1="0" x2="-14" y2="0" stroke="#207448" stroke-width="3"/>
+    <line x1="14" y1="0" x2="19" y2="0" stroke="#207448" stroke-width="3"/>
+    <line x1="-13" y1="-13" x2="-10" y2="-10" stroke="#207448" stroke-width="3"/>
+    <line x1="10" y1="10" x2="13" y2="13" stroke="#207448" stroke-width="3"/>
+    <line x1="13" y1="-13" x2="10" y2="-10" stroke="#207448" stroke-width="3"/>
+    <line x1="-10" y1="10" x2="-13" y2="13" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="212" y="274" text-anchor="middle" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">parse_args</text>
+  <text x="212" y="306" text-anchor="middle" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">and run</text>
+
+  
+  <path d="M 325 283 L 360 283 L 360 950" fill="none" stroke="#207448" stroke-width="3.5"/>
+
+  
+  <line x1="360" y1="380" x2="390" y2="380" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <polygon points="400,380 435,325 765,325 800,380 765,435 435,435" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(600, 348)">
+    <path d="M -12,-10 L 0,-15 L 12,-10 C 12,4 0,13 0,13 C 0,13 -12,4 -12,-10 Z" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="0" y1="-8" x2="0" y2="1" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="0" cy="6" r="1.5" fill="#207448"/>
+  </g>
+  <text x="600" y="385" text-anchor="middle" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448">OpsError</text>
+  <text x="600" y="416" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">(expected, user-facing)</text>
+
+  
+  <line x1="800" y1="380" x2="846" y2="380" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="860" y="325" width="400" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(905, 380)">
+    <rect x="-16" y="-20" width="32" height="40" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="-8" y1="-10" x2="8" y2="-10" stroke="#207448" stroke-width="2"/>
+    <line x1="-8" y1="-2" x2="8" y2="-2" stroke="#207448" stroke-width="2"/>
+    <line x1="-8" y1="6" x2="4" y2="6" stroke="#207448" stroke-width="2"/>
+  </g>
+  <text x="1080" y="368" text-anchor="middle" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448">log.error,</text>
+  <text x="1080" y="404" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">message only</text>
+
+  
+  <line x1="1260" y1="380" x2="1306" y2="380" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1320" y="325" width="220" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <polyline points="1355,385 1370,370 1355,355" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1445" y="388" text-anchor="middle" font-family="monospace" font-size="30px" font-weight="bold" fill="#207448">return 2</text>
+
+  
+  <line x1="360" y1="550" x2="390" y2="550" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <polygon points="400,550 435,495 765,495 800,550 765,605 435,605" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(600, 526)">
+    <rect x="-20" y="-12" width="40" height="24" rx="4" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="-12" y1="-4" x2="-6" y2="-4" stroke="#207448" stroke-width="2"/>
+    <line x1="0" y1="-4" x2="6" y2="-4" stroke="#207448" stroke-width="2"/>
+    <line x1="-8" y1="4" x2="4" y2="4" stroke="#207448" stroke-width="2"/>
+  </g>
+  <text x="600" y="574" text-anchor="middle" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448">KeyboardInterrupt</text>
+
+  
+  <line x1="800" y1="550" x2="846" y2="550" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="860" y="495" width="400" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(905, 550)">
+    <rect x="-16" y="-20" width="32" height="40" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <polygon points="0,-10 -7,5 7,5" fill="none" stroke="#207448" stroke-width="2"/>
+  </g>
+  <text x="1080" y="538" text-anchor="middle" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448">log.warning</text>
+  <text x="1080" y="574" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">interrupted</text>
+
+  
+  <line x1="1260" y1="550" x2="1306" y2="550" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1320" y="495" width="220" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <polyline points="1355,555 1370,540 1355,525" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1445" y="558" text-anchor="middle" font-family="monospace" font-size="30px" font-weight="bold" fill="#207448">return 130</text>
+
+  
+  <line x1="360" y1="720" x2="390" y2="720" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+
+  
+  <polygon points="400,720 435,665 765,665 800,720 765,775 435,775" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  
+  <g transform="translate(600, 692)">
+    <ellipse cx="0" cy="2" rx="9" ry="12" fill="none" stroke="#db8129" stroke-width="2.5"/>
+    <line x1="-16" y1="-2" x2="16" y2="-2" stroke="#db8129" stroke-width="2"/>
+    <line x1="-15" y1="6" x2="15" y2="6" stroke="#db8129" stroke-width="2"/>
+    <line x1="-5" y1="-10" x2="-10" y2="-17" stroke="#db8129" stroke-width="2"/>
+    <line x1="5" y1="-10" x2="10" y2="-17" stroke="#db8129" stroke-width="2"/>
+  </g>
+  <text x="600" y="728" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#db8129">Any other Exception</text>
+  <text x="600" y="758" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">(a bug)</text>
+
+  
+  <line x1="800" y1="720" x2="846" y2="720" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="860" y="665" width="400" height="110" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  
+  <g transform="translate(905, 720)">
+    <rect x="-16" y="-20" width="32" height="40" rx="3" fill="none" stroke="#db8129" stroke-width="2.5"/>
+    <path d="M -8,5 L -2,-4 L 3,1 L 8,-8" fill="none" stroke="#db8129" stroke-width="2"/>
+  </g>
+  <text x="1080" y="708" text-anchor="middle" font-family="monospace" font-size="26px" font-weight="bold" fill="#db8129">log.exception,</text>
+  <text x="1080" y="744" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">full traceback</text>
+
+  
+  <line x1="1260" y1="720" x2="1306" y2="720" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="1320" y="665" width="220" height="110" rx="12" fill="#fff8f0" stroke="#db8129" stroke-width="3"/>
+  <polyline points="1355,725 1370,710 1355,695" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1445" y="728" text-anchor="middle" font-family="monospace" font-size="30px" font-weight="bold" fill="#db8129">return 1</text>
+
+  
+  <line x1="360" y1="950" x2="390" y2="950" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="400" y="895" width="280" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(440, 950)">
+    <rect x="-16" y="-20" width="32" height="40" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <polyline points="-9,-8 -5,-4 3,-13" fill="none" stroke="#207448" stroke-width="2"/>
+    <polyline points="-9,6 -5,10 3,1" fill="none" stroke="#207448" stroke-width="2"/>
+  </g>
+  <text x="560" y="958" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Results list</text>
+
+  
+  <line x1="680" y1="950" x2="726" y2="950" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <polygon points="840,880 940,950 840,1020 740,950" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <circle cx="840" cy="922" r="3" fill="#207448"/>
+  <path d="M 834,910 C 834,904 846,904 846,911 C 846,916 840,917 840,920" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="840" y="958" text-anchor="middle" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">any failed?</text>
+
+  
+  <path d="M 840 880 L 840 860 L 1026 860" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  
+  <rect x="900" y="842" width="70" height="36" rx="18" fill="#207448"/>
+  <text x="935" y="867" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">yes</text>
+
+  
+  <rect x="1040" y="820" width="500" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1075, 860)">
+    <circle cx="0" cy="0" r="14" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="-5" y1="-5" x2="5" y2="5" stroke="#207448" stroke-width="2.5"/>
+    <line x1="5" y1="-5" x2="-5" y2="5" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <text x="1305" y="868" text-anchor="middle" font-family="monospace" font-size="25px" font-weight="bold" fill="#207448">log each failure, return 1</text>
+
+  
+  <path d="M 840 1020 L 840 1040 L 1206 1040" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  
+  <rect x="980" y="1022" width="64" height="36" rx="18" fill="#207448"/>
+  <text x="1012" y="1047" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">no</text>
+
+  
+  <rect x="1220" y="995" width="260" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <polyline points="1260,1045 1275,1030 1260,1015" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1365" y="1044" text-anchor="middle" font-family="monospace" font-size="30px" font-weight="bold" fill="#207448">return 0</text>
+
+  
+  <rect x="65" y="1120" width="1475" height="74" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(100, 1157)">
+    <polyline points="-12,-10 0,0 -12,10" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="8" y1="10" x2="22" y2="10" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+  <text x="820" y="1166" text-anchor="middle" font-family="monospace" font-size="28px" font-weight="bold" fill="#207448">raise SystemExit(main()) at the entry point.</text>
+</svg>

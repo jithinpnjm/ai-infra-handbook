@@ -1,0 +1,253 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The canary ladder moves traffic up in steps, and each step must pass its gates</title>
+  <desc>Visual infographic showing the canary deployment progression through latency and quality evaluation gates toward promotion, holding, or rollback.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#db8129" />
+    </marker>
+    <marker id="arrow-grey" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#788880" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="60" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">The canary ladder moves traffic up in steps,</text>
+  <text x="60" y="105" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">and each step must pass its gates</text>
+
+  
+  
+  <g id="latency-gates">
+    <rect x="60" y="145" width="660" height="220" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(85, 170)">
+      <circle cx="26" cy="26" r="22" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 12 36 A 18 18 0 1 1 40 36" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="26" y1="26" x2="35" y2="16" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <circle cx="26" cy="26" r="4" fill="#207448" />
+    </g>
+    <text x="150" y="206" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Latency gates</text>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="90" y="262">canary TTFT p99 and ITL p99 against baseline</tspan>
+      <tspan x="90" y="312">ratio limit</tspan>
+    </text>
+  </g>
+
+  
+  <g id="quality-gates">
+    <rect x="760" y="145" width="660" height="220" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(785, 170)">
+      <path d="M 26 4 L 44 12 C 44 28 36 42 26 48 C 16 42 8 28 8 12 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+      <polyline points="18 24 24 30 35 18" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="850" y="206" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Quality gates</text>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="790" y="255">eval score</tspan>
+      <tspan x="790" y="295">finish_reason length share</tspan>
+      <tspan x="790" y="335">error rate</tspan>
+    </text>
+  </g>
+
+  
+  <g id="arrow-hard-failure">
+    <path d="M 1420 255 L 1510 255 L 1510 865 L 1435 865" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#arrow-orange)" />
+    
+    <rect x="1445" y="525" width="130" height="68" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+      <tspan x="1510" y="555">hard</tspan>
+      <tspan x="1510" y="581">failure</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="stage-1">
+    <rect x="60" y="440" width="160" height="220" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="140" cy="485" r="22" fill="#207448" />
+    <text x="140" y="493" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="140" y="560">Shadow</tspan>
+      <tspan x="140" y="592">traffic</tspan>
+    </text>
+    
+    <rect x="75" y="630" width="130" height="10" rx="5" fill="#e8f1ea" />
+  </g>
+
+  
+  <g id="gate-1-2">
+    <line x1="220" y1="565" x2="285" y2="565" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <polygon points="260,553 272,565 260,577 248,565" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="222" y="488" width="76" height="54" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="260" y="512">gates</tspan>
+      <tspan x="260" y="536">pass</tspan>
+    </text>
+  </g>
+
+  
+  <g id="stage-2">
+    <rect x="300" y="440" width="160" height="220" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="380" cy="485" r="22" fill="#207448" />
+    <text x="380" y="493" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="380" y="575" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">1 percent</text>
+    
+    <rect x="315" y="630" width="130" height="10" rx="5" fill="#e8f1ea" />
+    <rect x="315" y="630" width="15" height="10" rx="5" fill="#207448" />
+  </g>
+
+  
+  <g id="gate-2-3">
+    <line x1="460" y1="565" x2="525" y2="565" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <polygon points="500,553 512,565 500,577 488,565" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="462" y="488" width="76" height="54" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="500" y="512">gates</tspan>
+      <tspan x="500" y="536">pass</tspan>
+    </text>
+  </g>
+
+  
+  <g id="stage-3">
+    <rect x="540" y="440" width="160" height="220" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="620" cy="485" r="22" fill="#207448" />
+    <text x="620" y="493" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="620" y="575" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">5 percent</text>
+    
+    <rect x="555" y="630" width="130" height="10" rx="5" fill="#e8f1ea" />
+    <rect x="555" y="630" width="30" height="10" rx="5" fill="#207448" />
+  </g>
+
+  
+  <g id="gate-3-4">
+    <line x1="700" y1="565" x2="765" y2="565" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <polygon points="740,553 752,565 740,577 728,565" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="702" y="488" width="76" height="54" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="740" y="512">gates</tspan>
+      <tspan x="740" y="536">pass</tspan>
+    </text>
+  </g>
+
+  
+  <g id="stage-4">
+    <rect x="780" y="440" width="160" height="220" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="860" cy="485" r="22" fill="#207448" />
+    <text x="860" y="493" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="860" y="575" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">25 percent</text>
+    
+    <rect x="795" y="630" width="130" height="10" rx="5" fill="#e8f1ea" />
+    <rect x="795" y="630" width="55" height="10" rx="5" fill="#207448" />
+  </g>
+
+  
+  <g id="gate-4-5">
+    <line x1="940" y1="565" x2="1005" y2="565" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <polygon points="980,553 992,565 980,577 968,565" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="942" y="488" width="76" height="54" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="980" y="512">gates</tspan>
+      <tspan x="980" y="536">pass</tspan>
+    </text>
+  </g>
+
+  
+  <g id="stage-5">
+    <rect x="1020" y="440" width="160" height="220" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="1100" cy="485" r="22" fill="#207448" />
+    <text x="1100" y="493" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    <text x="1100" y="575" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">50 percent</text>
+    
+    <rect x="1035" y="630" width="130" height="10" rx="5" fill="#e8f1ea" />
+    <rect x="1035" y="630" width="85" height="10" rx="5" fill="#207448" />
+  </g>
+
+  
+  <g id="gate-5-6">
+    <line x1="1180" y1="565" x2="1245" y2="565" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <polygon points="1220,553 1232,565 1220,577 1208,565" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="1182" y="488" width="76" height="54" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="1220" y="512">gates</tspan>
+      <tspan x="1220" y="536">pass</tspan>
+    </text>
+  </g>
+
+  
+  <g id="stage-6">
+    <rect x="1260" y="440" width="160" height="220" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="1340" cy="485" r="22" fill="#207448" />
+    <text x="1340" y="493" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    <text x="1340" y="575" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">100 percent</text>
+    
+    <rect x="1275" y="630" width="130" height="10" rx="5" fill="#207448" />
+  </g>
+
+  
+  <g id="arrow-hold-loop">
+    <line x1="620" y1="760" x2="620" y2="675" stroke="#788880" stroke-width="3.5" marker-end="url(#arrow-grey)" />
+    
+    <rect x="460" y="690" width="320" height="44" rx="8" fill="#ffffff" stroke="#788880" stroke-width="2" />
+    <text x="620" y="721" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#4a5550" text-anchor="middle">wait for more evidence</text>
+  </g>
+
+  
+  
+  <g id="promote-box">
+    <rect x="60" y="760" width="420" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(85, 785)">
+      <circle cx="26" cy="26" r="22" fill="none" stroke="#207448" stroke-width="3.5" />
+      <polyline points="16 26 23 33 36 18" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="150" y="820" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Promote</text>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" y="878">all gates passed,</tspan>
+      <tspan x="85" y="914">enough traffic</tspan>
+    </text>
+  </g>
+
+  
+  <g id="hold-box">
+    <rect x="530" y="760" width="420" height="210" rx="14" fill="#f0f2f1" stroke="#788880" stroke-width="2.5" />
+    
+    <g transform="translate(555, 785)">
+      <circle cx="26" cy="26" r="22" fill="none" stroke="#788880" stroke-width="3.5" />
+      <line x1="20" y1="17" x2="20" y2="35" stroke="#788880" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="32" y1="17" x2="32" y2="35" stroke="#788880" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="620" y="820" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#4a5550">Hold</text>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="555" y="878">marginal results or</tspan>
+      <tspan x="555" y="914">too few requests</tspan>
+    </text>
+  </g>
+
+  
+  <g id="rollback-box">
+    <rect x="1000" y="760" width="420" height="210" rx="14" fill="#fbf0e4" stroke="#db8129" stroke-width="2.5" />
+    
+    <g transform="translate(1025, 785)">
+      <circle cx="26" cy="26" r="22" fill="none" stroke="#db8129" stroke-width="3.5" />
+      <path d="M 34 32 C 34 23 27 18 19 20 L 14 22" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+      <polyline points="20 16 14 22 20 28" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="1090" y="820" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#db8129">Rollback</text>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1025" y="878">hard failure such as</tspan>
+      <tspan x="1025" y="914">quality drop or zero tokens</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="60" y="1040" width="1480" height="90" rx="12" fill="#207448" />
+    <text x="800" y="1096" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Promote only on a clean pass with enough traffic, hold on thin data, roll back on a hard signal.</text>
+  </g>
+</svg>

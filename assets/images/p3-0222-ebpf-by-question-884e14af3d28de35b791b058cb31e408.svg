@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1470" width="1600" height="1470">
+  <title>BCC and bpftrace tools by question</title>
+  <desc>Infographic mapping network debugging questions to BCC and bpftrace tools, one-liners, side notes, and perf workflow.</desc>
+
+  
+  <rect width="1600" height="1470" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">BCC and bpftrace tools by question</text>
+
+  
+  <g id="table-container">
+    <rect x="60" y="95" width="1480" height="455" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <line x1="530" y1="95" x2="530" y2="550" stroke="#e0e8e2" stroke-width="2"/>
+
+    
+    <rect x="61" y="96" width="1478" height="64" fill="#ffffff"/>
+    <text x="85" y="136" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Which sessions exist, how long, how much?</text>
+    <text x="550" y="123" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">tcplife</tspan>: one line per TCP session with PID, comm, addresses,
+    </text>
+    <text x="550" y="150" font-family="sans-serif" font-size="24" fill="#303a36">TX_KB, RX_KB, duration</text>
+    <line x1="60" y1="160" x2="1540" y2="160" stroke="#e0e8e2" stroke-width="1.5"/>
+
+    
+    <rect x="61" y="161" width="1478" height="54" fill="#f9fbf9"/>
+    <text x="85" y="196" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Who sends and receives most?</text>
+    <text x="550" y="196" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">tcptop</tspan>: top TCP senders and receivers by process
+    </text>
+    <line x1="60" y1="215" x2="1540" y2="215" stroke="#e0e8e2" stroke-width="1.5"/>
+
+    
+    <rect x="61" y="216" width="1478" height="54" fill="#ffffff"/>
+    <text x="85" y="251" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Who connects where?</text>
+    <text x="550" y="251" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">tcpconnect</tspan> (outbound connect), <tspan font-family="monospace" font-weight="bold">tcpaccept</tspan> (inbound accept)
+    </text>
+    <line x1="60" y1="270" x2="1540" y2="270" stroke="#e0e8e2" stroke-width="1.5"/>
+
+    
+    <rect x="61" y="271" width="1478" height="54" fill="#f9fbf9"/>
+    <text x="85" y="306" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">How slow is the handshake?</text>
+    <text x="550" y="306" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">tcpconnlat</tspan>: time from connect() to established by process
+    </text>
+    <line x1="60" y1="325" x2="1540" y2="325" stroke="#e0e8e2" stroke-width="1.5"/>
+
+    
+    <rect x="61" y="326" width="1478" height="54" fill="#ffffff"/>
+    <text x="85" y="361" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Which flows retransmit?</text>
+    <text x="550" y="361" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">tcpretrans</tspan>: flow, state, type RETRANS or TLP
+    </text>
+    <line x1="60" y1="380" x2="1540" y2="380" stroke="#e0e8e2" stroke-width="1.5"/>
+
+    
+    <rect x="61" y="381" width="1478" height="58" fill="#fff5eb"/>
+    <rect x="61" y="381" width="6" height="58" fill="#db8129"/>
+    <text x="85" y="418" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Why were packets dropped?</text>
+    <text x="550" y="418" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan font-family="monospace">tcpdrop</tspan>: packets dropped by the kernel TCP stack with a stack trace
+    </text>
+    <line x1="60" y1="440" x2="1540" y2="440" stroke="#db8129" stroke-width="1.5" stroke-opacity="0.4"/>
+
+    
+    <rect x="61" y="441" width="1478" height="54" fill="#ffffff"/>
+    <text x="85" y="476" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">How long in each state?</text>
+    <text x="550" y="476" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">tcpstates</tspan>: TCP state transitions with durations
+    </text>
+    <line x1="60" y1="495" x2="1540" y2="495" stroke="#e0e8e2" stroke-width="1.5"/>
+
+    
+    <rect x="61" y="496" width="1478" height="53" rx="0 0 12 12" fill="#f9fbf9"/>
+    <text x="85" y="531" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Other</text>
+    <text x="550" y="531" font-family="monospace" font-size="24" fill="#303a36">sockstat, solisten, udpconnect, softirqs, hardirqs, runqlat</text>
+  </g>
+
+  
+  <g id="one-liners-section">
+    <rect x="60" y="575" width="1480" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(85, 592)">
+      <rect x="0" y="0" width="44" height="34" rx="5" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 8 10 L 18 17 L 8 24" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="22" y1="24" x2="34" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <text x="145" y="618" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">One-liners</text>
+
+    
+    <rect x="85" y="640" width="1430" height="42" rx="6" fill="#ffffff" stroke="#c0d6c4" stroke-width="1"/>
+    <text x="105" y="669" font-family="monospace" font-size="24" fill="#303a36">bpftrace tracepoint:tcp:tcp_retransmit_skb counts by comm and daddr</text>
+
+    <rect x="85" y="690" width="1430" height="42" rx="6" fill="#ffffff" stroke="#c0d6c4" stroke-width="1"/>
+    <text x="105" y="719" font-family="monospace" font-size="24" fill="#303a36">kprobe:tcp_sendmsg histogram of send size per process</text>
+
+    <rect x="85" y="740" width="1430" height="42" rx="6" fill="#ffffff" stroke="#c0d6c4" stroke-width="1"/>
+    <text x="105" y="769" font-family="monospace" font-size="24" fill="#303a36">tracepoint:skb:kfree_skb counts by location: where packets are dropped (use ksym)</text>
+
+    <rect x="85" y="790" width="1430" height="42" rx="6" fill="#ffffff" stroke="#c0d6c4" stroke-width="1"/>
+    <text x="105" y="819" font-family="monospace" font-size="24" fill="#303a36">kprobe:__dev_queue_xmit counts per comm</text>
+  </g>
+
+  
+  <g id="side-notes-section">
+    <rect x="60" y="880" width="1480" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(85, 896)">
+      <circle cx="20" cy="18" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="20" y1="15" x2="20" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="20" cy="10" r="2.5" fill="#207448"/>
+    </g>
+
+    <text x="145" y="922" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Side notes</text>
+
+    <text x="85" y="964" font-family="sans-serif" font-size="24" fill="#303a36">eBPF programs run small verified programs inside the kernel with low overhead;</text>
+    <text x="85" y="999" font-family="sans-serif" font-size="24" fill="#303a36">install bcc-tools or bpftrace, run as root, kernel with BTF for CO-RE tools;</text>
+    <text x="85" y="1034" font-family="sans-serif" font-size="24" fill="#303a36">the kfree_skb tracepoint reports drop reasons on newer kernels,</text>
+    <text x="85" y="1069" font-family="sans-serif" font-size="24" fill="#303a36">tcpdump-like visibility without a capture</text>
+  </g>
+
+  
+  <g id="perf-strip-section">
+    <rect x="60" y="1125" width="1480" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(85, 1140)">
+      <rect x="6" y="6" width="30" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <rect x="13" y="13" width="16" height="16" rx="2" fill="#207448" opacity="0.25"/>
+      
+      <line x1="12" y1="1" x2="12" y2="6" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="21" y1="1" x2="21" y2="6" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="30" y1="1" x2="30" y2="6" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="12" y1="36" x2="12" y2="41" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="21" y1="36" x2="21" y2="41" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="30" y1="36" x2="30" y2="41" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="1" y1="12" x2="6" y2="12" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="1" y1="21" x2="6" y2="21" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="1" y1="30" x2="6" y2="30" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="36" y1="12" x2="41" y2="12" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="36" y1="21" x2="41" y2="21" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="36" y1="30" x2="41" y2="30" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="145" y="1169" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">perf strip</text>
+
+    
+    <text x="85" y="1210" font-family="sans-serif" font-size="24" fill="#303a36">perf record -g -a -- sleep 10 with flame graphs shows CPU time in the network stack</text>
+    <text x="85" y="1245" font-family="sans-serif" font-size="24" fill="#303a36">(net_rx_action, tcp_v4_rcv, the driver poll); perf trace -e net:*,skb:*;</text>
+    <text x="85" y="1280" font-family="sans-serif" font-size="24" fill="#303a36">at line rate filter narrowly, truncate with -s 128, ring buffers (-C, -W),</text>
+    <text x="85" y="1315" font-family="sans-serif" font-size="24" fill="#303a36">hardware timestamps, or sample with sFlow, IPFIX</text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="60" y="1370" width="1480" height="70" rx="10" fill="#207448"/>
+    <text x="800" y="1414" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">These tools answer questions that counters cannot</text>
+  </g>
+</svg>

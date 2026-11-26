@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1260" width="1600" height="1260">
+  <title>The SLI menu: what counts as a good event and where it is measured</title>
+  <desc>A comprehensive reference table defining Service Level Indicators (SLIs), good event definitions, measurement locations, and concrete metric names.</desc>
+
+  <rect width="1600" height="1260" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="38" font-weight="bold" fill="#207448">The SLI menu: what counts as a good event and where it is measured</text>
+
+  
+  <g transform="translate(180, 88)">
+    <rect x="0" y="0" width="1240" height="64" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="620" y="42" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" fill="#207448">SLI = good events divided by total valid events</text>
+  </g>
+
+  
+  
+  <g id="table" transform="translate(40, 180)">
+    
+    <rect x="0" y="0" width="1520" height="64" rx="10" fill="#207448"/>
+    
+    <text x="110" y="41" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">SLI</text>
+    <text x="435" y="41" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Good event</text>
+    <text x="785" y="41" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Where to measure</text>
+    <text x="1230" y="41" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Metric</text>
+
+    
+    <rect x="0" y="64" width="1520" height="112" fill="#ffffff" stroke="#d0ded3" stroke-width="1"/>
+    <text x="24" y="130" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">Availability</text>
+    <text x="240" y="112" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="240" dy="0">final response is not a 5xx, or a stream</tspan>
+      <tspan x="240" dy="32">ends without a server-side error</tspan>
+    </text>
+    <rect x="720" y="96" width="130" height="46" rx="8" fill="#e8f1ea"/>
+    <text x="785" y="128" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#207448">gateway</text>
+    <text x="920" y="129" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">gateway_requests_total</text>
+
+    
+    <rect x="0" y="176" width="1520" height="112" fill="#f0f6f1" stroke="#d0ded3" stroke-width="1"/>
+    <text x="24" y="226" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="24" dy="0">Time to first</tspan>
+      <tspan x="24" dy="32">token</tspan>
+    </text>
+    <text x="240" y="240" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">first streamed token within 1.0 s</text>
+    <text x="785" y="226" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="785" dy="0">gateway,</tspan>
+      <tspan x="785" dy="32">explained by engine</tspan>
+    </text>
+    <text x="920" y="241" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">gateway_ttft_seconds_bucket</text>
+
+    
+    <rect x="0" y="288" width="1520" height="112" fill="#ffffff" stroke="#d0ded3" stroke-width="1"/>
+    <text x="24" y="338" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="24" dy="0">Inter-token</tspan>
+      <tspan x="24" dy="32">latency</tspan>
+    </text>
+    <text x="240" y="338" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="240" dy="0">gap between streamed outputs</tspan>
+      <tspan x="240" dy="32">at most 0.1 s</tspan>
+    </text>
+    <rect x="735" y="321" width="100" height="46" rx="8" fill="#e8f1ea"/>
+    <text x="785" y="353" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#207448">engine</text>
+    <text x="920" y="353" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">vllm:inter_token_latency_seconds_bucket</text>
+
+    
+    <rect x="0" y="400" width="1520" height="112" fill="#f0f6f1" stroke="#d0ded3" stroke-width="1"/>
+    <text x="24" y="450" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="24" dy="0">Per-request</tspan>
+      <tspan x="24" dy="32">speed</tspan>
+    </text>
+    <text x="240" y="450" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="240" dy="0">seconds per output token</tspan>
+      <tspan x="240" dy="32">under a limit</tspan>
+    </text>
+    <rect x="735" y="433" width="100" height="46" rx="8" fill="#e8f1ea"/>
+    <text x="785" y="465" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#207448">engine</text>
+    <text x="920" y="465" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" letter-spacing="-0.5px" fill="#303a36">vllm:request_time_per_output_token_seconds</text>
+
+    
+    <rect x="0" y="512" width="1520" height="112" fill="#ffffff" stroke="#d0ded3" stroke-width="1"/>
+    <text x="24" y="562" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="24" dy="0">End-to-end</tspan>
+      <tspan x="24" dy="32">latency</tspan>
+    </text>
+    <text x="240" y="562" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="240" dy="0">finished within a limit chosen</tspan>
+      <tspan x="240" dy="32">for its output-length class</tspan>
+    </text>
+    <rect x="720" y="545" width="130" height="46" rx="8" fill="#e8f1ea"/>
+    <text x="785" y="577" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#207448">gateway</text>
+    <text x="920" y="577" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">gateway_e2e_seconds per length class</text>
+
+    
+    <rect x="0" y="624" width="1520" height="112" fill="#f0f6f1" stroke="#d0ded3" stroke-width="1"/>
+    <text x="24" y="674" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="24" dy="0">Error rate</tspan>
+      <tspan x="24" dy="32">by cause</tspan>
+    </text>
+    <text x="240" y="674" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="240" dy="0">failure counted by reason: overload,</tspan>
+      <tspan x="240" dy="32">upstream, timeout, client</tspan>
+    </text>
+    <rect x="720" y="657" width="130" height="46" rx="8" fill="#e8f1ea"/>
+    <text x="785" y="689" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#207448">gateway</text>
+    <text x="920" y="689" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">code and cause labels</text>
+
+    
+    <rect x="0" y="736" width="1520" height="112" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <rect x="2" y="738" width="8" height="108" fill="#db8129"/>
+    <text x="24" y="802" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#db8129">Goodput</text>
+    <text x="240" y="786" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="240" dy="0">requests that met TTFT and</tspan>
+      <tspan x="240" dy="32">speed limits together</tspan>
+    </text>
+    <rect x="720" y="769" width="130" height="46" rx="8" fill="#e8f1ea"/>
+    <text x="785" y="801" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#207448">gateway</text>
+    <text x="920" y="801" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">derived from the ratios above</text>
+
+    
+    <rect x="0" y="848" width="1520" height="112" rx="0" fill="#f0f6f1" stroke="#d0ded3" stroke-width="1"/>
+    <text x="24" y="914" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">Quality</text>
+    <text x="240" y="914" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">finish reason mix stays normal</text>
+    <rect x="735" y="881" width="100" height="46" rx="8" fill="#e8f1ea"/>
+    <text x="785" y="913" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#207448">engine</text>
+    <text x="920" y="913" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">vllm:request_success_total</text>
+  </g>
+
+  
+  <g transform="translate(40, 1170)">
+    <rect x="0" y="0" width="1520" height="60" rx="10" fill="#e8f1ea" stroke="#d0ded3" stroke-width="1"/>
+    <text x="760" y="38" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">gateway_ names are this chapter's own design, not Nebius names; vllm: names were checked against v0.32.0</text>
+  </g>
+</svg>

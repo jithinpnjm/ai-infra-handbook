@@ -1,0 +1,216 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1360" width="1600" height="1360">
+  <title>Reading a container exit code</title>
+  <desc>Visual infographic decoding Kubernetes container exit codes and troubleshooting steps</desc>
+
+  <defs>
+    <marker id="step-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1360" fill="#f5f8f5" />
+
+  
+  <text x="40" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">Reading a container exit code</text>
+
+  
+  <rect x="40" y="100" width="1520" height="695" rx="16" fill="#ffffff" stroke="#d5e3d8" stroke-width="2" />
+
+  
+  <rect x="55" y="115" width="1490" height="52" rx="10" fill="#e8f1ea" />
+  <text x="75" y="151" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Decoder table</text>
+
+  
+  <rect x="55" y="177" width="1490" height="42" rx="6" fill="#f2f7f3" />
+  <text x="75" y="206" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Exit code</text>
+  <text x="350" y="206" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">who ended the process</text>
+  <text x="940" y="206" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">first checks</text>
+
+  
+  <rect x="55" y="228" width="1490" height="114" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="2" />
+  
+  <g transform="translate(72, 245)" stroke="#db8129" stroke-width="3" fill="none">
+    <rect x="2" y="6" width="36" height="30" rx="4" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="24" y1="2" x2="24" y2="6" />
+    <line x1="32" y1="2" x2="32" y2="6" />
+    <line x1="8" y1="36" x2="8" y2="40" />
+    <line x1="16" y1="36" x2="16" y2="40" />
+    <line x1="24" y1="36" x2="24" y2="40" />
+    <line x1="32" y1="36" x2="32" y2="40" />
+    <path d="M14 15 L26 27 M26 15 L14 27" stroke-width="2.5" />
+  </g>
+  
+  <rect x="130" y="260" width="150" height="50" rx="8" fill="#db8129" />
+  <text x="205" y="295" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#ffffff">137</text>
+  
+  <text x="350" y="267" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="350" dy="0">something forced it to stop (SIGKILL),</tspan>
+    <tspan x="350" dy="32">most often the memory limit or a kill from the runtime</tspan>
+  </text>
+  
+  <text x="940" y="267" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="940" dy="0">check OOMKilled, node pressure, memory limit</tspan>
+    <tspan x="940" dy="32">against /dev/shm and page cache</tspan>
+  </text>
+
+  
+  <rect x="55" y="348" width="1490" height="76" rx="8" fill="#ffffff" stroke="#e0ece2" stroke-width="1.5" />
+  
+  <g transform="translate(74, 363)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="18" cy="18" r="14" />
+    <path d="M12 12 L24 24 M24 12 L12 24" stroke-width="2.5" />
+    <path d="M30 6 L38 2" />
+  </g>
+  
+  <rect x="130" y="361" width="150" height="50" rx="8" fill="#207448" />
+  <text x="205" y="396" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#ffffff">139</text>
+  <text x="350" y="395" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">segfault</text>
+  <text x="940" y="395" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">image or driver mismatch or a bad CUDA library</text>
+
+  
+  <rect x="55" y="430" width="1490" height="114" rx="8" fill="#ffffff" stroke="#e0ece2" stroke-width="1.5" />
+  
+  <g transform="translate(74, 464)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="18" cy="20" r="15" />
+    <polyline points="18 11 18 20 25 20" />
+    <line x1="18" y1="1" x2="18" y2="5" />
+  </g>
+  
+  <rect x="130" y="462" width="150" height="50" rx="8" fill="#207448" />
+  <text x="205" y="497" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#ffffff">143</text>
+  <text x="350" y="475" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="350" dy="0">something asked it to stop politely (SIGTERM),</tspan>
+    <tspan x="350" dy="32">most often the kubelet during shutdown or a probe failure</tspan>
+  </text>
+
+  
+  <rect x="55" y="550" width="1490" height="82" rx="8" fill="#ffffff" stroke="#e0ece2" stroke-width="1.5" />
+  
+  <g transform="translate(68, 568)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M4 2 L22 2 L32 12 L32 38 L4 38 Z" />
+    <polyline points="22 2 22 12 32 12" />
+    <line x1="12" y1="26" x2="24" y2="26" />
+  </g>
+  
+  <rect x="125" y="566" width="195" height="50" rx="8" fill="#207448" />
+  <text x="222" y="601" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">126 and 127</text>
+  <text x="350" y="600" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">entrypoint is missing or not executable</text>
+
+  
+  <rect x="55" y="638" width="1490" height="142" rx="8" fill="#ffffff" stroke="#e0ece2" stroke-width="1.5" />
+  
+  <g transform="translate(74, 680)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="2" y="4" width="34" height="28" rx="3" />
+    <line x1="2" y1="12" x2="36" y2="12" />
+    <circle cx="8" cy="8" r="1.5" fill="#207448" />
+    <circle cx="14" cy="8" r="1.5" fill="#207448" />
+  </g>
+  
+  <rect x="130" y="674" width="150" height="50" rx="8" fill="#207448" />
+  <text x="205" y="709" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#ffffff">1 and 2</text>
+  
+  <text x="350" y="682" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="350" dy="0">the app stopped itself because of an error</tspan>
+    <tspan x="350" dy="32">it chose to report</tspan>
+  </text>
+  
+  <text x="940" y="682" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="940" dy="0">config, missing secret or env var,</tspan>
+    <tspan x="940" dy="32">dependency</tspan>
+  </text>
+
+  
+  <text x="40" y="835" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Steps strip</text>
+
+  
+  <line x1="335" y1="915" x2="350" y2="915" stroke="#207448" stroke-width="3" marker-end="url(#step-arrow)" />
+  <line x1="715" y1="915" x2="730" y2="915" stroke="#207448" stroke-width="3" marker-end="url(#step-arrow)" />
+  <line x1="1185" y1="915" x2="1200" y2="915" stroke="#207448" stroke-width="3" marker-end="url(#step-arrow)" />
+
+  
+  <rect x="40" y="860" width="295" height="325" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="75" cy="902" r="20" fill="#207448" />
+  <text x="75" y="910" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(115, 884)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="2" y="2" width="36" height="28" rx="3" />
+    <polyline points="9 10 15 16 9 22" />
+    <line x1="18" y1="22" x2="28" y2="22" />
+  </g>
+  <text x="60" y="965" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="60" dy="0">kubectl logs</tspan>
+    <tspan x="60" dy="34">--previous</tspan>
+    <tspan x="60" dy="34">--timestamps</tspan>
+  </text>
+
+  
+  <rect x="350" y="860" width="365" height="325" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="385" cy="902" r="20" fill="#207448" />
+  <text x="385" y="910" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(425, 884)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="16" cy="14" r="10" />
+    <line x1="23" y1="21" x2="34" y2="30" />
+  </g>
+  <text x="370" y="965" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="370" dy="0">read State and</tspan>
+    <tspan x="370" dy="34">Last State in</tspan>
+    <tspan x="370" dy="34" font-family="monospace">kubectl describe pod</tspan>
+    <tspan x="370" dy="34">for exit code and</tspan>
+    <tspan x="370" dy="34">reason</tspan>
+  </text>
+
+  
+  <rect x="730" y="860" width="455" height="325" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="765" cy="902" r="20" fill="#207448" />
+  <text x="765" y="910" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(805, 884)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M6 14 C6 6 26 6 26 14 L26 26 C26 30 6 30 6 26 Z" />
+    <line x1="2" y1="16" x2="6" y2="16" />
+    <line x1="26" y1="16" x2="30" y2="16" />
+    <line x1="2" y1="24" x2="6" y2="24" />
+    <line x1="26" y1="24" x2="30" y2="24" />
+  </g>
+  <text x="750" y="960" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="750" dy="0">reproduce with</tspan>
+    <tspan x="750" dy="30" font-family="monospace">kubectl debug --copy-to</tspan>
+    <tspan x="750" dy="30">overriding command to</tspan>
+    <tspan x="750" dy="30" font-family="monospace" font-weight="bold">sleep infinity</tspan>
+    <tspan x="750" dy="30">(keeps volumes,</tspan>
+    <tspan x="750" dy="30">environment and labels)</tspan>
+  </text>
+
+  
+  <rect x="1200" y="860" width="360" height="325" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="1235" cy="902" r="20" fill="#207448" />
+  <text x="1235" y="910" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(1275, 884)" stroke="#207448" stroke-width="3" fill="none">
+    <polyline points="4 16 10 22 22 8" />
+    <line x1="14" y1="26" x2="30" y2="26" />
+    <line x1="24" y1="16" x2="30" y2="16" />
+  </g>
+  <text x="1220" y="965" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1220" dy="0">check mounts, env,</tspan>
+    <tspan x="1220" dy="34">DNS, GPU visibility</tspan>
+    <tspan x="1220" dy="34">with <tspan font-family="monospace">nvidia-smi</tspan>,</tspan>
+    <tspan x="1220" dy="34">permissions</tspan>
+  </text>
+
+  
+  <rect x="40" y="1220" width="1520" height="92" rx="14" fill="#207448" />
+  
+  <g transform="translate(68, 1242)" stroke="#ffffff" stroke-width="3" fill="none">
+    <path d="M20 4 L36 10 L36 24 C36 34 20 42 20 42 C20 42 4 34 4 24 L4 10 Z" />
+    <line x1="20" y1="14" x2="20" y2="24" stroke-width="3.5" />
+    <circle cx="20" cy="31" r="2" fill="#ffffff" />
+  </g>
+  <text x="125" y="1277" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#ffffff">
+    <tspan font-weight="bold" fill="#e8f1ea">Reminder: </tspan>
+    <tspan>CrashLoopBackOff is a symptom, the cause is in the logs or the exit code</tspan>
+  </text>
+</svg>

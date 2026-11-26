@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Producer and consumers shut down with sentinels and task_done</title>
+  <desc>Visual explanation of bounded queue backpressure, sentinel shutdown for multiple consumers, and task_done completion tracking.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="38" font-weight="bold" fill="#303a36">Producer and consumers shut down with sentinels and task_done</text>
+
+  
+  <g id="rule-strip">
+    <rect x="60" y="78" width="1480" height="54" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 85 107 h 18 v 14 h -18 z M 89 107 v -5 a 5 5 0 0 1 10 0 v 5" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="120" y="113" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">SENTINEL = object(): nothing else can equal it</text>
+  </g>
+
+  
+  <g id="producer-box">
+    <rect x="60" y="155" width="460" height="710" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <rect x="60" y="155" width="460" height="70" rx="14" fill="#e8f1ea" />
+    <rect x="60" y="210" width="460" height="15" fill="#e8f1ea" />
+    
+    <g transform="translate(85, 168)">
+      <circle cx="22" cy="22" r="16" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 22 2 v 6 M 22 36 v 6 M 2 22 h 6 M 36 22 h 6 M 8 8 l 4.5 4.5 M 31.5 31.5 l 4.5 4.5 M 8 36 l 4.5 -4.5 M 31.5 12.5 l 4.5 -4.5" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="145" y="200" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Producer</text>
+
+    
+    <rect x="80" y="245" width="420" height="120" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="96" y="285" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="96" dy="0">producer(items):</tspan>
+      <tspan x="126" dy="36">for it in items: q.put(it)</tspan>
+    </text>
+
+    
+    <rect x="80" y="385" width="420" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <circle cx="114" cy="425" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 114 416 v 18 M 106 425 h 16" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="142" y="425" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="32">blocks when the queue holds</tspan>
+      <tspan x="96" dy="34">100 items (maxsize=100) which</tspan>
+      <tspan x="96" dy="34">is the backpressure</tspan>
+    </text>
+
+    
+    <rect x="80" y="555" width="420" height="285" rx="8" fill="#fff7f0" stroke="#db8129" stroke-width="2.5" />
+    <text x="96" y="595" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">puts one SENTINEL per consumer</text>
+
+    <text x="96" y="645" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="96" dy="0">for _ in range(N_CONSUMERS):</tspan>
+      <tspan x="136" dy="38">q.put(SENTINEL)</tspan>
+    </text>
+
+    <text x="96" y="745" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">so each consumer sees exactly</tspan>
+      <tspan x="96" dy="34">one and exits its loop</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 520 305 L 565 305" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 520 675 L 565 675" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <g id="queue-box">
+    <rect x="580" y="155" width="440" height="470" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <rect x="580" y="155" width="440" height="70" rx="14" fill="#e8f1ea" />
+    <rect x="580" y="210" width="440" height="15" fill="#e8f1ea" />
+    
+    <g transform="translate(605, 170)">
+      <rect x="0" y="4" width="44" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="15" y1="4" x2="15" y2="36" stroke="#207448" stroke-width="2.5" />
+      <line x1="29" y1="4" x2="29" y2="36" stroke="#207448" stroke-width="2.5" />
+    </g>
+    <text x="665" y="200" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">queue.Queue(maxsize=100)</text>
+
+    
+    <g transform="translate(610, 260)">
+      
+      <rect x="0" y="0" width="380" height="160" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="6,4" />
+      
+      
+      <rect x="25" y="25" width="100" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <text x="75" y="72" font-family="monospace" font-size="24" text-anchor="middle" fill="#303a36">item</text>
+      <text x="75" y="105" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#207448">#1..K</text>
+
+      
+      <rect x="140" y="25" width="100" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <text x="190" y="72" font-family="monospace" font-size="24" text-anchor="middle" fill="#303a36">item</text>
+      <text x="190" y="105" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#207448">#100</text>
+
+      
+      <rect x="255" y="25" width="100" height="110" rx="8" fill="#fff7f0" stroke="#db8129" stroke-width="2.5" />
+      <text x="305" y="68" font-family="monospace" font-size="24" font-weight="bold" text-anchor="middle" fill="#db8129">STOP</text>
+      <text x="305" y="105" font-family="monospace" font-size="24" font-weight="bold" text-anchor="middle" fill="#db8129">SNTL</text>
+    </g>
+
+    
+    <rect x="610" y="450" width="380" height="145" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="800" y="500" font-family="sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#207448">FIFO Bounded Channel</text>
+    <text x="800" y="545" font-family="sans-serif" font-size="24" text-anchor="middle" fill="#303a36">Holds items, then sentinels</text>
+  </g>
+
+  
+  <g id="task-done-note">
+    <rect x="580" y="650" width="440" height="215" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="580" y="650" width="440" height="50" rx="14" fill="#e8f1ea" />
+    <rect x="580" y="685" width="440" height="15" fill="#e8f1ea" />
+    <text x="800" y="685" font-family="sans-serif" font-size="25" font-weight="bold" text-anchor="middle" fill="#207448">Completion Tracking</text>
+    <text x="605" y="738" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="605" dy="0">task_done() marks each item</tspan>
+      <tspan x="605" dy="36">finished, so join() can tell</tspan>
+      <tspan x="605" dy="36">when all the work is complete</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 1020 305 L 1065 305" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <path d="M 1020 480 L 1065 480" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <g id="consumers-container">
+    <rect x="1080" y="155" width="460" height="710" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <rect x="1080" y="155" width="460" height="70" rx="14" fill="#e8f1ea" />
+    <rect x="1080" y="210" width="460" height="15" fill="#e8f1ea" />
+    
+    <g transform="translate(1105, 168)">
+      <circle cx="16" cy="14" r="8" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 4 36 c 0 -8 5 -12 12 -12 s 12 4 12 12" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="32" cy="14" r="7" fill="none" stroke="#207448" stroke-width="2.5" />
+      <path d="M 26 28 c 4 -3 8 -3 14 0" fill="none" stroke="#207448" stroke-width="2.5" />
+    </g>
+    <text x="1165" y="200" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">N_CONSUMERS</text>
+
+    
+    <rect x="1100" y="245" width="420" height="270" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <rect x="1100" y="245" width="420" height="42" rx="10" fill="#e8f1ea" />
+    <text x="1118" y="275" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Consumer Worker 1</text>
+
+    <text x="1118" y="325" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1118" dy="0" font-weight="bold">consumer:</tspan>
+      <tspan x="1118" dy="36">while (item := q.get())</tspan>
+      <tspan x="1158" dy="36">is not SENTINEL:</tspan>
+      <tspan x="1158" dy="36">try handle(item)</tspan>
+      <tspan x="1158" dy="36">finally q.task_done()</tspan>
+    </text>
+
+    
+    <rect x="1100" y="535" width="420" height="305" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <rect x="1100" y="535" width="420" height="42" rx="10" fill="#e8f1ea" />
+    <text x="1118" y="565" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Consumer Worker N</text>
+
+    <text x="1118" y="615" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1118" dy="0" font-weight="bold">consumer:</tspan>
+      <tspan x="1118" dy="36">while (item := q.get())</tspan>
+      <tspan x="1158" dy="36">is not SENTINEL:</tspan>
+      <tspan x="1158" dy="36">try handle(item)</tspan>
+      <tspan x="1158" dy="36">finally q.task_done()</tspan>
+    </text>
+
+    
+    <rect x="1118" y="780" width="384" height="42" rx="6" fill="#fff7f0" stroke="#db8129" stroke-width="1.5" />
+    <text x="1310" y="808" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">sees SENTINEL → exits loop</text>
+  </g>
+
+  
+  <g id="contrast-strip">
+    <rect x="60" y="895" width="1480" height="105" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="100" cy="947" r="18" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 100 936 v 12 l 8 5" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="135" y="938" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="135" dy="0">asyncio version: bounded Queue(maxsize), await q.put() waits while full,</tspan>
+      <tspan x="135" dy="34">q.join() waits until all queued items are processed</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="60" y="1025" width="1480" height="65" rx="8" fill="#207448" />
+    <text x="800" y="1066" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">One sentinel per consumer tells each of them that no work is left</text>
+  </g>
+</svg>

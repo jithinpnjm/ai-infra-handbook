@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
+  <title>Traditional HPC center versus AI factory</title>
+  <desc>A comprehensive two-column comparison highlighting architecture, workload, storage, failure handling, and operational metrics between traditional HPC centers and modern AI factories.</desc>
+
+  <rect width="1600" height="1500" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#207448">Traditional HPC center versus AI factory</text>
+
+  
+  <rect x="60" y="76" width="1480" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="111" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    Analogy: <tspan fill="#207448">public library versus manufacturing plant</tspan>
+  </text>
+
+  
+  <g id="column-headers">
+    <rect x="60" y="142" width="230" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="175" y="177" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Dimension</text>
+
+    <rect x="310" y="142" width="605" height="52" rx="8" fill="#207448"/>
+    <text x="612" y="177" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff">Traditional HPC center</text>
+
+    <rect x="935" y="142" width="605" height="52" rx="8" fill="#207448"/>
+    <text x="1237" y="177" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff">AI factory</text>
+  </g>
+
+  
+  <g id="row-workloads">
+    <rect x="60" y="206" width="230" height="116" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="175" y="272" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Workloads</text>
+
+    <rect x="310" y="206" width="605" height="116" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="330" y="254" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="330" dy="0">physical simulation in C, C++ and</tspan>
+      <tspan x="330" dy="34">Fortran with MPI and OpenMP</tspan>
+    </text>
+
+    <rect x="935" y="206" width="605" height="116" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="955" y="240" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="955" dy="0">neural-network pre-training, fine-tuning,</tspan>
+      <tspan x="955" dy="32">data curation and inference in Python</tspan>
+      <tspan x="955" dy="32">with PyTorch or JAX and NCCL</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-precision">
+    <rect x="60" y="334" width="230" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="175" y="390" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Precision</text>
+
+    <rect x="310" y="334" width="605" height="96" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="330" y="390" font-family="sans-serif" font-size="24px" fill="#303a36">heavy FP64</text>
+
+    <rect x="935" y="334" width="605" height="96" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="955" y="374" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="955" dy="0">BF16, FP16, FP8, FP4;</tspan>
+      <tspan x="955" dy="32">FP64 rarely used</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-traffic">
+    <rect x="60" y="442" width="230" height="128" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="175" y="514" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Traffic</text>
+
+    <rect x="310" y="442" width="605" height="128" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="330" y="496" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="330" dy="0">domain decomposition with halo</tspan>
+      <tspan x="330" dy="34">exchanges and small global reductions</tspan>
+    </text>
+
+    <rect x="935" y="442" width="605" height="128" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="955" y="480" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="955" dy="0">data, tensor, pipeline, expert and context</tspan>
+      <tspan x="955" dy="32">parallelism; AllReduce, AllGather,</tspan>
+      <tspan x="955" dy="32">ReduceScatter, AllToAll elephant flows</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-jobs">
+    <rect x="60" y="582" width="230" height="104" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="175" y="642" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Jobs</text>
+
+    <rect x="310" y="582" width="605" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="330" y="626" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="330" dy="0">wide mix of small and medium jobs</tspan>
+      <tspan x="330" dy="34">plus occasional hero runs</tspan>
+    </text>
+
+    <rect x="935" y="582" width="605" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="955" y="626" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="955" dy="0">bimodal: a few thousand-GPU jobs for</tspan>
+      <tspan x="955" dy="34">weeks plus fine-tuning and 24/7 inference</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-storage">
+    <rect x="60" y="698" width="230" height="104" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="175" y="758" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Storage</text>
+
+    <rect x="310" y="698" width="605" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="330" y="742" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="330" dy="0">scratch, home and simulation dumps</tspan>
+      <tspan x="330" dy="34">with heavy POSIX metadata</tspan>
+    </text>
+
+    <rect x="935" y="698" width="605" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="955" y="742" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="955" dy="0">streaming dataloader reads and periodic</tspan>
+      <tspan x="955" dy="34">multi-terabyte synchronous checkpoint bursts</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-packaging">
+    <rect x="60" y="814" width="230" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="175" y="870" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Packaging</text>
+
+    <rect x="310" y="814" width="605" height="96" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="330" y="870" font-family="sans-serif" font-size="24px" fill="#303a36">environment modules, Spack, EasyBuild</text>
+
+    <rect x="935" y="814" width="605" height="96" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="955" y="870" font-family="sans-serif" font-size="24px" fill="#303a36">OCI containers from NGC base images</text>
+  </g>
+
+  
+  <g id="row-failure">
+    <rect x="60" y="922" width="230" height="128" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="175" y="994" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Failure</text>
+
+    <rect x="310" y="922" width="605" height="128" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="330" y="994" font-family="sans-serif" font-size="24px" fill="#303a36">periodic checkpoint and restart</text>
+
+    <rect x="935" y="922" width="605" height="128" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="955" y="960" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="955" dy="0">at thousands of GPUs faults every few hours</tspan>
+      <tspan x="955" dy="32">or days; automated health checks and</tspan>
+      <tspan x="955" dy="32">sub-minute checkpointing</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-northstar">
+    <rect x="60" y="1062" width="230" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="175" y="1124" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">North star</text>
+
+    <rect x="310" y="1062" width="605" height="106" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="330" y="1106" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="330" dy="0">high node utilization and</tspan>
+      <tspan x="330" dy="34">fair queue turnaround</tspan>
+    </text>
+
+    
+    <rect x="935" y="1062" width="605" height="106" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <text x="955" y="1106" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="955" dy="0">high MFU, minimum time-to-train,</tspan>
+      <tspan x="955" dy="34">lowest cost per token or tokens per watt</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-rackpower">
+    <rect x="60" y="1180" width="230" height="114" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="175" y="1246" text-anchor="middle" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Rack power</text>
+
+    <rect x="310" y="1180" width="605" height="114" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="330" y="1246" font-family="sans-serif" font-size="24px" fill="#303a36">15 to 40 kW</text>
+
+    <rect x="935" y="1180" width="605" height="114" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="955" y="1228" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="955" dy="0">40 to 130 kW or more with</tspan>
+      <tspan x="955" dy="36">direct-to-chip liquid cooling</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="60" y="1324" width="1480" height="118" rx="12" fill="#207448"/>
+    <text x="800" y="1373" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">
+      <tspan x="800" dy="0">Slurm, fabric and storage skills carry over; what changes</tspan>
+      <tspan x="800" dy="36">is the size of each failure and how quickly you must respond</tspan>
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,231 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Following one two-node job through the daemons</title>
+  <desc>A visual workflow showing an eight-step lifecycle of a two-node Slurm job across controller and compute daemons.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+
+    
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="115%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1b382b" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="80" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Following one two-node job through the daemons</text>
+
+  
+  
+  
+  <g transform="translate(60, 120)">
+    <rect width="320" height="340" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+    
+    <circle cx="48" cy="48" r="24" fill="#207448" />
+    <text x="48" y="57" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <g transform="translate(230, 24)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="28" cy="18" r="14" />
+      <path d="M 8 50 C 8 36, 48 36, 48 50" stroke-linecap="round" />
+    </g>
+    
+    <text x="24" y="125" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">User runs</tspan>
+      <tspan font-family="monospace"> sbatch job.sh</tspan><tspan>,</tspan>
+      <tspan x="24" dy="38">RPC with munge</tspan>
+      <tspan x="24" dy="38">credential</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(430, 120)">
+    <rect width="320" height="340" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+    
+    <circle cx="48" cy="48" r="24" fill="#207448" />
+    <text x="48" y="57" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <g transform="translate(235, 24)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 25 8 L 45 16 C 45 36, 25 48, 25 48 C 25 48, 5 36, 5 16 Z" stroke-linejoin="round" />
+    </g>
+    
+    <text x="24" y="125" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0" font-family="monospace">slurmctld</tspan>
+      <tspan font-family="sans-serif"> authenticates,</tspan>
+      <tspan x="24" dy="38">runs </tspan><tspan font-family="monospace">job_submit</tspan>
+      <tspan x="24" dy="38">plugin, checks limits</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(800, 120)">
+    <rect width="320" height="340" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+    
+    <circle cx="48" cy="48" r="24" fill="#207448" />
+    <text x="48" y="57" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <g transform="translate(235, 24)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="6" y="12" width="44" height="32" rx="4" />
+      <line x1="14" y1="24" x2="32" y2="24" />
+      <line x1="14" y1="32" x2="40" y2="32" />
+    </g>
+    
+    <text x="24" y="130" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">Returns</tspan>
+      <tspan x="24" dy="40" font-family="monospace">Submitted batch</tspan>
+      <tspan x="24" dy="38" font-family="monospace">job 4217</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1170, 120)">
+    <rect width="320" height="340" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+    
+    <circle cx="48" cy="48" r="24" fill="#207448" />
+    <text x="48" y="57" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <g transform="translate(235, 24)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="26" cy="26" r="20" />
+      <polyline points="26,14 26,26 36,26" stroke-linecap="round" />
+    </g>
+    
+    <text x="24" y="125" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">Job </tspan><tspan font-family="monospace">PENDING</tspan><tspan>: scheduler</tspan>
+      <tspan x="24" dy="38">and backfill evaluate it</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g transform="translate(60, 620)">
+    <rect width="320" height="360" rx="14" fill="#fffaf5" stroke="#db8129" stroke-width="5" filter="url(#card-shadow)" />
+    
+    <circle cx="48" cy="48" r="24" fill="#db8129" />
+    <text x="48" y="57" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <g transform="translate(230, 24)" stroke="#db8129" stroke-width="3" fill="none">
+      <rect x="6" y="8" width="44" height="18" rx="3" />
+      <rect x="6" y="30" width="44" height="18" rx="3" />
+      <circle cx="16" cy="17" r="2" fill="#db8129" />
+      <circle cx="16" cy="39" r="2" fill="#db8129" />
+    </g>
+    
+    <text x="24" y="125" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">Resources found:</tspan>
+      <tspan x="24" dy="38">allocate nodes A and B,</tspan>
+      <tspan x="24" dy="38">state </tspan><tspan font-family="monospace">RUNNING</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(430, 620)">
+    <rect width="320" height="360" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+    
+    <circle cx="48" cy="48" r="24" fill="#207448" />
+    <text x="48" y="57" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    
+    <g transform="translate(235, 24)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="26" cy="10" r="5" fill="#207448" />
+      <circle cx="10" cy="42" r="5" fill="#207448" />
+      <circle cx="42" cy="42" r="5" fill="#207448" />
+      <path d="M 26 15 L 10 37 M 26 15 L 42 37" />
+    </g>
+    
+    <text x="24" y="120" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">Launch batch step on</tspan>
+      <tspan x="24" dy="38">node A via RPC tree</tspan>
+      <tspan x="24" dy="38">fan-out; prolog on</tspan>
+      <tspan x="24" dy="38">node B</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(800, 620)">
+    <rect width="320" height="360" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+    
+    <circle cx="48" cy="48" r="24" fill="#207448" />
+    <text x="48" y="57" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+    
+    <g transform="translate(235, 24)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="6" y="8" width="42" height="42" rx="4" />
+      <polyline points="15,22 23,29 15,36" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="28" y1="36" x2="38" y2="36" stroke-linecap="round" />
+    </g>
+    
+    <text x="24" y="120" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">Node A runs the batch</tspan>
+      <tspan x="24" dy="38">script; </tspan><tspan font-family="monospace">srun</tspan><tspan> starts steps</tspan>
+      <tspan x="24" dy="38">on both nodes</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1170, 620)">
+    <rect width="320" height="360" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+    
+    <circle cx="48" cy="48" r="24" fill="#207448" />
+    <text x="48" y="57" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">8</text>
+    
+    <g transform="translate(235, 24)" stroke="#207448" stroke-width="3" fill="none">
+      <ellipse cx="26" cy="14" rx="20" ry="7" />
+      <path d="M 6 14 v 16 c 0 3.8 9 7 20 7 s 20 -3.2 20 -7 v -16" />
+      <path d="M 6 30 v 14 c 0 3.8 9 7 20 7 s 20 -3.2 20 -7 v -14" />
+    </g>
+    
+    <text x="24" y="115" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">Epilog and cleanup,</tspan>
+      <tspan x="24" dy="38">job complete RPC,</tspan>
+      <tspan x="24" dy="38" font-family="monospace">slurmdbd</tspan><tspan> records times,</tspan>
+      <tspan x="24" dy="38">resources and exit code</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <line x1="380" y1="290" x2="426" y2="290" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="750" y1="290" x2="796" y2="290" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="1120" y1="290" x2="1166" y2="290" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1330 460 L 1330 540 L 220 540 L 220 614" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <line x1="380" y1="800" x2="426" y2="800" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="750" y1="800" x2="796" y2="800" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="1120" y1="800" x2="1166" y2="800" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1490 800 L 1540 800 L 1540 290 L 1496 290" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(1540, 540)">
+    <rect x="-185" y="-38" width="370" height="76" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)" />
+    <text x="0" y="-7" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Free nodes A and B,</text>
+    <text x="0" y="27" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">schedule again</text>
+  </g>
+
+  
+  <g transform="translate(60, 1050)">
+    <rect width="1430" height="70" rx="12" fill="#207448" />
+    <text x="715" y="44" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Each arrow is one message between two daemons.</text>
+  </g>
+
+</svg>

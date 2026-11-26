@@ -1,0 +1,249 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
+  <title>From kubectl apply to a running container</title>
+  <desc>Visual sequence diagram showing the lifecycle from kubectl apply to a running container in Kubernetes.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green-right" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-green-left" viewBox="0 0 16 16" refX="2" refY="8" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 14 3 L 2 8 L 14 13 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange-right" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#db8129"/>
+    </marker>
+    
+    <filter id="shadow" x="-5%" y="-10%" width="110%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#303a36" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1500" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="48" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">From kubectl apply to a running container</text>
+
+  
+  <line x1="100" y1="175" x2="100" y2="1465" stroke="#b8ccbe" stroke-width="2" stroke-dasharray="8,8"/>
+  <line x1="350" y1="175" x2="350" y2="1465" stroke="#b8ccbe" stroke-width="2" stroke-dasharray="8,8"/>
+  <line x1="560" y1="175" x2="560" y2="1465" stroke="#b8ccbe" stroke-width="2" stroke-dasharray="8,8"/>
+  <line x1="770" y1="175" x2="770" y2="1465" stroke="#b8ccbe" stroke-width="2" stroke-dasharray="8,8"/>
+  <line x1="970" y1="175" x2="970" y2="1465" stroke="#b8ccbe" stroke-width="2" stroke-dasharray="8,8"/>
+  <line x1="1170" y1="175" x2="1170" y2="1465" stroke="#b8ccbe" stroke-width="2" stroke-dasharray="8,8"/>
+  <line x1="1520" y1="175" x2="1520" y2="1465" stroke="#b8ccbe" stroke-width="2" stroke-dasharray="8,8"/>
+
+  
+
+  
+  <g transform="translate(10, 68)">
+    <rect width="180" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    
+    <rect x="66" y="10" width="48" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 74 22 L 82 27 L 74 32 M 86 32 L 96 32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="90" y="74" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">kubectl</text>
+  </g>
+
+  
+  <g transform="translate(240, 68)">
+    <rect width="220" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    
+    <circle cx="110" cy="26" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 110 6 L 110 10 M 110 42 L 110 46 M 90 26 L 94 26 M 126 26 L 130 26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="110" cy="26" r="5" fill="#207448"/>
+    <text x="110" y="74" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">kube-apiserver</text>
+  </g>
+
+  
+  <g transform="translate(490, 68)">
+    <rect width="140" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    
+    <ellipse cx="70" cy="18" rx="20" ry="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 50 18 L 50 36 A 20 7 0 0 0 90 36 L 90 18" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 50 27 A 20 7 0 0 0 90 27" fill="none" stroke="#207448" stroke-width="2"/>
+    <text x="70" y="74" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">etcd</text>
+  </g>
+
+  
+  <g transform="translate(650, 68)">
+    <rect width="240" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    
+    <circle cx="120" cy="26" r="10" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 120 10 L 120 14 M 120 38 L 120 42 M 104 26 L 108 26 M 132 26 L 136 26 M 109 15 L 112 18 M 128 34 L 131 37 M 109 37 L 112 34 M 128 18 L 131 15" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="120" y="64" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">controller-</text>
+    <text x="120" y="88" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">manager</text>
+  </g>
+
+  
+  <g transform="translate(900, 68)">
+    <rect width="140" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    
+    <circle cx="70" cy="26" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 70 16 L 70 26 L 78 26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="70" y="74" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">scheduler</text>
+  </g>
+
+  
+  <g transform="translate(1060, 68)">
+    <rect width="220" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    
+    <rect x="91" y="10" width="38" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="84" y1="18" x2="91" y2="18" stroke="#207448" stroke-width="3"/>
+    <line x1="84" y1="32" x2="91" y2="32" stroke="#207448" stroke-width="3"/>
+    <line x1="129" y1="18" x2="136" y2="18" stroke="#207448" stroke-width="3"/>
+    <line x1="129" y1="32" x2="136" y2="32" stroke="#207448" stroke-width="3"/>
+    <text x="110" y="74" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">kubelet (node)</text>
+  </g>
+
+  
+  <g transform="translate(1390, 68)">
+    <rect width="200" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    
+    <rect x="76" y="10" width="48" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="88" y1="10" x2="88" y2="42" stroke="#207448" stroke-width="2"/>
+    <line x1="100" y1="10" x2="100" y2="42" stroke="#207448" stroke-width="2"/>
+    <line x1="112" y1="10" x2="112" y2="42" stroke="#207448" stroke-width="2"/>
+    <text x="100" y="64" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">runtime</text>
+    <text x="100" y="88" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">(containerd)</text>
+  </g>
+
+  
+
+  
+  
+  <g>
+    <line x1="100" y1="225" x2="338" y2="225" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green-right)"/>
+    <rect x="115" y="192" width="220" height="66" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="115" cy="225" r="24" fill="#207448"/>
+    <text x="115" y="233" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="230" y="218" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">POST/PATCH</text>
+    <text x="230" y="246" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">Deployment</text>
+  </g>
+
+  
+  <g>
+    <path d="M 350 295 L 400 295 A 15 15 0 0 1 415 310 L 415 320 A 15 15 0 0 1 400 335 L 362 335" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green-left)"/>
+    <rect x="425" y="282" width="460" height="66" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="425" cy="315" r="24" fill="#207448"/>
+    <text x="425" y="323" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="655" y="308" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">authn, authz, admission</text>
+    <text x="655" y="336" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(mutate/validate)</text>
+  </g>
+
+  
+  <g>
+    <line x1="350" y1="405" x2="548" y2="405" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green-right)"/>
+    <rect x="365" y="372" width="180" height="66" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="365" cy="405" r="24" fill="#207448"/>
+    <text x="365" y="413" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="460" y="398" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">persist</text>
+    <text x="460" y="426" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">Deployment</text>
+  </g>
+
+  
+  <g>
+    <line x1="770" y1="495" x2="362" y2="495" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green-left)"/>
+    <rect x="400" y="462" width="340" height="66" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="400" cy="495" r="24" fill="#207448"/>
+    <text x="400" y="503" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="575" y="488" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(watch)</text>
+    <text x="575" y="516" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">Deployment created</text>
+  </g>
+
+  
+  <g>
+    <line x1="770" y1="585" x2="362" y2="585" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green-left)"/>
+    <rect x="385" y="552" width="370" height="66" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="385" cy="585" r="24" fill="#207448"/>
+    <text x="385" y="593" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    <text x="575" y="578" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">create ReplicaSet</text>
+    <text x="575" y="606" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(deployment controller)</text>
+  </g>
+
+  
+  
+  <g>
+    <line x1="770" y1="690" x2="362" y2="690" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green-left)"/>
+    <rect x="375" y="642" width="385" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="375" cy="690" r="24" fill="#207448"/>
+    <text x="375" y="698" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    <text x="575" y="670" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(watch) ReplicaSet →</text>
+    <text x="575" y="698" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">create Pods</text>
+    <text x="575" y="726" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(replicaset controller)</text>
+  </g>
+
+  
+  <g>
+    <line x1="970" y1="795" x2="362" y2="795" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green-left)"/>
+    <rect x="475" y="762" width="380" height="66" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="475" cy="795" r="24" fill="#207448"/>
+    <text x="475" y="803" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+    <text x="670" y="788" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(watch)</text>
+    <text x="670" y="816" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">Pod with no nodeName</text>
+  </g>
+
+  
+  <g>
+    <path d="M 970 865 L 1020 865 A 15 15 0 0 1 1035 880 L 1035 890 A 15 15 0 0 1 1020 905 L 982 905" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green-left)"/>
+    <rect x="1045" y="852" width="300" height="66" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="1045" cy="885" r="24" fill="#207448"/>
+    <text x="1045" y="893" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">8</text>
+    <text x="1200" y="893" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">filter + score nodes</text>
+  </g>
+
+  
+  <g>
+    <line x1="970" y1="970" x2="362" y2="970" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green-left)"/>
+    <rect x="490" y="937" width="350" height="66" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="490" cy="970" r="24" fill="#207448"/>
+    <text x="490" y="978" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">9</text>
+    <text x="670" y="962" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">bind:</text>
+    <text x="670" y="990" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">set spec.nodeName</text>
+  </g>
+
+  
+  <g>
+    <line x1="1170" y1="1055" x2="362" y2="1055" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green-left)"/>
+    <rect x="585" y="1022" width="350" height="66" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="585" cy="1055" r="24" fill="#207448"/>
+    <text x="585" y="1063" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">10</text>
+    <text x="765" y="1047" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(watch)</text>
+    <text x="765" y="1075" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">Pod bound to me</text>
+  </g>
+
+  
+  
+  <g>
+    <line x1="1170" y1="1180" x2="1508" y2="1180" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange-right)"/>
+    <rect x="1180" y="1105" width="330" height="150" rx="14" fill="#fff7ed" stroke="#db8129" stroke-width="3" filter="url(#shadow)"/>
+    <circle cx="1180" cy="1180" r="24" fill="#db8129"/>
+    <text x="1180" y="1188" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">11</text>
+    <text x="1350" y="1138" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">CRI: RunPodSandbox,</text>
+    <text x="1350" y="1168" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">CreateContainer,</text>
+    <text x="1350" y="1198" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">StartContainer</text>
+    <text x="1350" y="1228" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(CNI, CSI mounts)</text>
+  </g>
+
+  
+  <g>
+    <line x1="1170" y1="1305" x2="362" y2="1305" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green-left)"/>
+    <rect x="545" y="1272" width="430" height="66" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="545" cy="1305" r="24" fill="#207448"/>
+    <text x="545" y="1313" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">12</text>
+    <text x="765" y="1297" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">update Pod status</text>
+    <text x="765" y="1325" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(Running, IPs, conditions)</text>
+  </g>
+
+  
+  <g>
+    <line x1="770" y1="1405" x2="362" y2="1405" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green-left)"/>
+    <rect x="375" y="1357" width="385" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="375" cy="1405" r="24" fill="#207448"/>
+    <text x="375" y="1413" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">13</text>
+    <text x="575" y="1385" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">EndpointSlice controller</text>
+    <text x="575" y="1413" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">adds the Pod IP</text>
+    <text x="575" y="1441" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">when Ready</text>
+  </g>
+
+</svg>

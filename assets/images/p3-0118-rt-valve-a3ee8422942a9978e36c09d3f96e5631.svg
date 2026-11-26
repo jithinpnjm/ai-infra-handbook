@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1190" width="1600" height="1190">
+  <title>Real-time starvation and the safety valve</title>
+  <desc>Infographic explaining real-time task starvation on Linux and the sched_rt_runtime_us safety valve</desc>
+
+  <defs>
+    <clipPath id="timeline-clip">
+      <rect x="50" y="465" width="1500" height="100" rx="8" />
+    </clipPath>
+  </defs>
+
+  
+  <rect width="1600" height="1190" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" fill="#207448" font-size="48" font-weight="bold" font-family="sans-serif" text-anchor="middle">Real-time starvation and the safety valve</text>
+
+  
+
+  
+  <g id="left-note-panel">
+    <rect x="50" y="105" width="460" height="330" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 125)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <polyline points="28,14 28,28 38,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    
+    <text x="75" y="235" fill="#303a36" font-size="24" font-family="sans-serif">
+      <tspan x="75" dy="0">FIFO runs until it blocks or a</tspan>
+      <tspan x="75" dy="36">higher priority preempts it;</tspan>
+      <tspan x="75" dy="36">RR round-robins among equals</tspan>
+      <tspan x="75" dy="36">with a time slice;</tspan>
+      <tspan x="75" dy="36">priorities 1 to 99</tspan>
+    </text>
+  </g>
+
+  
+  <g id="center-panel">
+    <rect x="535" y="105" width="490" height="330" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(555, 125)">
+      <rect x="8" y="8" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="16" y1="2" x2="16" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="2" x2="28" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="40" y1="2" x2="40" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="16" y1="48" x2="16" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="48" x2="28" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="40" y1="48" x2="40" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="2" y1="16" x2="8" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="2" y1="28" x2="8" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="2" y1="40" x2="8" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="48" y1="16" x2="54" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="48" y1="28" x2="54" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="48" y1="40" x2="54" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    
+    <rect x="625" y="120" width="380" height="65" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="815" y="146" fill="#303a36" font-size="24" font-weight="bold" font-family="sans-serif" text-anchor="middle">
+      <tspan x="815" dy="0" font-family="monospace">SCHED_FIFO</tspan>
+      <tspan x="815" dy="28">priority 50 spinning</tspan>
+    </text>
+
+    
+    <g transform="translate(555, 200)">
+      <rect x="4" y="8" width="48" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="4" y1="20" x2="52" y2="20" stroke="#207448" stroke-width="2" />
+      <polyline points="12,28 18,33 12,38" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="22" y1="38" x2="30" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      
+      <line x1="0" y1="4" x2="56" y2="52" stroke="#c0392b" stroke-width="4" stroke-linecap="round" />
+      <line x1="0" y1="52" x2="56" y2="4" stroke="#c0392b" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    
+    <rect x="625" y="195" width="380" height="65" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="815" y="222" fill="#303a36" font-size="24" font-family="sans-serif" text-anchor="middle">
+      <tspan x="815" dy="0">the shell you</tspan>
+      <tspan x="815" dy="28">need to fix it</tspan>
+    </text>
+
+    
+    <rect x="555" y="275" width="450" height="145" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="780" y="315" fill="#303a36" font-size="24" font-family="sans-serif" text-anchor="middle">
+      <tspan x="780" dy="0">starved: a busy real-time task</tspan>
+      <tspan x="780" dy="36">starves everything of lower</tspan>
+      <tspan x="780" dy="36">priority on that CPU</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="1050" y="105" width="500" height="330" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(1070, 115)">
+      <path d="M28,6 L48,14 L48,32 C48,44 28,52 28,52 C28,52 8,44 8,32 L8,14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    </g>
+
+    
+    <text x="1140" y="152" fill="#207448" font-size="30" font-weight="bold" font-family="sans-serif">Safety valves</text>
+
+    
+    <rect x="1070" y="180" width="460" height="110" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1300" y="213" fill="#303a36" font-size="24" font-family="monospace" text-anchor="middle">
+      <tspan x="1300" dy="0">kernel.sched_rt_runtime_us /</tspan>
+      <tspan x="1300" dy="30">sched_rt_period_us</tspan>
+      <tspan x="1300" dy="30">= 950000 / 1000000</tspan>
+    </text>
+
+    
+    <rect x="1070" y="302" width="460" height="52" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1300" y="337" fill="#303a36" font-size="24" font-weight="bold" font-family="monospace" text-anchor="middle">RLIMIT_RTTIME</text>
+
+    
+    <rect x="1070" y="366" width="460" height="52" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1300" y="401" fill="#303a36" font-size="24" font-family="sans-serif" text-anchor="middle">combine with CPU isolation</text>
+  </g>
+
+  
+
+  <g id="timeline-bar">
+    <g clip-path="url(#timeline-clip)">
+      
+      <rect x="50" y="465" width="1050" height="100" fill="#207448" />
+      
+      <rect x="1100" y="465" width="450" height="100" fill="#db8129" />
+    </g>
+    
+    <rect x="50" y="465" width="1500" height="100" rx="8" fill="none" stroke="#207448" stroke-width="2" />
+
+    
+    <text x="575" y="508" fill="#ffffff" font-size="24" font-weight="bold" font-family="sans-serif" text-anchor="middle">
+      <tspan x="575" dy="0">950000 us: real-time tasks may run</tspan>
+      <tspan x="575" dy="32">(kernel.sched_rt_runtime_us default)</tspan>
+    </text>
+
+    
+    <text x="1325" y="508" fill="#ffffff" font-size="24" font-weight="bold" font-family="sans-serif" text-anchor="middle">
+      <tspan x="1325" dy="0">50000 us: left</tspan>
+      <tspan x="1325" dy="32">for everything else</tspan>
+    </text>
+  </g>
+
+  
+
+  <g id="message-box">
+    <rect x="50" y="585" width="1500" height="100" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 607)">
+      <rect x="4" y="6" width="48" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="4" y1="18" x2="52" y2="18" stroke="#207448" stroke-width="2" />
+      <polyline points="12,26 18,31 12,36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    
+    <text x="150" y="628" fill="#303a36" font-size="24" font-family="sans-serif">
+      <tspan x="150" dy="0" font-family="monospace" font-weight="bold">dmesg shows: sched: RT throttling activated</tspan>
+      <tspan x="150" dy="32">means a real-time task used its 95% share: fix the task, not the limit</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="commands-card">
+    <rect x="50" y="705" width="730" height="355" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(75, 720)">
+      <rect x="4" y="6" width="48" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <polyline points="14,24 22,30 14,36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="26" y1="36" x2="38" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    
+    <rect x="150" y="722" width="605" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="170" y="754" fill="#303a36" font-size="24" font-family="monospace">chrt -p $$</text>
+
+    <rect x="150" y="784" width="605" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="170" y="816" fill="#303a36" font-size="24" font-family="monospace">sudo chrt -f 50 ./latency_task</text>
+
+    <rect x="150" y="846" width="605" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="170" y="878" fill="#303a36" font-size="24" font-family="monospace">chrt -m</text>
+
+    <rect x="150" y="908" width="605" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="170" y="940" fill="#303a36" font-size="24" font-family="monospace">ps -eo pid,cls,rtprio,ni,pri,comm</text>
+  </g>
+
+  
+  <g id="container-note-card">
+    <rect x="810" y="705" width="740" height="355" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(835, 720)">
+      <polygon points="28,4 52,16 52,42 28,54 4,42 4,16" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <line x1="28" y1="4" x2="28" y2="54" stroke="#207448" stroke-width="3" />
+      <line x1="4" y1="16" x2="28" y2="28" stroke="#207448" stroke-width="3" />
+      <line x1="52" y1="16" x2="28" y2="28" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    <rect x="835" y="790" width="690" height="245" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="860" y="855" fill="#303a36" font-size="24" font-family="sans-serif">
+      <tspan x="860" dy="0">Runtimes usually forbid real-time priorities;</tspan>
+      <tspan x="860" dy="42">cgroup v2 has no cpu.rt_runtime_us, so</tspan>
+      <tspan x="860" dy="42">real-time work inside containers on v2 is hard</tspan>
+    </text>
+  </g>
+
+  
+
+  <g id="takeaway-bar">
+    <rect x="50" y="1085" width="1500" height="65" rx="8" fill="#207448" />
+    <text x="800" y="1127" fill="#ffffff" font-size="30" font-weight="bold" font-family="sans-serif" text-anchor="middle">Use real-time policies sparingly</text>
+  </g>
+</svg>

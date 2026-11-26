@@ -1,0 +1,230 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>A node label switches a DaemonSet pod on and off</title>
+  <desc>Visual explanation showing four Kubernetes nodes where applying a label scheduled by a DaemonSet adds a pod, and removing the label removes the pod.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">A node label switches a DaemonSet pod on and off</text>
+
+  
+  <g id="daemonset-spec">
+    <rect x="50" y="95" width="1500" height="65" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 95 127.5 L 99 123.5 L 105 125.5 L 108 122 L 106 116 L 110 112 L 116 114 L 119.5 110 L 117.5 104 L 123.5 104 L 125.5 110 L 129 114 L 135 112 L 139 116 L 137 122 L 140 125.5 L 146 123.5 L 150 127.5 L 146 131.5 L 144 137.5 L 147.5 141 L 143.5 147 L 137.5 145 L 134 148.5 L 136 154.5 L 130 158.5 L 126 152.5 L 122.5 154.5 L 120.5 160.5 L 114.5 160.5 L 112.5 154.5 L 109 152.5 L 103 158.5 L 97 154.5 L 99 148.5 L 95.5 145 L 89.5 147 L 85.5 141 L 89 137.5 L 87 131.5 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <circle cx="117.5" cy="132.5" r="9" fill="none" stroke="#207448" stroke-width="3" />
+    
+    <text x="800" y="137" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+      <tspan font-weight="bold">DaemonSet </tspan>
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">nginx-fast-storage</tspan>
+      <tspan> with nodeSelector </tspan>
+      <tspan font-family="monospace" font-weight="bold" fill="#db8129">ssd=true</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-1-command">
+    <rect x="920" y="180" width="630" height="54" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    
+    <circle cx="952" cy="207" r="18" fill="#207448" />
+    <text x="952" y="214" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff">1</text>
+    
+    <text x="982" y="215" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">kubectl label nodes ...-z7tb ssd=true</text>
+    
+    <line x1="1377" y1="234" x2="1377" y2="265" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+  </g>
+
+  
+  
+  <g id="node-0xnl">
+    <rect x="50" y="270" width="345" height="300" rx="12" fill="#ffffff" stroke="#c4d8c8" stroke-width="2" />
+    
+    <g transform="translate(197, 295)">
+      <rect x="0" y="0" width="50" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="0" y1="14" x2="50" y2="14" stroke="#207448" stroke-width="2" />
+      <line x1="0" y1="28" x2="50" y2="28" stroke="#207448" stroke-width="2" />
+      <circle cx="40" cy="7" r="2.5" fill="#207448" />
+      <circle cx="40" cy="21" r="2.5" fill="#207448" />
+      <circle cx="40" cy="35" r="2.5" fill="#207448" />
+    </g>
+    
+    <text x="222" y="380" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="222" dy="0">k0-default-pool-</tspan>
+      <tspan x="222" dy="32">35609c18-0xnl</tspan>
+    </text>
+    
+    <rect x="75" y="445" width="295" height="100" rx="8" fill="none" stroke="#d5dfd7" stroke-width="2" stroke-dasharray="8 6" />
+  </g>
+
+  
+  <g id="node-pol3">
+    <rect x="435" y="270" width="345" height="300" rx="12" fill="#ffffff" stroke="#c4d8c8" stroke-width="2" />
+    
+    <g transform="translate(582, 295)">
+      <rect x="0" y="0" width="50" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="0" y1="14" x2="50" y2="14" stroke="#207448" stroke-width="2" />
+      <line x1="0" y1="28" x2="50" y2="28" stroke="#207448" stroke-width="2" />
+      <circle cx="40" cy="7" r="2.5" fill="#207448" />
+      <circle cx="40" cy="21" r="2.5" fill="#207448" />
+      <circle cx="40" cy="35" r="2.5" fill="#207448" />
+    </g>
+    
+    <text x="607" y="395" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">-pol3</text>
+    
+    <rect x="460" y="445" width="295" height="100" rx="8" fill="none" stroke="#d5dfd7" stroke-width="2" stroke-dasharray="8 6" />
+  </g>
+
+  
+  <g id="node-ydae">
+    <rect x="820" y="270" width="345" height="300" rx="12" fill="#ffffff" stroke="#c4d8c8" stroke-width="2" />
+    
+    <g transform="translate(967, 295)">
+      <rect x="0" y="0" width="50" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="0" y1="14" x2="50" y2="14" stroke="#207448" stroke-width="2" />
+      <line x1="0" y1="28" x2="50" y2="28" stroke="#207448" stroke-width="2" />
+      <circle cx="40" cy="7" r="2.5" fill="#207448" />
+      <circle cx="40" cy="21" r="2.5" fill="#207448" />
+      <circle cx="40" cy="35" r="2.5" fill="#207448" />
+    </g>
+    
+    <text x="992" y="395" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">-ydae</text>
+    
+    <rect x="845" y="445" width="295" height="100" rx="8" fill="none" stroke="#d5dfd7" stroke-width="2" stroke-dasharray="8 6" />
+  </g>
+
+  
+  <g id="node-z7tb">
+    <rect x="1205" y="270" width="345" height="300" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(1225, 283)">
+      <rect x="0" y="0" width="38" height="32" rx="3" fill="none" stroke="#207448" stroke-width="2.5" />
+      <line x1="0" y1="11" x2="38" y2="11" stroke="#207448" stroke-width="1.5" />
+      <line x1="0" y1="22" x2="38" y2="22" stroke="#207448" stroke-width="1.5" />
+      <circle cx="31" cy="5.5" r="1.5" fill="#207448" />
+      <circle cx="31" cy="16.5" r="1.5" fill="#207448" />
+      <circle cx="31" cy="27.5" r="1.5" fill="#207448" />
+    </g>
+    
+    <text x="1275" y="307" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">-z7tb</text>
+
+    
+    <rect x="1220" y="330" width="315" height="225" rx="10" fill="#fff9f2" stroke="#db8129" stroke-width="2" />
+    
+    <g transform="translate(1362, 345)">
+      <rect x="0" y="0" width="30" height="26" rx="4" fill="none" stroke="#db8129" stroke-width="2.5" />
+      <line x1="7" y1="0" x2="7" y2="26" stroke="#db8129" stroke-width="1.5" />
+      <line x1="15" y1="0" x2="15" y2="26" stroke="#db8129" stroke-width="1.5" />
+      <line x1="23" y1="0" x2="23" y2="26" stroke="#db8129" stroke-width="1.5" />
+    </g>
+    
+    <text x="1377" y="405" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">only z7tb gets a pod</text>
+    
+    <text x="1377" y="455" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="1377" dy="0">(nginx-fast-</tspan>
+      <tspan x="1377" dy="32">storage-7b90t)</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="step-2-panel">
+    <rect x="50" y="595" width="725" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="95" cy="662" r="22" fill="#207448" />
+    <text x="95" y="670" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(135, 642)">
+      <circle cx="20" cy="20" r="18" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="20" y1="10" x2="20" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="10" y1="20" x2="30" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    
+    <text x="195" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="195" dy="0" font-weight="bold">label more nodes:</tspan>
+      <tspan x="195" dy="32">pods appear there too</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-3-panel">
+    <rect x="825" y="595" width="725" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="870" cy="662" r="22" fill="#207448" />
+    <text x="870" y="670" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(910, 642)">
+      <circle cx="20" cy="20" r="18" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="10" y1="20" x2="30" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    
+    <text x="970" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="970" dy="0" font-weight="bold">remove the label:</tspan>
+      <tspan x="970" dy="32">the controller removes the pod from that node</tspan>
+    </text>
+  </g>
+
+  
+  <g id="warning-box">
+    <rect x="50" y="755" width="1500" height="115" rx="12" fill="#fef6ee" stroke="#db8129" stroke-width="2.5" />
+    
+    <g transform="translate(80, 790)">
+      <polygon points="22,4 42,40 2,40" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" />
+      <line x1="22" y1="16" x2="22" y2="27" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+      <circle cx="22" cy="34" r="2" fill="#db8129" />
+    </g>
+    
+    <text x="145" y="805" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0" font-weight="bold" fill="#db8129">Removing a label a DaemonSet selector requires removes its pod;</tspan>
+      <tspan x="145" dy="34">check the selector before you relabel a node</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="side-fact-scheduler">
+    <rect x="50" y="895" width="725" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 950)">
+      <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="16" y1="0" x2="16" y2="8" stroke="#207448" stroke-width="2.5" />
+      <line x1="32" y1="0" x2="32" y2="8" stroke="#207448" stroke-width="2.5" />
+      <line x1="16" y1="40" x2="16" y2="48" stroke="#207448" stroke-width="2.5" />
+      <line x1="32" y1="40" x2="32" y2="48" stroke="#207448" stroke-width="2.5" />
+      <line x1="0" y1="16" x2="8" y2="16" stroke="#207448" stroke-width="2.5" />
+      <line x1="0" y1="32" x2="8" y2="32" stroke="#207448" stroke-width="2.5" />
+      <line x1="40" y1="16" x2="48" y2="16" stroke="#207448" stroke-width="2.5" />
+      <line x1="40" y1="32" x2="48" y2="32" stroke="#207448" stroke-width="2.5" />
+    </g>
+    
+    <text x="140" y="945" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="140" dy="0">DaemonSet sets <tspan font-family="monospace" font-weight="bold" fill="#207448">nodeName</tspan> in the Pod spec</tspan>
+      <tspan x="140" dy="32">at creation, so the Kubernetes scheduler</tspan>
+      <tspan x="140" dy="32">ignores these pods</tspan>
+    </text>
+  </g>
+
+  
+  <g id="side-fact-cascade">
+    <rect x="825" y="895" width="725" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(855, 950)">
+      <path d="M 6 12 L 42 12" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <path d="M 18 12 L 18 6 L 30 6 L 30 12" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <path d="M 10 12 L 13 42 L 35 42 L 38 12" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <line x1="19" y1="18" x2="19" y2="36" stroke="#207448" stroke-width="2" />
+      <line x1="29" y1="18" x2="29" y2="36" stroke="#207448" stroke-width="2" />
+    </g>
+    
+    <text x="920" y="960" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="920" dy="0">deleting a DaemonSet deletes its pods</tspan>
+      <tspan x="920" dy="34">unless <tspan font-family="monospace" font-weight="bold" fill="#207448">--cascade</tspan> is false</tspan>
+    </text>
+  </g>
+</svg>

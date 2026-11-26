@@ -1,0 +1,304 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1480" width="1600" height="1480">
+  <title>Timeline overview</title>
+  <desc>Kubernetes Pod lifecycle sequence diagram showing interactions between User, API server, Scheduler, Kubelet, containerd, CNI, CSI, Device plugin, and runc.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 2 2 L 11 7 L 2 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 2 2 L 11 7 L 2 12 Z" fill="#db8129" />
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Timeline overview</text>
+
+  
+  
+  <line x1="90" y1="180" x2="90" y2="1440" stroke="#b8cfc0" stroke-width="2" stroke-dasharray="6,6" />
+  <line x1="260" y1="180" x2="260" y2="1440" stroke="#b8cfc0" stroke-width="2" stroke-dasharray="6,6" />
+  <line x1="430" y1="180" x2="430" y2="1440" stroke="#b8cfc0" stroke-width="2" stroke-dasharray="6,6" />
+  <line x1="600" y1="180" x2="600" y2="1440" stroke="#b8cfc0" stroke-width="2" stroke-dasharray="6,6" />
+  <line x1="770" y1="180" x2="770" y2="1440" stroke="#b8cfc0" stroke-width="2" stroke-dasharray="6,6" />
+  <line x1="940" y1="180" x2="940" y2="1440" stroke="#b8cfc0" stroke-width="2" stroke-dasharray="6,6" />
+  <line x1="1110" y1="180" x2="1110" y2="1440" stroke="#b8cfc0" stroke-width="2" stroke-dasharray="6,6" />
+  <line x1="1280" y1="180" x2="1280" y2="1440" stroke="#b8cfc0" stroke-width="2" stroke-dasharray="6,6" />
+  <line x1="1450" y1="180" x2="1450" y2="1440" stroke="#b8cfc0" stroke-width="2" stroke-dasharray="6,6" />
+
+  
+  
+  <g transform="translate(15, 75)" filter="url(#shadow)">
+    <rect width="150" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="75" cy="28" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 57 44 C 57 36, 93 36, 93 44" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="75" y="65" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">User /</text>
+    <text x="75" y="87" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">controller</text>
+  </g>
+
+  
+  <g transform="translate(185, 75)" filter="url(#shadow)">
+    <rect width="150" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="55" y="16" width="40" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="65" cy="29" r="3" fill="#207448"/>
+    <line x1="75" y1="29" x2="87" y2="29" stroke="#207448" stroke-width="3"/>
+    <text x="75" y="65" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">API server</text>
+    <text x="75" y="87" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">(+etcd)</text>
+  </g>
+
+  
+  <g transform="translate(355, 75)" filter="url(#shadow)">
+    <rect width="150" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="75" cy="27" r="13" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="75,19 75,27 82,27" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="75" y="75" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Scheduler</text>
+  </g>
+
+  
+  <g transform="translate(525, 75)" filter="url(#shadow)">
+    <rect width="150" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="75" cy="27" r="12" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="75" y1="11" x2="75" y2="43" stroke="#207448" stroke-width="3"/>
+    <line x1="59" y1="27" x2="91" y2="27" stroke="#207448" stroke-width="3"/>
+    <text x="75" y="75" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Kubelet</text>
+  </g>
+
+  
+  <g transform="translate(695, 75)" filter="url(#shadow)">
+    <rect width="150" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="58" y="15" width="34" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="69" y1="15" x2="69" y2="39" stroke="#207448" stroke-width="2"/>
+    <line x1="81" y1="15" x2="81" y2="39" stroke="#207448" stroke-width="2"/>
+    <text x="75" y="65" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">containerd</text>
+    <text x="75" y="87" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">(CRI)</text>
+  </g>
+
+  
+  <g transform="translate(865, 75)" filter="url(#shadow)">
+    <rect width="150" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="63" cy="27" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="87" cy="20" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="87" cy="34" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="68" y1="27" x2="82" y2="20" stroke="#207448" stroke-width="2"/>
+    <line x1="68" y1="27" x2="82" y2="34" stroke="#207448" stroke-width="2"/>
+    <text x="75" y="65" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">CNI</text>
+    <text x="75" y="87" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">plugin</text>
+  </g>
+
+  
+  <g transform="translate(1035, 75)" filter="url(#shadow)">
+    <rect width="150" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <ellipse cx="75" cy="18" rx="16" ry="6" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 59 18 V 32 A 16 6 0 0 0 91 32 V 18" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="75" y="65" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">CSI node</text>
+    <text x="75" y="87" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">plugin</text>
+  </g>
+
+  
+  <g transform="translate(1205, 75)" filter="url(#shadow)">
+    <rect width="150" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="62" y="16" width="26" height="24" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="56" y1="22" x2="62" y2="22" stroke="#207448" stroke-width="3"/>
+    <line x1="56" y1="32" x2="62" y2="32" stroke="#207448" stroke-width="3"/>
+    <line x1="88" y1="22" x2="94" y2="22" stroke="#207448" stroke-width="3"/>
+    <line x1="88" y1="32" x2="94" y2="32" stroke="#207448" stroke-width="3"/>
+    <text x="75" y="65" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Device</text>
+    <text x="75" y="87" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">plugin</text>
+  </g>
+
+  
+  <g transform="translate(1375, 75)" filter="url(#shadow)">
+    <rect width="150" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="56" y="16" width="38" height="25" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="63,24 68,28 63,32" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="72" y1="32" x2="80" y2="32" stroke="#207448" stroke-width="2.5"/>
+    <text x="75" y="65" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">runc /</text>
+    <text x="75" y="87" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">kernel</text>
+  </g>
+
+  
+
+  
+  <g id="step1">
+    <line x1="90" y1="210" x2="246" y2="210" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+    <circle cx="50" cy="210" r="22" fill="#db8129" />
+    <text x="50" y="218" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">1</text>
+    <rect x="180" y="191" width="600" height="36" rx="8" fill="#fff7f0" stroke="#db8129" stroke-width="2"/>
+    <text x="480" y="217" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">create Pod (admission, defaults, SA token, quota)</text>
+  </g>
+
+  > S (watch: Pod with no nodeName) -->
+  <g id="step2">
+    <line x1="260" y1="270" x2="416" y2="270" stroke="#207448" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)" />
+    <circle cx="220" cy="270" r="22" fill="#207448" />
+    <text x="220" y="278" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">2</text>
+    <rect x="290" y="251" width="370" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="475" y="277" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">watch: Pod with no nodeName</text>
+  </g>
+
+  
+  <g id="step3">
+    <line x1="430" y1="330" x2="274" y2="330" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <circle cx="470" cy="330" r="22" fill="#207448" />
+    <text x="470" y="338" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">3</text>
+    <rect x="280" y="311" width="395" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="477" y="337" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">bind Pod → node (spec.nodeName)</text>
+  </g>
+
+  > K (watch: Pod bound to my node) -->
+  <g id="step4">
+    <line x1="260" y1="390" x2="586" y2="390" stroke="#207448" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)" />
+    <circle cx="220" cy="390" r="22" fill="#207448" />
+    <text x="220" y="398" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">4</text>
+    <rect x="330" y="371" width="370" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="515" y="397" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">watch: Pod bound to my node</text>
+  </g>
+
+  
+  <g id="step5">
+    <path d="M 600 440 H 650 V 465 H 614" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <circle cx="560" cy="450" r="22" fill="#207448" />
+    <text x="560" y="458" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">5</text>
+    <rect x="665" y="432" width="760" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1045" y="458" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">admit pod (resources, node-fit, kernel params), create pod dirs</text>
+  </g>
+
+  
+  <g id="step6">
+    <line x1="600" y1="510" x2="1266" y2="510" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <circle cx="560" cy="510" r="22" fill="#207448" />
+    <text x="560" y="518" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">6</text>
+    <rect x="680" y="491" width="580" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="970" y="517" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">Allocate(GPU devices) → env/mounts/CDI names</text>
+  </g>
+
+  
+  <g id="step7">
+    <line x1="600" y1="570" x2="1096" y2="570" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <circle cx="560" cy="570" r="22" fill="#207448" />
+    <text x="560" y="578" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">7</text>
+    <rect x="640" y="551" width="550" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="915" y="577" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">NodeStageVolume / NodePublishVolume (PVCs)</text>
+  </g>
+
+  
+  <g id="step8">
+    <line x1="600" y1="630" x2="756" y2="630" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <circle cx="560" cy="630" r="22" fill="#207448" />
+    <text x="560" y="638" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">8</text>
+    <rect x="650" y="611" width="220" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="760" y="637" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">RunPodSandbox</text>
+  </g>
+
+  
+  <g id="step9">
+    <line x1="770" y1="690" x2="926" y2="690" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <circle cx="730" cy="690" r="22" fill="#207448" />
+    <text x="730" y="698" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">9</text>
+    <rect x="800" y="671" width="310" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="955" y="697" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">ADD (netns, IP, routes)</text>
+  </g>
+
+  
+  <g id="step10">
+    <line x1="600" y1="750" x2="756" y2="750" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <circle cx="560" cy="750" r="22" fill="#207448" />
+    <text x="560" y="758" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">10</text>
+    <rect x="650" y="731" width="290" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="795" y="757" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">PullImage (per container)</text>
+  </g>
+
+  
+  <g id="step11">
+    <line x1="600" y1="810" x2="756" y2="810" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <circle cx="560" cy="810" r="22" fill="#207448" />
+    <text x="560" y="818" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">11</text>
+    <rect x="640" y="791" width="630" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="955" y="817" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">CreateContainer / StartContainer (init containers first)</text>
+  </g>
+
+  
+  <g id="step12">
+    <line x1="770" y1="870" x2="1436" y2="870" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <circle cx="730" cy="870" r="22" fill="#207448" />
+    <text x="730" y="878" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">12</text>
+    <rect x="830" y="851" width="530" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1095" y="877" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">create namespaces, cgroups, mounts, exec</text>
+  </g>
+
+  
+  <g id="step13">
+    <line x1="600" y1="930" x2="274" y2="930" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <circle cx="640" cy="930" r="22" fill="#207448" />
+    <text x="640" y="938" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">13</text>
+    <rect x="230" y="911" width="760" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="610" y="937" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">status updates (PodScheduled, Initialized, ContainersReady, Ready)</text>
+  </g>
+
+  
+  <g id="note">
+    <rect x="560" y="976" width="930" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+    <text x="1025" y="1007" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">running: probes, log rotation, cgroup accounting, status heartbeats</text>
+  </g>
+
+  
+  <g id="step14">
+    <line x1="90" y1="1060" x2="246" y2="1060" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <circle cx="50" cy="1060" r="22" fill="#207448" />
+    <text x="50" y="1068" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">14</text>
+    <rect x="130" y="1041" width="160" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="210" y="1067" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">delete Pod</text>
+  </g>
+
+  > K (deletionTimestamp set) -->
+  <g id="step15">
+    <line x1="260" y1="1120" x2="586" y2="1120" stroke="#207448" stroke-width="2.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)" />
+    <circle cx="220" cy="1120" r="22" fill="#207448" />
+    <text x="220" y="1128" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">15</text>
+    <rect x="300" y="1101" width="410" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="505" y="1127" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">deletionTimestamp set (grace)</text>
+  </g>
+
+  
+  <g id="step16">
+    <line x1="600" y1="1180" x2="1436" y2="1180" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <circle cx="560" cy="1180" r="22" fill="#207448" />
+    <text x="560" y="1188" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">16</text>
+    <rect x="790" y="1161" width="460" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1020" y="1187" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">preStop, SIGTERM, wait, SIGKILL</text>
+  </g>
+
+  
+  <g id="step17">
+    <line x1="600" y1="1240" x2="756" y2="1240" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <circle cx="560" cy="1240" r="22" fill="#207448" />
+    <text x="560" y="1248" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">17</text>
+    <rect x="640" y="1221" width="490" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="885" y="1247" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">StopContainer, StopPodSandbox → CNI DEL</text>
+  </g>
+
+  
+  <g id="step18">
+    <line x1="600" y1="1300" x2="1096" y2="1300" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <circle cx="560" cy="1300" r="22" fill="#207448" />
+    <text x="560" y="1308" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">18</text>
+    <rect x="740" y="1281" width="260" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="870" y="1307" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">unmount volumes</text>
+  </g>
+
+  
+  <g id="step19">
+    <line x1="600" y1="1360" x2="274" y2="1360" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <circle cx="640" cy="1360" r="22" fill="#207448" />
+    <text x="640" y="1368" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">19</text>
+    <rect x="250" y="1341" width="370" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="435" y="1367" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">remove Pod object (grace 0)</text>
+  </g>
+
+</svg>

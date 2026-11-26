@@ -1,0 +1,200 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020" style="background-color: #f5f8f5;">
+  <title>Scale-up latency, broken down</title>
+  <desc>Visual flowchart explaining the breakdown of scale-up latency in Kubernetes from signal detection to pod ready state.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+
+    
+    <filter id="card-shadow" x="-6%" y="-6%" width="112%" height="118%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#143621" flood-opacity="0.06" />
+    </filter>
+  </defs>
+
+  
+  <text x="80" y="80" fill="#303a36" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="48px" font-weight="800" letter-spacing="-0.5px">Scale-up latency, broken down</text>
+
+  
+
+  
+  <path d="M 400 215 L 628 215" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 960 215 L 1188 215" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1360 295 L 1360 438" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1200 525 L 972 525" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-orange)" />
+
+  
+  <path d="M 640 525 L 412 525" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 200 605 L 200 748" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1360 605 V 675 Q 1360 685 1348 685 H 312 Q 300 685 300 697 V 748" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 400 835 L 628 835" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 960 835 L 1188 835" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  
+
+  
+  <g transform="translate(1086, 525)">
+    <rect x="-105" y="-24" width="210" height="48" rx="24" fill="#fff5eb" stroke="#db8129" stroke-width="2.5" />
+    <text x="0" y="7" text-anchor="middle" fill="#db8129" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="700">no free GPU node</text>
+  </g>
+
+  
+  <g transform="translate(800, 685)">
+    <rect x="-105" y="-24" width="210" height="48" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <text x="0" y="7" text-anchor="middle" fill="#207448" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="700">warm node free</text>
+  </g>
+
+  
+
+  
+  <g transform="translate(80, 135)" filter="url(#card-shadow)">
+    <rect width="320" height="160" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(160, 48)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M -30 18 H 30" stroke="#db8129" stroke-dasharray="5,4" />
+      <path d="M -32 20 L -12 12 L 8 22 L 28 -8" />
+      <circle cx="28" cy="-8" r="4" fill="#db8129" stroke="#db8129" />
+    </g>
+    <text x="160" y="116" text-anchor="middle" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="700">Signal crosses</text>
+    <text x="160" y="148" text-anchor="middle" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="700">target</text>
+  </g>
+
+  
+  <g transform="translate(640, 135)" filter="url(#card-shadow)">
+    <rect width="320" height="160" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(160, 48)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="0" cy="0" r="22" />
+      <path d="M 0 -13 V 0 L 9 9" />
+      <path d="M -16 -24 L -10 -28" />
+      <path d="M 16 -24 L 10 -28" />
+    </g>
+    <text x="160" y="116" text-anchor="middle" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="700">Scrape and</text>
+    <text x="160" y="148" text-anchor="middle" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="700">15 s sync</text>
+  </g>
+
+  
+  <g transform="translate(1200, 135)" filter="url(#card-shadow)">
+    <rect width="320" height="160" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(160, 48)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="-24" y="-8" width="18" height="26" rx="4" />
+      <rect x="6" y="-18" width="18" height="36" rx="4" />
+      <path d="M -15 -14 L -5 -24 L 5 -14" />
+      <path d="M -5 -24 V 8" />
+    </g>
+    <text x="160" y="116" text-anchor="middle" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="700">HPA raises</text>
+    <text x="160" y="148" text-anchor="middle" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="700">replicas</text>
+  </g>
+
+  
+
+  
+  <g transform="translate(80, 445)" filter="url(#card-shadow)">
+    <rect width="320" height="160" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(160, 52)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M -22 -14 L 0 -26 L 22 -14 L 0 -2 Z" />
+      <path d="M -22 -14 V 12 L 0 24 V 10" />
+      <path d="M 22 -14 V 12 L 10 18" />
+      <path d="M 12 -6 V 14 L 6 8" />
+      <path d="M 12 14 L 18 8" />
+    </g>
+    <text x="160" y="132" text-anchor="middle" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="700">Image pull</text>
+  </g>
+
+  
+  <g transform="translate(640, 445)" filter="url(#card-shadow)">
+    <rect width="320" height="160" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(160, 50)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="-24" y="-20" width="34" height="42" rx="4" />
+      <line x1="-16" y1="-9" x2="-4" y2="-9" />
+      <line x1="-16" y1="2" x2="-4" y2="2" />
+      <circle cx="16" cy="10" r="14" fill="#ffffff" />
+      <path d="M 16 3 V 17 M 9 10 H 23" />
+    </g>
+    <text x="160" y="116" text-anchor="middle" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="700">Autoscaler</text>
+    <text x="160" y="148" text-anchor="middle" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="700">adds node</text>
+  </g>
+
+  
+  <g transform="translate(1200, 445)" filter="url(#card-shadow)">
+    <rect width="320" height="160" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(160, 52)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M -18 -20 H 18" />
+      <path d="M -18 20 H 18" />
+      <path d="M -14 -20 L 0 0 L -14 20" />
+      <path d="M 14 -20 L 0 0 L 14 20" />
+      <circle cx="0" cy="11" r="2.5" fill="#207448" stroke="none" />
+    </g>
+    <text x="160" y="132" text-anchor="middle" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="700">Pod Pending</text>
+  </g>
+
+  
+
+  
+  <g transform="translate(80, 755)" filter="url(#card-shadow)">
+    <rect width="320" height="160" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(160, 52)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="-18" cy="-12" r="5" fill="#e8f1ea" />
+      <circle cx="-18" cy="12" r="5" fill="#e8f1ea" />
+      <circle cx="18" cy="-12" r="5" fill="#e8f1ea" />
+      <circle cx="18" cy="12" r="5" fill="#e8f1ea" />
+      <circle cx="0" cy="0" r="6" fill="#207448" />
+      <path d="M -13 -10 L -5 -2 M -13 10 L -5 2 M 13 -10 L 5 -2 M 13 10 L 5 2" />
+    </g>
+    <text x="160" y="132" text-anchor="middle" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="700">Weight load</text>
+  </g>
+
+  
+  <g transform="translate(640, 755)" filter="url(#card-shadow)">
+    <rect width="320" height="160" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(160, 50)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M -22 14 A 25 25 0 1 1 22 14" />
+      <path d="M 0 4 L 12 -12" />
+      <circle cx="0" cy="4" r="4" fill="#207448" />
+      <path d="M -12 -18 L -9 -14" />
+      <path d="M 0 -22 V -17" />
+      <path d="M 12 -18 L 9 -14" />
+    </g>
+    <text x="160" y="132" text-anchor="middle" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="700">Warm-up</text>
+  </g>
+
+  
+  <g transform="translate(1200, 755)" filter="url(#card-shadow)">
+    <rect width="320" height="160" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(160, 50)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="-24" y="-8" width="48" height="26" rx="6" />
+      <circle cx="-12" cy="5" r="3" fill="#207448" />
+      <circle cx="0" cy="5" r="3" fill="#207448" />
+      <circle cx="12" cy="5" r="3" fill="#207448" />
+      <path d="M -6 -16 L 2 -8 L 16 -22" stroke="#207448" />
+    </g>
+    <text x="160" y="116" text-anchor="middle" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="700">Ready, router</text>
+    <text x="160" y="148" text-anchor="middle" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="700">adds it</text>
+  </g>
+</svg>

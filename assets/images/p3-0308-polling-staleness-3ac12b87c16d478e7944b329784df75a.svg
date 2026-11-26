@@ -1,0 +1,238 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
+  <title>Background polling versus a scrape-time collector</title>
+  <desc>Visual comparison between background gauge polling and on-demand scrape-time metric collection in Prometheus exporters.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#db8129" />
+    </marker>
+    
+    <marker id="arrow-dark" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#303a36" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1500" fill="#f5f8f5" />
+
+  
+  <g id="header">
+    <text x="50" y="58" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Background polling versus a scrape-time collector</text>
+    <rect x="1150" y="24" width="400" height="44" rx="22" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1350" y="54" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">start_http_server(9101)</text>
+  </g>
+
+  
+  <g id="top-panel">
+    <rect x="40" y="88" width="1520" height="380" rx="16" fill="#ffffff" stroke="#c4d6c8" stroke-width="2" />
+    
+    
+    <rect x="40" y="88" width="1520" height="56" rx="16" fill="#e8f1ea" />
+    <rect x="40" y="124" width="1520" height="20" fill="#e8f1ea" />
+    
+    
+    <g transform="translate(60, 96)">
+      <circle cx="20" cy="20" r="18" fill="none" stroke="#207448" stroke-width="4" />
+      <polyline points="20,10 20,20 28,24" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <text x="115" y="127" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">poll_forever with Gauge.set</text>
+
+    
+    <g transform="translate(70, 166)">
+      <rect x="0" y="0" width="670" height="130" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+      <g transform="translate(20, 24)">
+        <rect x="0" y="0" width="44" height="44" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+        <polyline points="10,22 20,32 34,14" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      </g>
+      <text x="80" y="44" font-family="sans-serif" font-size="24" fill="#303a36">a polling thread writes</text>
+      <text x="80" y="76" font-family="monospace" font-size="24" fill="#207448">TEMP.labels(h, gpu).set(t) every interval=15</text>
+      <text x="80" y="108" font-family="monospace" font-size="24" fill="#207448">and ERRORS.labels(h).inc() on failure</text>
+    </g>
+
+    
+    <g transform="translate(850, 166)">
+      <rect x="0" y="0" width="670" height="130" rx="12" fill="#f5f8f5" stroke="#303a36" stroke-width="2" stroke-dasharray="6,6" />
+      <g transform="translate(24, 24)">
+        <circle cx="22" cy="22" r="18" fill="none" stroke="#303a36" stroke-width="4" />
+        <circle cx="22" cy="22" r="8" fill="none" stroke="#303a36" stroke-width="4" />
+      </g>
+      <text x="80" y="74" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Prometheus scrapes at its own rate</text>
+    </g>
+
+    
+    <g transform="translate(70, 316)">
+      <rect x="0" y="0" width="940" height="130" rx="10" fill="#fff5eb" stroke="#db8129" stroke-width="3" />
+      <g transform="translate(20, 38)">
+        <path d="M 20 2 L 38 34 L 2 34 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+        <line x1="20" y1="14" x2="20" y2="22" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+        <circle cx="20" cy="28" r="2.5" fill="#db8129" />
+      </g>
+      <text x="75" y="52" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">if polling stalls in the night:</text>
+      <text x="75" y="86" font-family="sans-serif" font-size="24" fill="#303a36">the metrics keep showing the last values, dashboards stay</text>
+      <text x="75" y="116" font-family="sans-serif" font-size="24" fill="#303a36">calm on hours-old numbers</text>
+    </g>
+
+    
+    <g transform="translate(1030, 316)">
+      <rect x="0" y="0" width="490" height="130" rx="10" fill="#f5f8f5" stroke="#7a8b82" stroke-width="2" />
+      <g transform="translate(20, 42)">
+        <rect x="0" y="0" width="36" height="36" rx="6" fill="none" stroke="#7a8b82" stroke-width="4" />
+        <line x1="8" y1="8" x2="28" y2="28" stroke="#7a8b82" stroke-width="4" stroke-linecap="round" />
+        <line x1="28" y1="8" x2="8" y2="28" stroke="#7a8b82" stroke-width="4" stroke-linecap="round" />
+      </g>
+      <text x="72" y="56" font-family="sans-serif" font-size="24" fill="#303a36">series for removed hosts</text>
+      <text x="72" y="90" font-family="monospace" font-size="24" fill="#303a36">linger until .remove(...)</text>
+    </g>
+  </g>
+
+  
+  <g id="bottom-panel">
+    <rect x="40" y="490" width="1520" height="610" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <rect x="40" y="490" width="1520" height="56" rx="16" fill="#207448" />
+    <rect x="40" y="526" width="1520" height="20" fill="#207448" />
+    
+    
+    <g transform="translate(60, 498)">
+      <rect x="2" y="4" width="36" height="32" rx="6" fill="none" stroke="#ffffff" stroke-width="4" />
+      <line x1="10" y1="14" x2="30" y2="14" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+      <line x1="10" y1="22" x2="26" y2="22" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+    </g>
+    
+    <text x="115" y="529" font-family="monospace" font-size="30" font-weight="bold" fill="#ffffff">FleetCollector registered with REGISTRY.register</text>
+
+    
+    <g transform="translate(70, 566)">
+      <rect x="0" y="0" width="310" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <circle cx="36" cy="36" r="20" fill="#207448" />
+      <text x="36" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+      <text x="72" y="64" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Prometheus scrapes</text>
+    </g>
+
+    
+    <path d="M 380 621 L 436 621" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(440, 566)">
+      <rect x="0" y="0" width="320" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <circle cx="36" cy="36" r="20" fill="#207448" />
+      <text x="36" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      <text x="72" y="64" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">collect() runs now</text>
+    </g>
+
+    
+    <path d="M 760 621 L 816 621" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(820, 566)">
+      <rect x="0" y="0" width="700" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <circle cx="36" cy="36" r="20" fill="#207448" />
+      <text x="36" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+      <text x="72" y="48" font-family="sans-serif" font-size="24" fill="#303a36">query hardware concurrently:</text>
+      <text x="72" y="84" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">for each host: read_temps(h, timeout=5)</text>
+    </g>
+
+    
+    <path d="M 1170 676 L 1170 706 L 500 706 L 500 730" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <path d="M 1170 706 L 1190 706 L 1190 730" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(70, 734)">
+      <rect x="0" y="0" width="760" height="170" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+      <circle cx="36" cy="36" r="20" fill="#207448" />
+      <text x="36" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4a</text>
+      <text x="72" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Success Data</text>
+      <g transform="translate(24, 60)">
+        <rect x="0" y="0" width="712" height="92" rx="8" fill="#ffffff" stroke="#c4d6c8" stroke-width="1.5" />
+        <text x="16" y="38" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">temp.add_metric([h, str(gpu)], t);</text>
+        <text x="16" y="74" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">up.add_metric([h], 1)</text>
+      </g>
+    </g>
+
+    
+    <g transform="translate(860, 734)">
+      <rect x="0" y="0" width="660" height="170" rx="12" fill="#fff5eb" stroke="#db8129" stroke-width="2" />
+      <circle cx="36" cy="36" r="20" fill="#db8129" />
+      <text x="36" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4b</text>
+      <text x="72" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Failure Handling</text>
+      <g transform="translate(20, 60)">
+        <rect x="0" y="0" width="620" height="92" rx="8" fill="#ffffff" stroke="#fcd4b0" stroke-width="1.5" />
+        <text x="16" y="38" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">up.add_metric([h], 0)</text>
+        <text x="16" y="74" font-family="sans-serif" font-size="24" fill="#303a36">so failure is data, not an exception</text>
+      </g>
+    </g>
+
+    
+    <path d="M 450 904 L 450 926 L 770 926 L 770 946" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 1190 904 L 1190 926 L 770 926" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(70, 950)">
+      <rect x="0" y="0" width="760" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <circle cx="36" cy="36" r="20" fill="#207448" />
+      <text x="36" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+      <text x="72" y="46" font-family="sans-serif" font-size="24" fill="#303a36">return metrics together:</text>
+      <text x="72" y="88" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">yield temp, up and fleet_scrape_duration_seconds</text>
+    </g>
+
+    
+    <g transform="translate(860, 950)">
+      <rect x="0" y="0" width="660" height="120" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="3" />
+      <g transform="translate(24, 38)">
+        <polygon points="20,2 38,36 2,36" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+        <polyline points="14,24 19,29 27,17" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      </g>
+      <text x="76" y="52" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Guarantee:</text>
+      <text x="76" y="86" font-family="sans-serif" font-size="24" fill="#303a36">each scrape is a fresh, consistent snapshot,</text>
+      <text x="76" y="114" font-family="sans-serif" font-size="24" fill="#303a36">so no stale series survive</text>
+    </g>
+  </g>
+
+  
+  <g id="rules-strip" transform="translate(40, 1120)">
+    <rect x="0" y="0" width="1520" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(24, 20)">
+      <path d="M 24 4 L 44 14 L 44 28 C 44 42 24 50 24 50 C 24 50 4 42 4 28 L 4 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <polyline points="14,26 21,33 34,18" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="80" y="52" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Collector Implementation Rules</text>
+
+    
+    <g transform="translate(24, 80)">
+      <circle cx="12" cy="12" r="6" fill="#207448" />
+      <text x="30" y="20" font-family="sans-serif" font-size="24" fill="#303a36">collection must finish well inside the scrape timeout; parallelise with a thread pool and a per-host timeout,</text>
+      <text x="30" y="50" font-family="sans-serif" font-size="24" fill="#303a36">or cache results for a few seconds (a TTL cache keeps each result for a short lifetime);</text>
+    </g>
+
+    
+    <g transform="translate(24, 144)">
+      <circle cx="12" cy="12" r="6" fill="#207448" />
+      <text x="30" y="20" font-family="sans-serif" font-size="24" fill="#303a36">never let one failing target raise out of collect(); do not block on slow hardware, BMC queries can take seconds;</text>
+    </g>
+
+    
+    <g transform="translate(24, 184)">
+      <circle cx="12" cy="12" r="6" fill="#207448" />
+      <text x="30" y="20" font-family="sans-serif" font-size="24" fill="#303a36">protect the endpoint: internal interface, TLS and basic auth through proxies, or a sidecar</text>
+    </g>
+  </g>
+
+  
+  <g id="takeaway-bar" transform="translate(40, 1400)">
+    <rect x="0" y="0" width="1520" height="70" rx="14" fill="#207448" />
+    <g transform="translate(30, 14)">
+      <circle cx="21" cy="21" r="18" fill="none" stroke="#ffffff" stroke-width="3" />
+      <polyline points="12,21 18,27 30,15" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="760" y="46" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Let the scrape drive the collection</text>
+  </g>
+</svg>

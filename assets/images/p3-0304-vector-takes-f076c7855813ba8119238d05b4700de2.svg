@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1480" width="1600" height="1480">
+  <title>The N-dimensional Vector, one capability at a time (Takes 1 to 5)</title>
+  <desc>A five-step ladder infographic showing progressive capabilities of an N-dimensional Vector class in Python, worked results, and API design takeaway.</desc>
+
+  <rect width="1600" height="1480" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="40" font-weight="bold" fill="#207448">The N-dimensional Vector, one capability at a time (Takes 1 to 5)</text>
+
+  
+  <line x1="85" y1="80" x2="85" y2="975" stroke="#207448" stroke-width="8" stroke-linecap="round"/>
+  <line x1="145" y1="80" x2="145" y2="975" stroke="#207448" stroke-width="8" stroke-linecap="round"/>
+
+  
+  
+  <line x1="85" y1="125" x2="190" y2="125" stroke="#207448" stroke-width="6"/>
+  <circle cx="115" cy="125" r="22" fill="#207448"/>
+  <text x="115" y="125" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+  
+  <rect x="190" y="75" width="1360" height="100" rx="12" fill="#e8f1ea" stroke="#c5d8cb" stroke-width="1.5"/>
+
+  
+  <g transform="translate(212, 97)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="2" y="6" width="52" height="44" rx="6"/>
+    <circle cx="16" cy="28" r="3" fill="#207448" stroke="none"/>
+    <circle cx="28" cy="28" r="3" fill="#207448" stroke="none"/>
+    <circle cx="40" cy="28" r="3" fill="#207448" stroke="none"/>
+  </g>
+
+  
+  <text x="285" y="116" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-weight="bold" fill="#207448">1 short __repr__ with reprlib.repr: </tspan><tspan font-family="monospace">Vector(range(1000))</tspan> is truncated,
+    <tspan x="285" dy="34">like <tspan font-family="monospace">Vector([0.0, 1.0, 2.0, 3.0, 4.0, ...])</tspan></tspan>
+  </text>
+
+  
+  
+  <line x1="85" y1="310" x2="190" y2="310" stroke="#207448" stroke-width="6"/>
+  <circle cx="115" cy="310" r="22" fill="#207448"/>
+  <text x="115" y="310" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+  
+  <rect x="190" y="190" width="1360" height="240" rx="12" fill="#e8f1ea" stroke="#c5d8cb" stroke-width="1.5"/>
+
+  
+  <g transform="translate(212, 282)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 16 10 H 6 V 46 H 16"/>
+    <path d="M 40 10 H 50 V 46 H 40"/>
+    <circle cx="28" cy="22" r="3" fill="#207448" stroke="none"/>
+    <circle cx="28" cy="34" r="3" fill="#207448" stroke="none"/>
+  </g>
+
+  
+  <text x="285" y="222" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-weight="bold" fill="#207448">2 slice-aware __getitem__: </tspan><tspan font-family="monospace">if isinstance(key, slice):</tspan>
+    <tspan x="285" dy="30"><tspan font-family="monospace">return type(self)(self._components[key]); else operator.index(key),</tspan></tspan>
+    <tspan x="285" dy="30">which calls <tspan font-family="monospace">__index__</tspan> and raises <tspan font-family="monospace">TypeError</tspan> for floats or tuples;</tspan>
+    <tspan x="285" dy="30"><tspan font-family="monospace">slice.indices(length)</tspan> normalizes bounds;</tspan>
+    <tspan x="285" dy="30"><tspan font-family="monospace">SkipObject</tspan> returns a new iterator from each <tspan font-family="monospace">__iter__</tspan> call so</tspan>
+    <tspan x="285" dy="30"><tspan font-family="monospace">[x + y for x in skipper for y in skipper]</tspan> makes 9 pairs from aa to ee,</tspan>
+    <tspan x="285" dy="30">while <tspan font-family="monospace">Squares</tspan> returns self from <tspan font-family="monospace">__iter__</tspan> and scans only once</tspan>
+  </text>
+
+  
+  
+  <line x1="85" y1="552" x2="190" y2="552" stroke="#207448" stroke-width="6"/>
+  <circle cx="115" cy="552" r="22" fill="#207448"/>
+  <text x="115" y="552" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+  
+  <rect x="190" y="445" width="1360" height="215" rx="12" fill="#e8f1ea" stroke="#c5d8cb" stroke-width="1.5"/>
+
+  
+  <g transform="translate(212, 524)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="10" y="22" width="36" height="28" rx="5"/>
+    <path d="M 18 22 V 14 C 18 8 38 8 38 14 V 22"/>
+    <circle cx="28" cy="34" r="3" fill="#207448" stroke="none"/>
+    <line x1="28" y1="37" x2="28" y2="43"/>
+  </g>
+
+  
+  <text x="285" y="475" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-weight="bold" fill="#207448">3 dynamic read-only attributes x, y, z, t through __match_args__</tspan>
+    <tspan x="285" dy="30">and <tspan font-family="monospace">__getattr__</tspan> reading <tspan font-family="monospace">self._components[0..3]</tspan>;</tspan>
+    <tspan x="285" dy="30" font-weight="bold" fill="#db8129">trap: </tspan><tspan fill="#303a36"><tspan font-family="monospace">v.x = 10</tspan> creates <tspan font-family="monospace">v.__dict__[x]</tspan>, which shadows <tspan font-family="monospace">__getattr__</tspan></tspan>
+    <tspan x="285" dy="30">while <tspan font-family="monospace">v[0]</tspan> stays unchanged; fix: <tspan font-family="monospace">__setattr__</tspan> raises <tspan font-family="monospace">AttributeError</tspan></tspan>
+    <tspan x="285" dy="30">for single lowercase letters a to z; allowed writes use</tspan>
+    <tspan x="285" dy="30"><tspan font-family="monospace">super().__setattr__(attr, val)</tspan> to avoid infinite recursion</tspan>
+  </text>
+
+  
+  
+  <line x1="85" y1="752" x2="190" y2="752" stroke="#207448" stroke-width="6"/>
+  <circle cx="115" cy="752" r="22" fill="#207448"/>
+  <text x="115" y="752" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+
+  
+  <rect x="190" y="675" width="1360" height="155" rx="12" fill="#e8f1ea" stroke="#c5d8cb" stroke-width="1.5"/>
+
+  
+  <g transform="translate(212, 725)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="20" y1="8" x2="16" y2="48"/>
+    <line x1="38" y1="8" x2="34" y2="48"/>
+    <line x1="8" y1="22" x2="48" y2="22"/>
+    <line x1="6" y1="36" x2="46" y2="36"/>
+  </g>
+
+  
+  <text x="285" y="707" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-weight="bold" fill="#207448">4 hashing: </tspan><tspan font-family="monospace">functools.reduce(operator.xor, (hash(x) for x in self), 0),</tspan>
+    <tspan x="285" dy="30">initializer 0 covers empty vectors;</tspan>
+    <tspan x="285" dy="30">streaming equality <tspan font-family="monospace">len(self) == len(other)</tspan> and</tspan>
+    <tspan x="285" dy="30"><tspan font-family="monospace">all(a == b for a, b in zip(self, other))</tspan> in O(1) extra memory</tspan>
+  </text>
+
+  
+  
+  <line x1="85" y1="910" x2="190" y2="910" stroke="#207448" stroke-width="6"/>
+  <circle cx="115" cy="910" r="22" fill="#207448"/>
+  <text x="115" y="910" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+
+  
+  <rect x="190" y="845" width="1360" height="130" rx="12" fill="#e8f1ea" stroke="#c5d8cb" stroke-width="1.5"/>
+
+  
+  <g transform="translate(212, 882)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="28" cy="28" r="22"/>
+    <line x1="28" y1="16" x2="28" y2="40"/>
+    <line x1="16" y1="28" x2="40" y2="28"/>
+  </g>
+
+  
+  <text x="285" y="877" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-weight="bold" fill="#207448">5 operators: </tspan><tspan font-family="monospace">__neg__, __pos__, __add__, __radd__, __mul__, __rmul__,</tspan>
+    <tspan x="285" dy="30"><tspan font-family="monospace">__matmul__, __rmatmul__, __contains__, __iadd__;</tspan></tspan>
+    <tspan x="285" dy="30">format h for hyperspherical coordinates</tspan>
+  </text>
+
+  
+  <rect x="50" y="995" width="1500" height="355" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(75, 1018)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="4" y="4" width="48" height="48" rx="8"/>
+    <line x1="14" y1="18" x2="42" y2="18"/>
+    <line x1="14" y1="28" x2="32" y2="28"/>
+    <line x1="14" y1="38" x2="26" y2="38"/>
+    <circle cx="38" cy="36" r="4" fill="#207448"/>
+  </g>
+
+  <text x="145" y="1046" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Worked results strip</text>
+
+  <text x="145" y="1084" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="monospace">Vector([3, 4, 5]) + (10, 20)</tspan> and <tspan font-family="monospace">(10, 20) + Vector([3, 4, 5])</tspan> both give
+    <tspan x="145" dy="34"><tspan font-family="monospace">Vector([13.0, 24.0, 5.0])</tspan> using <tspan font-family="monospace">zip_longest(self, other, fillvalue=0.0)</tspan> and <tspan font-family="monospace">__radd__ = __add__</tspan>;</tspan>
+    <tspan x="145" dy="34">adding 1 is rejected cleanly by returning <tspan font-family="monospace">NotImplemented</tspan> in <tspan font-family="monospace">except TypeError</tspan>;</tspan>
+    <tspan x="145" dy="34"><tspan font-family="monospace">Vector([1, 2, 3]) @ Vector([4, 5, 6]) == 32.0</tspan> after checking <tspan font-family="monospace">isinstance(other, abc.Sized)</tspan> and <tspan font-family="monospace">Iterable</tspan>;</tspan>
+    <tspan x="145" dy="34">if <tspan font-family="monospace">__iadd__</tspan> is missing, <tspan font-family="monospace">v1 += v2</tspan> falls back to <tspan font-family="monospace">v1 = v1 + v2</tspan> and changes <tspan font-family="monospace">id(v1)</tspan>,</tspan>
+    <tspan x="145" dy="34">while a mutable class returns self</tspan>
+  </text>
+
+  
+  <rect x="50" y="1375" width="1500" height="75" rx="12" fill="#207448"/>
+  <text x="800" y="1422" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">If an operator has no natural meaning for your type, give the method a name</text>
+</svg>

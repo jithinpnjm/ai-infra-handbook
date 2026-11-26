@@ -1,0 +1,192 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1280" width="1600" height="1280">
+  <title>ARP and NDP: turning the next hop's IP address into a MAC address</title>
+  <desc>Diagram showing IPv4 ARP broadcasting and IPv6 NDP multicast solicitation and neighbour table states.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1280" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="65" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="#303a36">ARP and NDP: turning the next hop's IP address into a MAC address</text>
+
+  
+  <g transform="translate(40, 100)">
+    
+    <rect width="1060" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="30" y="45" font-family="system-ui, sans-serif" font-size="32" font-weight="bold" fill="#207448">IPv4: ARP</text>
+
+    
+    <g transform="translate(30, 80)">
+      <rect width="210" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+      
+      <rect x="25" y="20" width="46" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="48" y1="52" x2="48" y2="62" stroke="#207448" stroke-width="3"/>
+      <line x1="36" y1="62" x2="60" y2="62" stroke="#207448" stroke-width="3"/>
+      <text x="85" y="48" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">Host</text>
+      <text x="25" y="95" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#207448">10.0.0.15</text>
+    </g>
+
+    
+    <g transform="translate(790, 70)">
+      <rect width="240" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+      
+      <circle cx="45" cy="42" r="22" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 35 42 L 55 42 M 48 35 L 55 42 L 48 49" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="80" y="52" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#207448">10.0.0.1</text>
+    </g>
+
+    
+    <g transform="translate(790, 185)">
+      <rect width="240" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+      <text x="120" y="38" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">other hosts on</text>
+      <text x="120" y="66" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">the segment</text>
+    </g>
+
+    
+    <path d="M 240,125 L 490,125 M 490,125 L 782,105 M 490,125 L 782,215" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+    
+    <rect x="255" y="70" width="515" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)"/>
+    <circle cx="278" cy="105" r="16" fill="#207448"/>
+    <text x="278" y="112" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20" font-weight="bold" fill="#ffffff">1</text>
+    <text x="305" y="96" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">broadcast to ff:ff:ff:ff:ff:ff:</text>
+    <text x="305" y="126" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">who has 10.0.0.1? tell 10.0.0.15</text>
+
+    
+    <path d="M 790,140 L 250,155" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+    
+    <rect x="330" y="160" width="400" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)"/>
+    <circle cx="352" cy="183" r="16" fill="#207448"/>
+    <text x="352" y="190" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20" font-weight="bold" fill="#ffffff">2</text>
+    <text x="378" y="191" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">the owner replies with its MAC</text>
+
+    
+    <rect x="30" y="300" width="1000" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="530" y="338" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">stored in the neighbour table (ip neigh) so the shout is not repeated for every packet</text>
+  </g>
+
+  
+  <g transform="translate(40, 545)">
+    
+    <rect width="1060" height="385" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="30" y="45" font-family="system-ui, sans-serif" font-size="32" font-weight="bold" fill="#207448">IPv6: NDP</text>
+
+    
+    <g transform="translate(30, 80)">
+      <rect width="210" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+      <rect x="30" y="35" width="46" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="53" y1="67" x2="53" y2="77" stroke="#207448" stroke-width="3"/>
+      <line x1="41" y1="77" x2="65" y2="77" stroke="#207448" stroke-width="3"/>
+      <text x="90" y="63" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#207448">IPv6</text>
+      <text x="90" y="93" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">Host</text>
+    </g>
+
+    
+    <g transform="translate(790, 80)">
+      <rect width="240" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+      <circle cx="50" cy="55" r="22" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 40 55 L 60 55 M 53 48 L 60 55 L 53 62" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="85" y="63" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#207448">IPv6</text>
+      <text x="85" y="93" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">Gateway</text>
+    </g>
+
+    
+    <path d="M 240,120 L 780,120" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+    
+    <rect x="255" y="75" width="515" height="72" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)"/>
+    <text x="512" y="104" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">neighbour solicitation to a</text>
+    <text x="512" y="134" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">solicited-node multicast address</text>
+
+    
+    <path d="M 790,195 L 250,195" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+    
+    <rect x="280" y="172" width="480" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)"/>
+    <text x="520" y="203" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">neighbour advertisement from the owner</text>
+  </g>
+
+  
+  <g transform="translate(1130, 100)">
+    <rect width="430" height="830" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="30" y="45" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#207448">Neighbour states in ip neigh</text>
+
+    
+    <g transform="translate(30, 70)">
+      <rect width="370" height="55" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="185" y="37" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#207448">REACHABLE</text>
+    </g>
+
+    
+    <g transform="translate(30, 140)">
+      <rect width="370" height="55" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="185" y="37" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#303a36">STALE</text>
+    </g>
+
+    
+    <g transform="translate(30, 210)">
+      <rect width="370" height="55" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="185" y="37" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#303a36">DELAY</text>
+    </g>
+
+    
+    <g transform="translate(30, 280)">
+      <rect width="370" height="55" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="185" y="37" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#303a36">PROBE</text>
+    </g>
+
+    
+    <g transform="translate(30, 350)">
+      <rect width="370" height="65" rx="8" fill="#fff5eb" stroke="#db8129" stroke-width="3"/>
+      <text x="185" y="43" text-anchor="middle" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#db8129">FAILED</text>
+    </g>
+
+    
+    <g transform="translate(30, 440)">
+      <rect width="370" height="230" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+      <text x="185" y="55" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">the shout got no answer:</text>
+      <text x="185" y="95" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">a very different problem</text>
+      <text x="185" y="135" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">from a bad route</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(40, 955)">
+    <rect width="1520" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(25, 20)">
+      <rect width="715" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="35" y="42" font-family="monospace" font-size="24" fill="#303a36">ip neigh show</text>
+    </g>
+
+    
+    <g transform="translate(760, 20)">
+      <rect width="735" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="30" y="42" font-family="monospace" font-size="24" fill="#303a36">ip neigh flush dev ens4 (careful on production hosts)</text>
+    </g>
+
+    
+    <g transform="translate(25, 105)">
+      <rect width="715" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="35" y="42" font-family="monospace" font-size="24" fill="#303a36">sudo tcpdump -nn -e -i ens4 arp or icmp6</text>
+    </g>
+
+    
+    <g transform="translate(760, 105)">
+      <rect width="735" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="30" y="42" font-family="monospace" font-size="24" fill="#303a36">arping -I ens4 10.0.0.1 (also detects duplicate addresses)</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(40, 1170)">
+    <rect width="1520" height="75" rx="12" fill="#207448"/>
+    <text x="760" y="47" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">When a host cannot reach its gateway, check ip neigh show before you look anywhere else</text>
+  </g>
+</svg>

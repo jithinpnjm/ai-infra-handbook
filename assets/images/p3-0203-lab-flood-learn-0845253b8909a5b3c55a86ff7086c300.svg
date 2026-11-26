@@ -1,0 +1,226 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
+  <title>Lab: what host h3 sees before and after the bridge learns</title>
+  <desc>Visual comparison of bridge flooding behavior during initial ARP and targeted forwarding after MAC learning, including FDB inspection and aging.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+    <marker id="arrow-gray" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#718096"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1380" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Lab: what host h3 sees before and after the bridge learns</text>
+
+  
+  <g transform="translate(40, 105)">
+    <rect width="440" height="550" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="20" y="20" width="400" height="50" rx="8" fill="#207448"/>
+    <text x="220" y="53" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">br0 as the switch</text>
+
+    
+    <rect x="25" y="100" width="180" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="115" y="133" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">h1 10.20.0.1</text>
+
+    
+    <rect x="235" y="100" width="180" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="325" y="133" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">h2 10.20.0.2</text>
+
+    
+    <rect x="70" y="270" width="300" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(85, 287)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="56" height="56" rx="6"/>
+      <path d="M 10 20 L 46 20 M 36 12 L 46 20 L 36 28"/>
+      <path d="M 46 36 L 10 36 M 20 28 L 10 36 L 20 44"/>
+    </g>
+    <text x="245" y="325" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">br0</text>
+
+    
+    <rect x="130" y="450" width="180" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="220" y="483" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">h3 10.20.0.3</text>
+
+    
+    
+    <path d="M 115 175 L 115 270" stroke="#207448" stroke-width="3" stroke-dasharray="6,4"/>
+    <rect x="70" y="205" width="90" height="34" rx="17" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="115" y="229" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">v-h1</text>
+
+    
+    <path d="M 325 175 L 325 270" stroke="#207448" stroke-width="3" stroke-dasharray="6,4"/>
+    <rect x="280" y="205" width="90" height="34" rx="17" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="325" y="229" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">v-h2</text>
+
+    
+    <path d="M 220 360 L 220 450" stroke="#207448" stroke-width="3" stroke-dasharray="6,4"/>
+    <rect x="175" y="388" width="90" height="34" rx="17" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="220" y="412" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">v-h3</text>
+  </g>
+
+  
+
+  
+  <g transform="translate(510, 105)">
+    <rect width="515" height="550" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="20" y="20" width="475" height="76" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="257" y="52" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">First ping from h1 to h2,</text>
+    <text x="257" y="80" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">table empty</text>
+
+    
+    
+    <rect x="40" y="125" width="100" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="90" y="158" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">h1</text>
+
+    
+    <rect x="375" y="125" width="100" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="425" y="158" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">h2</text>
+
+    
+    <rect x="207" y="215" width="100" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="257" y="248" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">br0</text>
+
+    
+    <rect x="207" y="325" width="100" height="50" rx="6" fill="#fdf0e2" stroke="#db8129" stroke-width="2"/>
+    <text x="257" y="358" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">h3</text>
+
+    
+    
+    <path d="M 140 160 L 220 215" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+    
+    <path d="M 295 215 L 375 160" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+    
+    <path d="M 257 265 L 257 325" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)"/>
+
+    
+    <rect x="20" y="405" width="475" height="125" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="35" y="440" font-family="sans-serif" font-size="24" fill="#303a36">ARP request is a broadcast,</text>
+    <text x="35" y="472" font-family="sans-serif" font-size="24" fill="#303a36">the switch floods it, so</text>
+    <text x="35" y="506" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">h3's tcpdump sees it</text>
+  </g>
+
+  
+  <g transform="translate(1045, 105)">
+    <rect width="515" height="550" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="20" y="20" width="475" height="76" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="257" y="52" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">After the switch has learned</text>
+    <text x="257" y="80" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">both addresses</text>
+
+    
+    
+    <rect x="40" y="125" width="100" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="90" y="158" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">h1</text>
+
+    
+    <rect x="375" y="125" width="100" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="425" y="158" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">h2</text>
+
+    
+    <rect x="207" y="215" width="100" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="257" y="248" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">br0</text>
+
+    
+    <rect x="207" y="325" width="100" height="50" rx="6" fill="#ffffff" stroke="#a0aec0" stroke-width="2"/>
+    <text x="257" y="358" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#718096">h3</text>
+
+    
+    <path d="M 140 160 L 220 215" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+    <path d="M 295 215 L 375 160" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+    
+    <path d="M 257 265 L 257 305" stroke="#cbd5e0" stroke-width="2" stroke-dasharray="4,4" fill="none"/>
+    <circle cx="257" cy="305" r="10" fill="#ffffff" stroke="#e53e3e" stroke-width="2"/>
+    <line x1="250" y1="298" x2="264" y2="312" stroke="#e53e3e" stroke-width="2"/>
+    <line x1="264" y1="298" x2="250" y2="312" stroke="#e53e3e" stroke-width="2"/>
+
+    
+    <rect x="20" y="405" width="475" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="35" y="450" font-family="sans-serif" font-size="24" fill="#303a36">the unicast ARP reply and ICMP</text>
+    <text x="35" y="482" font-family="sans-serif" font-size="24" fill="#303a36">traffic go to one port only,</text>
+    <text x="35" y="514" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">h3 sees nothing</text>
+  </g>
+
+  
+
+  
+  <g transform="translate(40, 680)">
+    <rect width="650" height="270" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="0" y="0" width="650" height="55" rx="12" fill="#207448"/>
+    <text x="25" y="38" font-family="monospace" font-size="26" font-weight="bold" fill="#ffffff">bridge fdb show br br0</text>
+    
+    
+    <g transform="translate(25, 80)">
+      
+      <rect x="0" y="0" width="260" height="40" rx="6" fill="#e8f1ea"/>
+      <text x="130" y="27" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">MAC to port entries</text>
+      
+      <text x="0" y="75" font-family="monospace" font-size="24" fill="#303a36">Before ping: empty or port defaults</text>
+      <text x="0" y="115" font-family="monospace" font-size="24" fill="#207448">After ping:</text>
+      <text x="0" y="145" font-family="monospace" font-size="24" fill="#303a36">  02:42:0a:14:00:01 dev v-h1 master br0</text>
+      <text x="0" y="175" font-family="monospace" font-size="24" fill="#303a36">  02:42:0a:14:00:02 dev v-h2 master br0</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(715, 680)">
+    <rect width="845" height="270" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="0" y="0" width="845" height="55" rx="12" fill="#207448"/>
+    
+    <g transform="translate(20, 10)" stroke="#ffffff" stroke-width="3" fill="none">
+      <circle cx="17" cy="17" r="14"/>
+      <polyline points="17,8 17,17 23,20"/>
+    </g>
+    <text x="65" y="38" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Aging &amp; Cache Expiry</text>
+    
+    
+    <g transform="translate(25, 80)">
+      <text x="0" y="30" font-family="monospace" font-size="24" fill="#303a36">sudo bridge fdb flush dev v-h2,</text>
+      <text x="0" y="65" font-family="sans-serif" font-size="24" fill="#303a36">or wait out the age timer</text>
+      <text x="0" y="100" font-family="sans-serif" font-size="24" fill="#303a36">(commonly 300 s;</text>
+      <text x="210" y="100" font-family="monospace" font-size="24" fill="#207448">brctl setageing br0 10</text>
+      <text x="535" y="100" font-family="sans-serif" font-size="24" fill="#303a36">shortens it),</text>
+      <text x="0" y="145" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">and flooding resumes</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(40, 975)">
+    <rect width="1520" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <text x="25" y="42" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Commands to reproduce:</text>
+    
+    
+    <rect x="25" y="60" width="1470" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="45" y="92" font-family="monospace" font-size="24" fill="#303a36">sudo ip netns exec h3 tcpdump -nn -e -i e0</text>
+
+    
+    <rect x="25" y="118" width="1470" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="45" y="150" font-family="monospace" font-size="24" fill="#303a36">sudo ip netns exec h1 ping -c1 10.20.0.2</text>
+
+    
+    <rect x="25" y="176" width="1470" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="45" y="208" font-family="monospace" font-size="24" fill="#303a36">ip -n h1 neigh</text>
+  </g>
+
+  
+  <g transform="translate(40, 1245)">
+    <rect width="1520" height="85" rx="10" fill="#207448"/>
+    <text x="760" y="52" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">The broadcast domain spans the whole VLAN, but learned conversations are private</text>
+  </g>
+</svg>

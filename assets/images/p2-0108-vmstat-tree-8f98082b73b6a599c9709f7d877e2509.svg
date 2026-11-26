@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Read the vmstat columns to classify the bottleneck</title>
+  <desc>Read the vmstat columns to classify the bottleneck</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Read the vmstat columns to classify the bottleneck</text>
+
+  
+  <g id="root-node">
+    <rect x="320" y="82" width="960" height="114" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="350" y="111" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="350" y1="127" x2="406" y2="127" stroke="#207448" stroke-width="3"/>
+    <polyline points="362,139 372,147 362,155" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="378" y1="155" x2="390" y2="155" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="430" y="130" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">Run vmstat 2 and start at line 2</text>
+    <text x="430" y="170" font-family="sans-serif" font-size="24" fill="#303a36">Line 1 is the average since boot</text>
+  </g>
+
+  
+  <path d="M 450,196 L 450,220 L 70,220 L 70,866" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 1150,196 L 1150,220 L 850,220 L 850,816" fill="none" stroke="#207448" stroke-width="3"/>
+
+  
+  <line x1="70" y1="266" x2="110" y2="266" stroke="#207448" stroke-width="3"/>
+  <line x1="70" y1="466" x2="110" y2="466" stroke="#207448" stroke-width="3"/>
+  <line x1="70" y1="666" x2="110" y2="666" stroke="#207448" stroke-width="3"/>
+  <line x1="70" y1="866" x2="110" y2="866" stroke="#207448" stroke-width="3"/>
+
+  <line x1="850" y1="296" x2="890" y2="296" stroke="#207448" stroke-width="3"/>
+  <line x1="850" y1="556" x2="890" y2="556" stroke="#207448" stroke-width="3"/>
+  <line x1="850" y1="816" x2="890" y2="816" stroke="#207448" stroke-width="3"/>
+
+  
+
+  
+  <g id="branch-1">
+    <rect x="110" y="244" width="620" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="420" y="274" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">All idle: id about 99, si and so at 0</text>
+    <line x1="420" y1="288" x2="420" y2="308" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <rect x="110" y="312" width="620" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 168,342 L 188,350 C 188,372 168,388 168,392 C 168,388 148,372 148,350 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <polyline points="159,366 165,372 177,360" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="215" y="377" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Healthy</text>
+  </g>
+
+  
+  <g id="branch-2">
+    <rect x="110" y="444" width="620" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="420" y="474" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">High us, low wa</text>
+    <line x1="420" y1="488" x2="420" y2="508" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <rect x="110" y="512" width="620" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="148" y="547" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="158" y="557" width="20" height="20" rx="2" fill="#207448" fill-opacity="0.15" stroke="#207448" stroke-width="2"/>
+    <line x1="156" y1="539" x2="156" y2="547" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="180" y1="539" x2="180" y2="547" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="156" y1="587" x2="156" y2="595" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="180" y1="587" x2="180" y2="595" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="140" y1="555" x2="148" y2="555" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="140" y1="579" x2="148" y2="579" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="188" y1="555" x2="196" y2="555" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="188" y1="579" x2="196" y2="579" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="215" y="577" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">CPU-bound compute</text>
+  </g>
+
+  
+  <g id="branch-3">
+    <rect x="110" y="644" width="620" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="420" y="674" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">High wa and b</text>
+    <line x1="420" y1="688" x2="420" y2="708" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <rect x="110" y="712" width="620" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <ellipse cx="168" cy="747" rx="24" ry="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="144" y1="747" x2="144" y2="787" stroke="#207448" stroke-width="4"/>
+    <line x1="192" y1="747" x2="192" y2="787" stroke="#207448" stroke-width="4"/>
+    <path d="M 144,767 C 144,775 192,775 192,767" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 144,787 C 144,795 192,795 192,787" fill="none" stroke="#207448" stroke-width="4"/>
+    <text x="215" y="760" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="215" dy="0">I/O-bound work:</tspan>
+      <tspan x="215" dy="36">look at iostat</tspan>
+    </text>
+  </g>
+
+  
+  <g id="branch-4">
+    <rect x="110" y="844" width="620" height="44" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="420" y="874" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">Growing so, falling free or cache</text>
+    <line x1="420" y1="888" x2="420" y2="908" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+    <rect x="110" y="912" width="620" height="110" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    
+    <rect x="143" y="947" width="50" height="34" rx="4" fill="none" stroke="#db8129" stroke-width="4"/>
+    <rect x="150" y="953" width="9" height="14" fill="#db8129" rx="1"/>
+    <rect x="164" y="953" width="9" height="14" fill="#db8129" rx="1"/>
+    <rect x="178" y="953" width="9" height="14" fill="#db8129" rx="1"/>
+    <line x1="148" y1="981" x2="148" y2="987" stroke="#db8129" stroke-width="3"/>
+    <line x1="156" y1="981" x2="156" y2="987" stroke="#db8129" stroke-width="3"/>
+    <line x1="164" y1="981" x2="164" y2="987" stroke="#db8129" stroke-width="3"/>
+    <line x1="172" y1="981" x2="172" y2="987" stroke="#db8129" stroke-width="3"/>
+    <line x1="180" y1="981" x2="180" y2="987" stroke="#db8129" stroke-width="3"/>
+    <line x1="188" y1="981" x2="188" y2="987" stroke="#db8129" stroke-width="3"/>
+    <text x="215" y="960" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="215" dy="0">Memory exhausted:</tspan>
+      <tspan x="215" dy="36">kernel is paging out</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="branch-5">
+    <rect x="890" y="274" width="620" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1200" y="304" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">High r with high us plus sy</text>
+    <line x1="1200" y1="318" x2="1200" y2="338" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <rect x="890" y="342" width="620" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="926" y="380" width="30" height="30" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <rect x="940" y="368" width="30" height="30" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <line x1="918" y1="395" x2="926" y2="395" stroke="#207448" stroke-width="3"/>
+    <line x1="970" y1="383" x2="978" y2="383" stroke="#207448" stroke-width="3"/>
+    <line x1="935" y1="410" x2="935" y2="416" stroke="#207448" stroke-width="3"/>
+    <line x1="961" y1="362" x2="961" y2="368" stroke="#207448" stroke-width="3"/>
+    <text x="995" y="407" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">CPU contention</text>
+  </g>
+
+  
+  <g id="branch-6">
+    <rect x="890" y="534" width="620" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1200" y="564" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">High sy and cs</text>
+    <line x1="1200" y1="578" x2="1200" y2="598" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <rect x="890" y="602" width="620" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 935,644 C 935,630 961,630 961,644 L 961,652 L 935,652 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="927" y="652" width="42" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="948" cy="665" r="3" fill="#207448"/>
+    <line x1="948" y1="668" x2="948" y2="674" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="995" y="650" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="995" dy="0">Many system calls or</tspan>
+      <tspan x="995" dy="36">lock contention</tspan>
+    </text>
+  </g>
+
+  
+  <g id="branch-7">
+    <rect x="890" y="794" width="620" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1200" y="824" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">High st</text>
+    <line x1="1200" y1="838" x2="1200" y2="858" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <rect x="890" y="862" width="620" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="926" y="890" width="38" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="934" cy="899" r="2.5" fill="#207448"/>
+    <rect x="926" y="916" width="38" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="934" cy="925" r="2.5" fill="#207448"/>
+    <path d="M 972,897 C 979,906 979,918 972,927" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 978,891 C 988,906 988,924 978,939" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="995" y="910" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="995" dy="0">Noisy neighbours</tspan>
+      <tspan x="995" dy="36">on a shared VM</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="110" y="1080" width="1400" height="66" rx="12" fill="#207448"/>
+    <text x="800" y="1122" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Read the trend across several lines, not one number.</text>
+  </g>
+</svg>

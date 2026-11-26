@@ -1,0 +1,201 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Reading one vmstat row under swapping</title>
+  <desc>Visual explanation of a vmstat output row highlighting saturated swapping and its impact across CPU, memory, and I/O.</desc>
+
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="80" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reading one vmstat row under swapping</text>
+
+  
+  <g transform="translate(80, 100)">
+    <rect width="590" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="48" cy="42" r="22" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="48" y1="36" x2="48" y2="52" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="48" cy="28" r="2" fill="#207448"/>
+    <text x="90" y="50" font-family="sans-serif" font-size="24" fill="#303a36">The first vmstat row is since boot, so skip it.</text>
+  </g>
+
+  
+  <g transform="translate(710, 100)">
+    <rect width="770" height="85" rx="12" fill="#fff5eb" stroke="#db8129" stroke-width="3"/>
+    
+    <path d="M 45 60 L 25 24 L 65 24 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="45" y1="34" x2="45" y2="46" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="45" cy="52" r="2" fill="#db8129"/>
+    <text x="85" y="50" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Memory is swapping: fix the process that grew, not the CPU</text>
+  </g>
+
+  
+  <defs>
+    <marker id="orange-arrow" markerWidth="14" markerHeight="14" refX="7" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+  <line x1="727" y1="185" x2="727" y2="258" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+
+  
+  
+  <rect x="80" y="210" width="1440" height="52" fill="#207448" rx="8"/>
+  <rect x="80" y="250" width="1440" height="12" fill="#207448"/>
+  
+  <rect x="80" y="262" width="1440" height="64" fill="#ffffff" stroke="#207448" stroke-width="2" rx="0"/>
+
+  
+  
+  <line x1="145" y1="210" x2="145" y2="326" stroke="#c0d6c5" stroke-width="1.5"/>
+  <text x="112" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">r</text>
+  <text x="112" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">2</text>
+
+  
+  <line x1="210" y1="210" x2="210" y2="326" stroke="#207448" stroke-width="2"/>
+  <text x="177" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">b</text>
+  <text x="177" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">0</text>
+
+  
+  <line x1="330" y1="210" x2="330" y2="326" stroke="#c0d6c5" stroke-width="1.5"/>
+  <text x="270" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">swpd</text>
+  <text x="270" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">418036</text>
+
+  
+  <line x1="435" y1="210" x2="435" y2="326" stroke="#c0d6c5" stroke-width="1.5"/>
+  <text x="382" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">free</text>
+  <text x="382" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">68172</text>
+
+  
+  <line x1="510" y1="210" x2="510" y2="326" stroke="#c0d6c5" stroke-width="1.5"/>
+  <text x="472" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">buff</text>
+  <text x="472" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">68</text>
+
+  
+  <line x1="605" y1="210" x2="605" y2="326" stroke="#207448" stroke-width="2"/>
+  <text x="557" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">cache</text>
+  <text x="557" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">3808</text>
+
+  
+  <line x1="680" y1="210" x2="680" y2="326" stroke="#c0d6c5" stroke-width="1.5"/>
+  <text x="642" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">si</text>
+  <text x="642" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">0</text>
+
+  
+  <rect x="680" y="262" width="95" height="64" fill="#fff5eb" stroke="#db8129" stroke-width="4"/>
+  <line x1="775" y1="210" x2="775" y2="326" stroke="#207448" stroke-width="2"/>
+  <text x="727" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">so</text>
+  <text x="727" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#db8129" text-anchor="middle">4692</text>
+
+  
+  <line x1="870" y1="210" x2="870" y2="326" stroke="#c0d6c5" stroke-width="1.5"/>
+  <text x="822" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">bi</text>
+  <text x="822" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">4520</text>
+
+  
+  <line x1="965" y1="210" x2="965" y2="326" stroke="#207448" stroke-width="2"/>
+  <text x="917" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">bo</text>
+  <text x="917" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">4692</text>
+
+  
+  <line x1="1060" y1="210" x2="1060" y2="326" stroke="#c0d6c5" stroke-width="1.5"/>
+  <text x="1012" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">in</text>
+  <text x="1012" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">1060</text>
+
+  
+  <line x1="1155" y1="210" x2="1155" y2="326" stroke="#207448" stroke-width="2"/>
+  <text x="1107" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">cs</text>
+  <text x="1107" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">1939</text>
+
+  
+  <line x1="1230" y1="210" x2="1230" y2="326" stroke="#c0d6c5" stroke-width="1.5"/>
+  <text x="1192" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">us</text>
+  <text x="1192" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">61</text>
+
+  
+  <line x1="1305" y1="210" x2="1305" y2="326" stroke="#c0d6c5" stroke-width="1.5"/>
+  <text x="1267" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">sy</text>
+  <text x="1267" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">38</text>
+
+  
+  <line x1="1375" y1="210" x2="1375" y2="326" stroke="#c0d6c5" stroke-width="1.5"/>
+  <text x="1340" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">id</text>
+  <text x="1340" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">0</text>
+
+  
+  <line x1="1445" y1="210" x2="1445" y2="326" stroke="#c0d6c5" stroke-width="1.5"/>
+  <text x="1410" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">wa</text>
+  <text x="1410" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">1</text>
+
+  
+  <text x="1482" y="245" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">st</text>
+  <text x="1482" y="304" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">0</text>
+
+  
+  
+  <path d="M 85 334 L 85 348 L 145 348 L 145 398 L 145 348 L 205 348 L 205 334" fill="none" stroke="#207448" stroke-width="3"/>
+
+  
+  <path d="M 215 334 L 215 348 L 407 348 L 407 638 L 407 348 L 600 348 L 600 334" fill="none" stroke="#207448" stroke-width="3"/>
+
+  
+  <path d="M 610 334 L 610 348 L 690 348 L 690 398 L 690 348 L 770 348 L 770 334" fill="none" stroke="#207448" stroke-width="3"/>
+
+  
+  <path d="M 780 334 L 780 348 L 895 348 L 895 638 L 895 348 L 960 348 L 960 334" fill="none" stroke="#207448" stroke-width="3"/>
+
+  
+  <path d="M 1160 334 L 1160 348 L 1337 348 L 1337 398 L 1337 348 L 1515 348 L 1515 334" fill="none" stroke="#207448" stroke-width="3"/>
+
+  
+  
+  <g transform="translate(60, 400)">
+    <rect width="260" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="25" y="25" width="40" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="33" y1="38" x2="57" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="25" y="88" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Run queue r: only 1 or 2</text>
+  </g>
+
+  
+  <g transform="translate(480, 400)">
+    <rect width="360" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 25 35 L 50 35 M 42 27 L 50 35 L 42 43" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 55 47 L 30 47 M 38 39 L 30 47 L 38 55" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="25" y="85" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Swap in and out: si 0, so 4692 (non-zero means saturated)</text>
+  </g>
+
+  
+  <g transform="translate(1080, 400)">
+    <rect width="440" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="25" y="20" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="33" y1="14" x2="33" y2="20" stroke="#207448" stroke-width="2"/>
+    <line x1="43" y1="14" x2="43" y2="20" stroke="#207448" stroke-width="2"/>
+    <line x1="53" y1="14" x2="53" y2="20" stroke="#207448" stroke-width="2"/>
+    <line x1="33" y1="56" x2="33" y2="62" stroke="#207448" stroke-width="2"/>
+    <line x1="43" y1="56" x2="43" y2="62" stroke="#207448" stroke-width="2"/>
+    <line x1="53" y1="56" x2="53" y2="62" stroke="#207448" stroke-width="2"/>
+    <text x="25" y="88" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">CPU: us 61, sy 38, id 0 (idle reached zero)</text>
+  </g>
+
+  
+  
+  <g transform="translate(150, 640)">
+    <rect width="520" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="25" y="24" width="50" height="26" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="35" y1="50" x2="35" y2="58" stroke="#207448" stroke-width="2.5"/>
+    <line x1="45" y1="50" x2="45" y2="58" stroke="#207448" stroke-width="2.5"/>
+    <line x1="55" y1="50" x2="55" y2="58" stroke="#207448" stroke-width="2.5"/>
+    <line x1="65" y1="50" x2="65" y2="58" stroke="#207448" stroke-width="2.5"/>
+    <text x="25" y="88" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Memory and cache: swpd 418036, free 68172, cache 3808</text>
+  </g>
+
+  
+  <g transform="translate(730, 640)">
+    <rect width="450" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <ellipse cx="45" cy="28" rx="20" ry="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 25 28 L 25 48 C 25 53 65 53 65 48 L 65 28" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="25" y="88" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Block I/O: bi 4520, bo 4692</text>
+  </g>
+</svg>

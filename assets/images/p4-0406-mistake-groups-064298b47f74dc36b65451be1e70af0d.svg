@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
+  <title>Playbook mistakes that show up on the second run</title>
+  <desc>A grouped guide detailing common Ansible playbook mistakes, why they fail on second runs, and how to fix them.</desc>
+
+  <rect width="1600" height="1500" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Playbook mistakes that show up on the second run</text>
+
+  
+  <rect x="40" y="85" width="1520" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="120" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">the first run usually succeeds because everything is new; the second run is where</tspan>
+    <tspan x="800" dy="32">hidden problems show up as a stream of changes that should not be there</tspan>
+  </text>
+
+  
+  <rect x="40" y="190" width="310" height="50" rx="6" fill="#207448"/>
+  <text x="60" y="225" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Group</text>
+
+  <rect x="365" y="190" width="850" height="50" rx="6" fill="#207448"/>
+  <text x="385" y="225" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Mistakes</text>
+
+  <rect x="1230" y="190" width="330" height="50" rx="6" fill="#207448"/>
+  <text x="1250" y="225" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Fix</text>
+
+  
+  
+  <g transform="translate(0, 255)">
+    <rect x="40" y="0" width="310" height="115" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="60" y="65" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Readability</text>
+
+    <rect x="365" y="0" width="850" height="115" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+    <text x="385" y="48" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">missing task names; names that describe commands</tspan>
+      <tspan x="385" dy="34">instead of desired state</tspan>
+    </text>
+
+    <rect x="1230" y="0" width="330" height="115" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1245" y="48" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1245" dy="0">name every task as</tspan>
+      <tspan x="1245" dy="34">Ensure X is Y</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 385)">
+    <rect x="40" y="0" width="310" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="60" y="55" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">
+      <tspan x="60" dy="0">Module choice and</tspan>
+      <tspan x="60" dy="34">honesty</tspan>
+    </text>
+
+    <rect x="365" y="0" width="850" height="135" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+    <text x="385" y="42" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">shell or command for things a module does;</tspan>
+      <tspan x="385" dy="34">no changed_when so the recap lies;</tspan>
+      <tspan x="385" dy="34">ignoring rc</tspan>
+    </text>
+
+    <rect x="1230" y="0" width="330" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1245" y="42" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1245" dy="0">module first,</tspan>
+      <tspan x="1245" dy="34">changed_when and</tspan>
+      <tspan x="1245" dy="34">failed_when</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 535)">
+    <rect x="40" y="0" width="310" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="60" y="80" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Unplanned change</text>
+
+    <rect x="365" y="0" width="850" height="150" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+    <text x="385" y="40" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">state: latest in routine runs causes upgrades with no</tspan>
+      <tspan x="385" dy="34">change request or test; unpinned driver versions pull in a</tspan>
+      <tspan x="385" dy="34">driver the training stack has never seen</tspan>
+    </text>
+
+    <rect x="1230" y="0" width="330" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1245" y="65" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1245" dy="0">present with pinned</tspan>
+      <tspan x="1245" dy="34">versions</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 700)">
+    <rect x="40" y="0" width="310" height="150" rx="8" fill="#fdf3e7" stroke="#db8129" stroke-width="2.5"/>
+    <text x="60" y="80" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">Silenced problems</text>
+
+    <rect x="365" y="0" width="850" height="150" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="2"/>
+    <text x="385" y="48" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">ignore_errors: true sprinkled through a playbook is taping</tspan>
+      <tspan x="385" dy="34">over a smoke alarm; the recap looks green while the</tspan>
+      <tspan x="385" dy="34">problem grows</tspan>
+    </text>
+
+    <rect x="1230" y="0" width="330" height="150" rx="8" fill="#fdf3e7" stroke="#db8129" stroke-width="2.5"/>
+    <text x="1245" y="65" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="1245" dy="0">handle errors</tspan>
+      <tspan x="1245" dy="34">explicitly</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 865)">
+    <rect x="40" y="0" width="310" height="165" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="60" y="90" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Not idempotent</text>
+
+    <rect x="365" y="0" width="850" height="165" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+    <text x="385" y="38" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">templates with timestamps or random values;</tspan>
+      <tspan x="385" dy="32">handler storms; lineinfile with a loose regex</tspan>
+      <tspan x="385" dy="32">rewriting unintended lines; editing files that</tspan>
+      <tspan x="385" dy="32">should be fully templated or drop-ins</tspan>
+    </text>
+
+    <rect x="1230" y="0" width="330" height="165" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1245" y="70" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1245" dy="0">stable templates,</tspan>
+      <tspan x="1245" dy="34">tight regexes</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 1045)">
+    <rect x="40" y="0" width="310" height="100" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="60" y="58" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Check mode</text>
+
+    <rect x="365" y="0" width="850" height="100" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+    <text x="385" y="42" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">assuming it is a perfect prediction; leaking secrets</tspan>
+      <tspan x="385" dy="34">through --diff</tspan>
+    </text>
+
+    <rect x="1230" y="0" width="330" height="100" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1245" y="58" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">diff: false, canary</text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 1160)">
+    <rect x="40" y="0" width="310" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="60" y="60" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Blast radius</text>
+
+    <rect x="365" y="0" width="850" height="105" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+    <text x="385" y="42" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">running against all with no --limit or serial and no canary;</tspan>
+      <tspan x="385" dy="34">tags as the safety mechanism</tspan>
+    </text>
+
+    <rect x="1230" y="0" width="330" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1245" y="60" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">serial, limit</text>
+  </g>
+
+  
+  
+  <g transform="translate(0, 1280)">
+    <rect x="40" y="0" width="310" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="60" y="75" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Modes and timeouts</text>
+
+    <rect x="365" y="0" width="850" height="135" rx="8" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+    <text x="385" y="38" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="385" dy="0">unquoted modes (YAML octal pitfalls): quote 0644;</tspan>
+      <tspan x="385" dy="32">long-running tasks without async or timeouts: SSH timeouts can</tspan>
+      <tspan x="385" dy="32">kill firmware updates; relying on task order across plays without</tspan>
+      <tspan x="385" dy="32">verifying dependencies</tspan>
+    </text>
+
+    <rect x="1230" y="0" width="330" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1245" y="55" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1245" dy="0">quote modes, async,</tspan>
+      <tspan x="1245" dy="34">verify</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="40" y="1430" width="1520" height="50" rx="8" fill="#207448"/>
+  <text x="800" y="1464" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Keep the second run in mind</text>
+</svg>

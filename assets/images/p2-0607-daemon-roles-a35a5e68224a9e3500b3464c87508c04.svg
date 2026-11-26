@@ -1,0 +1,211 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1380" width="1600" height="1380">
+  <title>Slurm's cooperating daemons and the commands that reach them</title>
+  <desc>Architecture diagram showing Login nodes, Control plane, and Compute nodes with their cooperating Slurm daemons and commands.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1380" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">Slurm's cooperating daemons and the commands that reach them</text>
+
+  
+  
+  
+  <rect x="60" y="100" width="1480" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <rect x="85" y="118" width="360" height="42" rx="8" fill="#d3e4d6" />
+  <text x="100" y="148" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Login and submit nodes</text>
+
+  
+  
+  <rect x="90" y="180" width="215" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="197" y="215" font-family="monospace" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">sbatch</text>
+
+  
+  <rect x="331" y="180" width="215" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="438" y="215" font-family="monospace" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">srun</text>
+
+  
+  <rect x="572" y="180" width="215" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="679" y="215" font-family="monospace" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">salloc</text>
+
+  
+  <rect x="813" y="180" width="215" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="920" y="215" font-family="monospace" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">squeue</text>
+
+  
+  <rect x="1054" y="180" width="215" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1161" y="215" font-family="monospace" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">sinfo</text>
+
+  
+  <rect x="1295" y="180" width="215" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1402" y="215" font-family="monospace" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">scancel</text>
+
+  
+  <text x="680" y="293" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="end">Accounting queries</text>
+
+  
+  <rect x="710" y="258" width="230" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="825" y="293" font-family="monospace" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">sacct</text>
+
+  
+  <rect x="970" y="258" width="250" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1095" y="293" font-family="monospace" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">sacctmgr</text>
+
+  
+  <rect x="1250" y="258" width="260" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1380" y="293" font-family="monospace" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">sreport</text>
+
+
+  
+  
+  
+  <rect x="60" y="400" width="1480" height="490" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <rect x="85" y="418" width="220" height="42" rx="8" fill="#d3e4d6" />
+  <text x="100" y="448" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Control plane</text>
+
+  
+  <rect x="90" y="480" width="460" height="210" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+  
+  <g transform="translate(470, 500)" stroke="#db8129" stroke-width="3" fill="none">
+    <circle cx="24" cy="24" r="18" />
+    <path d="M 24 10 L 24 38 M 10 24 L 38 24" />
+  </g>
+  <text font-family="sans-serif" fill="#303a36">
+    <tspan x="115" y="525" font-family="monospace" font-size="26" font-weight="bold" fill="#db8129">slurmctld:</tspan>
+    <tspan font-family="sans-serif" font-size="24"> controller, port 6817,</tspan>
+    <tspan x="115" y="575" font-size="24">queue, scheduler,</tspan>
+    <tspan x="115" y="625" font-size="24">node and job state</tspan>
+  </text>
+
+  
+  <rect x="90" y="725" width="460" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-dasharray="8 6" />
+  
+  <g transform="translate(470, 745)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="8" y="8" width="32" height="32" rx="6" />
+    <path d="M 16 24 L 32 24" />
+  </g>
+  <text font-family="sans-serif" fill="#303a36">
+    <tspan x="115" y="775" font-size="24" font-weight="bold">Backup slurmctld (optional):</tspan>
+    <tspan x="115" y="820" font-size="24">shared StateSaveLocation</tspan>
+  </text>
+
+  
+  <rect x="670" y="480" width="430" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(1025, 500)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="24" cy="24" r="14" />
+    <path d="M 24 4 L 24 10 M 24 38 L 24 44 M 4 24 L 10 24 M 38 24 L 44 24" />
+  </g>
+  <text font-family="sans-serif" fill="#303a36">
+    <tspan x="695" y="525" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">slurmdbd:</tspan>
+    <tspan x="695" y="575" font-size="24">accounting daemon,</tspan>
+    <tspan x="695" y="625" font-size="24">port 6819</tspan>
+  </text>
+
+  
+  <g transform="translate(1160, 480)">
+    
+    <path d="M 0 30 L 0 170 A 175 30 0 0 0 350 170 L 350 30 Z" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <path d="M 0 170 A 175 30 0 0 0 350 170" fill="none" stroke="#207448" stroke-width="2.5" />
+    
+    <ellipse cx="175" cy="30" rx="175" ry="30" fill="#f0f6f1" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="175" y="105" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">MariaDB or MySQL:</text>
+    <text x="175" y="145" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">accounting database</text>
+  </g>
+
+  
+  <rect x="670" y="725" width="840" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-dasharray="8 6" />
+  
+  <g transform="translate(1430, 745)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="6" y="10" width="36" height="28" rx="4" />
+    <path d="M 6 18 L 42 18" />
+  </g>
+  <text x="705" y="802" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan font-family="monospace" fill="#207448">slurmrestd</tspan> (optional): REST API
+  </text>
+
+
+  
+  
+  
+  <rect x="60" y="930" width="1480" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <rect x="85" y="948" width="240" height="42" rx="8" fill="#d3e4d6" />
+  <text x="100" y="978" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Compute nodes</text>
+
+  
+  <rect x="90" y="1020" width="420" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(125, 1070)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="12" y="12" width="40" height="40" rx="4" fill="#f0f6f1" />
+    <path d="M 22 2 L 22 12 M 42 2 L 42 12 M 22 52 L 22 62 M 42 52 L 42 62" />
+    <path d="M 2 22 L 12 22 M 2 42 L 12 42 M 52 22 L 62 22 M 52 42 L 62 42" />
+  </g>
+  <line x1="220" y1="1080" x2="470" y2="1080" stroke="#d3e4d6" stroke-width="8" stroke-linecap="round" />
+  <line x1="220" y1="1120" x2="430" y2="1120" stroke="#d3e4d6" stroke-width="8" stroke-linecap="round" />
+  <line x1="220" y1="1160" x2="450" y2="1160" stroke="#d3e4d6" stroke-width="8" stroke-linecap="round" />
+
+  
+  <rect x="560" y="1020" width="480" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(776, 1050)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="12" y="12" width="40" height="40" rx="4" fill="#f0f6f1" />
+    <path d="M 22 2 L 22 12 M 42 2 L 42 12 M 22 52 L 22 62 M 42 52 L 42 62" />
+    <path d="M 2 22 L 12 22 M 2 42 L 12 42 M 52 22 L 62 22 M 52 42 L 62 42" />
+  </g>
+  <text x="800" y="1160" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">slurmd on each node</text>
+
+  
+  <rect x="1090" y="1020" width="420" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1125, 1070)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="12" y="12" width="40" height="40" rx="4" fill="#f0f6f1" />
+    <path d="M 22 2 L 22 12 M 42 2 L 42 12 M 22 52 L 22 62 M 42 52 L 42 62" />
+    <path d="M 2 22 L 12 22 M 2 42 L 12 42 M 52 22 L 62 22 M 52 42 L 62 42" />
+  </g>
+  <line x1="1220" y1="1080" x2="1470" y2="1080" stroke="#d3e4d6" stroke-width="8" stroke-linecap="round" />
+  <line x1="1220" y1="1120" x2="1430" y2="1120" stroke="#d3e4d6" stroke-width="8" stroke-linecap="round" />
+  <line x1="1220" y1="1160" x2="1450" y2="1160" stroke="#d3e4d6" stroke-width="8" stroke-linecap="round" />
+
+
+  
+  
+  
+
+  
+  
+  <path d="M 438 232 L 438 476" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow)" />
+
+  
+  <path d="M 550 585 L 666 585" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1100 585 L 1156 585" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow)" />
+
+  
+  
+  
+  <path d="M 550 645 L 600 645 L 600 1016" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow)" />
+
+
+  
+  
+  
+  <rect x="60" y="1285" width="1480" height="65" rx="12" fill="#207448" />
+  <text x="800" y="1327" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">When a job is stuck, the first question is which daemon is involved.</text>
+
+</svg>

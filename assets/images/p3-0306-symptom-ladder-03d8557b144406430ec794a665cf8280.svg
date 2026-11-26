@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
+  <title>From symptom to likely cause, with the first tool to use</title>
+  <desc>A three-column diagnostic guide matching concurrency symptoms to their root causes and first-line remedies.</desc>
+
+  <rect width="1600" height="1500" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">From symptom to likely cause, with the first tool to use</text>
+
+  
+  <rect x="40" y="76" width="1520" height="52" rx="8" fill="#fff5ec" stroke="#db8129" stroke-width="2.5" />
+  <circle cx="70" cy="102" r="14" fill="#db8129" />
+  <path d="M64 102 L68 106 L76 96" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="800" y="112" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">a timeout on every wait, a bound on every queue and pool</text>
+
+  
+  <rect x="40" y="142" width="460" height="42" rx="6" fill="#207448" />
+  <text x="270" y="171" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">symptom</text>
+
+  <rect x="510" y="142" width="390" height="42" rx="6" fill="#207448" />
+  <text x="705" y="171" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">cause</text>
+
+  <rect x="910" y="142" width="650" height="42" rx="6" fill="#207448" />
+  <text x="1235" y="171" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">remedy</text>
+
+  
+  <rect x="40" y="190" width="460" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="218" font-family="sans-serif" font-size="24" fill="#303a36">Tasks stall, timeouts everywhere,</text>
+  <text x="60" y="245" font-family="sans-serif" font-size="24" fill="#303a36">slow callback warnings</text>
+  <rect x="510" y="190" width="390" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="231" font-family="sans-serif" font-size="24" fill="#303a36">blocking the event loop</text>
+  <rect x="910" y="190" width="650" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="231" font-family="monospace" font-size="24" fill="#207448">async APIs or to_thread</text>
+
+  
+  <rect x="40" y="259" width="460" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="287" font-family="sans-serif" font-size="24" fill="#303a36">Work never happens;</text>
+  <text x="60" y="314" font-family="sans-serif" font-size="24" fill="#303a36">was never awaited warning</text>
+  <rect x="510" y="259" width="390" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="300" font-family="sans-serif" font-size="24" fill="#303a36">un-awaited coroutine</text>
+  <rect x="910" y="259" width="650" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="300" font-family="monospace" font-size="24" fill="#207448">await or create_task</text>
+
+  
+  <rect x="40" y="328" width="460" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="369" font-family="sans-serif" font-size="24" fill="#303a36">Task exception was never retrieved</text>
+  <rect x="510" y="328" width="390" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="369" font-family="sans-serif" font-size="24" fill="#303a36">dropped task reference</text>
+  <rect x="910" y="328" width="650" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="356" font-family="sans-serif" font-size="24" fill="#207448">keep references, await or</text>
+  <text x="930" y="383" font-family="sans-serif" font-size="24" fill="#207448">add done callbacks</text>
+
+  
+  <rect x="40" y="397" width="460" height="58" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="434" font-family="sans-serif" font-size="24" fill="#303a36">Cannot cancel or shut down</text>
+  <rect x="510" y="397" width="390" height="58" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="434" font-family="sans-serif" font-size="24" fill="#303a36">swallowed CancelledError</text>
+  <rect x="910" y="397" width="650" height="58" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="434" font-family="sans-serif" font-size="24" fill="#207448">re-raise it, no bare except</text>
+
+  
+  <rect x="40" y="458" width="460" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="499" font-family="sans-serif" font-size="24" fill="#303a36">Hangs after network blips</text>
+  <rect x="510" y="458" width="390" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="499" font-family="sans-serif" font-size="24" fill="#303a36">missing timeouts</text>
+  <rect x="910" y="458" width="650" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="486" font-family="monospace" font-size="24" fill="#207448">wait_for or timeout on every await;</text>
+  <text x="930" y="513" font-family="monospace" font-size="24" fill="#207448">client timeout=</text>
+
+  
+  <rect x="40" y="527" width="460" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="555" font-family="sans-serif" font-size="24" fill="#303a36">OOM, too many open files,</text>
+  <text x="60" y="582" font-family="sans-serif" font-size="24" fill="#303a36">target overload</text>
+  <rect x="510" y="527" width="390" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="568" font-family="sans-serif" font-size="24" fill="#303a36">unbounded fan-out</text>
+  <rect x="910" y="527" width="650" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="568" font-family="sans-serif" font-size="24" fill="#207448">semaphores, bounded queues, islice feeding</text>
+
+  
+  <rect x="40" y="596" width="460" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="633" font-family="sans-serif" font-size="24" fill="#303a36">Rare wrong results</text>
+  <rect x="510" y="596" width="390" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="633" font-family="sans-serif" font-size="24" fill="#303a36">thread-unsafe shared state</text>
+  <rect x="910" y="596" width="650" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="633" font-family="sans-serif" font-size="24" fill="#207448">locks, queues, thread-local, immutable data</text>
+
+  
+  <rect x="40" y="657" width="460" height="88" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="708" font-family="sans-serif" font-size="24" fill="#303a36">Everything idle forever</text>
+  <rect x="510" y="657" width="390" height="88" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="708" font-family="sans-serif" font-size="24" fill="#303a36">deadlock</text>
+  <rect x="910" y="657" width="650" height="88" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="684" font-family="sans-serif" font-size="24" fill="#207448">lock ordering, timeouts;</text>
+  <text x="930" y="711" font-family="monospace" font-size="24" fill="#207448">faulthandler.dump_traceback_later(60);</text>
+  <text x="930" y="738" font-family="monospace" font-size="24" fill="#207448">py-spy dump</text>
+
+  
+  <rect x="40" y="748" width="460" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="789" font-family="sans-serif" font-size="24" fill="#303a36">Hangs in children, CUDA errors</text>
+  <rect x="510" y="748" width="390" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="776" font-family="sans-serif" font-size="24" fill="#303a36">fork with threads,</text>
+  <text x="530" y="803" font-family="sans-serif" font-size="24" fill="#303a36">CUDA or locks</text>
+  <rect x="910" y="748" width="650" height="66" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="789" font-family="monospace" font-size="24" fill="#207448">spawn or forkserver</text>
+
+  
+  <rect x="40" y="817" width="460" height="58" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="854" font-family="sans-serif" font-size="24" fill="#303a36">Can't pickle local object</text>
+  <rect x="510" y="817" width="390" height="58" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="854" font-family="sans-serif" font-size="24" fill="#303a36">pickle errors</text>
+  <rect x="910" y="817" width="650" height="58" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="854" font-family="sans-serif" font-size="24" fill="#207448">top-level functions</text>
+
+  
+  <rect x="40" y="878" width="460" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="915" font-family="sans-serif" font-size="24" fill="#303a36">Memory growth in pools</text>
+  <rect x="510" y="878" width="390" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="915" font-family="sans-serif" font-size="24" fill="#303a36">worker leaks</text>
+  <rect x="910" y="878" width="650" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="915" font-family="monospace" font-size="24" fill="#207448">maxtasksperchild, tracemalloc</text>
+
+  
+  <rect x="40" y="939" width="460" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="967" font-family="sans-serif" font-size="24" fill="#303a36">Defunct processes,</text>
+  <text x="60" y="994" font-family="sans-serif" font-size="24" fill="#303a36">leftover workers</text>
+  <rect x="510" y="939" width="390" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="980" font-family="sans-serif" font-size="24" fill="#303a36">zombies or orphans</text>
+  <rect x="910" y="939" width="650" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="967" font-family="sans-serif" font-size="24" fill="#207448">wait(), context managers,</text>
+  <text x="930" y="994" font-family="sans-serif" font-size="24" fill="#207448">process groups, supervisors</text>
+
+  
+  <rect x="40" y="1008" width="460" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="1045" font-family="sans-serif" font-size="24" fill="#303a36">CPU throttling, slow runs</text>
+  <rect x="510" y="1008" width="390" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="1045" font-family="sans-serif" font-size="24" fill="#303a36">oversubscription</text>
+  <rect x="910" y="1008" width="650" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="1045" font-family="monospace" font-size="24" fill="#207448">match cgroup limits, OMP_NUM_THREADS=1</text>
+
+  
+  <rect x="40" y="1069" width="460" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="1110" font-family="sans-serif" font-size="24" fill="#303a36">Target collapse</text>
+  <rect x="510" y="1069" width="390" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="1097" font-family="sans-serif" font-size="24" fill="#303a36">thundering herd or</text>
+  <text x="530" y="1124" font-family="sans-serif" font-size="24" fill="#303a36">retry storm</text>
+  <rect x="910" y="1069" width="650" height="66" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="1110" font-family="sans-serif" font-size="24" fill="#207448">jittered backoff, limits, circuit breakers</text>
+
+  
+  <rect x="40" y="1138" width="460" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="1175" font-family="sans-serif" font-size="24" fill="#303a36">Silent partial results</text>
+  <rect x="510" y="1138" width="390" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="1175" font-family="sans-serif" font-size="24" fill="#303a36">lost exceptions in threads</text>
+  <rect x="910" y="1138" width="650" height="58" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="1175" font-family="monospace" font-size="24" fill="#207448">futures, threading.excepthook</text>
+
+  
+  <rect x="40" y="1199" width="460" height="68" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="1227" font-family="sans-serif" font-size="24" fill="#303a36">ValueError: signal only works</text>
+  <text x="60" y="1254" font-family="sans-serif" font-size="24" fill="#303a36">in main thread</text>
+  <rect x="510" y="1199" width="390" height="68" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="1227" font-family="sans-serif" font-size="24" fill="#303a36">signal in a</text>
+  <text x="530" y="1254" font-family="sans-serif" font-size="24" fill="#303a36">non-main thread</text>
+  <rect x="910" y="1199" width="650" height="68" rx="4" fill="#e8f1ea" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="1227" font-family="sans-serif" font-size="24" fill="#207448">install handlers in the main thread or</text>
+  <text x="930" y="1254" font-family="monospace" font-size="24" fill="#207448">loop.add_signal_handler</text>
+
+  
+  <rect x="40" y="1270" width="460" height="68" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="60" y="1312" font-family="sans-serif" font-size="24" fill="#303a36">RuntimeError</text>
+  <rect x="510" y="1270" width="390" height="68" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="530" y="1298" font-family="sans-serif" font-size="24" fill="#303a36">asyncio.run() inside a</text>
+  <text x="530" y="1325" font-family="sans-serif" font-size="24" fill="#303a36">running loop (Jupyter)</text>
+  <rect x="910" y="1270" width="650" height="68" rx="4" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5" />
+  <text x="930" y="1298" font-family="sans-serif" font-size="24" fill="#207448">await instead;</text>
+  <text x="930" y="1325" font-family="sans-serif" font-size="24" fill="#207448">nest_asyncio only for notebooks</text>
+
+  
+  <rect x="40" y="1380" width="1520" height="68" rx="8" fill="#207448" />
+  <text x="800" y="1424" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Start from the symptom you see</text>
+</svg>

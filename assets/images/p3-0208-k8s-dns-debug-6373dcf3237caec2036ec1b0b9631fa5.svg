@@ -1,0 +1,228 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1360" width="1600" height="1360">
+  <title>Debugging DNS in Kubernetes: the pod, CoreDNS and the fixes</title>
+  <desc>Visual guide covering the pod resolver configuration, sequential CoreDNS debugging ladder, DNS resolution facts, Docker/Podman behavior, and DNS performance fixes.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1360" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">Debugging DNS in Kubernetes: the pod, CoreDNS and the fixes</text>
+
+  
+
+  
+  <rect x="40" y="115" width="435" height="430" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(65, 135)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 0 0 L 26 0 L 38 12 L 38 48 L 0 48 Z"/>
+    <path d="M 26 0 L 26 12 L 38 12"/>
+    <line x1="8" y1="20" x2="30" y2="20"/>
+    <line x1="8" y1="28" x2="30" y2="28"/>
+    <line x1="8" y1="36" x2="22" y2="36"/>
+  </g>
+  <text x="120" y="168" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">pod resolver file</text>
+
+  
+  <rect x="65" y="198" width="385" height="40" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="257" y="226" font-family="sans-serif" font-size="24" fill="#207448" font-weight="bold" text-anchor="middle">the kubelet generates it</text>
+
+  
+  <rect x="65" y="250" width="385" height="135" rx="10" fill="#ffffff"/>
+  <text x="80" y="280" font-family="monospace" font-size="24" fill="#303a36">search</text>
+  <text x="80" y="312" font-family="monospace" font-size="24" fill="#303a36">my-ns.svc.cluster.local</text>
+  <text x="80" y="344" font-family="monospace" font-size="24" fill="#303a36">svc.cluster.local cluster.local</text>
+  <text x="80" y="376" font-family="monospace" font-size="24" fill="#303a36">dc1.example.com</text>
+
+  
+  <rect x="65" y="395" width="385" height="75" rx="10" fill="#ffffff"/>
+  <text x="80" y="425" font-family="monospace" font-size="24" fill="#303a36">nameserver 10.96.0.10</text>
+  <text x="80" y="457" font-family="sans-serif" font-size="24" fill="#303a36">(CoreDNS service kube-dns)</text>
+
+  
+  <rect x="65" y="480" width="385" height="50" rx="10" fill="#ffffff"/>
+  <text x="80" y="513" font-family="monospace" font-size="24" fill="#303a36">options ndots:5</text>
+
+  
+  <rect x="40" y="565" width="435" height="425" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(65, 585)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="20" cy="12" r="8"/>
+    <circle cx="8" cy="38" r="6"/>
+    <circle cx="32" cy="38" r="6"/>
+    <line x1="16" y1="18" x2="10" y2="32"/>
+    <line x1="24" y1="18" x2="30" y2="32"/>
+  </g>
+  <text x="120" y="618" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Name resolution facts</text>
+
+  <rect x="60" y="640" width="395" height="335" rx="12" fill="#ffffff"/>
+  <text x="75" y="675" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0" font-family="monospace">service.namespace.svc.</tspan>
+    <tspan x="75" dy="33" font-family="monospace">cluster.local</tspan>
+    <tspan x="75" dy="33">resolves to ClusterIPs;</tspan>
+    <tspan x="75" dy="33">headless services return</tspan>
+    <tspan x="75" dy="33">pod IPs, e.g.</tspan>
+    <tspan x="75" dy="33" font-family="monospace">worker-0.trainer.ns.</tspan>
+    <tspan x="75" dy="33" font-family="monospace">svc.cluster.local;</tspan>
+    <tspan x="75" dy="33">everything else is forwarded</tspan>
+    <tspan x="75" dy="33">to the node's upstream</tspan>
+    <tspan x="75" dy="33">resolvers</tspan>
+  </text>
+
+  
+  <rect x="40" y="1010" width="435" height="195" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(65, 1028)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="2" y="10" width="36" height="26" rx="4"/>
+    <line x1="12" y1="10" x2="12" y2="36"/>
+    <line x1="26" y1="10" x2="26" y2="36"/>
+    <line x1="2" y1="22" x2="38" y2="22"/>
+  </g>
+  <text x="120" y="1060" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Docker and Podman</text>
+
+  <rect x="60" y="1080" width="395" height="105" rx="10" fill="#ffffff"/>
+  <text x="75" y="1120" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0">custom networks have an</tspan>
+    <tspan x="75" dy="35">embedded DNS at 127.0.0.11</tspan>
+  </text>
+
+  
+
+  
+  <g transform="translate(500, 125)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="20" cy="20" r="14"/>
+    <line x1="20" y1="2" x2="20" y2="8"/>
+    <line x1="20" y1="32" x2="20" y2="38"/>
+    <line x1="2" y1="20" x2="8" y2="20"/>
+    <line x1="32" y1="20" x2="38" y2="20"/>
+  </g>
+  <text x="555" y="153" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Debugging ladder</text>
+
+  
+  <rect x="495" y="175" width="670" height="105" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="525" y="218" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    1 <tspan font-family="monospace" font-weight="normal" fill="#303a36">kubectl exec pod --</tspan>
+  </text>
+  <text x="548" y="254" font-family="monospace" font-size="24" fill="#303a36">cat /etc/resolv.conf</text>
+
+  
+  <line x1="830" y1="280" x2="830" y2="308" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="495" y="310" width="670" height="205" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="525" y="345" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">2 helper pod:</text>
+  <text x="525" y="378" font-family="monospace" font-size="24" fill="#303a36">kubectl run -it --rm dnsutils</text>
+  <text x="525" y="411" font-family="monospace" font-size="24" fill="#303a36">--image=registry.k8s.io/</text>
+  <text x="525" y="444" font-family="monospace" font-size="24" fill="#303a36">e2e-test-images/jessie-dnsutils</text>
+  <text x="525" y="482" font-family="sans-serif" font-size="24" fill="#303a36">-- sh then dig or nslookup</text>
+
+  
+  <line x1="830" y1="515" x2="830" y2="538" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="495" y="540" width="670" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="525" y="578" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">3 CoreDNS logs:</text>
+  <text x="525" y="614" font-family="monospace" font-size="24" fill="#303a36">kubectl logs -n kube-system</text>
+  <text x="525" y="648" font-family="monospace" font-size="24" fill="#303a36">-l k8s-app=kube-dns</text>
+
+  
+  <line x1="830" y1="675" x2="830" y2="698" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="495" y="700" width="670" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="525" y="738" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">4 Corefile:</text>
+  <text x="525" y="774" font-family="monospace" font-size="24" fill="#303a36">kubectl -n kube-system get cm</text>
+  <text x="525" y="808" font-family="monospace" font-size="24" fill="#303a36">coredns -o yaml</text>
+
+  
+  <line x1="830" y1="835" x2="830" y2="858" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="495" y="860" width="670" height="185" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="525" y="898" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">5 metrics:</text>
+  <text x="525" y="934" font-family="monospace" font-size="24" fill="#303a36">coredns_dns_requests_total,</text>
+  <text x="525" y="972" font-family="monospace" font-size="24" fill="#303a36">coredns_dns_responses_total{rcode},</text>
+  <text x="525" y="1010" font-family="sans-serif" font-size="24" fill="#303a36">latency histograms</text>
+
+  
+  <line x1="830" y1="1045" x2="830" y2="1073" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="495" y="1075" width="670" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="525" y="1128" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    6 <tspan font-weight="normal" fill="#303a36">confirm the nodes' own</tspan>
+  </text>
+  <text x="548" y="1164" font-family="sans-serif" font-size="24" fill="#303a36">resolvers work</text>
+
+  
+
+  
+  <g transform="translate(1190, 125)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 6 22 L 14 30 L 32 12"/>
+    <circle cx="20" cy="20" r="16"/>
+  </g>
+  <text x="1240" y="153" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">fixes</text>
+
+  
+  <rect x="1185" y="175" width="375" height="115" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="1195" y="185" width="355" height="95" rx="10" fill="#ffffff"/>
+  <text x="1210" y="226" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1210" dy="0">FQDNs with a trailing</tspan>
+    <tspan x="1210" dy="34">dot in hot paths</tspan>
+  </text>
+
+  
+  <rect x="1185" y="310" width="375" height="145" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="1195" y="320" width="355" height="125" rx="10" fill="#ffffff"/>
+  <text x="1210" y="360" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1210" dy="0" font-family="monospace">dnsConfig.options</tspan>
+    <tspan x="1210" dy="34">ndots 1 or 2</tspan>
+    <tspan x="1210" dy="34">per pod</tspan>
+  </text>
+
+  
+  <rect x="1185" y="475" width="375" height="340" rx="14" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+  <rect x="1195" y="485" width="355" height="320" rx="10" fill="#ffffff"/>
+  
+  <g transform="translate(1210, 500)" stroke="#db8129" stroke-width="2.5" fill="none">
+    <rect x="6" y="6" width="24" height="24" rx="3"/>
+    <line x1="12" y1="2" x2="12" y2="6"/>
+    <line x1="24" y1="2" x2="24" y2="6"/>
+    <line x1="12" y1="30" x2="12" y2="34"/>
+    <line x1="24" y1="30" x2="24" y2="34"/>
+    <line x1="2" y1="12" x2="6" y2="12"/>
+    <line x1="2" y1="24" x2="6" y2="24"/>
+    <line x1="30" y1="12" x2="34" y2="12"/>
+    <line x1="30" y1="24" x2="34" y2="24"/>
+  </g>
+  <text x="1255" y="528" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">NodeLocal DNSCache:</text>
+  <text x="1210" y="570" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1210" dy="0">a per-node cache on a</tspan>
+    <tspan x="1210" dy="34">link-local IP avoiding</tspan>
+    <tspan x="1210" dy="34">conntrack and</tspan>
+    <tspan x="1210" dy="34">cross-node hops</tspan>
+  </text>
+
+  
+  <rect x="1185" y="835" width="375" height="260" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="1195" y="845" width="355" height="240" rx="10" fill="#ffffff"/>
+  <text x="1210" y="888" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1210" dy="0">scale CoreDNS with an</tspan>
+    <tspan x="1210" dy="35">autoscaler or more</tspan>
+    <tspan x="1210" dy="35">replicas, tune its cache</tspan>
+    <tspan x="1210" dy="35">and forward plugins</tspan>
+  </text>
+
+  
+  <rect x="40" y="1235" width="1520" height="75" rx="16" fill="#207448"/>
+  <text x="800" y="1282" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Run your DNS tests inside the same image the pod uses</text>
+
+</svg>
