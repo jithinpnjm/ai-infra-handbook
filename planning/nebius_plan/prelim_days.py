@@ -45,21 +45,21 @@ D=[
 ("Python (30)",M('Refresh:',L('3.3','7. Comprehensions','3. Mappings and sets')),"Program: top 10 IPs and status codes from a log"),
 ("Shell (15)","`awk`, `sort`, `uniq`","Same top-IPs job in one pipeline")]),
 ("Day 3, Sun 29 Nov",[
-("Linux (30)",L('1.8','2. What a process is','Zombies and orphans','4. Signals','5. Shell job control'),"`ps`, `top`, `kill`, zombie demo"),
+("Linux (30)",M(L('1.8','2. What a process is','Zombies and orphans','4. Signals','5. Shell job control'),L('1.18','Run queues, time sharing','Nice values and weights')),"`ps`, `top`, `kill`, zombie demo"),
 ("Networking (25)",L('2.5','1. The routing decision','2. Reading the routing table'),"`ip route get`; 5 new subnet sums"),
 ("Platform: Kubernetes (30)",M(L('5.5','2. The request pipeline'),L('5.3','6. From `kubectl apply`'),L('5.6','1. The controller pattern','2. The machinery'),K8S+' (kubeconfig: cluster URL+CA, user, context)'),"`kubectl config view`, `kubectl get pods -v=8`"),
 ("Coding (30)","Valid anagram, first non-repeating char, remove duplicates","Timed"),
 ("Python (30)",M('Refresh:',L('3.1','8. Functions','2. Objects, names and references')),"Program: `argparse` CLI, 10 largest files in a directory"),
 ("Shell (15)","`find -size +10M`","`du -xh --max-depth=1 \\| sort -h`")]),
 ("Day 4, Mon 30 Nov",[
-("Linux (30)",M(L('1.17','5. The OOM killer','The summary view'),L('1.4','3. grep','6. awk')),"`free -m`, `vmstat 1`, `dmesg -T \\| tail`"),
+("Linux (30)",M(L('1.17','Translation: page tables','Demand paging, page faults','Swap','5. The OOM killer','The summary view'),L('1.4','3. grep','6. awk')),"`free -m`, `vmstat 1`, `dmesg -T \\| tail`"),
 ("Networking (25)",L('2.6','4. The handshake','5. Reliability'),"`ss -tan`, `ss -ltnp`"),
 ("Platform: Kubernetes (30)",M(L('5.7','3. Workload controllers'),L('5.8','1. Timeline overview','3. The kubelet takes over')),"Kind: deploy, scale, delete a pod"),
 ("Coding (30)","Two-sum, contains-duplicate, majority element","Timed"),
 ("Python (30)",M('Refresh:',L('3.5','1. Exceptions','3. Files and paths')),"Program: parse a log, skip bad lines, count failures"),
 ("Shell (15)","`pgrep -f`, `nohup`, `jobs`","`nohup cmd &`, `kill %1`")]),
 ("Day 5, Tue 1 Dec",[
-("Linux (30)",M(L('1.12','Capacity: df, du, inodes'),L('1.11','4. System calls','6. Watching a program')),"`df -h` vs `df -i`, `strace -f -e trace=file ls`"),
+("Linux (30)",M(L('1.12','6. Inside a traditional filesystem','8. Files, file descriptors and the read path','Capacity: df, du, inodes'),L('1.11','4. System calls','6. Watching a program')),"`df -h` vs `df -i`, `strace -f -e trace=file ls`"),
 ("Networking (25)",M(L('2.7','3. ping','4. traceroute'),L('2.8','2. How a lookup','4. Tools')),"`dig +trace`, `/etc/resolv.conf`"),
 ("Platform: Kubernetes (30)",M(L('5.9','1. What the kubelet does','5. Probes','6. Node-pressure eviction'),L('5.2','7. Cgroup drivers')),"Break a pod with a bad probe and a low memory limit; find its cgroup under `/sys/fs/cgroup`"),
 ("Coding (30)","Valid parentheses, merge two sorted lists, binary search","Timed"),
@@ -87,7 +87,7 @@ D=[
 ("Python (30)",M('Refresh:',L('3.5','7. Interacting with the operating system'),'(`ipaddress`, `socket` in the stdlib docs)'),"Program: CIDR tool (network, broadcast, host count, contains)"),
 ("Shell (15)","`xargs -P 4`, `curl -w`","`curl -s -o /dev/null -w \"%{http_code}\"` over a URL list")]),
 ("Day 9, Sat 5 Dec",[
-("Linux (30)",M(L('20.5','### 1. Load average','### 3. CPU throttling','### 7. The OOM killer'),L('20.7','### 1. Build every pipeline','### 5. Reading journald')),"Do the pipelines in your VM"),
+("Linux (30)",M(L('20.5','### 1. Load average','### 3. CPU throttling','### 7. The OOM killer'),L('20.7','### 1. Build every pipeline','### 5. Reading journald'),'[IF TIME]',L('1.13','4. NVMe in depth'),L('1.17','UMA versus NUMA')),"Do the pipelines in your VM"),
 ("Networking (25)",L('2.20','2. Algorithms','3. Health checks','4. ECMP'),"Nginx reverse proxy with 2 backends"),
 ("Platform: Kubernetes troubleshooting (30)",M(L('5.25','1. Method','3. Node-level toolkit','4. Failure playbooks'),L('5.18','1. The scheduler','3. Placement constraints','8. Debugging scheduling')),"Break 5 pods (Pending, CrashLoop, ImagePullBackOff, OOMKilled, bad probe) and diagnose each"),
 ("Coding (30)","O(1) insert/delete/get-random set, LRU cache","Timed"),
