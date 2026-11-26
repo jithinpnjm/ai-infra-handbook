@@ -1,222 +1,238 @@
+#!/usr/bin/env python3
 import xml.etree.ElementTree as ET
 import re
 
 def build_perfect_svg():
-    svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1190" width="1600" height="1190">
-  <title>Where a variable can be defined, from the desk note to the front door</title>
-  <desc>A reach ladder from narrow to wide illustrating where Ansible variables can be defined, from local task variables to global extra vars, with placement rules and the NCCL debug scenario.</desc>
+    svg = []
+    svg.append('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">')
+    svg.append('  <title>Building a private CA by hand: the seven steps and why each is there</title>')
+    svg.append('  <desc>A visual walkthrough of the seven steps to build, sign, verify, trust, and serve with a private Certificate Authority, contrasted with production PKI best practices and public CA operations.</desc>')
+    svg.append('  <rect width="1600" height="1200" fill="#f5f8f5" />')
+    
+    # Title: 48px bold
+    svg.append('  <text x="800" y="45" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">')
+    svg.append('    <tspan x="800" dy="0">Building a private CA by hand: </tspan>')
+    svg.append('    <tspan x="800" dy="50">the seven steps and why each is there</tspan>')
+    svg.append('  </text>')
+    
+    # ================= Step 1 =================
+    # by=108, bh=153
+    # Lines y: 147, 170, 193, 216, 239
+    svg.append('  <g id="step-1">')
+    svg.append('    <rect x="40" y="108" width="1030" height="153" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />')
+    svg.append('    <circle cx="72" cy="184" r="22" fill="#207448" />')
+    svg.append('    <text x="72" y="193" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>')
+    svg.append('    <g transform="translate(104, 160)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    svg.append('      <path d="M 20 4 L 38 11 V 24 C 38 35 20 44 20 44 C 20 44 2 35 2 24 V 11 Z" />')
+    svg.append('      <circle cx="20" cy="20" r="5" />')
+    svg.append('      <line x1="20" y1="25" x2="20" y2="35" />')
+    svg.append('      <line x1="17" y1="30" x2="23" y2="30" />')
+    svg.append('    </g>')
+    svg.append('    <text font-family="sans-serif" font-size="24" fill="#303a36">')
+    svg.append('      <tspan x="165" y="147" font-size="30" font-weight="bold">Make the CA key and self-signed root: </tspan>')
+    svg.append('      <tspan x="165" y="170" font-family="monospace" font-size="24">openssl req -x509 ... -subj /CN=Lab Root CA </tspan>')
+    svg.append('      <tspan x="165" y="193" font-family="monospace" font-size="24">-addext basicConstraints=critical,CA:TRUE </tspan>')
+    svg.append('      <tspan x="165" y="216" font-family="monospace" font-size="24">-addext keyUsage=critical,keyCertSign,cRLSign </tspan>')
+    svg.append('      <tspan x="165" y="239" font-family="monospace" font-size="24">-keyout ca.key -out ca.pem (10 years)</tspan>')
+    svg.append('    </text>')
+    svg.append('  </g>')
+    
+    # ================= Step 2 =================
+    # by=266, bh=153
+    # Lines y: 305, 328, 351, 374, 397
+    svg.append('  <g id="step-2">')
+    svg.append('    <rect x="40" y="266" width="1030" height="153" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />')
+    svg.append('    <circle cx="72" cy="342" r="22" fill="#207448" />')
+    svg.append('    <text x="72" y="351" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>')
+    svg.append('    <g transform="translate(104, 318)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    svg.append('      <rect x="4" y="4" width="32" height="40" rx="4" />')
+    svg.append('      <line x1="12" y1="14" x2="28" y2="14" />')
+    svg.append('      <line x1="12" y1="22" x2="28" y2="22" />')
+    svg.append('      <line x1="12" y1="30" x2="20" y2="30" />')
+    svg.append('    </g>')
+    svg.append('    <text font-family="sans-serif" font-size="24" fill="#303a36">')
+    svg.append('      <tspan x="165" y="305" font-size="30" font-weight="bold">Make the server key and CSR: </tspan>')
+    svg.append('      <tspan x="165" y="328" font-family="monospace" font-size="24">openssl req -newkey ec ... -subj /CN=api.lab.internal </tspan>')
+    svg.append('      <tspan x="165" y="351" font-family="monospace" font-size="24">-keyout srv.key -out srv.csr; </tspan>')
+    svg.append('      <tspan x="165" y="374" font-family="sans-serif" font-size="24">a CSR carries only the public key and the requested names, </tspan>')
+    svg.append('      <tspan x="165" y="397" font-family="sans-serif" font-size="24">the application form you send to the CA, never the secret</tspan>')
+    svg.append('    </text>')
+    svg.append('  </g>')
+    
+    # ================= Step 3 =================
+    # by=424, bh=130
+    # Lines y: 463, 486, 509, 532
+    svg.append('  <g id="step-3">')
+    svg.append('    <rect x="40" y="424" width="1030" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />')
+    svg.append('    <circle cx="72" cy="489" r="22" fill="#207448" />')
+    svg.append('    <text x="72" y="498" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>')
+    svg.append('    <g transform="translate(104, 465)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    svg.append('      <path d="M 6 4 H 26 L 36 14 V 42 H 6 Z" />')
+    svg.append('      <polyline points="26,4 26,14 36,14" />')
+    svg.append('      <line x1="12" y1="24" x2="28" y2="24" />')
+    svg.append('      <line x1="12" y1="32" x2="24" y2="32" />')
+    svg.append('    </g>')
+    svg.append('    <text font-family="sans-serif" font-size="24" fill="#303a36">')
+    svg.append('      <tspan x="165" y="463" font-size="30" font-weight="bold">Write the extension file srv.ext: </tspan>')
+    svg.append('      <tspan x="165" y="486" font-family="monospace" font-size="24">subjectAltName=DNS:api.lab.internal,</tspan><tspan x="165" y="509" font-family="monospace" font-size="24">DNS:*.lab.internal,IP:10.0.0.5; </tspan>')
+    svg.append('      <tspan x="165" y="532" font-family="monospace" font-size="24">extendedKeyUsage=serverAuth; basicConstraints=CA:FALSE</tspan>')
+    svg.append('    </text>')
+    svg.append('  </g>')
+    
+    # ================= Step 4 =================
+    # by=559, bh=107
+    # Lines y: 598, 621, 644
+    svg.append('  <g id="step-4">')
+    svg.append('    <rect x="40" y="559" width="1030" height="107" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />')
+    svg.append('    <circle cx="72" cy="612" r="22" fill="#207448" />')
+    svg.append('    <text x="72" y="621" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>')
+    svg.append('    <g transform="translate(104, 588)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    svg.append('      <path d="M 6 36 L 26 12 L 34 20 L 14 44 L 6 44 Z" />')
+    svg.append('      <line x1="22" y1="16" x2="30" y2="24" />')
+    svg.append('      <circle cx="33" cy="9" r="3" fill="#207448" />')
+    svg.append('    </g>')
+    svg.append('    <text font-family="sans-serif" font-size="24" fill="#303a36">')
+    svg.append('      <tspan x="165" y="598" font-size="30" font-weight="bold">Sign: </tspan>')
+    svg.append('      <tspan x="245" y="598" font-family="monospace" font-size="24">openssl x509 -req -in srv.csr -CA ca.pem </tspan>')
+    svg.append('      <tspan x="165" y="621" font-family="monospace" font-size="24">-CAkey ca.key -CAcreateserial -days 90 </tspan>')
+    svg.append('      <tspan x="165" y="644" font-family="monospace" font-size="24">-extfile srv.ext -out srv.pem</tspan>')
+    svg.append('    </text>')
+    svg.append('  </g>')
+    
+    # ================= Step 5 =================
+    # by=671, bh=63
+    # Line y: 710
+    svg.append('  <g id="step-5">')
+    svg.append('    <rect x="40" y="671" width="1030" height="63" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />')
+    svg.append('    <circle cx="72" cy="702" r="22" fill="#207448" />')
+    svg.append('    <text x="72" y="711" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>')
+    svg.append('    <g transform="translate(104, 680)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    svg.append('      <circle cx="20" cy="22" r="16" />')
+    svg.append('      <polyline points="13,22 18,27 28,17" />')
+    svg.append('    </g>')
+    svg.append('    <text font-family="sans-serif" font-size="24" fill="#303a36">')
+    svg.append('      <tspan x="165" y="710" font-size="30" font-weight="bold">Verify: </tspan>')
+    svg.append('      <tspan x="270" y="710" font-family="monospace" font-size="24">openssl verify -CAfile ca.pem srv.pem</tspan>')
+    svg.append('    </text>')
+    svg.append('  </g>')
+    
+    # ================= Step 6 =================
+    # by=739, bh=84
+    # Lines y: 778, 801
+    svg.append('  <g id="step-6">')
+    svg.append('    <rect x="40" y="739" width="1030" height="84" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />')
+    svg.append('    <circle cx="72" cy="781" r="22" fill="#207448" />')
+    svg.append('    <text x="72" y="790" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>')
+    svg.append('    <g transform="translate(104, 757)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    svg.append('      <rect x="8" y="18" width="24" height="22" rx="4" />')
+    svg.append('      <path d="M 13 18 V 11 C 13 7 27 7 27 11 V 18" />')
+    svg.append('      <circle cx="20" cy="29" r="2" fill="#207448" />')
+    svg.append('    </g>')
+    svg.append('    <text font-family="sans-serif" font-size="24" fill="#303a36">')
+    svg.append('      <tspan x="165" y="778" font-size="30" font-weight="bold">Trust the CA on the client </tspan>')
+    svg.append('      <tspan x="165" y="801" font-family="monospace" font-size="24">(update-ca-certificates)</tspan>')
+    svg.append('    </text>')
+    svg.append('  </g>')
+    
+    # ================= Step 7 =================
+    # by=828, bh=107
+    # Lines y: 867, 890, 913
+    svg.append('  <g id="step-7">')
+    svg.append('    <rect x="40" y="828" width="1030" height="107" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />')
+    svg.append('    <circle cx="72" cy="881" r="22" fill="#207448" />')
+    svg.append('    <text x="72" y="890" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">7</text>')
+    svg.append('    <g transform="translate(104, 857)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    svg.append('      <rect x="6" y="8" width="28" height="14" rx="3" />')
+    svg.append('      <rect x="6" y="26" width="28" height="14" rx="3" />')
+    svg.append('      <circle cx="12" cy="15" r="2" fill="#207448" />')
+    svg.append('      <circle cx="12" cy="33" r="2" fill="#207448" />')
+    svg.append('    </g>')
+    svg.append('    <text font-family="sans-serif" font-size="24" fill="#303a36">')
+    svg.append('      <tspan x="165" y="867" font-size="30" font-weight="bold">Serve it with nginx: </tspan>')
+    svg.append('      <tspan x="165" y="890" font-family="monospace" font-size="24">ssl_certificate, ssl_certificate_key, </tspan>')
+    svg.append('      <tspan x="165" y="913" font-family="monospace" font-size="24">ssl_protocols TLSv1.2 TLSv1.3, http2 on</tspan>')
+    svg.append('    </text>')
+    svg.append('  </g>')
+    
+    # ================= Right Panel: Real use (orange) =================
+    # y=108, h=827 (ends at 935)
+    svg.append('  <g id="real-use">')
+    svg.append('    <rect x="1090" y="108" width="470" height="827" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5" />')
+    svg.append('    <g transform="translate(1120, 130)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    svg.append('      <rect x="6" y="6" width="36" height="36" rx="6" />')
+    svg.append('      <circle cx="24" cy="24" r="8" />')
+    svg.append('      <line x1="24" y1="10" x2="24" y2="16" />')
+    svg.append('      <line x1="24" y1="32" x2="24" y2="38" />')
+    svg.append('      <line x1="10" y1="24" x2="16" y2="24" />')
+    svg.append('      <line x1="32" y1="24" x2="38" y2="24" />')
+    svg.append('    </g>')
+    svg.append('    <text x="1175" y="160" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Real use</text>')
+    svg.append('    <text font-family="sans-serif" font-size="24" fill="#303a36">')
+    r_lines = [
+        "prefer step-ca or Vault PKI; ",
+        "keep the root offline and ",
+        "issue from intermediates; ",
+        "name constraints, short ",
+        "lifetimes, automated ",
+        "rotation; distribute the ",
+        "root to all trust stores ",
+        "through configuration ",
+        "management; keys generated ",
+        "on the server or in an HSM, ",
+        "TPM or KMS, never emailed, ",
+        "mode 0600, one machine per ",
+        "key; a client certificate is ",
+        "built the same way with ",
+        "extendedKeyUsage=clientAuth"
+    ]
+    y_r = 205
+    for i, rl in enumerate(r_lines):
+        svg.append(f'      <tspan x="1120" y="{y_r + i * 36}">{rl}</tspan>')
+    svg.append('    </text>')
+    svg.append('  </g>')
+    
+    # ================= Public CA strip =================
+    # y=945, h=122 (ends at 1067)
+    svg.append('  <g id="public-ca">')
+    svg.append('    <rect x="40" y="945" width="1520" height="122" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />')
+    svg.append('    <g transform="translate(68, 980)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    svg.append('      <circle cx="24" cy="24" r="18" />')
+    svg.append('      <ellipse cx="24" cy="24" rx="18" ry="8" />')
+    svg.append('      <line x1="24" y1="6" x2="24" y2="42" />')
+    svg.append('    </g>')
+    svg.append('    <text font-family="sans-serif" font-size="24" fill="#303a36">')
+    p_lines = [
+        "Let's Encrypt, DigiCert, Google Trust Services check control of the domain (DV) with a DNS or ",
+        "HTTP challenge; OV and EV add organisation checks; ACME (RFC 8555) automates renewal through ",
+        "certbot, acme.sh, Caddy, cert-manager; Let's Encrypt lasts 90 days; CT logs every public ",
+        "certificate; CAA records restrict which CAs may issue"
+    ]
+    y_p = 979
+    for i, pl in enumerate(p_lines):
+        svg.append(f'      <tspan x="135" y="{y_p + i * 22}">{pl}</tspan>')
+    svg.append('    </text>')
+    svg.append('  </g>')
+    
+    # ================= Bottom bar =================
+    # y=1075, h=52 (ends at 1127)
+    svg.append('  <g id="bottom-bar">')
+    svg.append('    <rect x="40" y="1075" width="1520" height="52" rx="10" fill="#207448" />')
+    svg.append('    <g transform="translate(68, 1081)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    svg.append('      <circle cx="15" cy="20" r="9" />')
+    svg.append('      <line x1="24" y1="20" x2="42" y2="20" />')
+    svg.append('      <line x1="34" y1="20" x2="34" y2="28" />')
+    svg.append('      <line x1="40" y1="20" x2="40" y2="26" />')
+    svg.append('    </g>')
+    svg.append('    <text x="800" y="1110" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">')
+    svg.append('      Building one by hand once is the best way to understand what the tools do for you')
+    svg.append('    </text>')
+    svg.append('  </g>')
+    
+    svg.append('</svg>')
+    return "\n".join(svg)
 
-  <!-- Background -->
-  <rect width="1600" height="1190" fill="#f5f8f5" />
-
-  <!-- Title (48px bold) -->
-  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Where a variable can be defined, from the desk note to the front door</text>
-
-  <!-- ==================== LADDER SECTION: NARROW TO WIDE ==================== -->
-  <!-- Ladder background container -->
-  <rect x="40" y="80" width="1520" height="696" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-
-  <!-- Vertical ladder rails -->
-  <line x1="50" y1="92" x2="50" y2="764" stroke="#207448" stroke-width="4" stroke-opacity="0.35" />
-  <line x1="1550" y1="92" x2="1550" y2="764" stroke="#207448" stroke-width="4" stroke-opacity="0.35" />
-
-  <!-- RUNG 1: task vars (narrowest reach, 1 task) -->
-  <g id="rung-1">
-    <rect x="64" y="92" width="1472" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
-    <!-- Reach indicator bar at bottom of card (120px) -->
-    <rect x="64" y="144" width="120" height="6" rx="3" fill="#207448" />
-    <!-- Icon 1: Task clipboard with single checkmark (56px) -->
-    <g transform="translate(78, 93)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="12" y="10" width="32" height="40" rx="4" />
-      <path d="M 20 10 V 6 C 20 4.5 21.5 4 23 4 H 33 C 34.5 4 36 4.5 36 6 V 10" />
-      <polyline points="20,28 26,34 36,22" />
-    </g>
-    <text x="148" y="129" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan font-weight="bold" fill="#207448">task vars: </tspan>only that one task, gone when it ends (extra: 1)
-    </text>
-  </g>
-
-  <!-- RUNG 2: set_fact and register -->
-  <g id="rung-2">
-    <rect x="64" y="158" width="1472" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
-    <!-- Reach indicator bar (250px) -->
-    <rect x="64" y="210" width="250" height="6" rx="3" fill="#207448" />
-    <!-- Icon 2: Task gear / fact generator (56px) -->
-    <g transform="translate(78, 159)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="28" cy="28" r="10" />
-      <path d="M 28 8 V 14 M 28 42 V 48 M 8 28 H 14 M 42 28 H 48 M 14 14 L 18 18 M 38 38 L 42 42 M 14 42 L 18 38 M 38 18 L 42 14" />
-    </g>
-    <text x="148" y="195" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan font-weight="bold" fill="#207448">set_fact and register: </tspan>created by tasks
-    </text>
-  </g>
-
-  <!-- RUNG 3: include_vars -->
-  <g id="rung-3">
-    <rect x="64" y="224" width="1472" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
-    <!-- Reach indicator bar (380px) -->
-    <rect x="64" y="276" width="380" height="6" rx="3" fill="#207448" />
-    <!-- Icon 3: Folder with incoming data / import (56px) -->
-    <g transform="translate(78, 225)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 6 14 C 6 11 8 9 11 9 H 22 L 28 15 H 45 C 48 15 50 17 50 20 V 43 C 50 46 48 48 45 48 H 11 C 8 48 6 46 6 43 Z" />
-      <line x1="28" y1="24" x2="28" y2="38" />
-      <polyline points="22,32 28,38 34,32" />
-    </g>
-    <text x="148" y="261" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan font-weight="bold" fill="#207448">include_vars: </tspan>loads a file or directory into host variables during the run
-    </text>
-  </g>
-
-  <!-- RUNG 4: play vars -->
-  <g id="rung-4">
-    <rect x="64" y="290" width="1472" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
-    <!-- Reach indicator bar (520px) -->
-    <rect x="64" y="342" width="520" height="6" rx="3" fill="#207448" />
-    <!-- Icon 4: Play script / document block (56px) -->
-    <g transform="translate(78, 291)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="10" y="6" width="36" height="44" rx="4" />
-      <polygon points="24,18 36,26 24,34" fill="#207448" stroke="none" />
-      <line x1="18" y1="40" x2="38" y2="40" />
-    </g>
-    <text x="148" y="327" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan font-weight="bold" fill="#207448">play vars: </tspan>vars block, belongs to the play, stops when the play ends
-    </text>
-  </g>
-
-  <!-- RUNG 5: vars_files (multi-line) -->
-  <g id="rung-5">
-    <rect x="64" y="356" width="1472" height="114" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
-    <!-- Reach indicator bar (700px) -->
-    <rect x="64" y="464" width="700" height="6" rx="3" fill="#207448" />
-    <!-- Icon 5: Multiple template files stack (56px) -->
-    <g transform="translate(78, 385)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 16 10 H 42 C 45 10 47 12 47 15 V 45" />
-      <rect x="9" y="16" width="32" height="36" rx="4" />
-      <line x1="16" y1="26" x2="34" y2="26" />
-      <line x1="16" y1="34" x2="28" y2="34" />
-      <line x1="16" y1="42" x2="32" y2="42" />
-    </g>
-    <text x="148" y="388" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="148" dy="0"><tspan font-weight="bold" fill="#207448">vars_files: </tspan>loads files at the start of the play; </tspan>
-      <tspan x="148" dy="28">the file name can itself be a template, <tspan font-family="monospace">vars/{{ ansible_facts[os_family] | lower }}.yml</tspan>, </tspan>
-      <tspan x="148" dy="28">so Debian and RedHat hosts load different files with no if statement</tspan>
-    </text>
-  </g>
-
-  <!-- RUNG 6: vars_prompt (orange highlight) -->
-  <g id="rung-6">
-    <rect x="64" y="478" width="1472" height="88" rx="8" fill="#fff7f0" stroke="#db8129" stroke-width="2.5" />
-    <!-- Reach indicator bar (880px) in orange -->
-    <rect x="64" y="560" width="880" height="6" rx="3" fill="#db8129" />
-    <!-- Icon 6: User prompt / alert dialog (56px) in orange -->
-    <g transform="translate(78, 494)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 8 10 C 8 7 10 5 13 5 H 43 C 46 5 48 7 48 10 V 34 C 48 37 46 39 43 39 H 24 L 14 47 V 39 H 13 C 10 39 8 37 8 34 Z" />
-      <line x1="28" y1="14" x2="28" y2="24" stroke-width="4" />
-      <circle cx="28" cy="31" r="2" fill="#db8129" stroke="none" />
-    </g>
-    <text x="148" y="513" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="148" dy="0"><tspan font-weight="bold" fill="#db8129">vars_prompt: </tspan>asks a person at run time: avoid in automation, it stops the run and waits </tspan>
-      <tspan x="148" dy="30">(private: false, name reason, prompt Maintenance reason)</tspan>
-    </text>
-  </g>
-
-  <!-- RUNG 7: lookup results and lookup(env, ...) -->
-  <g id="rung-7">
-    <rect x="64" y="574" width="1472" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
-    <!-- Reach indicator bar (1080px) -->
-    <rect x="64" y="626" width="1080" height="6" rx="3" fill="#207448" />
-    <!-- Icon 7: Magnifying glass / search lookup (56px) -->
-    <g transform="translate(78, 575)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="24" cy="24" r="14" />
-      <line x1="34" y1="34" x2="48" y2="48" stroke-width="4.5" />
-    </g>
-    <text x="148" y="611" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan font-weight="bold" fill="#207448">lookup results and lookup(env, ...)</tspan>
-    </text>
-  </g>
-
-  <!-- RUNG 8: inventory, group_vars, host_vars and roles -->
-  <g id="rung-8">
-    <rect x="64" y="640" width="1472" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
-    <!-- Reach indicator bar (1280px) -->
-    <rect x="64" y="692" width="1280" height="6" rx="3" fill="#207448" />
-    <!-- Icon 8: Network cluster / rack hierarchy (56px) -->
-    <g transform="translate(78, 641)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="14" y="6" width="28" height="12" rx="3" />
-      <rect x="4" y="34" width="20" height="12" rx="3" />
-      <rect x="32" y="34" width="20" height="12" rx="3" />
-      <line x1="28" y1="18" x2="28" y2="26" />
-      <line x1="14" y1="26" x2="42" y2="26" />
-      <line x1="14" y1="26" x2="14" y2="34" />
-      <line x1="42" y1="26" x2="42" y2="34" />
-    </g>
-    <text x="148" y="677" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan font-weight="bold" fill="#207448">inventory, group_vars, host_vars (4.5) and role defaults/ and vars/ (4.11)</tspan>
-    </text>
-  </g>
-
-  <!-- RUNG 9: extra vars -e (widest reach, front door) -->
-  <g id="rung-9">
-    <rect x="64" y="706" width="1472" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <!-- Reach indicator bar (1472px full card width) -->
-    <rect x="64" y="758" width="1472" height="6" rx="3" fill="#207448" />
-    <!-- Icon 9: Terminal prompt / CLI extra vars (56px) -->
-    <g transform="translate(78, 707)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="6" y="8" width="44" height="38" rx="5" />
-      <polyline points="14,20 22,27 14,34" />
-      <line x1="26" y1="34" x2="38" y2="34" stroke-width="4" />
-    </g>
-    <text x="148" y="743" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan font-weight="bold" fill="#207448">extra vars -e: </tspan>key=value, a JSON-style string such as {"k": [1,2]}, or @file.yml
-    </text>
-  </g>
-
-  <!-- ==================== PLACEMENT RULE PANEL ==================== -->
-  <g id="placement-rule-panel">
-    <rect x="40" y="792" width="1520" height="144" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
-    <!-- Balance / compass outline icon (56px) -->
-    <g transform="translate(68, 836)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="28" y1="6" x2="28" y2="48" stroke-width="4" />
-      <line x1="10" y1="16" x2="46" y2="16" stroke-width="4" />
-      <path d="M 10 16 L 4 32 H 16 Z" />
-      <path d="M 46 16 L 40 32 H 52 Z" />
-      <line x1="18" y1="48" x2="38" y2="48" stroke-width="4" />
-    </g>
-    <text x="148" y="828" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="148" dy="0"><tspan font-weight="bold" fill="#207448">put a value where the people who own it will look: </tspan></tspan>
-      <tspan x="148" dy="28">a cluster-wide default in group_vars/all, a rack's special case in the group for that rack, </tspan>
-      <tspan x="148" dy="28">a one-off test on the command line where it vanishes when the run ends; </tspan>
-      <tspan x="148" dy="28">which one wins when two disagree is in 4.5</tspan>
-    </text>
-  </g>
-
-  <!-- ==================== STORY STRIP ==================== -->
-  <g id="story-strip">
-    <rect x="40" y="952" width="1520" height="126" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
-    <!-- Clock / disk warning incident icon (56px) -->
-    <g transform="translate(68, 987)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="28" cy="28" r="20" />
-      <polyline points="28,14 28,28 38,28" stroke-width="4" />
-      <circle cx="42" cy="14" r="7" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
-      <line x1="42" y1="11" x2="42" y2="15" stroke-width="2.5" />
-      <circle cx="42" cy="18" r="0.8" fill="#207448" />
-    </g>
-    <text x="148" y="992" font-family="sans-serif" font-size="24" fill="#303a36">
-      <tspan x="148" dy="0"><tspan font-weight="bold" fill="#207448">late Tuesday: </tspan>raising the NCCL debug level for the second cluster </tspan>
-      <tspan x="148" dy="32">also turned on verbose logging on the first, filling its disk: </tspan>
-      <tspan x="148" dy="32">the setting was written in a place that reached further than you thought</tspan>
-    </text>
-  </g>
-
-  <!-- ==================== BOTTOM BAR ==================== -->
-  <g id="bottom-bar">
-    <rect x="40" y="1094" width="1520" height="66" rx="12" fill="#207448" />
-    <text x="800" y="1136" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">The place you choose decides how far the value reaches</text>
-  </g>
-</svg>"""
-    return svg
-
-svg_data = build_perfect_svg()
-with open("final_candidate_test.svg", "w") as f:
-    f.write(svg_data)
-print("Built and saved final_candidate_test.svg")
+if __name__ == "__main__":
+    content = build_perfect_svg()
+    with open("candidate_perfect.svg", "w", encoding="utf-8") as f:
+        f.write(content)
+    print("Wrote candidate_perfect.svg")
