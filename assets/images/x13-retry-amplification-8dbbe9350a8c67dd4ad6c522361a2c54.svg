@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Retries multiply load and turn one partial outage into a pool collapse</title>
+  <desc>An infographic illustrating how unbacked-off retries cause load amplification and pool collapse, and how retry budgets and backoff mitigate cascading failures.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Retries multiply load and turn</text>
+  <text x="800" y="118" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">one partial outage into a pool collapse</text>
+
+  
+  <rect x="40" y="160" width="255" height="340" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <circle cx="95" cy="215" r="24" fill="#207448" />
+  <text x="95" y="226" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+    <rect x="155" y="191" width="50" height="13" rx="2" />
+    <rect x="155" y="209" width="50" height="13" rx="2" />
+    <rect x="155" y="227" width="50" height="13" rx="2" />
+    <line x1="163" y1="197" x2="165" y2="197" />
+    <line x1="163" y1="215" x2="165" y2="215" />
+    <line x1="163" y1="233" x2="165" y2="233" />
+    <line x1="174" y1="197" x2="197" y2="197" />
+    <line x1="174" y1="215" x2="197" y2="215" />
+    <line x1="174" y1="233" x2="197" y2="233" />
+  </g>
+  
+  <text x="167.5" y="280" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">a pool at</text>
+  <text x="167.5" y="314" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">90 percent</text>
+  <text x="167.5" y="348" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">capacity, and</text>
+  <text x="167.5" y="382" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">some requests</text>
+  <text x="167.5" y="416" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">fail</text>
+
+  
+  <line x1="295" y1="330" x2="335" y2="330" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="335" y="160" width="255" height="340" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <circle cx="390" cy="215" r="24" fill="#207448" />
+  <text x="390" y="226" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 454 215 A 21 21 0 1 1 475 236" />
+    <polyline points="475,225 475,236 464,236" />
+  </g>
+  
+  <text x="462.5" y="295" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">each client</text>
+  <text x="462.5" y="332" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">retries three</text>
+  <text x="462.5" y="369" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">times, with</text>
+  <text x="462.5" y="406" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">no backoff</text>
+
+  
+  <line x1="590" y1="330" x2="630" y2="330" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="630" y="160" width="255" height="340" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <circle cx="685" cy="215" r="24" fill="#207448" />
+  <text x="685" y="226" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="770,190 796,236 744,236" />
+    <line x1="770" y1="205" x2="770" y2="220" />
+    <circle cx="770" cy="228" r="1.5" fill="#207448" />
+  </g>
+  
+  <text x="757.5" y="270" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">load becomes</text>
+  <text x="757.5" y="302" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">nearly four</text>
+  <text x="757.5" y="334" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">times the</text>
+  <text x="757.5" y="366" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">original, and</text>
+  <text x="757.5" y="398" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">the pool</text>
+  <text x="757.5" y="430" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">collapses</text>
+
+  
+  <line x1="885" y1="330" x2="925" y2="330" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="925" y="160" width="255" height="340" rx="16" fill="#fdf3e7" stroke="#db8129" stroke-width="3.5" />
+  
+  <circle cx="980" cy="215" r="24" fill="#207448" />
+  <text x="980" y="226" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round">
+    <circle cx="1065" cy="215" r="23" />
+    <polyline points="1065,200 1065,215 1079,215" />
+  </g>
+  
+  <text x="1052.5" y="270" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">the pool stays</text>
+  <text x="1052.5" y="302" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">overloaded as</text>
+  <text x="1052.5" y="334" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">latency rises</text>
+  <text x="1052.5" y="366" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">and timeouts</text>
+  <text x="1052.5" y="398" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">trigger more</text>
+  <text x="1052.5" y="430" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">retries</text>
+
+  
+  <path d="M 757.5 500 L 757.5 655 Q 757.5 675 737.5 675 L 187.5 675 Q 167.5 675 167.5 655 L 167.5 500" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow)" />
+
+  
+  <rect x="220" y="565" width="485" height="80" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="462.5" y="599" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">every retry is a new request</text>
+  <text x="462.5" y="631" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">the pool must serve</text>
+
+  
+  <rect x="1220" y="160" width="340" height="565" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="#ffffff" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M 1390 180 L 1414 191 C 1414 216 1390 230 1390 234 C 1390 230 1366 216 1366 191 Z" />
+  </g>
+
+  
+  <rect x="1242" y="250" width="296" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1390" y="288" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">retry budget of</text>
+  <text x="1390" y="320" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">10 percent</text>
+
+  
+  <rect x="1242" y="358" width="296" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1390" y="394" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">jittered</text>
+  <text x="1390" y="426" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">exponential</text>
+  <text x="1390" y="458" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">backoff</text>
+
+  
+  <rect x="1242" y="491" width="296" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1390" y="529" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">retry in</text>
+  <text x="1390" y="561" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">one layer</text>
+
+  
+  <rect x="1242" y="599" width="296" height="106" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1390" y="641" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">retry only before</text>
+  <text x="1390" y="675" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">the first token</text>
+
+  
+  <rect x="40" y="765" width="1520" height="90" rx="16" fill="#207448" />
+  <text x="800" y="820" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Every retry is a new request, so failures feed themselves unless a budget caps them.</text>
+</svg>

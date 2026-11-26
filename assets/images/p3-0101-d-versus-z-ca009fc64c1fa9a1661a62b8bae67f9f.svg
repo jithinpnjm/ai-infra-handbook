@@ -1,0 +1,227 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Why kill -9 fails on state D and on state Z</title>
+  <desc>Visual infographic explaining why kill -9 fails on processes in State D (uninterruptible sleep) and State Z (zombie).</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-blocked" viewBox="0 0 18 18" refX="15" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#303a36" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Why kill -9 fails on state D and on state Z</text>
+
+  
+  <g id="panel-state-d">
+    <rect x="50" y="90" width="725" height="745" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <text x="412" y="138" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">State D: uninterruptible sleep</text>
+
+    
+    <rect x="75" y="165" width="220" height="75" rx="10" fill="#ffffff" stroke="#303a36" stroke-width="2" />
+    <g transform="translate(90, 178)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="40" height="32" rx="4" fill="#ffffff" />
+      <polyline points="10,14 18,20 10,26" />
+      <line x1="22" y1="26" x2="32" y2="26" />
+    </g>
+    <text x="145" y="213" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#303a36">kill -9</text>
+
+    
+    <line x1="185" y1="240" x2="185" y2="328" stroke="#303a36" stroke-width="3.5" marker-end="url(#arrow-blocked)" />
+    <circle cx="185" cy="284" r="14" fill="#f5f8f5" stroke="#303a36" stroke-width="3" />
+    <line x1="176" y1="275" x2="194" y2="293" stroke="#303a36" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="176" y1="293" x2="194" y2="275" stroke="#303a36" stroke-width="3.5" stroke-linecap="round" />
+
+    
+    <text x="225" y="275" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="225" dy="0">Signals are not delivered </tspan>
+      <tspan x="225" dy="30">until the system call returns</tspan>
+    </text>
+
+    
+    <rect x="75" y="330" width="675" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(95, 345)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="48" height="42" rx="4" fill="#ffffff" />
+      <line x1="4" y1="16" x2="52" y2="16" />
+      <circle cx="12" cy="10" r="2.5" fill="#207448" />
+      <circle cx="20" cy="10" r="2.5" fill="#207448" />
+      <polyline points="10,32 18,32 23,22 29,38 34,28 38,32 46,32" stroke-width="3" />
+    </g>
+    <text x="175" y="383" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Process (still alive)</text>
+
+    
+    <line x1="412" y1="415" x2="412" y2="463" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="75" y="465" width="675" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(95, 485)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="32" height="32" rx="4" fill="#ffffff" />
+      <circle cx="28" cy="28" r="7" fill="#e8f1ea" />
+      <line x1="20" y1="4" x2="20" y2="12" />
+      <line x1="28" y1="4" x2="28" y2="12" />
+      <line x1="36" y1="4" x2="36" y2="12" />
+      <line x1="20" y1="44" x2="20" y2="52" />
+      <line x1="28" y1="44" x2="28" y2="52" />
+      <line x1="36" y1="44" x2="36" y2="52" />
+      <line x1="4" y1="20" x2="12" y2="20" />
+      <line x1="4" y1="28" x2="12" y2="28" />
+      <line x1="4" y1="36" x2="12" y2="36" />
+      <line x1="44" y1="20" x2="52" y2="20" />
+      <line x1="44" y1="28" x2="52" y2="28" />
+      <line x1="44" y1="36" x2="52" y2="36" />
+    </g>
+    <text x="175" y="505" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="175" dy="0">Inside a system call </tspan>
+      <tspan x="175" dy="36">in the kernel</tspan>
+    </text>
+
+    
+    <line x1="412" y1="560" x2="412" y2="603" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="75" y="605" width="675" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(95, 628)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="22" ry="7" fill="#ffffff" />
+      <path d="M 6 14 v 14 c 0 3.87 9.85 7 22 7 s 22 -3.13 22 -7 v -14" />
+      <path d="M 6 28 v 14 c 0 3.87 9.85 7 22 7 s 22 -3.13 22 -7 v -14" />
+    </g>
+    <text x="175" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="175" dy="0">Waiting on I/O: dead NFS server, </tspan>
+      <tspan x="175" dy="34">failing disk, hung driver</tspan>
+    </text>
+
+    
+    <rect x="75" y="735" width="675" height="85" rx="10" fill="#207448" stroke="#207448" stroke-width="2" />
+    <g transform="translate(95, 750)" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 38 12 A 10 10 0 0 0 26 24 L 14 36 A 5 5 0 0 0 21 43 L 33 31 A 10 10 0 0 0 45 19 Z" fill="#207448" />
+      <circle cx="17.5" cy="39.5" r="2" fill="#ffffff" />
+    </g>
+    <text x="430" y="770" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">
+      <tspan x="430" dy="0">Fix: repair the mount or device, </tspan>
+      <tspan x="430" dy="32">then look at <tspan font-family="ui-monospace, monospace">dmesg</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-state-z">
+    <rect x="825" y="90" width="725" height="745" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <text x="1187" y="138" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">State Z: zombie</text>
+
+    
+    <rect x="850" y="170" width="675" height="75" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(870, 184)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="44" height="38" rx="4" fill="#ffffff" />
+      <line x1="4" y1="18" x2="48" y2="18" />
+      <polyline points="14,31 22,38 38,24" stroke-width="4" />
+    </g>
+    <text x="940" y="217" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Process already finished</text>
+
+    
+    <rect x="850" y="265" width="675" height="75" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(870, 278)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="10" width="44" height="28" rx="3" fill="#ffffff" />
+      <rect x="12" y="16" width="8" height="12" fill="#e8f1ea" />
+      <rect x="24" y="16" width="8" height="12" fill="#e8f1ea" />
+      <rect x="36" y="16" width="8" height="12" fill="#e8f1ea" />
+      <line x1="12" y1="38" x2="12" y2="44" />
+      <line x1="20" y1="38" x2="20" y2="44" />
+      <line x1="28" y1="38" x2="28" y2="44" />
+      <line x1="36" y1="38" x2="36" y2="44" />
+      <line x1="44" y1="38" x2="44" y2="44" />
+    </g>
+    <text x="940" y="312" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Memory released</text>
+
+    
+    <rect x="850" y="360" width="675" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(870, 382)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="44" height="42" rx="4" fill="#ffffff" />
+      <line x1="6" y1="18" x2="50" y2="18" />
+      <line x1="14" y1="28" x2="42" y2="28" stroke-dasharray="3 3" />
+      <line x1="14" y1="38" x2="34" y2="38" stroke-dasharray="3 3" />
+    </g>
+    <text x="940" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="940" dy="0">Only a process-table entry remains </tspan>
+      <tspan x="940" dy="34">(shown as defunct)</tspan>
+    </text>
+
+    
+    <rect x="850" y="595" width="280" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(865, 612)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="18" y="4" width="20" height="16" rx="3" fill="#ffffff" />
+      <line x1="28" y1="20" x2="28" y2="32" />
+      <line x1="14" y1="32" x2="42" y2="32" />
+      <line x1="14" y1="32" x2="14" y2="42" />
+      <line x1="42" y1="32" x2="42" y2="42" />
+      <rect x="6" y="42" width="16" height="12" rx="2" fill="#e8f1ea" />
+      <rect x="34" y="42" width="16" height="12" rx="2" fill="#e8f1ea" />
+    </g>
+    <text x="925" y="648" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Parent process</text>
+
+    
+    <line x1="990" y1="595" x2="990" y2="457" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    
+    <g id="wait4-arrow-card">
+      <rect x="1030" y="475" width="485" height="105" rx="8" fill="#ffffff" stroke="#207448" stroke-dasharray="4 4" stroke-width="1.5" />
+      <text x="1050" y="508" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">wait4()</text>
+      <text x="1050" y="542" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1050" dy="0">Entry is removed when the </tspan>
+        <tspan x="1050" dy="28">parent calls <tspan font-family="ui-monospace, monospace">wait4()</tspan></tspan>
+      </text>
+    </g>
+
+    
+    <rect x="850" y="735" width="675" height="85" rx="10" fill="#207448" stroke="#207448" stroke-width="2" />
+    <g transform="translate(870, 750)" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 46 14 V 28 C 46 39 28 48 28 48 C 28 48 10 39 10 28 V 14 Z" fill="#207448" />
+      <polyline points="20,26 26,32 36,20" stroke-width="3.5" />
+    </g>
+    <text x="1205" y="770" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">
+      <tspan x="1205" dy="0">Fix: make the parent collect it; </tspan>
+      <tspan x="1205" dy="32">PID 1 adopts orphans</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-takeaway">
+    <rect x="50" y="870" width="1500" height="75" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+    <rect x="50" y="870" width="14" height="75" rx="4" fill="#db8129" />
+    <text x="800" y="917" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">If you see D, stop sending signals and look at the mount</text>
+  </g>
+
+  
+  <g id="stat-tags">
+    
+    <rect x="50" y="975" width="345" height="65" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="222" y="1017" text-anchor="middle" font-size="26" font-weight="bold">
+      <tspan font-family="ui-monospace, monospace" fill="#207448">S </tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36">sleeping</tspan>
+    </text>
+
+    
+    <rect x="435" y="975" width="345" height="65" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="607" y="1017" text-anchor="middle" font-size="26" font-weight="bold">
+      <tspan font-family="ui-monospace, monospace" fill="#207448">R </tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36">running</tspan>
+    </text>
+
+    
+    <rect x="820" y="975" width="345" height="65" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="992" y="1017" text-anchor="middle" font-size="26" font-weight="bold">
+      <tspan font-family="ui-monospace, monospace" fill="#207448">D </tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36">uninterruptible</tspan>
+    </text>
+
+    
+    <rect x="1205" y="975" width="345" height="65" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1377" y="1017" text-anchor="middle" font-size="26" font-weight="bold">
+      <tspan font-family="ui-monospace, monospace" fill="#207448">Z </tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36">zombie</tspan>
+    </text>
+  </g>
+</svg>

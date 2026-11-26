@@ -1,0 +1,234 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Image GC on a GPU node: the 85 percent trap</title>
+  <desc>Worked example for a 1 TB image disk with ML images of 20 to 50 GB. Image GC thresholds and LRU eviction trap.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="78" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Image GC on a GPU node: the 85 percent trap</text>
+
+  
+  <g id="worked-example">
+    <rect x="40" y="120" width="1520" height="250" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(65, 142)">
+      <ellipse cx="28" cy="12" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 6,12 V 42 C 6,50 50,50 50,42 V 12" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 6,27 C 6,35 50,35 50,27" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+
+    
+    <text x="135" y="178" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Worked example for a 1 TB image disk with ML images of 20 to 50 GB</text>
+
+    
+    <text x="1054" y="214" text-anchor="end" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan font-family="monospace">imageGCLowThresholdPercent</tspan> 70 percent
+    </text>
+
+    
+    <rect x="140" y="228" width="1320" height="48" rx="8" fill="#dce8df" stroke="#207448" stroke-width="2"/>
+
+    
+    <g id="image-slices-70">
+      <rect x="140" y="228" width="55" height="48" fill="#b7dac0" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="195" y="228" width="40" height="48" fill="#c3e1cb" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="235" y="228" width="60" height="48" fill="#b7dac0" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="295" y="228" width="45" height="48" fill="#c3e1cb" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="340" y="228" width="65" height="48" fill="#b7dac0" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="405" y="228" width="50" height="48" fill="#c3e1cb" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="455" y="228" width="40" height="48" fill="#b7dac0" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="495" y="228" width="60" height="48" fill="#c3e1cb" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="555" y="228" width="55" height="48" fill="#b7dac0" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="610" y="228" width="45" height="48" fill="#c3e1cb" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="655" y="228" width="65" height="48" fill="#b7dac0" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="720" y="228" width="40" height="48" fill="#c3e1cb" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="760" y="228" width="55" height="48" fill="#b7dac0" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="815" y="228" width="50" height="48" fill="#c3e1cb" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="865" y="228" width="65" height="48" fill="#b7dac0" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="930" y="228" width="45" height="48" fill="#c3e1cb" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="975" y="228" width="55" height="48" fill="#b7dac0" stroke="#7fad8c" stroke-width="1.5"/>
+      <rect x="1030" y="228" width="34" height="48" fill="#c3e1cb" stroke="#7fad8c" stroke-width="1.5"/>
+    </g>
+
+    
+    <g id="image-slices-85">
+      <rect x="1064" y="228" width="50" height="48" fill="#f0dfbe" stroke="#d4b472" stroke-width="1.5"/>
+      <rect x="1114" y="228" width="45" height="48" fill="#faebd0" stroke="#d4b472" stroke-width="1.5"/>
+      <rect x="1159" y="228" width="55" height="48" fill="#f0dfbe" stroke="#d4b472" stroke-width="1.5"/>
+      <rect x="1214" y="228" width="48" height="48" fill="#faebd0" stroke="#d4b472" stroke-width="1.5"/>
+    </g>
+
+    
+    <rect x="1262" y="228" width="198" height="48" fill="#fceee8" stroke="#e0a996" stroke-width="1.5" stroke-dasharray="6 4"/>
+
+    
+    <line x1="1064" y1="198" x2="1064" y2="284" stroke="#207448" stroke-width="3" stroke-dasharray="6 4"/>
+    <circle cx="1064" cy="228" r="5" fill="#207448"/>
+
+    
+    <line x1="1262" y1="220" x2="1262" y2="306" stroke="#207448" stroke-width="3" stroke-dasharray="6 4"/>
+    <circle cx="1262" cy="276" r="5" fill="#207448"/>
+
+    
+    <text x="1262" y="330" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1262" dy="0" font-family="monospace">imageGCHighThresholdPercent</tspan>
+      <tspan x="1262" dy="28">85 percent</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="step-1">
+    <rect x="40" y="400" width="990" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="455" r="24" fill="#207448"/>
+    <text x="85" y="464" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <g transform="translate(125, 427)">
+      <path d="M 6,46 A 22,22 0 1,1 46,46" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="26" y1="32" x2="40" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="26" cy="32" r="4" fill="#207448"/>
+    </g>
+
+    
+    <text x="200" y="445" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="200" dy="0">usage grows past 85 percent,</tspan>
+      <tspan x="200" dy="35">hundreds of GB already used before GC starts</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="535" y1="510" x2="535" y2="538" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="step-2">
+    <rect x="40" y="540" width="990" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="615" r="24" fill="#207448"/>
+    <text x="85" y="624" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <g transform="translate(125, 587)">
+      <circle cx="26" cy="26" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+      <polyline points="26,12 26,26 26,38" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="26" y1="26" x2="38" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="200" y="582" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="200" dy="0">GC removes least recently used unused images,</tspan>
+      <tspan x="200" dy="36">skipping any younger than <tspan font-family="monospace">imageMinimumGCAge 30m</tspan>,</tspan>
+      <tspan x="200" dy="36">until usage falls to 70 percent</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="535" y1="690" x2="535" y2="718" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="step-3">
+    <rect x="40" y="720" width="990" height="110" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    <circle cx="85" cy="775" r="24" fill="#db8129"/>
+    <text x="85" y="784" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g transform="translate(125, 747)">
+      <polygon points="26,4 50,46 2,46" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="26" y1="18" x2="26" y2="30" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="26" cy="38" r="3" fill="#db8129"/>
+    </g>
+
+    
+    <text x="200" y="762" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="200" dy="0">GC may delete the image you need next,</tspan>
+      <tspan x="200" dy="36">causing a long re-pull</tspan>
+    </text>
+  </g>
+
+  
+  <g id="fixes">
+    <rect x="40" y="860" width="990" height="290" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(65, 878)">
+      <path d="M 6,8 H 46 V 26 C 46,40 26,50 26,50 C 26,50 6,40 6,26 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <polyline points="16,25 23,33 36,19" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    
+    <text x="135" y="918" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Fixes</text>
+
+    
+    <rect x="65" y="955" width="445" height="75" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="95" cy="992" r="8" fill="#207448"/>
+    <text x="120" y="1000" font-family="sans-serif" font-size="25" fill="#303a36">bigger disks,</text>
+
+    
+    <rect x="540" y="955" width="460" height="75" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="570" cy="992" r="8" fill="#207448"/>
+    <text x="595" y="1000" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace">imageMaximumGCAge</tspan> (newer),
+    </text>
+
+    
+    <rect x="65" y="1050" width="445" height="75" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="95" cy="1087" r="8" fill="#207448"/>
+    <text x="120" y="1095" font-family="sans-serif" font-size="25" fill="#303a36">pre-pull policies,</text>
+
+    
+    <rect x="540" y="1050" width="460" height="75" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="570" cy="1087" r="8" fill="#207448"/>
+    <text x="595" y="1095" font-family="sans-serif" font-size="24" fill="#303a36">
+      dedicated NVMe for <tspan font-family="monospace">imagefs</tspan>
+    </text>
+  </g>
+
+  
+  <g id="side-panel-logs">
+    <rect x="1070" y="400" width="490" height="750" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(1095, 420)">
+      <rect x="6" y="4" width="38" height="48" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="16" y1="16" x2="34" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="16" y1="26" x2="34" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="16" y1="36" x2="26" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="1160" y="460" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Logs</text>
+
+    
+    <rect x="1095" y="495" width="440" height="185" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="1115" y="545" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1115" dy="0"><tspan font-family="monospace">containerLogMaxSize 50Mi</tspan></tspan>
+      <tspan x="1115" dy="42">and <tspan font-family="monospace">containerLogMaxFiles 5</tspan></tspan>
+      <tspan x="1115" dy="42">rotate CRI logs;</tspan>
+    </text>
+
+    
+    <rect x="1095" y="705" width="440" height="225" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="1115" y="750" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1115" dy="0">container logs,</tspan>
+      <tspan x="1115" dy="40">writable layer and</tspan>
+      <tspan x="1115" dy="40"><tspan font-family="monospace">emptyDir</tspan> all count toward</tspan>
+      <tspan x="1115" dy="40"><tspan font-family="monospace">ephemeral-storage</tspan>;</tspan>
+    </text>
+
+    
+    <rect x="1095" y="955" width="440" height="170" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="1115" y="1005" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1115" dy="0">exceeding</tspan>
+      <tspan x="1115" dy="42"><tspan font-family="monospace">limits.ephemeral-storage</tspan></tspan>
+      <tspan x="1115" dy="42">evicts the pod</tspan>
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Two gatekeepers: validate before replace, checksum before use</title>
+  <desc>Infographic illustrating validate-before-replace in sshd drop-in configuration and checksum-before-use in release downloads.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Two gatekeepers: validate before replace, checksum before use</text>
+
+  
+  <rect x="40" y="95" width="745" height="885" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="412" y="142" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">sshd drop-in</text>
+
+  
+  <rect x="60" y="165" width="705" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="95" cy="200" r="22" fill="#207448"/>
+  <text x="95" y="208" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(130, 176)" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 0 L 26 0 L 38 12 L 38 44 L 6 44 Z"/>
+    <path d="M 26 0 L 26 12 L 38 12"/>
+    <line x1="12" y1="20" x2="30" y2="20"/>
+    <line x1="12" y1="28" x2="30" y2="28"/>
+    <line x1="12" y1="36" x2="24" y2="36"/>
+  </g>
+  <text x="185" y="208" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">copy writes</text>
+  <text x="80" y="242" font-family="monospace" font-size="24" fill="#303a36">/etc/ssh/sshd_config.d/10-hardening.conf</text>
+  <text x="80" y="270" font-family="sans-serif" font-size="24" fill="#303a36">with content PermitRootLogin no and</text>
+  <text x="80" y="298" font-family="sans-serif" font-size="24" fill="#303a36">PasswordAuthentication no,</text>
+  <text x="80" y="326" font-family="sans-serif" font-size="24" fill="#303a36">owner root, group root, mode 0644,</text>
+  <text x="80" y="350" font-family="sans-serif" font-size="24" fill="#303a36">only when the content differs</text>
+
+  
+  <line x1="412" y1="360" x2="412" y2="390" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="60" y="390" width="705" height="135" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+  <circle cx="95" cy="425" r="22" fill="#db8129"/>
+  <text x="95" y="433" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(130, 403)" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 2 L 6 8 L 6 22 C 6 34 22 42 22 42 C 22 42 38 34 38 22 L 38 8 Z"/>
+    <path d="M 14 21 L 19 26 L 30 15"/>
+  </g>
+  <text x="185" y="433" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">validate sshd -t -f %s</text>
+  <text x="80" y="475" font-family="sans-serif" font-size="24" fill="#303a36">runs against the new file</text>
+  <text x="80" y="507" font-family="sans-serif" font-size="24" fill="#303a36">before it replaces the old one</text>
+
+  
+  <line x1="412" y1="525" x2="412" y2="555" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="60" y="555" width="705" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="95" cy="590" r="22" fill="#207448"/>
+  <text x="95" y="598" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(130, 568)" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 2 L 6 8 L 6 22 C 6 34 22 42 22 42 C 22 42 38 34 38 22 L 38 8 Z"/>
+    <line x1="14" y1="14" x2="30" y2="30"/>
+    <line x1="30" y1="14" x2="14" y2="30"/>
+  </g>
+  <text x="185" y="598" font-family="sans-serif" font-size="24" fill="#303a36">if the check fails the bad drop-in</text>
+  <text x="185" y="638" font-family="sans-serif" font-size="24" fill="#303a36">never lands on the server</text>
+
+  
+  <line x1="412" y1="670" x2="412" y2="700" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="60" y="700" width="705" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="95" cy="735" r="22" fill="#207448"/>
+  <text x="95" y="743" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g transform="translate(130, 713)" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 36 22 A 16 16 0 1 1 28 8"/>
+    <polyline points="28 2 28 9 35 9"/>
+  </g>
+  <text x="185" y="743" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">notify Reload sshd</text>
+  <text x="80" y="785" font-family="sans-serif" font-size="24" fill="#303a36">only when the file changed,</text>
+  <text x="80" y="817" font-family="sans-serif" font-size="24" fill="#303a36">so a second run does nothing</text>
+
+  
+  <rect x="60" y="855" width="705" height="105" rx="12" fill="#fbfaf3" stroke="#b5943a" stroke-width="2" stroke-dasharray="6,4"/>
+  
+  <g transform="translate(80, 883)" fill="none" stroke="#b5943a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="24,4 44,40 4,40"/>
+    <line x1="24" y1="18" x2="24" y2="28"/>
+    <circle cx="24" cy="34" r="1.5" fill="#b5943a"/>
+  </g>
+  <text x="145" y="898" font-family="sans-serif" font-size="24" fill="#303a36">validating a drop-in standalone</text>
+  <text x="145" y="934" font-family="sans-serif" font-size="24" fill="#303a36">may need the main config; test carefully</text>
+
+  
+  <rect x="815" y="95" width="745" height="885" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1187" y="142" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">release download</text>
+
+  
+  <rect x="835" y="165" width="705" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="870" cy="200" r="22" fill="#207448"/>
+  <text x="870" y="208" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(905, 178)" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 30 A 10 10 0 0 1 12 14 A 14 14 0 0 1 36 16 A 10 10 0 0 1 42 30 Z"/>
+    <line x1="24" y1="24" x2="24" y2="40"/>
+    <polyline points="18 34 24 40 30 34"/>
+  </g>
+  <text x="965" y="208" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">get_url url</text>
+  <text x="855" y="246" font-family="monospace" font-size="24" fill="#303a36">https://example.com/</text>
+  <text x="855" y="278" font-family="monospace" font-size="24" fill="#303a36">tool-{{ tool_version }}.tar.gz</text>
+  <text x="855" y="310" font-family="monospace" font-size="24" fill="#303a36">dest /opt/dl/</text>
+  <text x="855" y="342" font-family="monospace" font-size="24" fill="#303a36">checksum sha256:{{ tool_sha256 }}</text>
+  <text x="855" y="374" font-family="monospace" font-size="24" fill="#303a36">mode 0644</text>
+
+  
+  <line x1="1187" y1="400" x2="1187" y2="445" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="835" y="445" width="705" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="870" cy="480" r="22" fill="#207448"/>
+  <text x="870" y="488" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(905, 458)" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="6,10 20,22 6,34"/>
+    <polygon points="18,10 32,22 18,34"/>
+    <line x1="36" y1="10" x2="36" y2="34"/>
+  </g>
+  <text x="965" y="488" font-family="sans-serif" font-size="24" fill="#303a36">if the file already exists</text>
+  <text x="855" y="540" font-family="sans-serif" font-size="24" fill="#303a36">with the expected digest</text>
+  <text x="855" y="582" font-family="sans-serif" font-size="24" fill="#303a36">the download is skipped</text>
+
+  
+  <line x1="1187" y1="620" x2="1187" y2="670" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="835" y="670" width="705" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="870" cy="705" r="22" fill="#207448"/>
+  <text x="870" y="713" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(905, 683)" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="22" cy="22" r="18"/>
+    <line x1="14" y1="14" x2="30" y2="30"/>
+    <line x1="30" y1="14" x2="14" y2="30"/>
+  </g>
+  <text x="965" y="713" font-family="sans-serif" font-size="24" fill="#303a36">if the download arrives</text>
+  <text x="855" y="765" font-family="sans-serif" font-size="24" fill="#303a36">with a different digest</text>
+  <text x="855" y="805" font-family="sans-serif" font-size="24" fill="#303a36">the task fails and the damaged file</text>
+  <text x="855" y="845" font-family="sans-serif" font-size="24" fill="#303a36">is not used</text>
+
+  
+  <rect x="40" y="1005" width="1520" height="75" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(60, 1022)" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="6 10 16 20 6 30"/>
+    <line x1="20" y1="30" x2="34" y2="30"/>
+  </g>
+  <text x="110" y="1052" font-family="monospace" font-size="24" fill="#303a36">copy also accepts backup, validate, force, remote_src; for sudo use validate visudo -cf %s</text>
+
+  
+  <rect x="40" y="1100" width="1520" height="70" rx="10" fill="#207448"/>
+  
+  <g transform="translate(485, 1113)" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 2 L 6 8 L 6 22 C 6 34 22 42 22 42 C 22 42 38 34 38 22 L 38 8 Z"/>
+    <path d="M 14 21 L 19 26 L 30 15"/>
+  </g>
+  <text x="820" y="1145" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Check the file before it replaces anything</text>
+</svg>

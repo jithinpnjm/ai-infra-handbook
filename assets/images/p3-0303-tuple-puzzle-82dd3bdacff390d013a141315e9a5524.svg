@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The t[2] += [50, 60] puzzle: an error and a change at the same time</title>
+  <desc>A step by step bytecode trace for t = (1, 2, [30, 40]); t[2] += [50, 60], explaining how in-place mutation succeeds before STORE_SUBSCR raises a TypeError on tuple assignment.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">The t[2] += [50, 60] puzzle:</text>
+  <text x="800" y="110" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">an error and a change at the same time</text>
+
+  
+  <rect x="40" y="145" width="1520" height="480" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(65, 165)">
+    
+    <rect x="0" y="0" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <rect x="10" y="10" width="20" height="20" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="8" y1="0" x2="8" y2="-6" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="20" y1="0" x2="20" y2="-6" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="32" y1="0" x2="32" y2="-6" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="8" y1="40" x2="8" y2="46" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="20" y1="40" x2="20" y2="46" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="32" y1="40" x2="32" y2="46" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="0" y1="12" x2="-6" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="0" y1="28" x2="-6" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="40" y1="12" x2="46" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="40" y1="28" x2="46" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="120" y="194" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">A step by step bytecode trace for 't = (1, 2, [30, 40]); t[2] += [50, 60]'</text>
+
+  
+  <rect x="65" y="225" width="430" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="105" cy="265" r="24" fill="#207448" />
+  <text x="105" y="274" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="145" y="275" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 1</text>
+  
+  <g transform="translate(435, 245)">
+    <ellipse cx="18" cy="6" rx="18" ry="6" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 0 6 v 8 c 0 3.3 8 6 18 6 s 18 -2.7 18 -6 v -8" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 0 14 v 8 c 0 3.3 8 6 18 6 s 18 -2.7 18 -6 v -8" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="85" y="335" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">BINARY_SUBSCR</text>
+  <text x="85" y="380" font-family="sans-serif" font-size="24" fill="#303a36">pushes the list t[2]</text>
+  <text x="85" y="425" font-family="sans-serif" font-size="24" fill="#303a36">onto the stack</text>
+
+  
+  <line x1="495" y1="360" x2="540" y2="360" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="545" y="225" width="450" height="270" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <circle cx="585" cy="265" r="24" fill="#db8129" />
+  <text x="585" y="274" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="625" y="275" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Step 2</text>
+  
+  <g transform="translate(940, 245)">
+    <circle cx="18" cy="18" r="7" fill="none" stroke="#db8129" stroke-width="3" />
+    <path d="M 18 2 v 5 M 18 29 v 5 M 2 18 h 5 M 29 18 h 5 M 7 7 l 4 4 M 25 25 l 4 4 M 7 29 l 4 -4 M 25 7 l 4 -4" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="565" y="325" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">INPLACE_ADD extends that</text>
+  <text x="565" y="365" font-family="sans-serif" font-size="24" fill="#303a36">list in place: it succeeds,</text>
+  <text x="565" y="405" font-family="sans-serif" font-size="24" fill="#303a36">the list is now</text>
+  <text x="565" y="445" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">[30, 40, 50, 60]</text>
+
+  
+  <line x1="995" y1="360" x2="1040" y2="360" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1045" y="225" width="490" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="1085" cy="265" r="24" fill="#207448" />
+  <text x="1085" y="274" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="1125" y="275" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 3</text>
+  
+  <g transform="translate(1480, 245)">
+    <rect x="4" y="14" width="28" height="22" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 10 14 V 9 a 8 8 0 0 1 16 0 v 5" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="1065" y="318" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">STORE_SUBSCR tries</text>
+  <text x="1065" y="354" font-family="sans-serif" font-size="24" fill="#303a36">t[2] = result: fails because</text>
+  <text x="1065" y="390" font-family="sans-serif" font-size="24" fill="#303a36">t is a tuple, TypeError:</text>
+  <text x="1065" y="426" font-family="sans-serif" font-size="24" fill="#303a36">tuple object does not support</text>
+  <text x="1065" y="462" font-family="sans-serif" font-size="24" fill="#303a36">item assignment</text>
+
+  
+  <line x1="1290" y1="495" x2="1290" y2="525" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="65" y="530" width="1470" height="75" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(85, 547)">
+    <line x1="6" y1="2" x2="6" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <path d="M 6 6 h 26 l -6 10 l 6 10 h -26 z" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="135" y="578" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Outcome strip:</text>
+  <text x="360" y="578" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">error raised, and t is now (1, 2, [30, 40, 50, 60])</text>
+
+  
+  <rect x="40" y="650" width="760" height="460" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(65, 670)">
+    <line x1="20" y1="6" x2="20" y2="36" stroke="#207448" stroke-width="3" />
+    <line x1="4" y1="12" x2="36" y2="12" stroke="#207448" stroke-width="3" />
+    <path d="M 4 12 l -4 14 h 8 z" fill="none" stroke="#207448" stroke-width="2" />
+    <path d="M 36 12 l -4 14 h 8 z" fill="none" stroke="#207448" stroke-width="2" />
+    <line x1="12" y1="36" x2="28" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="115" y="692" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Contrast panel:</text>
+  <text x="65" y="730" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">augmented assignment on mutable versus immutable</text>
+
+  
+  <rect x="65" y="750" width="710" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="85" y="788" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">mutable: a += [1] calls __iadd__,</text>
+  <text x="85" y="828" font-family="sans-serif" font-size="24" fill="#303a36">acts like list.extend on the shared list,</text>
+  <text x="85" y="868" font-family="sans-serif" font-size="24" fill="#303a36">visible to every name pointing at it</text>
+
+  
+  <rect x="65" y="920" width="710" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="85" y="958" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">immutable tuple or string: falls back to __add__</text>
+  <text x="85" y="998" font-family="sans-serif" font-size="24" fill="#303a36">and rebinds the name to a new object;</text>
+  <text x="85" y="1038" font-family="sans-serif" font-size="24" fill="#303a36">repeated += copies the whole sequence each time</text>
+
+  
+  <rect x="825" y="650" width="735" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(850, 665)">
+    <circle cx="10" cy="10" r="4" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="30" cy="10" r="4" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="20" cy="30" r="4" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 10 14 v 8 a 4 4 0 0 0 4 4 h 6 M 30 14 v 8 a 4 4 0 0 1 -4 4" fill="none" stroke="#207448" stroke-width="2" />
+  </g>
+  <text x="900" y="688" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Second example</text>
+  <text x="850" y="730" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">t = ([1], 2); t[0] += [3]</text>
+  <text x="1260" y="730" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">same result</text>
+
+  
+  <rect x="825" y="795" width="735" height="115" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(850, 812)">
+    <rect x="0" y="0" width="36" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="0" y1="8" x2="36" y2="8" stroke="#207448" stroke-width="2" />
+    <path d="M 6 14 l 4 3 l -4 3 M 14 20 h 6" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  </g>
+  <text x="900" y="835" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Tool note</text>
+  <text x="850" y="880" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">dis.dis("s[a] += b") shows it</text>
+
+  
+  <rect x="825" y="925" width="735" height="185" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(850, 940)">
+    <path d="M 18 4 l 14 5 v 10 c 0 9 -7 16 -14 19 c -7 -3 -14 -10 -14 -19 v -10 z" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 11 18 l 5 5 l 9 -9" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="900" y="962" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Check note</text>
+  <text x="850" y="1000" font-family="sans-serif" font-size="24" fill="#303a36">recursively immutable test: hash(o) raises</text>
+  <text x="850" y="1032" font-family="sans-serif" font-size="24" fill="#303a36">TypeError if any inner item is unhashable;</text>
+  <text x="850" y="1064" font-family="monospace" font-size="24" fill="#207448">fixed((10, alpha, (1, 2))) is True,</text>
+  <text x="850" y="1096" font-family="monospace" font-size="24" fill="#303a36">fixed((10, alpha, [1, 2])) is False</text>
+
+  
+  <rect x="40" y="1130" width="1520" height="55" rx="10" fill="#207448" />
+  <text x="800" y="1166" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Avoid mutable items inside tuples, and remember that += is not an atomic operation</text>
+</svg>

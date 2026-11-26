@@ -1,0 +1,222 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1190" width="1600" height="1190">
+  <title>The YAML inventory as a tree: which settings a host inherits</title>
+  <desc>Visual explanation of YAML inventory hierarchy and variable inheritance across all, group branches, and individual hosts.</desc>
+
+  <defs>
+    <marker id="green-arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+    <marker id="orange-arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1190" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">The YAML inventory as a tree: which settings a host inherits</text>
+
+  
+  <g id="trunk-all">
+    <rect x="250" y="95" width="1100" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(275, 115)">
+      <circle cx="28" cy="18" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 28 32 L 28 50 M 28 42 L 8 58 M 28 42 L 48 58" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="8" cy="58" r="5" fill="#207448"/>
+      <circle cx="48" cy="58" r="5" fill="#207448"/>
+      <circle cx="28" cy="50" r="5" fill="#207448"/>
+    </g>
+
+    <text x="355" y="145" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">all</text>
+    
+    
+    <text x="830" y="140" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="830" dy="0">vars: ansible_user automation,</tspan>
+      <tspan x="830" dy="30">ansible_python_interpreter /usr/bin/python3</tspan>
+    </text>
+
+    
+    <rect x="720" y="208" width="160" height="40" rx="8" fill="#207448"/>
+    <text x="800" y="236" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">children</text>
+  </g>
+
+  
+  <path d="M 800 248 L 800 268 M 245 268 L 1395 268" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 245 268 L 245 285" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#green-arrow)"/>
+  <path d="M 850 268 L 850 285" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#green-arrow)"/>
+  <path d="M 1395 268 L 1395 285" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#green-arrow)"/>
+
+  
+  <g id="branch-login">
+    <rect x="40" y="285" width="410" height="210" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(60, 305)">
+      <rect x="0" y="0" width="48" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="0" y1="12" x2="48" y2="12" stroke="#207448" stroke-width="3"/>
+      <polyline points="8,22 14,27 8,32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="18" y1="32" x2="28" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <text x="125" y="337" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">login</text>
+    
+    
+    <line x1="245" y1="355" x2="245" y2="375" stroke="#207448" stroke-width="3" marker-end="url(#green-arrow)"/>
+
+    
+    <rect x="55" y="375" width="380" height="100" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="245" y="415" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="245" dy="0">login01 {</tspan>
+      <tspan x="245" dy="32">ansible_host 10.1.1.5 }</tspan>
+    </text>
+  </g>
+
+  
+  <g id="callout-gpu001">
+    <rect x="40" y="525" width="410" height="315" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+    
+    <text x="60" y="565" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">inherits ansible_user</tspan>
+      <tspan x="60" dy="36">and python interpreter</tspan>
+      <tspan x="60" dy="36">from all,</tspan>
+      <tspan x="60" dy="36">nvidia_driver_branch 550</tspan>
+      <tspan x="60" dy="36">from gpu, and</tspan>
+      <tspan x="60" dy="36">ansible_host and rack</tspan>
+      <tspan x="60" dy="36">from its own braces</tspan>
+    </text>
+
+    
+    <line x1="450" y1="600" x2="510" y2="600" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+  </g>
+
+  
+  <g id="branch-gpu">
+    <rect x="480" y="285" width="720" height="570" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(505, 305)">
+      <rect x="4" y="4" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="14" y="14" width="24" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+      
+      <line x1="15" y1="0" x2="15" y2="4" stroke="#207448" stroke-width="3"/>
+      <line x1="26" y1="0" x2="26" y2="4" stroke="#207448" stroke-width="3"/>
+      <line x1="37" y1="0" x2="37" y2="4" stroke="#207448" stroke-width="3"/>
+      <line x1="15" y1="48" x2="15" y2="52" stroke="#207448" stroke-width="3"/>
+      <line x1="26" y1="48" x2="26" y2="52" stroke="#207448" stroke-width="3"/>
+      <line x1="37" y1="48" x2="37" y2="52" stroke="#207448" stroke-width="3"/>
+      <line x1="0" y1="15" x2="4" y2="15" stroke="#207448" stroke-width="3"/>
+      <line x1="0" y1="26" x2="4" y2="26" stroke="#207448" stroke-width="3"/>
+      <line x1="0" y1="37" x2="4" y2="37" stroke="#207448" stroke-width="3"/>
+      <line x1="48" y1="15" x2="52" y2="15" stroke="#207448" stroke-width="3"/>
+      <line x1="48" y1="26" x2="52" y2="26" stroke="#207448" stroke-width="3"/>
+      <line x1="48" y1="37" x2="52" y2="37" stroke="#207448" stroke-width="3"/>
+    </g>
+
+    <text x="575" y="342" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">gpu</text>
+
+    
+    <rect x="505" y="365" width="670" height="72" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="840" y="394" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="840" dy="0">vars: nvidia_driver_branch 550</tspan>
+      <tspan x="840" dy="28">(applies to everything beneath it)</tspan>
+    </text>
+
+    
+    <path d="M 840 437 L 840 455 M 655 455 L 1025 455" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 655 455 L 655 470" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#green-arrow)"/>
+    <path d="M 1025 455 L 1025 470" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#green-arrow)"/>
+
+    
+    <rect x="500" y="470" width="310" height="365" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(515, 485)">
+      <rect x="0" y="0" width="36" height="36" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 10 10 L 10 26 M 26 10 L 26 26 M 10 18 L 26 18" fill="none" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="565" y="513" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">gpu_h100</text>
+
+    
+    <rect x="515" y="535" width="280" height="130" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="655" y="565" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="655" dy="0">gpu001 {</tspan>
+      <tspan x="655" dy="28">ansible_host</tspan>
+      <tspan x="655" dy="28">10.1.10.1,</tspan>
+      <tspan x="655" dy="28">rack r01 }</tspan>
+    </text>
+
+    
+    <rect x="515" y="685" width="280" height="130" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="655" y="715" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="655" dy="0">gpu002 {</tspan>
+      <tspan x="655" dy="28">ansible_host</tspan>
+      <tspan x="655" dy="28">10.1.10.2,</tspan>
+      <tspan x="655" dy="28">rack r01 }</tspan>
+    </text>
+
+    
+    <rect x="870" y="470" width="310" height="365" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(885, 485)">
+      <rect x="0" y="0" width="36" height="36" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 8 26 L 18 10 L 28 26 M 12 21 L 24 21" fill="none" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="935" y="513" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">gpu_a100</text>
+
+    
+    <rect x="885" y="535" width="280" height="130" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1025" y="565" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1025" dy="0">dgx-a100-01 {</tspan>
+      <tspan x="1025" dy="28">ansible_host</tspan>
+      <tspan x="1025" dy="28">10.1.20.1,</tspan>
+      <tspan x="1025" dy="28">rack r09 }</tspan>
+    </text>
+  </g>
+
+  
+  <g id="branch-slurm">
+    <rect x="1230" y="285" width="330" height="210" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(1370, 300)">
+      <circle cx="25" cy="20" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="25" y1="2" x2="25" y2="6" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="25" y1="34" x2="25" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="7" y1="20" x2="11" y2="20" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="39" y1="20" x2="43" y2="20" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="12" y1="7" x2="15" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="35" y1="30" x2="38" y2="33" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="12" y1="33" x2="15" y2="30" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="35" y1="10" x2="38" y2="7" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <text x="1395" y="365" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">slurm_controller</text>
+    
+    
+    <line x1="1395" y1="375" x2="1395" y2="390" stroke="#207448" stroke-width="3" marker-end="url(#green-arrow)"/>
+
+    
+    <rect x="1255" y="390" width="280" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1395" y="442" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">slurmctl01</text>
+  </g>
+
+  
+  <g id="choice-panel">
+    <rect x="40" y="880" width="1520" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <text x="800" y="935" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">choose YAML when variables are structured, such as lists and dicts stored on a host, or</tspan>
+      <tspan x="800" dy="42">when a generator writes the file; choose INI for a small static fleet; many teams keep</tspan>
+      <tspan x="800" dy="42">only hosts and group membership in the inventory file and put variables in group_vars and host_vars</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1085" width="1520" height="70" rx="10" fill="#207448"/>
+    <text x="800" y="1129" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Reading the tree from the top shows what a host inherits before you read any host line</text>
+  </g>
+</svg>

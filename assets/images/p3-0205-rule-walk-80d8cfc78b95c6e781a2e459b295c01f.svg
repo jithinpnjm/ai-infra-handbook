@@ -1,0 +1,271 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Two replies, one machine, two roads: following the ip rule list</title>
+  <desc>Visual infographic explaining Linux ip rule policy routing with two packets from different sources taking separate routing tables and network interfaces.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1b3b2b" flood-opacity="0.07" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Two replies, one machine, two roads:</tspan>
+    <tspan x="800" dy="54" font-size="40" fill="#207448">following the ip rule list</tspan>
+  </text>
+
+  
+  <g transform="translate(40, 140)">
+    <rect width="970" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+    
+    <g transform="translate(24, 28)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="8" />
+      <polyline points="14,20 26,28 14,36" />
+      <line x1="30" y1="36" x2="42" y2="36" />
+    </g>
+    
+    <text x="105" y="48" font-family="ui-monospace, monospace" font-size="24" fill="#303a36" font-weight="bold">
+      <tspan x="105" dy="0">ip rule add from 10.100.1.45/32 table 101</tspan>
+      <tspan x="105" dy="38">ip route add default via 10.100.1.1 dev ens2f0 table 101</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1040, 140)">
+    <rect width="520" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+    
+    <g transform="translate(24, 28)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="8" />
+      <circle cx="26" cy="26" r="10" />
+      <line x1="33" y1="33" x2="42" y2="42" />
+    </g>
+    
+    <text x="105" y="48" font-family="ui-monospace, monospace" font-size="24" fill="#303a36" font-weight="bold">
+      <tspan x="105" dy="0">ip route get 8.8.8.8</tspan>
+      <tspan x="105" dy="36">from 10.100.0.45 iif lo</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g transform="translate(40, 310)">
+    <rect width="280" height="150" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" filter="url(#card-shadow)" />
+    
+    <g transform="translate(24, 46)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="42" rx="6" />
+      <polyline points="0,0 28,24 56,0" />
+    </g>
+    <text x="96" y="65" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="96" dy="0">reply sourced from</tspan>
+      <tspan x="96" dy="34" fill="#db8129">10.100.1.45</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 560)">
+    <rect width="280" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#card-shadow)" />
+    
+    <g transform="translate(24, 46)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="42" rx="6" />
+      <polyline points="0,0 28,24 56,0" />
+    </g>
+    <text x="96" y="65" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="96" dy="0">reply from any</tspan>
+      <tspan x="96" dy="34" fill="#207448">other source</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(370, 275)">
+    
+    <rect width="460" height="480" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+
+    
+    <g transform="translate(20, 20)">
+      <rect width="420" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <g transform="translate(18, 22)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 23 2 L 6 9 L 6 25 C 6 36 14 44 23 48 C 32 44 40 36 40 25 L 40 9 Z" />
+      </g>
+      <text x="76" y="52" font-family="ui-monospace, monospace" font-size="24" fill="#303a36" font-weight="bold">
+        0: from all lookup local
+      </text>
+    </g>
+
+    
+    <g transform="translate(20, 130)">
+      <rect width="420" height="105" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+      <g transform="translate(18, 26)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="18" />
+        <line x1="24" y1="12" x2="24" y2="36" />
+        <line x1="12" y1="24" x2="36" y2="24" />
+      </g>
+      <text x="76" y="47" font-family="ui-monospace, monospace" font-size="24" fill="#303a36" font-weight="bold">
+        <tspan x="76" dy="0">from 10.100.1.45/32</tspan>
+        <tspan x="76" dy="32" fill="#db8129">lookup table 101</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(20, 255)">
+      <rect width="420" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <g transform="translate(18, 22)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="6" width="38" height="34" rx="4" />
+        <line x1="4" y1="18" x2="42" y2="18" />
+      </g>
+      <text x="76" y="52" font-family="ui-monospace, monospace" font-size="24" fill="#303a36" font-weight="bold">
+        32766: from all lookup main
+      </text>
+    </g>
+
+    
+    <g transform="translate(20, 365)">
+      <rect width="420" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <g transform="translate(18, 24)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="8" width="38" height="32" rx="4" />
+        <line x1="12" y1="24" x2="34" y2="24" />
+      </g>
+      <text x="76" y="44" font-family="ui-monospace, monospace" font-size="24" fill="#303a36" font-weight="bold">
+        <tspan x="76" dy="0">32767: from all</tspan>
+        <tspan x="76" dy="30">lookup default</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+
+  
+  <g transform="translate(880, 340)">
+    <rect width="360" height="150" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" filter="url(#card-shadow)" />
+    
+    <g transform="translate(22, 45)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="50" height="50" rx="6" />
+      <line x1="0" y1="18" x2="50" y2="18" />
+      <line x1="25" y1="18" x2="25" y2="50" />
+    </g>
+    <text x="86" y="65" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="86" dy="0">table 101: default via</tspan>
+      <tspan x="86" dy="34" fill="#db8129">10.100.1.1 dev ens2f0</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(880, 560)">
+    <rect width="360" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#card-shadow)" />
+    
+    <g transform="translate(22, 45)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="50" height="50" rx="6" />
+      <line x1="0" y1="18" x2="50" y2="18" />
+      <line x1="25" y1="18" x2="25" y2="50" />
+    </g>
+    <text x="86" y="65" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="86" dy="0">main: default via</tspan>
+      <tspan x="86" dy="34" fill="#207448">10.20.0.1 dev eno1</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g transform="translate(1290, 340)">
+    <rect width="270" height="150" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" filter="url(#card-shadow)" />
+    
+    <g transform="translate(20, 48)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="48" height="44" rx="6" />
+      <path d="M 12 44 L 12 32 L 36 32 L 36 44" />
+      <line x1="20" y1="14" x2="20" y2="22" />
+      <line x1="28" y1="14" x2="28" y2="22" />
+    </g>
+    <text x="80" y="66" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="80" dy="0">out ens2f0 with</tspan>
+      <tspan x="80" dy="34" fill="#db8129">its own gateway</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1290, 560)">
+    <rect width="270" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#card-shadow)" />
+    
+    <g transform="translate(20, 48)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="48" height="44" rx="6" />
+      <path d="M 12 44 L 12 32 L 36 32 L 36 44" />
+      <line x1="20" y1="14" x2="20" y2="22" />
+      <line x1="28" y1="14" x2="28" y2="22" />
+    </g>
+    <text x="78" y="52" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="78" dy="0">out eno1, the</tspan>
+      <tspan x="78" dy="30">ordinary default</tspan>
+      <tspan x="78" dy="30" fill="#207448">route</tspan>
+    </text>
+  </g>
+
+  
+  
+  <path d="M 320 385 C 345 385, 345 455, 386 455" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <path d="M 814 455 L 876 455" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <path d="M 1240 415 L 1286 415" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  
+  <path d="M 320 635 C 345 635, 345 575, 386 575" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 814 575 C 845 575, 845 635, 876 635" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1240 635 L 1286 635" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(40, 795)">
+    <rect width="1520" height="140" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+    
+    <g transform="translate(30, 40)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="26" cy="12" rx="22" ry="7" />
+      <path d="M 4 12 L 4 44 C 4 48 14 52 26 52 C 38 52 48 48 48 44 L 48 12" />
+      <path d="M 4 28 C 4 32 14 36 26 36 C 38 36 48 32 48 28" />
+    </g>
+    
+    <text x="105" y="58" font-family="system-ui, sans-serif" font-size="24" fill="#303a36" font-weight="bold">
+      <tspan x="105" dy="0">Tables: local 255 (kernel-maintained, consulted first), main 254 (ordinary routes),</tspan>
+      <tspan x="105" dy="38">default 253 (usually empty), custom 1 to 252 and 256 up (one per NIC, tenant or VRF)</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 965)">
+    <rect width="1520" height="110" rx="12" fill="#ffffff" stroke="#303a36" stroke-width="1.5" stroke-dasharray="8,6" filter="url(#card-shadow)" />
+    
+    <g transform="translate(32, 28)" stroke="#303a36" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="26" cy="26" r="22" />
+      <line x1="26" y1="23" x2="26" y2="36" />
+      <circle cx="26" cy="15" r="1.5" fill="#303a36" />
+    </g>
+    
+    <text x="105" y="48" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="105" dy="0">rules can match source, destination, incoming interface, TOS, fwmark and uid;</tspan>
+      <tspan x="105" dy="36">the routing cache was removed in kernel 3.6, lookups use the FIB trie</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 1100)">
+    <rect width="1520" height="75" rx="12" fill="#207448" filter="url(#card-shadow)" />
+    
+    <text x="800" y="47" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      Same machine, same destination, two different roads, decided by who the packet says it is from
+    </text>
+  </g>
+</svg>

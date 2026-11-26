@@ -1,0 +1,298 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Two pools on one disk: blocks and inodes, counted by df and du</title>
+  <desc>Infographic explaining the two distinct pools of a filesystem—data blocks and inodes—and how df -h, df -i, and du inspect them differently.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5" />
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Two pools on one disk: blocks and inodes,</tspan>
+    <tspan x="800" dy="58">counted by df and du</tspan>
+  </text>
+
+  
+  <g id="top-header">
+    <rect x="60" y="155" width="1020" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="570" y="196" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">One filesystem has two pools</text>
+  </g>
+
+  
+  <g id="left-pool">
+    <rect x="60" y="235" width="490" height="280" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(89, 250)">
+      <ellipse cx="28" cy="11" rx="24" ry="9" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 4 11 L 4 47 A 24 9 0 0 0 52 47 L 52 11" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 4 29 A 24 9 0 0 0 52 29" fill="none" stroke="#207448" stroke-width="4" />
+    </g>
+    
+    
+    <text x="165" y="288" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">data blocks</text>
+
+    
+    <g id="block-grid" transform="translate(89, 325)">
+      
+      <rect x="0" y="0" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="44" y="0" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="88" y="0" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="132" y="0" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="176" y="0" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="220" y="0" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="264" y="0" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="308" y="0" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="352" y="0" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="396" y="0" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+      
+      <rect x="0" y="44" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="44" y="44" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="88" y="44" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="132" y="44" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="176" y="44" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="220" y="44" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="264" y="44" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="308" y="44" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="352" y="44" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="396" y="44" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+      
+      <rect x="0" y="88" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="44" y="88" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="88" y="88" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="132" y="88" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="176" y="88" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="220" y="88" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="264" y="88" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="308" y="88" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="352" y="88" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="396" y="88" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+      
+      <rect x="0" y="132" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="44" y="132" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="88" y="132" width="36" height="36" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+      <rect x="132" y="132" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="176" y="132" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="220" y="132" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="264" y="132" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="308" y="132" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="352" y="132" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="396" y="132" width="36" height="36" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    </g>
+  </g>
+
+  
+  <g id="right-pool">
+    <rect x="590" y="235" width="490" height="280" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(619, 250)">
+      <path d="M 4 10 L 20 10 L 26 18 L 52 18 A 4 4 0 0 1 56 22 L 56 50 A 4 4 0 0 1 52 54 L 4 54 A 4 4 0 0 1 0 50 L 0 14 A 4 4 0 0 1 4 10 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    </g>
+
+    
+    <text x="695" y="288" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">inodes</text>
+
+    
+    <g id="inode-cards" transform="translate(619, 360)">
+      
+      <g transform="translate(0, 0)">
+        <rect x="0" y="0" width="36" height="90" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+        <line x1="6" y1="18" x2="30" y2="18" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="36" x2="26" y2="36" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="54" x2="28" y2="54" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="72" x2="20" y2="72" stroke="#ffffff" stroke-width="2" />
+      </g>
+      
+      <g transform="translate(44, 0)">
+        <rect x="0" y="0" width="36" height="90" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+        <line x1="6" y1="18" x2="30" y2="18" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="36" x2="26" y2="36" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="54" x2="28" y2="54" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="72" x2="20" y2="72" stroke="#ffffff" stroke-width="2" />
+      </g>
+      
+      <g transform="translate(88, 0)">
+        <rect x="0" y="0" width="36" height="90" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+        <line x1="6" y1="18" x2="30" y2="18" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="36" x2="26" y2="36" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="54" x2="28" y2="54" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="72" x2="20" y2="72" stroke="#ffffff" stroke-width="2" />
+      </g>
+      
+      <g transform="translate(132, 0)">
+        <rect x="0" y="0" width="36" height="90" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+        <line x1="6" y1="18" x2="30" y2="18" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="36" x2="26" y2="36" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="54" x2="28" y2="54" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="72" x2="20" y2="72" stroke="#ffffff" stroke-width="2" />
+      </g>
+      
+      <g transform="translate(176, 0)">
+        <rect x="0" y="0" width="36" height="90" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+        <line x1="6" y1="18" x2="30" y2="18" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="36" x2="26" y2="36" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="54" x2="28" y2="54" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="72" x2="20" y2="72" stroke="#ffffff" stroke-width="2" />
+      </g>
+      
+      <g transform="translate(220, 0)">
+        <rect x="0" y="0" width="36" height="90" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+        <line x1="6" y1="18" x2="30" y2="18" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="36" x2="26" y2="36" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="54" x2="28" y2="54" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="72" x2="20" y2="72" stroke="#ffffff" stroke-width="2" />
+      </g>
+      
+      <g transform="translate(264, 0)">
+        <rect x="0" y="0" width="36" height="90" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+        <line x1="6" y1="18" x2="30" y2="18" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="36" x2="26" y2="36" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="54" x2="28" y2="54" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="72" x2="20" y2="72" stroke="#ffffff" stroke-width="2" />
+      </g>
+      
+      <g transform="translate(308, 0)">
+        <rect x="0" y="0" width="36" height="90" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+        <line x1="6" y1="18" x2="30" y2="18" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="36" x2="26" y2="36" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="54" x2="28" y2="54" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="72" x2="20" y2="72" stroke="#ffffff" stroke-width="2" />
+      </g>
+      
+      <g transform="translate(352, 0)">
+        <rect x="0" y="0" width="36" height="90" rx="4" fill="#207448" stroke="#207448" stroke-width="2" />
+        <line x1="6" y1="18" x2="30" y2="18" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="36" x2="26" y2="36" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="54" x2="28" y2="54" stroke="#ffffff" stroke-width="2" />
+        <line x1="6" y1="72" x2="20" y2="72" stroke="#ffffff" stroke-width="2" />
+      </g>
+      
+      <g transform="translate(396, 0)">
+        <rect x="0" y="0" width="36" height="90" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+        <line x1="6" y1="18" x2="30" y2="18" stroke="#207448" stroke-width="2" />
+        <line x1="6" y1="36" x2="26" y2="36" stroke="#207448" stroke-width="2" />
+        <line x1="6" y1="54" x2="28" y2="54" stroke="#207448" stroke-width="2" />
+        <line x1="6" y1="72" x2="20" y2="72" stroke="#207448" stroke-width="2" />
+      </g>
+    </g>
+  </g>
+
+  
+  <g id="orange-callout">
+    <rect x="1120" y="155" width="420" height="360" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3.5" />
+    <text x="1330" y="325" text-anchor="middle" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="1330" dy="0"><tspan font-family="'DejaVu Sans Mono', 'Courier New', monospace">ENOSPC</tspan><tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"> with free bytes</tspan></tspan>
+      <tspan x="1330" dy="46" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">means this pool is full</tspan>
+    </text>
+  </g>
+
+  
+  <g id="df-arrows">
+    
+    <line x1="305" y1="565" x2="305" y2="515" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+    
+    <line x1="835" y1="565" x2="835" y2="515" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  </g>
+
+  
+  
+  <g id="df-h-box">
+    <rect x="60" y="565" width="490" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(85, 580)">
+      <rect x="0" y="0" width="44" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="0" y1="10" x2="44" y2="10" stroke="#207448" stroke-width="2" />
+      <path d="M 8 18 L 13 21 L 8 24" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="17" y1="24" x2="24" y2="24" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="145" y="605" font-family="'DejaVu Sans Mono', 'Courier New', monospace" font-size="30" font-weight="bold" fill="#303a36">df -h</text>
+    
+    
+    <text x="305" y="645" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="305" dy="0">counts bytes used by blocks,</tspan>
+      <tspan x="305" dy="32">and free bytes</tspan>
+    </text>
+  </g>
+
+  
+  <g id="df-i-box">
+    <rect x="590" y="565" width="490" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(615, 580)">
+      <rect x="0" y="0" width="44" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="0" y1="10" x2="44" y2="10" stroke="#207448" stroke-width="2" />
+      <path d="M 8 18 L 13 21 L 8 24" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="17" y1="24" x2="24" y2="24" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="675" y="605" font-family="'DejaVu Sans Mono', 'Courier New', monospace" font-size="30" font-weight="bold" fill="#303a36">df -i</text>
+    
+    
+    <text x="835" y="660" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">counts inodes used and free</text>
+  </g>
+
+  
+  <g id="du-box">
+    <rect x="60" y="740" width="1080" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(85, 760)">
+      <rect x="0" y="0" width="44" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="0" y1="10" x2="44" y2="10" stroke="#207448" stroke-width="2" />
+      <path d="M 8 18 L 13 21 L 8 24" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="17" y1="24" x2="24" y2="24" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="145" y="785" font-family="'DejaVu Sans Mono', 'Courier New', monospace" font-size="30" font-weight="bold" fill="#303a36">du</text>
+    
+    
+    <text x="600" y="825" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="600" dy="0">adds up sizes of files it can reach by name,</tspan>
+      <tspan x="600" dy="34">so it misses blocks with no name</tspan>
+    </text>
+  </g>
+
+  
+  <g id="du-arrow">
+    <line x1="1140" y1="812.5" x2="1260" y2="812.5" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  </g>
+
+  
+  <g id="single-file-target">
+    <rect x="1260" y="740" width="280" height="145" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(1376, 777.5)">
+      
+      <path d="M 0 0 L 32 0 L 48 16 L 48 70 L 0 70 Z" fill="#ffffff" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <path d="M 32 0 L 32 16 L 48 16" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      
+      <line x1="10" y1="28" x2="38" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="10" y1="40" x2="38" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="10" y1="52" x2="26" y2="52" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="60" y="925" width="1480" height="75" rx="10" fill="#207448" />
+    <text x="800" y="971" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Count bytes and inodes separately, then ask who still holds deleted files.</text>
+  </g>
+</svg>

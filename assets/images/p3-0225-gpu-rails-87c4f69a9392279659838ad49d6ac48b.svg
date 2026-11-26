@@ -1,0 +1,215 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A GPU pod's networks: primary eth0, secondary rails, and the NCCL interface variables</title>
+  <desc>Architecture diagram illustrating primary eth0 CNI interface, secondary RDMA rails, attachment mechanisms, pod spec snippets, NCCL configuration variables, and failure mode.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="48" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">A GPU pod's networks: primary eth0,</tspan>
+    <tspan x="800" dy="54">secondary rails, and the NCCL interface variables</tspan>
+  </text>
+
+  
+  <rect x="40" y="130" width="470" height="730" rx="16" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="10 8" />
+
+  
+  <rect x="60" y="150" width="430" height="250" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(85, 175)" stroke="#207448" stroke-width="4" fill="none">
+    <circle cx="28" cy="28" r="14" />
+    <path d="M28 4 v8 M28 44 v8 M4 28 h8 M44 28 h8 M11 11 l6 6 M39 39 l6 6 M11 45 l6-6 M39 17 l6-6" stroke-linecap="round" />
+  </g>
+  <text x="85" y="275" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">eth0 from the primary CNI: control</tspan>
+    <tspan x="85" dy="34">traffic, service access, logs,</tspan>
+    <tspan x="85" dy="34">perhaps NCCL bootstrap; may be</tspan>
+    <tspan x="85" dy="34">the overlay</tspan>
+  </text>
+
+  
+  <rect x="60" y="420" width="430" height="420" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(85, 445)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="4" y="10" width="48" height="36" rx="4" />
+    <line x1="16" y1="46" x2="16" y2="54" stroke-linecap="round" />
+    <line x1="28" y1="46" x2="28" y2="54" stroke-linecap="round" />
+    <line x1="40" y1="46" x2="40" y2="54" stroke-linecap="round" />
+    <circle cx="20" cy="28" r="4" fill="#207448" />
+    <circle cx="36" cy="28" r="4" fill="#207448" />
+  </g>
+  <text x="85" y="540" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">net1, net2 ... secondary interfaces:</tspan>
+    <tspan x="85" dy="34">RDMA-capable NICs (ConnectX</tspan>
+    <tspan x="85" dy="34">in RoCE or IB mode) for</tspan>
+    <tspan x="85" dy="34">high-bandwidth GPU-to-GPU</tspan>
+    <tspan x="85" dy="34">and storage traffic</tspan>
+  </text>
+
+  
+  <line x1="275" y1="840" x2="275" y2="900" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="60" y="910" width="430" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(85, 930)" stroke="#207448" stroke-width="4" fill="none">
+    <line x1="10" y1="8" x2="10" y2="48" stroke-linecap="round" />
+    <line x1="46" y1="8" x2="46" y2="48" stroke-linecap="round" />
+    <line x1="10" y1="18" x2="46" y2="18" stroke-linecap="round" />
+    <line x1="10" y1="28" x2="46" y2="28" stroke-linecap="round" />
+    <line x1="10" y1="38" x2="46" y2="38" stroke-linecap="round" />
+  </g>
+  <text x="85" y="1025" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    Rails: rail0, rail1, ...
+  </text>
+
+  
+  <rect x="535" y="130" width="510" height="360" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(560, 150)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="6" y="8" width="22" height="34" rx="10" transform="rotate(-30 17 25)" />
+    <rect x="26" y="18" width="22" height="34" rx="10" transform="rotate(-30 37 35)" />
+  </g>
+  <text x="560" y="235" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="560" dy="0">NVIDIA Network Operator,</tspan>
+    <tspan x="560" dy="34">Multus (NetworkAttachmentDefinition),</tspan>
+    <tspan x="560" dy="34">SR-IOV device plugin with SR-IOV CNI</tspan>
+    <tspan x="560" dy="34">(places VFs into the pod),</tspan>
+    <tspan x="560" dy="34">host-device, macvlan or ipvlan CNI,</tspan>
+    <tspan x="560" dy="34">RDMA shared device plugin</tspan>
+    <tspan x="560" dy="34">(rdma/hca_shared_devices_a)</tspan>
+  </text>
+
+  
+  <rect x="535" y="510" width="510" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(560, 528)" stroke="#207448" stroke-width="4" fill="none">
+    <path d="M8 28 L28 8 H48 V28 L28 48 Z" />
+    <circle cx="38" cy="18" r="4" fill="#207448" />
+  </g>
+  <text x="635" y="555" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="24" fill="#303a36">
+    <tspan x="635" dy="0">annotation</tspan>
+    <tspan x="635" dy="34">k8s.v1.cni.cncf.io/networks: rail0</tspan>
+  </text>
+
+  
+  <rect x="535" y="645" width="510" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(560, 665)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="12" y="12" width="32" height="32" rx="4" />
+    <path d="M20 4 v8 M28 4 v8 M36 4 v8 M20 44 v8 M28 44 v8 M36 44 v8 M4 20 h8 M4 28 h8 M4 36 h8 M44 20 h8 M44 28 h8 M44 36 h8" stroke-linecap="round" />
+  </g>
+  <text x="635" y="682" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="24" fill="#303a36">
+    <tspan x="635" dy="0">resources: nvidia.com/gpu: 8,</tspan>
+    <tspan x="635" dy="34">nvidia.com/rdma_shared_device_a: 1</tspan>
+    <tspan x="635" dy="34">or nvidia.com/sriov_net: 8</tspan>
+  </text>
+
+  
+  <rect x="535" y="800" width="510" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(560, 820)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="12" y="22" width="32" height="26" rx="4" />
+    <path d="M18 22 V14 A10 10 0 0 1 38 14 V22" stroke-linecap="round" />
+    <circle cx="28" cy="35" r="3" fill="#207448" />
+  </g>
+  <text x="635" y="838" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="635" dy="0">securityContext capabilities add</tspan>
+    <tspan x="635" dy="34">IPC_LOCK: RDMA memory</tspan>
+    <tspan x="635" dy="34">registration, so the pod can pin memory</tspan>
+  </text>
+
+  
+  <rect x="535" y="955" width="510" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(560, 975)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="6" y="8" width="44" height="40" rx="6" />
+    <line x1="6" y1="20" x2="50" y2="20" />
+    <circle cx="14" cy="14" r="2" fill="#207448" />
+    <circle cx="22" cy="14" r="2" fill="#207448" />
+  </g>
+  <text x="635" y="990" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="635" dy="0">NetworkAttachmentDefinition rail0:</tspan>
+    <tspan x="635" dy="32">macvlan, master ens1f0, mode bridge,</tspan>
+    <tspan x="635" dy="32">mtu 9000, ipam whereabouts range</tspan>
+    <tspan x="635" dy="32">10.100.0.0/24</tspan>
+  </text>
+
+  
+  <rect x="1070" y="130" width="490" height="645" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+  
+  <g transform="translate(1095, 145)" stroke="#db8129" stroke-width="4" fill="none">
+    <line x1="12" y1="8" x2="12" y2="48" stroke-linecap="round" />
+    <line x1="28" y1="8" x2="28" y2="48" stroke-linecap="round" />
+    <line x1="44" y1="8" x2="44" y2="48" stroke-linecap="round" />
+    <circle cx="12" cy="20" r="5" fill="#db8129" />
+    <circle cx="28" cy="36" r="5" fill="#db8129" />
+    <circle cx="44" cy="16" r="5" fill="#db8129" />
+  </g>
+  <text x="1165" y="182" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+    Tell NCCL which interface
+  </text>
+
+  
+  <rect x="1090" y="215" width="450" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1105" y="250" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1105" dy="0">NCCL_SOCKET_IFNAME controls</tspan>
+    <tspan x="1105" dy="32">bootstrap and socket transport</tspan>
+  </text>
+
+  
+  <rect x="1090" y="320" width="450" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1105" y="355" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1105" dy="0">NCCL_IB_HCA selects the RDMA</tspan>
+    <tspan x="1105" dy="32">devices</tspan>
+  </text>
+
+  
+  <rect x="1090" y="425" width="450" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1105" y="460" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1105" dy="0">NCCL_IB_GID_INDEX selects the</tspan>
+    <tspan x="1105" dy="32">RoCE GIDs</tspan>
+  </text>
+
+  
+  <rect x="1090" y="530" width="450" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1105" y="565" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="24" fill="#303a36">
+    <tspan x="1105" dy="0">example</tspan>
+    <tspan x="1105" dy="32">NCCL_SOCKET_IFNAME=net1 and</tspan>
+    <tspan x="1105" dy="32">NCCL_IB_HCA=mlx5_0,mlx5_1</tspan>
+  </text>
+
+  
+  <rect x="1090" y="655" width="450" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1105" y="702" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+    or run with hostNetwork
+  </text>
+
+  
+  <rect x="1070" y="795" width="490" height="295" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1095, 815)" stroke="#207448" stroke-width="4" fill="none">
+    <path d="M28 8 L50 48 H6 Z" stroke-linejoin="round" />
+    <line x1="28" y1="22" x2="28" y2="34" stroke-linecap="round" />
+    <circle cx="28" cy="42" r="2.5" fill="#207448" />
+  </g>
+  <text x="1095" y="905" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1095" dy="0">the first interface NCCL sees may</tspan>
+    <tspan x="1095" dy="34">be the overlay; the job runs, but</tspan>
+    <tspan x="1095" dy="34">every collective crosses the</tspan>
+    <tspan x="1095" dy="34">overlay, and nothing logs an error</tspan>
+  </text>
+
+  
+  <rect x="40" y="1115" width="1520" height="65" rx="10" fill="#207448" />
+  <text x="800" y="1156" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">
+    Make the fast path the default by naming the interfaces the library should use
+  </text>
+</svg>

@@ -1,0 +1,268 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The daemons</title>
+  <desc>Architecture infographic illustrating Slurm daemons, control plane, compute plane, submission nodes, authentication, and interactions.</desc>
+
+  <defs>
+    <style>
+      .bg { fill: #f5f8f5; }
+      .title-text { font-family: sans-serif; font-size: 48px; font-weight: bold; fill: #303a36; }
+      .subgraph-box { fill: #e8f1ea; stroke: #207448; stroke-width: 2.5; rx: 16; ry: 16; }
+      .subgraph-title { font-family: sans-serif; font-size: 32px; font-weight: bold; fill: #207448; }
+      .node-card { fill: #ffffff; stroke: #207448; stroke-width: 2; rx: 12; ry: 12; }
+      .node-card-highlight { fill: #ffffff; stroke: #db8129; stroke-width: 3; rx: 12; ry: 12; }
+      .node-card-auth { fill: #ffffff; stroke: #207448; stroke-width: 2.5; stroke-dasharray: 6 4; rx: 12; ry: 12; }
+      .node-title { font-family: sans-serif; font-size: 30px; font-weight: bold; fill: #303a36; }
+      .node-mono { font-family: monospace; font-size: 24px; font-weight: bold; fill: #303a36; }
+      .node-mono-title { font-family: monospace; font-size: 30px; font-weight: bold; fill: #303a36; }
+      .node-desc { font-family: sans-serif; font-size: 24px; fill: #303a36; }
+      .edge-label { font-family: sans-serif; font-size: 24px; fill: #303a36; }
+      .edge-label-bg { fill: #f5f8f5; rx: 6; ry: 6; }
+      .arrow-line { fill: none; stroke: #207448; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+      .arrow-line-orange { fill: none; stroke: #db8129; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+      .arrow-dashed { fill: none; stroke: #207448; stroke-width: 2.5; stroke-dasharray: 8 6; stroke-linecap: round; stroke-linejoin: round; }
+      .icon-shape { fill: none; stroke: #207448; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+
+    <marker id="arr" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <marker id="arr-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" class="bg" />
+
+  
+  <text x="40" y="65" class="title-text">The daemons</text>
+
+  
+  
+  
+  <g id="subgraph-users">
+    <rect x="40" y="90" width="1520" height="160" class="subgraph-box" />
+    <text x="70" y="132" class="subgraph-title">Login / submit nodes</text>
+
+    
+    <rect x="60" y="148" width="810" height="84" class="node-card" />
+    
+    <g transform="translate(76, 162)">
+      <rect x="0" y="0" width="56" height="56" rx="8" class="icon-shape" />
+      <path d="M 14 20 L 26 28 L 14 36" class="icon-shape" stroke-width="3" />
+      <line x1="32" y1="36" x2="44" y2="36" class="icon-shape" stroke-width="3" />
+    </g>
+    <text x="148" y="200" class="node-mono">sbatch, srun, salloc, squeue, sinfo, scancel</text>
+
+    
+    <rect x="890" y="148" width="650" height="84" class="node-card" />
+    
+    <g transform="translate(906, 162)">
+      <circle cx="28" cy="28" r="22" class="icon-shape" />
+      <path d="M 28 14 L 28 28 L 38 34" class="icon-shape" stroke-width="3" />
+    </g>
+    <text x="978" y="200" class="node-desc">sacct, sacctmgr, sreport (accounting queries)</text>
+  </g>
+
+  
+  
+  
+  <g id="munge-node">
+    <rect x="40" y="275" width="560" height="100" class="node-card-auth" />
+    
+    <g transform="translate(56, 297)">
+      <path d="M 16 26 L 16 16 C 16 9 40 9 40 16 L 40 26" class="icon-shape" stroke-width="3.5" />
+      <rect x="10" y="26" width="36" height="26" rx="6" class="icon-shape" stroke-width="3.5" />
+      <circle cx="28" cy="37" r="3" fill="#207448" />
+      <line x1="28" y1="40" x2="28" y2="46" class="icon-shape" stroke-width="3" />
+    </g>
+    <text x="126" y="314" class="node-title">munge on every node</text>
+    <text x="126" y="352" class="node-desc">(shared key, authenticates every request)</text>
+  </g>
+
+  
+  
+  
+  <g id="subgraph-control">
+    <rect x="630" y="275" width="930" height="535" class="subgraph-box" />
+    <text x="655" y="315" class="subgraph-title">Control plane</text>
+
+    
+    <rect x="655" y="335" width="380" height="100" class="node-card" />
+    
+    <g transform="translate(672, 357)">
+      <path d="M 12 36 A 12 12 0 0 1 20 18 A 16 16 0 0 1 44 20 A 10 10 0 0 1 48 36 Z" class="icon-shape" />
+    </g>
+    <text x="742" y="375" class="node-title">slurmrestd (optional)</text>
+    <text x="742" y="412" class="node-desc">REST API</text>
+
+    
+    <rect x="1080" y="335" width="460" height="100" class="node-card" />
+    
+    <g transform="translate(1096, 357)">
+      <circle cx="28" cy="28" r="16" class="icon-shape" />
+      <circle cx="28" cy="28" r="6" fill="#207448" />
+      <line x1="28" y1="6" x2="28" y2="12" class="icon-shape" stroke-width="3" />
+      <line x1="28" y1="44" x2="28" y2="50" class="icon-shape" stroke-width="3" />
+      <line x1="6" y1="28" x2="12" y2="28" class="icon-shape" stroke-width="3" />
+      <line x1="44" y1="28" x2="50" y2="28" class="icon-shape" stroke-width="3" />
+    </g>
+    <text x="1164" y="375" class="node-title">backup slurmctld (optional)</text>
+    <text x="1164" y="412" class="node-desc">shared StateSaveLocation</text>
+
+    
+    <rect x="655" y="475" width="885" height="140" class="node-card-highlight" />
+    
+    <g transform="translate(676, 517)">
+      <circle cx="28" cy="28" r="22" stroke="#db8129" stroke-width="3.5" fill="none" />
+      <polygon points="28,12 32,24 44,28 32,32 28,44 24,32 12,28 24,24" fill="#db8129" />
+    </g>
+    <text x="750" y="515" class="node-mono-title">slurmctld</text>
+    <text x="750" y="555" class="node-desc">controller, port 6817</text>
+    <text x="750" y="593" class="node-desc">queue, scheduler, node and job state</text>
+
+    
+    <rect x="655" y="655" width="410" height="135" class="node-card" />
+    
+    <g transform="translate(672, 695)">
+      <rect x="4" y="8" width="48" height="40" rx="4" class="icon-shape" />
+      <line x1="4" y1="20" x2="52" y2="20" class="icon-shape" stroke-width="2" />
+      <line x1="16" y1="30" x2="40" y2="30" class="icon-shape" stroke-width="2" />
+      <line x1="16" y1="38" x2="32" y2="38" class="icon-shape" stroke-width="2" />
+    </g>
+    <text x="742" y="705" class="node-title">slurmdbd, port 6819</text>
+    <text x="742" y="750" class="node-desc">accounting daemon</text>
+
+    
+    <rect x="1110" y="655" width="430" height="135" class="node-card" />
+    
+    <g transform="translate(1128, 695)">
+      <ellipse cx="28" cy="14" rx="22" ry="8" class="icon-shape" />
+      <path d="M 6 14 L 6 42 A 22 8 0 0 0 50 42 L 50 14" class="icon-shape" />
+      <path d="M 6 28 A 22 8 0 0 0 50 28" class="icon-shape" />
+    </g>
+    <text x="1195" y="705" class="node-title">MariaDB / MySQL</text>
+    <text x="1195" y="750" class="node-desc">accounting database</text>
+  </g>
+
+  
+  
+  
+  <g id="subgraph-compute">
+    <rect x="40" y="845" width="1070" height="325" class="subgraph-box" />
+    <text x="65" y="885" class="subgraph-title">Compute nodes (data plane)</text>
+
+    
+    <rect x="65" y="905" width="330" height="100" class="node-card" />
+    
+    <g transform="translate(80, 927)">
+      <rect x="6" y="8" width="44" height="40" rx="4" class="icon-shape" />
+      <line x1="14" y1="20" x2="26" y2="20" class="icon-shape" stroke-width="3" />
+      <circle cx="38" cy="20" r="3" fill="#207448" />
+      <line x1="14" y1="34" x2="38" y2="34" class="icon-shape" stroke-width="2" />
+    </g>
+    <text x="145" y="964" class="node-mono">slurmd, port 6818</text>
+
+    
+    <rect x="415" y="905" width="190" height="100" class="node-card" />
+    <g transform="translate(430, 927)">
+      <rect x="6" y="8" width="44" height="40" rx="4" class="icon-shape" />
+      <circle cx="38" cy="20" r="3" fill="#207448" />
+    </g>
+    <text x="495" y="964" class="node-mono">slurmd</text>
+
+    
+    <rect x="625" y="905" width="190" height="100" class="node-card" />
+    <g transform="translate(640, 927)">
+      <rect x="6" y="8" width="44" height="40" rx="4" class="icon-shape" />
+      <circle cx="38" cy="20" r="3" fill="#207448" />
+    </g>
+    <text x="705" y="964" class="node-mono">slurmd</text>
+
+    
+    <rect x="65" y="1035" width="540" height="115" class="node-card" />
+    
+    <g transform="translate(80, 1065)">
+      <polygon points="8,10 40,10 48,28 40,46 8,46 16,28" class="icon-shape" />
+    </g>
+    <text x="145" y="1075" class="node-mono-title">slurmstepd</text>
+    <text x="145" y="1120" class="node-desc">one per job step per node</text>
+  </g>
+
+  
+  
+  
+  <g id="job-node">
+    <rect x="1140" y="1035" width="420" height="115" class="node-card" />
+    
+    <g transform="translate(1160, 1065)">
+      <rect x="4" y="6" width="48" height="42" rx="4" class="icon-shape" />
+      <line x1="4" y1="18" x2="52" y2="18" class="icon-shape" stroke-width="2" />
+      <circle cx="12" cy="12" r="2.5" fill="#207448" />
+      <circle cx="20" cy="12" r="2.5" fill="#207448" />
+      <circle cx="28" cy="12" r="2.5" fill="#207448" />
+    </g>
+    <text x="1232" y="1102" class="node-title">application processes</text>
+  </g>
+
+  
+  
+  
+
+  
+  <path d="M 680 232 L 680 470" class="arrow-line-orange" marker-end="url(#arr-orange)" />
+  <rect x="692" y="244" width="290" height="34" class="edge-label-bg" />
+  <text x="696" y="269" class="edge-label">RPC + munge credential</text>
+
+  
+  <path d="M 1215 232 L 1215 258 L 1575 258 L 1575 690 L 1070 690" class="arrow-line" marker-end="url(#arr-arr)" />
+  <rect x="1225" y="240" width="65" height="32" class="edge-label-bg" />
+  <text x="1230" y="264" class="edge-label">RPC</text>
+
+   BACKUP (bidirectional) -->
+  <path d="M 1120 475 L 1120 440" class="arrow-line" marker-start="url(#arr)" marker-end="url(#arr)" />
+
+  
+  <path d="M 800 615 L 800 650" class="arrow-line" marker-end="url(#arr)" />
+  <rect x="808" y="620" width="255" height="32" class="edge-label-bg" />
+  <text x="812" y="643" class="edge-label">job and usage records</text>
+
+  
+  <path d="M 1065 722 L 1105 722" class="arrow-line" marker-end="url(#arr)" />
+
+  
+  <path d="M 750 435 L 750 470" class="arrow-line" marker-end="url(#arr)" />
+
+  
+  <path d="M 720 615 L 720 820 L 230 820 L 230 900" class="arrow-line" marker-end="url(#arr)" />
+  <rect x="360" y="804" width="290" height="32" class="edge-label-bg" />
+  <text x="364" y="828" class="edge-label">launch and control RPCs</text>
+
+  
+  <path d="M 820 615 L 820 835 L 510 835 L 510 900" class="arrow-line" marker-end="url(#arr)" />
+
+  
+  <path d="M 920 615 L 920 850 L 720 850 L 720 900" class="arrow-line" marker-end="url(#arr)" />
+
+  
+  <path d="M 230 1005 L 230 1030" class="arrow-line" marker-end="url(#arr)" />
+
+  
+  <path d="M 605 1092 L 1135 1092" class="arrow-line" marker-end="url(#arr)" />
+  <rect x="760" y="1076" width="235" height="32" class="edge-label-bg" />
+  <text x="765" y="1100" class="edge-label">runs your program</text>
+
+  
+  <path d="M 130 232 L 130 900" class="arrow-line" marker-end="url(#arr)" />
+  <rect x="140" y="605" width="460" height="34" class="edge-label-bg" />
+  <text x="144" y="630" class="edge-label">srun talks to slurmd and slurmstepd directly</text>
+
+  
+  <path d="M 450 375 L 450 545 L 650 545" class="arrow-dashed" marker-end="url(#arr)" />
+
+  
+  <path d="M 320 375 L 320 900" class="arrow-dashed" marker-end="url(#arr)" />
+
+  
+  <path d="M 520 375 L 520 740 L 650 740" class="arrow-dashed" marker-end="url(#arr)" />
+</svg>

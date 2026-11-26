@@ -1,0 +1,383 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Two 4-pod jobs on six nodes: pod-by-pod placement deadlocks, gang admission does not</title>
+  <desc>Visual comparison showing how default pod-by-pod scheduling leads to deadlock when two distributed jobs hold nodes and wait for remaining ranks, whereas Kueue gang admission suspends jobs and admits one whole job against quota.</desc>
+
+  <defs>
+    
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Two 4-pod jobs on six nodes: pod-by-pod</tspan>
+    <tspan x="800" dy="56">placement deadlocks, gang admission does not</tspan>
+  </text>
+
+  
+  <g id="panel-left">
+    
+    <rect x="40" y="150" width="740" height="830" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <text x="410" y="200" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Default pod-by-pod scheduling</text>
+
+    
+    
+    <g transform="translate(60, 235)">
+      <rect width="104" height="335" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(28, 16)">
+        <rect x="4" y="4" width="40" height="36" rx="4" fill="#ffffff"/>
+        <rect x="14" y="14" width="20" height="16" rx="2" fill="#e8f1ea"/>
+        <line x1="14" y1="0" x2="14" y2="4"/>
+        <line x1="24" y1="0" x2="24" y2="4"/>
+        <line x1="34" y1="0" x2="34" y2="4"/>
+        <line x1="14" y1="40" x2="14" y2="44"/>
+        <line x1="24" y1="40" x2="24" y2="44"/>
+        <line x1="34" y1="40" x2="34" y2="44"/>
+        <line x1="0" y1="14" x2="4" y2="14"/>
+        <line x1="0" y1="22" x2="4" y2="22"/>
+        <line x1="0" y1="30" x2="4" y2="30"/>
+        <line x1="44" y1="14" x2="48" y2="14"/>
+        <line x1="44" y1="22" x2="48" y2="22"/>
+        <line x1="44" y1="30" x2="48" y2="30"/>
+      </g>
+      <text x="52" y="90" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="52" dy="0">node</tspan>
+        <tspan x="52" dy="28">1</tspan>
+      </text>
+      
+      <rect x="12" y="170" width="80" height="145" rx="8" fill="#207448" stroke="#175333" stroke-width="2"/>
+      <text x="52" y="250" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">A1</text>
+    </g>
+
+    
+    <g transform="translate(179, 235)">
+      <rect width="104" height="335" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(28, 16)">
+        <rect x="4" y="4" width="40" height="36" rx="4" fill="#ffffff"/>
+        <rect x="14" y="14" width="20" height="16" rx="2" fill="#e8f1ea"/>
+        <line x1="14" y1="0" x2="14" y2="4"/>
+        <line x1="24" y1="0" x2="24" y2="4"/>
+        <line x1="34" y1="0" x2="34" y2="4"/>
+        <line x1="14" y1="40" x2="14" y2="44"/>
+        <line x1="24" y1="40" x2="24" y2="44"/>
+        <line x1="34" y1="40" x2="34" y2="44"/>
+        <line x1="0" y1="14" x2="4" y2="14"/>
+        <line x1="0" y1="22" x2="4" y2="22"/>
+        <line x1="0" y1="30" x2="4" y2="30"/>
+        <line x1="44" y1="14" x2="48" y2="14"/>
+        <line x1="44" y1="22" x2="48" y2="22"/>
+        <line x1="44" y1="30" x2="48" y2="30"/>
+      </g>
+      <text x="52" y="90" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="52" dy="0">node</tspan>
+        <tspan x="52" dy="28">2</tspan>
+      </text>
+      
+      <rect x="12" y="170" width="80" height="145" rx="8" fill="#303a36" stroke="#1f2623" stroke-width="2"/>
+      <text x="52" y="250" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">B1</text>
+    </g>
+
+    
+    <g transform="translate(298, 235)">
+      <rect width="104" height="335" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(28, 16)">
+        <rect x="4" y="4" width="40" height="36" rx="4" fill="#ffffff"/>
+        <rect x="14" y="14" width="20" height="16" rx="2" fill="#e8f1ea"/>
+        <line x1="14" y1="0" x2="14" y2="4"/>
+        <line x1="24" y1="0" x2="24" y2="4"/>
+        <line x1="34" y1="0" x2="34" y2="4"/>
+        <line x1="14" y1="40" x2="14" y2="44"/>
+        <line x1="24" y1="40" x2="24" y2="44"/>
+        <line x1="34" y1="40" x2="34" y2="44"/>
+        <line x1="0" y1="14" x2="4" y2="14"/>
+        <line x1="0" y1="22" x2="4" y2="22"/>
+        <line x1="0" y1="30" x2="4" y2="30"/>
+        <line x1="44" y1="14" x2="48" y2="14"/>
+        <line x1="44" y1="22" x2="48" y2="22"/>
+        <line x1="44" y1="30" x2="48" y2="30"/>
+      </g>
+      <text x="52" y="90" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="52" dy="0">node</tspan>
+        <tspan x="52" dy="28">3</tspan>
+      </text>
+      
+      <rect x="12" y="170" width="80" height="145" rx="8" fill="#207448" stroke="#175333" stroke-width="2"/>
+      <text x="52" y="250" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">A2</text>
+    </g>
+
+    
+    <g transform="translate(417, 235)">
+      <rect width="104" height="335" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(28, 16)">
+        <rect x="4" y="4" width="40" height="36" rx="4" fill="#ffffff"/>
+        <rect x="14" y="14" width="20" height="16" rx="2" fill="#e8f1ea"/>
+        <line x1="14" y1="0" x2="14" y2="4"/>
+        <line x1="24" y1="0" x2="24" y2="4"/>
+        <line x1="34" y1="0" x2="34" y2="4"/>
+        <line x1="14" y1="40" x2="14" y2="44"/>
+        <line x1="24" y1="40" x2="24" y2="44"/>
+        <line x1="34" y1="40" x2="34" y2="44"/>
+        <line x1="0" y1="14" x2="4" y2="14"/>
+        <line x1="0" y1="22" x2="4" y2="22"/>
+        <line x1="0" y1="30" x2="4" y2="30"/>
+        <line x1="44" y1="14" x2="48" y2="14"/>
+        <line x1="44" y1="22" x2="48" y2="22"/>
+        <line x1="44" y1="30" x2="48" y2="30"/>
+      </g>
+      <text x="52" y="90" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="52" dy="0">node</tspan>
+        <tspan x="52" dy="28">4</tspan>
+      </text>
+      
+      <rect x="12" y="170" width="80" height="145" rx="8" fill="#303a36" stroke="#1f2623" stroke-width="2"/>
+      <text x="52" y="250" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">B2</text>
+    </g>
+
+    
+    <g transform="translate(536, 235)">
+      <rect width="104" height="335" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(28, 16)">
+        <rect x="4" y="4" width="40" height="36" rx="4" fill="#ffffff"/>
+        <rect x="14" y="14" width="20" height="16" rx="2" fill="#e8f1ea"/>
+        <line x1="14" y1="0" x2="14" y2="4"/>
+        <line x1="24" y1="0" x2="24" y2="4"/>
+        <line x1="34" y1="0" x2="34" y2="4"/>
+        <line x1="14" y1="40" x2="14" y2="44"/>
+        <line x1="24" y1="40" x2="24" y2="44"/>
+        <line x1="34" y1="40" x2="34" y2="44"/>
+        <line x1="0" y1="14" x2="4" y2="14"/>
+        <line x1="0" y1="22" x2="4" y2="22"/>
+        <line x1="0" y1="30" x2="4" y2="30"/>
+        <line x1="44" y1="14" x2="48" y2="14"/>
+        <line x1="44" y1="22" x2="48" y2="22"/>
+        <line x1="44" y1="30" x2="48" y2="30"/>
+      </g>
+      <text x="52" y="90" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="52" dy="0">node</tspan>
+        <tspan x="52" dy="28">5</tspan>
+      </text>
+      
+      <rect x="12" y="170" width="80" height="145" rx="8" fill="#207448" stroke="#175333" stroke-width="2"/>
+      <text x="52" y="250" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">A3</text>
+    </g>
+
+    
+    <g transform="translate(655, 235)">
+      <rect width="104" height="335" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(28, 16)">
+        <rect x="4" y="4" width="40" height="36" rx="4" fill="#ffffff"/>
+        <rect x="14" y="14" width="20" height="16" rx="2" fill="#e8f1ea"/>
+        <line x1="14" y1="0" x2="14" y2="4"/>
+        <line x1="24" y1="0" x2="24" y2="4"/>
+        <line x1="34" y1="0" x2="34" y2="4"/>
+        <line x1="14" y1="40" x2="14" y2="44"/>
+        <line x1="24" y1="40" x2="24" y2="44"/>
+        <line x1="34" y1="40" x2="34" y2="44"/>
+        <line x1="0" y1="14" x2="4" y2="14"/>
+        <line x1="0" y1="22" x2="4" y2="22"/>
+        <line x1="0" y1="30" x2="4" y2="30"/>
+        <line x1="44" y1="14" x2="48" y2="14"/>
+        <line x1="44" y1="22" x2="48" y2="22"/>
+        <line x1="44" y1="30" x2="48" y2="30"/>
+      </g>
+      <text x="52" y="90" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="52" dy="0">node</tspan>
+        <tspan x="52" dy="28">6</tspan>
+      </text>
+      
+      <rect x="12" y="170" width="80" height="145" rx="8" fill="#303a36" stroke="#1f2623" stroke-width="2"/>
+      <text x="52" y="250" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">B3</text>
+    </g>
+
+    
+    <g transform="translate(60, 590)">
+      <rect width="699" height="120" rx="10" fill="#ffffff" stroke="#7a8c82" stroke-width="2.5" stroke-dasharray="8 6"/>
+      <text x="110" y="68" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#7a8c82">Pending</text>
+      
+      <rect x="230" y="20" width="180" height="80" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2.5" stroke-dasharray="6 4"/>
+      <text x="320" y="68" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">A4</text>
+      
+      <rect x="470" y="20" width="180" height="80" rx="8" fill="#f5f8f5" stroke="#303a36" stroke-width="2.5" stroke-dasharray="6 4"/>
+      <text x="560" y="68" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">B4</text>
+    </g>
+
+    
+    <g transform="translate(60, 725)">
+      
+      <path d="M 120 40 C 120 10, 200 8, 300 8 L 520 8 C 620 8, 680 15, 680 40 C 680 65, 620 72, 520 72 L 200 72 C 150 72, 120 62, 120 45" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+      <rect x="180" y="16" width="460" height="48" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="2"/>
+      <text x="410" y="48" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">hold and wait, deadlock</text>
+    </g>
+
+    
+    <rect x="60" y="825" width="699" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="410" y="865" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="410" dy="0">each partial job holds its GPUs</tspan>
+      <tspan x="410" dy="32">at 0 percent use while it waits</tspan>
+      <tspan x="410" dy="32">for its last rank</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-right">
+    
+    <rect x="820" y="150" width="740" height="830" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <text x="1190" y="200" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Kueue gang admission</text>
+
+    
+    <g transform="translate(840, 235)">
+      
+      <rect x="0" y="0" width="335" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="167" y="60" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Job A</text>
+
+      
+      <rect x="365" y="0" width="335" height="155" rx="10" fill="#ffffff" stroke="#7a8c82" stroke-width="2"/>
+      <text x="532" y="60" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Job B</text>
+
+      
+      <rect x="240" y="92" width="220" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="350" y="122" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">suspend true</text>
+    </g>
+
+    
+    
+    <g transform="translate(840, 415)">
+      <rect width="700" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+      
+      <circle cx="45" cy="72" r="24" fill="#207448"/>
+      <text x="45" y="81" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+      
+      <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(85, 44)">
+        <circle cx="28" cy="28" r="14"/>
+        <circle cx="28" cy="28" r="6" fill="#207448"/>
+        <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12 12 L 17 17 M 39 39 L 44 44 M 12 44 L 17 39 M 39 17 L 44 12"/>
+      </g>
+      
+      <text x="430" y="60" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+        <tspan x="430" dy="0">Kueue checks the whole job</tspan>
+        <tspan x="430" dy="34">against quota, admits Job A first</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(840, 580)">
+      <rect width="700" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+      
+      <circle cx="45" cy="92" r="24" fill="#207448"/>
+      <text x="45" y="101" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+      
+      
+      <g transform="translate(95, 20)">
+        <rect width="88" height="145" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+        <rect x="8" y="10" width="72" height="70" rx="6" fill="#207448" stroke="#175333" stroke-width="2"/>
+        
+        <g stroke="#207448" stroke-width="2" fill="none" transform="translate(26, 92)">
+          <rect x="4" y="4" width="28" height="24" rx="3"/>
+          <line x1="12" y1="0" x2="12" y2="4"/>
+          <line x1="24" y1="0" x2="24" y2="4"/>
+          <line x1="12" y1="28" x2="12" y2="32"/>
+          <line x1="24" y1="28" x2="24" y2="32"/>
+        </g>
+      </g>
+      
+      <g transform="translate(195, 20)">
+        <rect width="88" height="145" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+        <rect x="8" y="10" width="72" height="70" rx="6" fill="#207448" stroke="#175333" stroke-width="2"/>
+        <g stroke="#207448" stroke-width="2" fill="none" transform="translate(26, 92)">
+          <rect x="4" y="4" width="28" height="24" rx="3"/>
+          <line x1="12" y1="0" x2="12" y2="4"/>
+          <line x1="24" y1="0" x2="24" y2="4"/>
+          <line x1="12" y1="28" x2="12" y2="32"/>
+          <line x1="24" y1="28" x2="24" y2="32"/>
+        </g>
+      </g>
+      
+      <g transform="translate(295, 20)">
+        <rect width="88" height="145" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+        <rect x="8" y="10" width="72" height="70" rx="6" fill="#207448" stroke="#175333" stroke-width="2"/>
+        <g stroke="#207448" stroke-width="2" fill="none" transform="translate(26, 92)">
+          <rect x="4" y="4" width="28" height="24" rx="3"/>
+          <line x1="12" y1="0" x2="12" y2="4"/>
+          <line x1="24" y1="0" x2="24" y2="4"/>
+          <line x1="12" y1="28" x2="12" y2="32"/>
+          <line x1="24" y1="28" x2="24" y2="32"/>
+        </g>
+      </g>
+      
+      <g transform="translate(395, 20)">
+        <rect width="88" height="145" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+        <rect x="8" y="10" width="72" height="70" rx="6" fill="#207448" stroke="#175333" stroke-width="2"/>
+        <g stroke="#207448" stroke-width="2" fill="none" transform="translate(26, 92)">
+          <rect x="4" y="4" width="28" height="24" rx="3"/>
+          <line x1="12" y1="0" x2="12" y2="4"/>
+          <line x1="24" y1="0" x2="24" y2="4"/>
+          <line x1="12" y1="28" x2="12" y2="32"/>
+          <line x1="24" y1="28" x2="24" y2="32"/>
+        </g>
+      </g>
+      
+      <g transform="translate(495, 20)">
+        <rect width="88" height="145" rx="8" fill="#f5f8f5" stroke="#7a8c82" stroke-width="1.5" stroke-dasharray="6 4"/>
+        <g stroke="#7a8c82" stroke-width="2" fill="none" transform="translate(26, 92)">
+          <rect x="4" y="4" width="28" height="24" rx="3"/>
+          <line x1="12" y1="0" x2="12" y2="4"/>
+          <line x1="24" y1="0" x2="24" y2="4"/>
+          <line x1="12" y1="28" x2="12" y2="32"/>
+          <line x1="24" y1="28" x2="24" y2="32"/>
+        </g>
+      </g>
+      
+      <g transform="translate(595, 20)">
+        <rect width="88" height="145" rx="8" fill="#f5f8f5" stroke="#7a8c82" stroke-width="1.5" stroke-dasharray="6 4"/>
+        <g stroke="#7a8c82" stroke-width="2" fill="none" transform="translate(26, 92)">
+          <rect x="4" y="4" width="28" height="24" rx="3"/>
+          <line x1="12" y1="0" x2="12" y2="4"/>
+          <line x1="24" y1="0" x2="24" y2="4"/>
+          <line x1="12" y1="28" x2="12" y2="32"/>
+          <line x1="24" y1="28" x2="24" y2="32"/>
+        </g>
+      </g>
+    </g>
+
+    
+    
+    <g transform="translate(840, 785)">
+      <rect width="700" height="170" rx="10" fill="#f0f3f1" stroke="#7a8c82" stroke-width="2.5"/>
+      
+      <g stroke="#7a8c82" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(50, 52)">
+        <rect x="4" y="24" width="48" height="38" rx="6" fill="#ffffff"/>
+        <path d="M 14 24 L 14 14 C 14 6, 42 6, 42 14 L 42 24"/>
+        <circle cx="28" cy="40" r="4" fill="#7a8c82"/>
+        <line x1="28" y1="44" x2="28" y2="52"/>
+      </g>
+      
+      <text x="415" y="70" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">pending in queue</text>
+      
+      <text x="415" y="118" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">admitted later when quota is free</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(40, 1010)">
+    <rect width="1520" height="100" rx="14" fill="#207448"/>
+    <text x="760" y="44" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      <tspan x="760" dy="0">the default scheduler places pods one at a time, so two half-placed jobs can block each other,</tspan>
+      <tspan x="760" dy="32">while Kueue admits a whole job or none of it</tspan>
+    </text>
+  </g>
+</svg>

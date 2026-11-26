@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>A pod spec turns into a few cgroup files on the node</title>
+  <desc>A left-to-right mapping diagram illustrating how Kubernetes pod spec resource requests and limits map to Linux cgroup v2 files and their node enforcement mechanisms, along with QoS oom_score_adj classes.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 15 8 L 0 14 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5" />
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">A pod spec turns into a few cgroup files on the node</text>
+
+  
+  <rect x="40" y="100" width="340" height="605" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <g transform="translate(75, 120)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="44" height="40" rx="6" />
+    <line x1="0" y1="12" x2="44" y2="12" />
+    <circle cx="9" cy="6" r="2" fill="#207448" />
+    <circle cx="17" cy="6" r="2" fill="#207448" />
+  </g>
+  <text x="135" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Pod spec</text>
+
+  
+  <rect x="55" y="205" width="310" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(187, 220)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="30" height="30" rx="4" />
+    <line x1="16" y1="0" x2="16" y2="8" />
+    <line x1="30" y1="0" x2="30" y2="8" />
+    <line x1="16" y1="38" x2="16" y2="46" />
+    <line x1="30" y1="38" x2="30" y2="46" />
+    <line x1="0" y1="16" x2="8" y2="16" />
+    <line x1="0" y1="30" x2="8" y2="30" />
+    <line x1="38" y1="16" x2="46" y2="16" />
+    <line x1="38" y1="30" x2="46" y2="30" />
+  </g>
+  <text x="210" y="308" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">requests.cpu: 500m</text>
+
+  
+  <rect x="55" y="370" width="310" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(187, 385)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="30" height="30" rx="4" />
+    <line x1="16" y1="0" x2="16" y2="8" />
+    <line x1="30" y1="0" x2="30" y2="8" />
+    <line x1="16" y1="38" x2="16" y2="46" />
+    <line x1="30" y1="38" x2="30" y2="46" />
+    <line x1="0" y1="16" x2="8" y2="16" />
+    <line x1="0" y1="30" x2="8" y2="30" />
+    <line x1="38" y1="16" x2="46" y2="16" />
+    <line x1="38" y1="30" x2="46" y2="30" />
+    <circle cx="23" cy="23" r="5" fill="#207448" />
+  </g>
+  <text x="210" y="473" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">limits.cpu: 2</text>
+
+  
+  <rect x="55" y="535" width="310" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(187, 550)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="23" cy="11" rx="18" ry="7" />
+    <path d="M 5 11 v 24 c 0 3.8 8.1 7 18 7 s 18 -3.2 18 -7 v -24" />
+    <path d="M 5 23 c 0 3.8 8.1 7 18 7 s 18 -3.2 18 -7" />
+  </g>
+  <text x="210" y="638" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">limits.memory: 4Gi</text>
+
+  
+  
+  <line x1="365" y1="272" x2="675" y2="272" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="520" y="256" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">scheduling share</text>
+
+  
+  <line x1="365" y1="438" x2="675" y2="438" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="520" y="422" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">hard CPU ceiling</text>
+
+  
+  <line x1="365" y1="602" x2="675" y2="602" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="520" y="586" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">hard memory limit</text>
+
+  
+  <rect x="660" y="100" width="380" height="605" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <g transform="translate(685, 120)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="22" cy="22" r="10" />
+    <path d="M 22 4 L 22 8 M 22 36 L 22 40 M 4 22 L 8 22 M 36 22 L 40 22 M 9 9 L 12 12 M 32 32 L 35 35 M 9 35 L 12 32 M 32 12 L 35 9" />
+  </g>
+  <text x="745" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Node cgroup v2 file</text>
+
+  
+  <rect x="675" y="205" width="350" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(827, 220)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="23" y1="6" x2="23" y2="40" />
+    <line x1="9" y1="14" x2="37" y2="14" />
+    <path d="M 5 28 L 13 14 L 21 28 Z" />
+    <path d="M 25 28 L 33 14 L 41 28 Z" />
+    <line x1="15" y1="40" x2="31" y2="40" />
+  </g>
+  <text x="850" y="308" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">cpu.weight</text>
+
+  
+  <rect x="675" y="370" width="350" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(827, 385)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="23" cy="23" r="18" />
+    <polyline points="23,12 23,23 32,23" />
+  </g>
+  <text x="850" y="473" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">cpu.max: 200000 100000</text>
+
+  
+  <rect x="675" y="535" width="350" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(827, 550)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="23" cy="11" rx="18" ry="7" />
+    <path d="M 5 11 v 24 c 0 3.8 8.1 7 18 7 s 18 -3.2 18 -7 v -24" />
+    <line x1="2" y1="4" x2="44" y2="4" stroke-dasharray="2 3" />
+  </g>
+  <text x="850" y="638" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">memory.max</text>
+
+  
+  
+  <line x1="1025" y1="272" x2="1135" y2="272" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="1025" y1="438" x2="1135" y2="438" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="1025" y1="602" x2="1135" y2="602" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="1120" y="100" width="440" height="605" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <g transform="translate(1215, 120)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 4 L 40 10 V 22 C 40 33 22 42 22 42 C 22 42 4 33 4 22 V 10 Z" />
+  </g>
+  <text x="1275" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Enforced as</text>
+
+  
+  <rect x="1135" y="205" width="410" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1317, 215)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="23" cy="23" r="18" />
+    <path d="M 23 5 A 18 18 0 0 1 41 23 L 23 23 Z" fill="#207448" fill-opacity="0.2" />
+    <line x1="23" y1="23" x2="23" y2="41" />
+    <line x1="23" y1="23" x2="10" y2="10" />
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1340" y="290">Proportional share</tspan>
+    <tspan x="1340" y="322">under contention</tspan>
+  </text>
+
+  
+  <rect x="1135" y="370" width="410" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1317, 380)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="23" cy="23" r="18" />
+    <line x1="17" y1="14" x2="17" y2="32" />
+    <line x1="29" y1="14" x2="29" y2="32" />
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1340" y="455">Throttled once</tspan>
+    <tspan x="1340" y="487">the quota is spent</tspan>
+  </text>
+
+  
+  <rect x="1135" y="535" width="410" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1317, 545)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 23 5 L 41 38 L 5 38 Z" />
+    <line x1="23" y1="18" x2="23" y2="27" />
+    <circle cx="23" cy="33" r="1.5" fill="#207448" />
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1340" y="620">cgroup OOM kill</tspan>
+    <tspan x="1340" y="652">when exceeded</tspan>
+  </text>
+
+  
+  <rect x="40" y="735" width="1520" height="275" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+  
+  
+  <g transform="translate(470, 755)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="6" y1="4" x2="6" y2="34" />
+    <circle cx="6" cy="14" r="4" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <line x1="18" y1="4" x2="18" y2="34" />
+    <circle cx="18" cy="24" r="4" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <line x1="30" y1="4" x2="30" y2="34" />
+    <circle cx="30" cy="10" r="4" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  </g>
+  <text x="800" y="784" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">QoS class sets oom_score_adj</text>
+
+  
+  
+  <rect x="270" y="820" width="320" height="58" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="430" y="857" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Guaranteed: -997</text>
+
+  
+  <rect x="640" y="820" width="320" height="58" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="857" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Burstable: between</text>
+
+  
+  <rect x="1010" y="820" width="320" height="58" rx="12" fill="#fdf4eb" stroke="#db8129" stroke-width="2.5" />
+  <text x="1170" y="857" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#b35c09">BestEffort: 1000</text>
+
+  
+  <text x="800" y="945" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">BestEffort pods are the first to die under memory pressure.</text>
+</svg>

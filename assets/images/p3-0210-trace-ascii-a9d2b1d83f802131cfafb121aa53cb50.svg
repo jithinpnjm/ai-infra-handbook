@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading curl --trace-ascii: markers, offsets and the blank line</title>
+  <desc>Visual guide to reading curl --trace-ascii output, showing curl info notes, sent request headers, received response headers, offset markers, and the blank line that marks the boundary between headers and document body.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="76" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36"><tspan x="800" dy="0">Reading curl --trace-ascii: </tspan><tspan x="800" dy="54">markers, offsets and the blank line</tspan></text>
+
+  
+  <g id="command-bar">
+    <rect x="50" y="160" width="1500" height="68" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="202" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">curl --trace-ascii trace_file http://www.example.org/</text>
+  </g>
+
+  
+
+  
+  <g id="band-1">
+    <rect x="50" y="252" width="750" height="224" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="50" y="252" width="750" height="68" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="50" y="296" width="750" height="24" fill="#e8f1ea"/>
+    
+    <circle cx="85" cy="286" r="24" fill="#207448"/>
+    <text x="85" y="294" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(125, 260)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="40" height="38" rx="4"/>
+      <line x1="12" y1="18" x2="36" y2="18"/>
+      <line x1="12" y1="26" x2="36" y2="26"/>
+      <line x1="12" y1="34" x2="24" y2="34"/>
+    </g>
+    
+    <text x="185" y="300" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">curl's own notes, marked ==</text>
+    
+    <text x="75" y="350" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">== Info: Trying 93.184.216.34...</text>
+    <text x="75" y="384" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">== Info: TCP_NODELAY set</text>
+    <text x="75" y="418" font-family="ui-monospace, monospace" font-size="24" fill="#303a36"><tspan x="75" dy="0">== Info: Connected to www.example.org </tspan><tspan x="75" dy="32">(93.184.216.34) port 80 (#0)</tspan></text>
+  </g>
+
+  
+  <g id="band-2">
+    <rect x="50" y="500" width="750" height="272" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="50" y="500" width="750" height="68" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="50" y="544" width="750" height="24" fill="#e8f1ea"/>
+    
+    <circle cx="85" cy="534" r="24" fill="#207448"/>
+    <text x="85" y="542" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(125, 508)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="40" height="34" rx="4"/>
+      <polyline points="14,24 24,14 34,24"/>
+      <line x1="24" y1="14" x2="24" y2="34"/>
+    </g>
+    
+    <text x="185" y="548" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">request sent, marked =&gt;</text>
+    
+    <text x="75" y="598" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">=&gt; Send header, 79 bytes (0x4f)</text>
+    <text x="75" y="630" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">GET / HTTP/1.1</text>
+    <text x="75" y="662" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">Host: www.example.org</text>
+    <text x="75" y="694" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">User-Agent: curl/7.58.0</text>
+    <text x="75" y="726" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">Accept: */*</text>
+    
+    <line x1="75" y1="748" x2="725" y2="748" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,6" opacity="0.4"/>
+  </g>
+
+  
+  <g id="band-3">
+    <rect x="50" y="796" width="750" height="290" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="50" y="796" width="750" height="68" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="50" y="840" width="750" height="24" fill="#e8f1ea"/>
+    
+    <circle cx="85" cy="830" r="24" fill="#207448"/>
+    <text x="85" y="838" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(125, 804)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="40" height="34" rx="4"/>
+      <polyline points="14,24 24,34 34,24"/>
+      <line x1="24" y1="14" x2="24" y2="34"/>
+    </g>
+    
+    <text x="185" y="844" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">reply received, marked &lt;=</text>
+    
+    <text x="75" y="894" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">&lt;= Recv header, 17 bytes</text>
+    <text x="75" y="924" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">HTTP/1.1 200 OK</text>
+    <text x="75" y="954" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">Accept-Ranges: bytes</text>
+    <text x="75" y="984" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">Age: 17629</text>
+    <text x="75" y="1014" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">Content-Length: 1256</text>
+    
+    <line x1="75" y1="1032" x2="725" y2="1032" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,6" opacity="0.4"/>
+    <text x="75" y="1058" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">&lt;= Recv data, 1256 bytes (0x4e8)</text>
+  </g>
+
+  
+
+  
+  <g id="callout-1">
+    <rect x="830" y="252" width="720" height="194" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(855, 321)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="6"/>
+      <line x1="18" y1="6" x2="18" y2="50"/>
+      <line x1="4" y1="20" x2="18" y2="20"/>
+      <line x1="4" y1="34" x2="18" y2="34"/>
+      <line x1="28" y1="18" x2="44" y2="18"/>
+      <line x1="28" y1="28" x2="44" y2="28"/>
+      <line x1="28" y1="38" x2="40" y2="38"/>
+    </g>
+    <text x="940" y="298" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan x="940" dy="0">The hex numbers such as 0000: are </tspan><tspan x="940" dy="34">offsets curl adds to track how many </tspan><tspan x="940" dy="34">bytes moved; they are not part </tspan><tspan x="940" dy="34">of the data</tspan></text>
+  </g>
+
+  
+  <g id="callout-2">
+    <rect x="830" y="470" width="720" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(855, 532)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 46 28 A 20 20 0 1 1 38 12"/>
+      <polyline points="38,4 38,14 48,14"/>
+      <ellipse cx="28" cy="28" rx="8" ry="12"/>
+    </g>
+    <text x="940" y="522" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan x="940" dy="0">curl does not count headers toward </tspan><tspan x="940" dy="34">the offsets, so offsets restart at </tspan><tspan x="940" dy="34">zero after the headers</tspan></text>
+  </g>
+
+  
+  <g id="callout-3">
+    <rect x="830" y="674" width="720" height="188" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+    
+    <g transform="translate(855, 740)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="4" width="44" height="48" rx="4"/>
+      <line x1="14" y1="14" x2="42" y2="14"/>
+      <line x1="14" y1="22" x2="34" y2="22"/>
+      
+      <line x1="14" y1="36" x2="42" y2="36"/>
+      <line x1="14" y1="44" x2="30" y2="44"/>
+    </g>
+    <text x="940" y="728" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="940" dy="0">A blank line marks the end of the </tspan><tspan x="940" dy="34">headers; everything after it is </tspan><tspan x="940" dy="34">the requested document</tspan></text>
+  </g>
+
+  
+  <g id="callout-4">
+    <rect x="830" y="886" width="720" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(855, 958)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="18" rx="3"/>
+      <rect x="4" y="32" width="48" height="18" rx="3"/>
+      <line x1="16" y1="24" x2="16" y2="32"/>
+      <line x1="40" y1="24" x2="40" y2="32"/>
+    </g>
+    <text x="940" y="932" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan x="940" dy="0">The operating system and network </tspan><tspan x="940" dy="34">handle headers and document </tspan><tspan x="940" dy="34">identically; the split exists only </tspan><tspan x="940" dy="34">inside the user-space curl program</tspan></text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="50" y="1110" width="1500" height="68" rx="12" fill="#207448"/>
+    <text x="800" y="1152" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Read it from the top: notes, then the request, then the reply</text>
+  </g>
+</svg>

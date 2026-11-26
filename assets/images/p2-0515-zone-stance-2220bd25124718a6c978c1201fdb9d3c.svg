@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Each platform zone gets its own network stance</title>
+  <desc>Visual infographic detailing the network security policies, ingress, and egress stances across six distinct platform zones.</desc>
+
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Each platform zone gets its own network stance</text>
+
+  
+  <g id="card-edge">
+    <rect x="60" y="120" width="460" height="410" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(88, 142)">
+      
+      <path d="M 26 4 L 46 12 V 26 C 46 38 26 48 26 48 C 26 48 6 38 6 26 V 12 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M 26 14 V 36" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 16 25 H 36" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="88" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Edge</text>
+    <line x1="88" y1="236" x2="492" y2="236" stroke="#c8dcce" stroke-width="1.5"/>
+    <text x="88" y="266" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Examples</text>
+    <text x="88" y="296" font-family="sans-serif" font-size="24" fill="#303a36">Ingress or Gateway,</text>
+    <text x="88" y="324" font-family="sans-serif" font-size="24" fill="#303a36">auth proxy</text>
+    <text x="88" y="365" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Stance</text>
+    <text x="88" y="395" font-family="sans-serif" font-size="24" fill="#303a36">Ingress from LB or</text>
+    <text x="88" y="423" font-family="sans-serif" font-size="24" fill="#303a36">Internet on 443; egress to</text>
+    <text x="88" y="451" font-family="sans-serif" font-size="24" fill="#303a36">tenant model namespaces</text>
+    <text x="88" y="479" font-family="sans-serif" font-size="24" fill="#303a36">only</text>
+  </g>
+
+  
+  <g id="card-serving">
+    <rect x="570" y="120" width="460" height="410" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    <g transform="translate(598, 142)">
+      
+      <rect x="10" y="10" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <rect x="18" y="18" width="16" height="16" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 20 4 V 10 M 26 4 V 10 M 32 4 V 10" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 20 42 V 48 M 26 42 V 48 M 32 42 V 48" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 4 20 H 10 M 4 26 H 10 M 4 32 H 10" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 42 20 H 48 M 42 26 H 48 M 42 32 H 48" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="598" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Serving</text>
+    <line x1="598" y1="236" x2="1002" y2="236" stroke="#c8dcce" stroke-width="1.5"/>
+    <text x="598" y="266" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Examples</text>
+    <text x="598" y="296" font-family="sans-serif" font-size="24" fill="#303a36">vLLM, Triton, gateways</text>
+    <text x="598" y="345" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Stance</text>
+    <text x="598" y="375" font-family="sans-serif" font-size="24" fill="#303a36">Ingress only from the</text>
+    <text x="598" y="403" font-family="sans-serif" font-size="24" fill="#303a36">gateway namespace;</text>
+    <text x="598" y="431" font-family="sans-serif" font-size="24" fill="#303a36">no pod-to-pod across</text>
+    <text x="598" y="459" font-family="sans-serif" font-size="24" fill="#303a36">tenants</text>
+  </g>
+
+  
+  <g id="card-training">
+    <rect x="1080" y="120" width="460" height="410" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(1108, 142)">
+      
+      <circle cx="26" cy="11" r="7" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="12" cy="39" r="7" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="40" cy="39" r="7" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 22 17 L 15 33" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 30 17 L 37 33" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 19 39 H 33" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="1108" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Training</text>
+    <line x1="1108" y1="236" x2="1512" y2="236" stroke="#c8dcce" stroke-width="1.5"/>
+    <text x="1108" y="266" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Examples</text>
+    <text x="1108" y="296" font-family="sans-serif" font-size="24" fill="#303a36">Jobs, operators,</text>
+    <text x="1108" y="324" font-family="sans-serif" font-size="24" fill="#303a36">launcher pods</text>
+    <text x="1108" y="365" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Stance</text>
+    <text x="1108" y="395" font-family="sans-serif" font-size="24" fill="#303a36">Intra-job traffic allowed</text>
+    <text x="1108" y="423" font-family="sans-serif" font-size="24" fill="#303a36">within the job label;</text>
+    <text x="1108" y="451" font-family="sans-serif" font-size="24" fill="#303a36">deny other tenants</text>
+  </g>
+
+  
+  <g id="card-data-services">
+    <rect x="60" y="565" width="460" height="410" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(88, 587)">
+      
+      <ellipse cx="26" cy="13" rx="18" ry="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 8 13 V 39 C 8 45 44 45 44 39 V 13" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 8 26 C 8 32 44 32 44 26" fill="none" stroke="#207448" stroke-width="3.5"/>
+    </g>
+    <text x="88" y="667" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Data services</text>
+    <line x1="88" y1="681" x2="492" y2="681" stroke="#c8dcce" stroke-width="1.5"/>
+    <text x="88" y="711" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Examples</text>
+    <text x="88" y="741" font-family="sans-serif" font-size="24" fill="#303a36">Vector DB, feature store,</text>
+    <text x="88" y="769" font-family="sans-serif" font-size="24" fill="#303a36">MLflow</text>
+    <text x="88" y="810" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Stance</text>
+    <text x="88" y="840" font-family="sans-serif" font-size="24" fill="#303a36">Ingress from approved</text>
+    <text x="88" y="868" font-family="sans-serif" font-size="24" fill="#303a36">client namespaces;</text>
+    <text x="88" y="896" font-family="sans-serif" font-size="24" fill="#303a36">egress limited</text>
+  </g>
+
+  
+  <g id="card-platform-system">
+    <rect x="570" y="565" width="460" height="410" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(598, 587)">
+      
+      <circle cx="26" cy="26" r="7" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 23 7 H 29 V 11 C 31 12 33 13 35 15 L 38 12 L 42 16 L 39 19 C 41 21 42 23 43 25 H 47 V 31 H 43 C 42 33 41 35 39 37 L 42 40 L 38 44 L 35 41 C 33 43 31 44 29 45 V 49 H 23 V 45 C 21 44 19 43 17 41 L 14 44 L 10 40 L 13 37 C 11 35 10 33 9 31 H 5 V 25 H 9 C 10 23 11 21 13 19 L 10 16 L 14 12 L 17 15 C 19 13 21 12 23 11 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    </g>
+    <text x="598" y="667" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Platform and system</text>
+    <line x1="598" y1="681" x2="1002" y2="681" stroke="#c8dcce" stroke-width="1.5"/>
+    <text x="598" y="711" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Examples</text>
+    <text x="598" y="741" font-family="sans-serif" font-size="24" fill="#303a36">kube-system, monitoring,</text>
+    <text x="598" y="769" font-family="sans-serif" font-size="24" fill="#303a36">GPU operator, Argo CD</text>
+    <text x="598" y="810" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Stance</text>
+    <text x="598" y="840" font-family="sans-serif" font-size="24" fill="#303a36">Controlled interactions</text>
+    <text x="598" y="868" font-family="sans-serif" font-size="24" fill="#303a36">only</text>
+  </g>
+
+  
+  <g id="card-interactive">
+    <rect x="1080" y="565" width="460" height="410" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(1108, 587)">
+      
+      <rect x="7" y="9" width="38" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="7" y1="19" x2="45" y2="19" stroke="#207448" stroke-width="3"/>
+      <circle cx="13" cy="14" r="2" fill="#207448"/>
+      <circle cx="19" cy="14" r="2" fill="#207448"/>
+      <circle cx="25" cy="14" r="2" fill="#207448"/>
+      <path d="M 14 27 L 19 31 L 14 35" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="23" y1="35" x2="31" y2="35" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="1108" y="667" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Interactive</text>
+    <line x1="1108" y1="681" x2="1512" y2="681" stroke="#c8dcce" stroke-width="1.5"/>
+    <text x="1108" y="711" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Examples</text>
+    <text x="1108" y="741" font-family="sans-serif" font-size="24" fill="#303a36">Notebooks (JupyterHub)</text>
+    <text x="1108" y="792" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Stance</text>
+    <text x="1108" y="822" font-family="sans-serif" font-size="24" fill="#303a36">Egress allow-list,</text>
+    <text x="1108" y="850" font-family="sans-serif" font-size="24" fill="#303a36">no cloud metadata,</text>
+    <text x="1108" y="878" font-family="sans-serif" font-size="24" fill="#303a36">time-limited</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="60" y="1005" width="1480" height="54" rx="10" fill="#207448"/>
+    <text x="800" y="1040" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Not every zone of the cluster deserves the same policy.</text>
+  </g>
+</svg>

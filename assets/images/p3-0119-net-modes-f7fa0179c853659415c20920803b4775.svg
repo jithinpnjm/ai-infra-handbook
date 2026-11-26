@@ -1,0 +1,279 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Container network modes compared: which namespace, which path</title>
+  <desc>A comparison table of container network modes showing network namespace, how traffic leaves, and typical use or caveats.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Container network modes compared:</text>
+  <text x="800" y="104" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">which namespace, which path</text>
+
+  
+  <g>
+    <rect x="390" y="126" width="370" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="575" y="156" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Network namespace</text>
+
+    <rect x="770" y="126" width="370" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="955" y="156" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">How traffic leaves</text>
+
+    <rect x="1150" y="126" width="410" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1355" y="156" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Typical use or caveat</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="176" width="340" height="92" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <line x1="56" y1="202" x2="94" y2="202" />
+      <line x1="56" y1="242" x2="94" y2="242" />
+      <path d="M 66 202 C 66 222 84 222 84 242" />
+      <circle cx="66" cy="202" r="3" fill="#207448" />
+      <circle cx="84" cy="242" r="3" fill="#207448" />
+    </g>
+    <text x="108" y="215" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="108" dy="0">Docker bridge</tspan>
+      <tspan x="108" dy="32">(default)</tspan>
+    </text>
+
+    <rect x="390" y="176" width="370" height="92" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="408" y="205" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="408" dy="0">own namespace; veth</tspan>
+      <tspan x="408" dy="26">pair to a bridge such</tspan>
+      <tspan x="408" dy="26">as docker0 or cni0</tspan>
+    </text>
+
+    <rect x="770" y="176" width="370" height="92" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="788" y="205" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="788" dy="0">NAT or masquerade by</tspan>
+      <tspan x="788" dy="26">iptables or nftables;</tspan>
+      <tspan x="788" dy="26">published ports use DNAT</tspan>
+    </text>
+
+    <rect x="1150" y="176" width="410" height="92" rx="8" fill="#f9fbf9" stroke="#d5e3d9" stroke-dasharray="4 4" stroke-width="1.5" />
+  </g>
+
+  
+  <g>
+    <rect x="40" y="275" width="340" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <rect x="56" y="291" width="38" height="32" rx="3" />
+      <line x1="62" y1="301" x2="74" y2="301" />
+      <line x1="62" y1="311" x2="74" y2="311" />
+      <circle cx="85" cy="307" r="2.5" fill="#207448" />
+    </g>
+    <text x="108" y="318" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Docker host</text>
+
+    <rect x="390" y="275" width="370" height="64" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="408" y="315" font-family="sans-serif" font-size="24" fill="#303a36">the host's namespace</text>
+
+    <rect x="770" y="275" width="370" height="64" rx="8" fill="#f9fbf9" stroke="#d5e3d9" stroke-dasharray="4 4" stroke-width="1.5" />
+
+    <rect x="1150" y="275" width="410" height="64" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="1168" y="315" font-family="sans-serif" font-size="24" fill="#303a36">no isolation</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="346" width="340" height="68" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <circle cx="75" cy="380" r="17" />
+      <line x1="63" y1="392" x2="87" y2="368" />
+    </g>
+    <text x="108" y="389" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Docker none</text>
+
+    <rect x="390" y="346" width="370" height="68" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="408" y="375" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="408" dy="0">own namespace with</tspan>
+      <tspan x="408" dy="26">only a down lo</tspan>
+    </text>
+
+    <rect x="770" y="346" width="370" height="68" rx="8" fill="#f9fbf9" stroke="#d5e3d9" stroke-dasharray="4 4" stroke-width="1.5" />
+
+    <rect x="1150" y="346" width="410" height="68" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="1168" y="389" font-family="sans-serif" font-size="24" fill="#303a36">no connectivity</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="421" width="340" height="68" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <rect x="56" y="440" width="22" height="22" rx="2" />
+      <rect x="68" y="449" width="22" height="22" rx="2" />
+    </g>
+    <text x="108" y="450" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="108" dy="0">Docker</tspan>
+      <tspan x="108" dy="30">container:&lt;id&gt;</tspan>
+    </text>
+
+    <rect x="390" y="421" width="370" height="68" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="408" y="450" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="408" dy="0">joins another container's</tspan>
+      <tspan x="408" dy="26">namespace</tspan>
+    </text>
+
+    <rect x="770" y="421" width="370" height="68" rx="8" fill="#f9fbf9" stroke="#d5e3d9" stroke-dasharray="4 4" stroke-width="1.5" />
+
+    <rect x="1150" y="421" width="410" height="68" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="1168" y="463" font-family="sans-serif" font-size="24" fill="#303a36">shares its network</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="496" width="340" height="68" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <rect x="56" y="513" width="38" height="24" rx="2" />
+      <line x1="62" y1="537" x2="62" y2="544" />
+      <line x1="70" y1="537" x2="70" y2="544" />
+      <line x1="78" y1="537" x2="78" y2="544" />
+      <line x1="86" y1="537" x2="86" y2="544" />
+    </g>
+    <text x="108" y="526" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="108" dy="0">macvlan or</tspan>
+      <tspan x="108" dy="30">ipvlan</tspan>
+    </text>
+
+    <rect x="390" y="496" width="370" height="68" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="408" y="538" font-family="sans-serif" font-size="24" fill="#303a36">own namespace</text>
+
+    <rect x="770" y="496" width="370" height="68" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="788" y="525" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="788" dy="0">address directly on the</tspan>
+      <tspan x="788" dy="26">physical network</tspan>
+    </text>
+
+    <rect x="1150" y="496" width="410" height="68" rx="8" fill="#f9fbf9" stroke="#d5e3d9" stroke-dasharray="4 4" stroke-width="1.5" />
+  </g>
+
+  
+  <g>
+    <rect x="40" y="571" width="340" height="134" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <rect x="56" y="618" width="38" height="42" rx="8" />
+      <circle cx="68" cy="633" r="3.5" fill="#207448" />
+      <circle cx="82" cy="633" r="3.5" fill="#207448" />
+      <circle cx="75" cy="647" r="3.5" fill="#207448" />
+    </g>
+    <text x="108" y="626" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="108" dy="0">Kubernetes</tspan>
+      <tspan x="108" dy="32">pod</tspan>
+    </text>
+
+    
+    <rect x="390" y="571" width="750" height="134" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="408" y="604" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="408" dy="0">one namespace shared by all containers, created by</tspan>
+      <tspan x="408" dy="27">the pause container; a CNI plugin such as Calico,</tspan>
+      <tspan x="408" dy="27">Cilium or Flannel creates the veth, assigns the</tspan>
+      <tspan x="408" dy="27">pod IP and installs routes or tunnels</tspan>
+    </text>
+
+    <rect x="1150" y="571" width="410" height="134" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="1168" y="644" font-family="sans-serif" font-size="24" fill="#303a36">default</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="712" width="340" height="92" rx="8" fill="#fdf4eb" stroke="#db8129" stroke-width="2.5" />
+    
+    <g stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <rect x="56" y="738" width="38" height="36" rx="4" />
+      <path d="M 66 764 L 75 748 L 84 764" />
+      <circle cx="75" cy="748" r="2.5" fill="#db8129" />
+    </g>
+    <text x="108" y="742" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+      <tspan x="108" dy="0">Kubernetes</tspan>
+      <tspan x="108" dy="30">hostNetwork:</tspan>
+      <tspan x="108" dy="30">true</tspan>
+    </text>
+
+    <rect x="390" y="712" width="370" height="92" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="408" y="765" font-family="sans-serif" font-size="24" fill="#303a36">the host's namespace</text>
+
+    
+    <rect x="770" y="712" width="790" height="92" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="788" y="743" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="788" dy="0">node agents and some performance-sensitive jobs;</tspan>
+      <tspan x="788" dy="27">often with NCCL over InfiniBand to avoid NAT</tspan>
+      <tspan x="788" dy="27">and the CNI path</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="811" width="340" height="92" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <path d="M 75 833 L 91 840 C 91 857 75 869 75 869 C 75 869 59 857 59 840 Z" />
+      <circle cx="75" cy="848" r="4" />
+    </g>
+    <text x="108" y="848" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="108" dy="0">Rootless</tspan>
+      <tspan x="108" dy="32">Podman</tspan>
+    </text>
+
+    
+    <rect x="390" y="811" width="750" height="92" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="408" y="848" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="408" dy="0">cannot create veth without privilege; uses a</tspan>
+      <tspan x="408" dy="28">user-space stack slirp4netns or pasta</tspan>
+    </text>
+
+    <rect x="1150" y="811" width="410" height="92" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="1168" y="840" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1168" dy="0">lower throughput;</tspan>
+      <tspan x="1168" dy="26">containers cannot reach</tspan>
+      <tspan x="1168" dy="26">each other the same way</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="910" width="340" height="92" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <rect x="56" y="934" width="38" height="26" rx="2" />
+      <path d="M 63 947 L 73 947 L 77 940 L 87 940" />
+      <circle cx="63" cy="947" r="2" fill="#207448" />
+      <circle cx="87" cy="940" r="2" fill="#207448" />
+      <line x1="64" y1="960" x2="64" y2="967" />
+      <line x1="75" y1="960" x2="75" y2="967" />
+      <line x1="86" y1="960" x2="86" y2="967" />
+    </g>
+    <text x="108" y="946" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="108" dy="0">SR-IOV VF or</tspan>
+      <tspan x="108" dy="32">RDMA device</tspan>
+    </text>
+
+    <rect x="390" y="910" width="370" height="92" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="408" y="939" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="408" dy="0">moved into the namespace</tspan>
+      <tspan x="408" dy="26">through Multus, SR-IOV CNI</tspan>
+      <tspan x="408" dy="26">or rdma-shared-device-plugin</tspan>
+    </text>
+
+    
+    <rect x="770" y="910" width="790" height="92" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+    <text x="788" y="948" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="788" dy="0">needs device files and the host IB stack;</tspan>
+      <tspan x="788" dy="28">rdma system set netns exclusive or shared</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="1016" width="1520" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="800" y="1051" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">A new network namespace has only a down loopback; moving an interface in removes it from the original namespace</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="1086" width="1520" height="66" rx="10" fill="#207448" />
+    <text x="800" y="1127" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">When a pod's traffic misbehaves, first check whether it uses the pod network or the host network</text>
+  </g>
+</svg>

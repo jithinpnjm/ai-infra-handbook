@@ -1,0 +1,285 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>What syncPod does for a new pod, in order</title>
+  <desc>Visual explanation of the seven sequential steps executed by kubelet syncPod for a new pod, visible failure symptoms, and runtime triggers.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-symptom" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+
+    
+    <filter id="shadow" x="-2%" y="-3%" width="104%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#143322" flood-opacity="0.06" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5" />
+
+  
+  <text x="50" y="58" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="48" font-weight="bold" fill="#303a36">What syncPod does for a new pod, in order</text>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="1160" y="90" width="390" height="965" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(1327, 125)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24" />
+      <polyline points="28,14 28,28 38,28" />
+      
+      <path d="M 10 10 A 28 28 0 0 1 48 12" stroke-dasharray="4 3" stroke-width="2.5" />
+    </g>
+
+    
+    <text x="1185" y="225" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1185" font-weight="bold">Triggers:</tspan>
+      <tspan x="1185" dy="36">pod change,</tspan>
+      <tspan x="1185" dy="34">periodic resync</tspan>
+      <tspan x="1185" dy="34">about 1 minute,</tspan>
+      <tspan x="1185" dy="34">PLEG container state</tspan>
+      <tspan x="1185" dy="34">change;</tspan>
+      
+      <tspan x="1185" dy="54" font-weight="bold">PLEG relists the</tspan>
+      <tspan x="1185" dy="34" font-weight="bold">runtime every second;</tspan>
+      
+      <tspan x="1185" dy="54">PLEG is not healthy</tspan>
+      <tspan x="1185" dy="34">means the relist took</tspan>
+      <tspan x="1185" dy="34">too long (overloaded</tspan>
+      <tspan x="1185" dy="34">runtime or node)</tspan>
+    </text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    
+    <rect x="50" y="90" width="650" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="90" cy="155" r="24" fill="#207448" />
+    <text x="90" y="163" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">1</text>
+    
+    
+    <g transform="translate(126, 127)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 10 14 L 10 30 C 10 42 28 50 28 50 C 28 50 46 42 46 30 L 46 14 Z" />
+      <polyline points="20,28 26,34 36,22" />
+    </g>
+
+    
+    <text x="188" y="127" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="188" font-weight="bold">Node admission:</tspan>
+      <tspan x="188" dy="30">allocatable, selectors,</tspan>
+      <tspan x="188" dy="28">host ports, tolerations,</tspan>
+      <tspan x="188" dy="28">sysctls, topology, devices</tspan>
+    </text>
+
+    
+    <line x1="700" y1="155" x2="736" y2="155" stroke="#207448" stroke-width="2.5" stroke-dasharray="4 4" marker-end="url(#arrow-symptom)" />
+
+    
+    <rect x="740" y="90" width="380" height="130" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" />
+    
+    <g transform="translate(756, 131)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 8 L 6 38 L 38 38 Z" />
+      <line x1="22" y1="20" x2="22" y2="28" />
+      <circle cx="22" cy="33" r="1.5" fill="#207448" />
+    </g>
+    <text x="806" y="147" font-family="'SF Mono', Menlo, Consolas, Monaco, monospace" font-size="24" fill="#303a36">
+      <tspan x="806">pod Failed with</tspan>
+      <tspan x="806" dy="32">OutOf... reason</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="375" y1="220" x2="375" y2="243" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="50" y="245" width="1070" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="90" cy="300" r="24" fill="#207448" />
+    <text x="90" y="308" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">2</text>
+
+    
+    <g transform="translate(126, 272)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="18" y="6" width="20" height="12" rx="2" />
+      <line x1="28" y1="18" x2="28" y2="28" />
+      <line x1="12" y1="28" x2="44" y2="28" />
+      <line x1="12" y1="28" x2="12" y2="36" />
+      <line x1="44" y1="28" x2="44" y2="36" />
+      <rect x="4" y="36" width="16" height="12" rx="2" />
+      <rect x="36" y="36" width="16" height="12" rx="2" />
+    </g>
+
+    
+    <text x="188" y="280" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="188" font-weight="bold">Cgroup hierarchy:</tspan>
+      <tspan x="188" dy="30" font-family="'SF Mono', Menlo, Consolas, Monaco, monospace">kubepods.slice/kubepods-qos.slice/</tspan>
+      <tspan x="188" dy="28" font-family="'SF Mono', Menlo, Consolas, Monaco, monospace">kubepods-qos-pod-uid.slice</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="375" y1="355" x2="375" y2="378" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="50" y="380" width="1070" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="90" cy="430" r="24" fill="#207448" />
+    <text x="90" y="438" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">3</text>
+
+    
+    <g transform="translate(126, 402)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 14 L 22 14 L 28 20 L 48 20 L 48 44 L 8 44 Z" />
+      <line x1="8" y1="24" x2="48" y2="24" />
+    </g>
+
+    
+    <text x="188" y="423" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="188">Pod directories under </tspan>
+      <tspan font-family="'SF Mono', Menlo, Consolas, Monaco, monospace">/var/lib/kubelet/pods/uid/</tspan>
+      <tspan x="188" dy="32">(volumes, plugins, etc-hosts)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="375" y1="480" x2="375" y2="503" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g filter="url(#shadow)">
+    
+    <rect x="50" y="505" width="650" height="125" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="90" cy="567" r="24" fill="#207448" />
+    <text x="90" y="575" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">4</text>
+
+    
+    <g transform="translate(126, 539)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="18" ry="6" />
+      <path d="M 10 14 L 10 42 C 10 46 18 49 28 49 C 38 49 46 46 46 42 L 46 14" />
+      <path d="M 10 28 C 10 32 18 35 28 35 C 38 35 46 32 46 28" />
+    </g>
+
+    
+    <text x="188" y="544" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="188" font-weight="bold">Volumes mounted</tspan>
+      <tspan x="188" dy="30">(emptyDir, configMap, secret,</tspan>
+      <tspan x="188" dy="28">projected, PVC)</tspan>
+    </text>
+
+    
+    <line x1="700" y1="567" x2="736" y2="567" stroke="#207448" stroke-width="2.5" stroke-dasharray="4 4" marker-end="url(#arrow-symptom)" />
+
+    
+    <rect x="740" y="505" width="380" height="125" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" />
+    
+    <g transform="translate(756, 542)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 8 L 6 38 L 38 38 Z" />
+      <line x1="22" y1="20" x2="22" y2="28" />
+      <circle cx="22" cy="33" r="1.5" fill="#207448" />
+    </g>
+    <text x="806" y="542" font-family="'SF Mono', Menlo, Consolas, Monaco, monospace" font-size="24" fill="#303a36">
+      <tspan x="806">ContainerCreating,</tspan>
+      <tspan x="806" dy="30">FailedMount,</tspan>
+      <tspan x="806" dy="30">FailedAttachVolume</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="375" y1="630" x2="375" y2="653" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="50" y="655" width="1070" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="90" cy="697" r="24" fill="#207448" />
+    <text x="90" y="705" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">5</text>
+
+    
+    <g transform="translate(126, 671)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="14" y="24" width="28" height="22" rx="4" />
+      <path d="M 20 24 L 20 16 C 20 10 36 10 36 16 L 36 24" />
+      <circle cx="28" cy="33" r="2" fill="#207448" />
+      <line x1="28" y1="35" x2="28" y2="40" />
+    </g>
+
+    
+    <text x="188" y="705" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">Pull secrets resolved</text>
+  </g>
+
+  
+  <line x1="375" y1="740" x2="375" y2="763" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="50" y="765" width="1070" height="165" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="90" cy="847" r="24" fill="#207448" />
+    <text x="90" y="855" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">6</text>
+
+    
+    <g transform="translate(126, 819)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="32" height="32" rx="3" />
+      <rect x="20" y="20" width="16" height="16" />
+      <line x1="18" y1="6" x2="18" y2="12" />
+      <line x1="28" y1="6" x2="28" y2="12" />
+      <line x1="38" y1="6" x2="38" y2="12" />
+      <line x1="18" y1="44" x2="18" y2="50" />
+      <line x1="28" y1="44" x2="28" y2="50" />
+      <line x1="38" y1="44" x2="38" y2="50" />
+      <line x1="6" y1="18" x2="12" y2="18" />
+      <line x1="6" y1="28" x2="12" y2="28" />
+      <line x1="6" y1="38" x2="12" y2="38" />
+      <line x1="44" y1="18" x2="50" y2="18" />
+      <line x1="44" y1="28" x2="50" y2="28" />
+      <line x1="44" y1="38" x2="50" y2="38" />
+    </g>
+
+    
+    <text x="188" y="802" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="188">Device plugin Allocate over gRPC socket in</tspan>
+      <tspan x="188" dy="30" font-family="'SF Mono', Menlo, Consolas, Monaco, monospace">/var/lib/kubelet/device-plugins/;</tspan>
+      <tspan x="188" dy="30">CPU manager static policy and topology manager</tspan>
+      <tspan x="188" dy="28">pick CPUs and NUMA</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="375" y1="930" x2="375" y2="953" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+  
+  <g filter="url(#shadow)">
+    
+    <rect x="50" y="955" width="1070" height="100" rx="10" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
+    
+    
+    <circle cx="90" cy="1005" r="24" fill="#db8129" />
+    <text x="90" y="1013" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#f5f8f5" text-anchor="middle">7</text>
+
+    
+    <g transform="translate(126, 977)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      
+      <polygon points="28,8 48,18 48,40 28,50 8,40 8,18" />
+      <line x1="28" y1="8" x2="28" y2="50" />
+      <line x1="48" y1="18" x2="28" y2="29" />
+      <line x1="8" y1="18" x2="28" y2="29" />
+    </g>
+
+    
+    <text x="188" y="1013" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#303a36">RunPodSandbox then containers over CRI</text>
+  </g>
+
+</svg>

@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Bisecting pod connectivity one layer at a time</title>
+  <desc>Vertical test ladder from the client pod bisecting Kubernetes connectivity issues rung by rung, with diagnostic deductions, packet capture checkpoints, and timing commands.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="54" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Bisecting pod connectivity one layer at a time</text>
+
+  
+  <rect x="40" y="80" width="980" height="1010" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="40" y="80" width="980" height="60" rx="16" fill="#e8f1ea"/>
+  <rect x="40" y="124" width="980" height="16" fill="#e8f1ea"/>
+  <line x1="40" y1="140" x2="1020" y2="140" stroke="#207448" stroke-width="2"/>
+  <text x="70" y="120" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Vertical test ladder from the client pod, each rung removing one layer</text>
+
+  
+  <line x1="100" y1="160" x2="100" y2="1060" stroke="#207448" stroke-width="8" stroke-linecap="round" opacity="0.25"/>
+  <line x1="970" y1="160" x2="970" y2="1060" stroke="#207448" stroke-width="8" stroke-linecap="round" opacity="0.25"/>
+
+  
+  <g>
+    <rect x="60" y="160" width="940" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="100" cy="217" r="24" fill="#207448"/>
+    <text x="100" y="217" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+    
+    <g transform="translate(138, 189)" stroke="#207448" stroke-width="3.5" fill="none">
+      <circle cx="28" cy="28" r="24"/>
+      <ellipse cx="28" cy="28" rx="12" ry="24"/>
+      <line x1="4" y1="28" x2="52" y2="28"/>
+    </g>
+    
+    <text x="210" y="200" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">by DNS name:</text>
+    <text x="210" y="242" font-family="monospace" font-size="24" fill="#303a36">dig +short svc.ns.svc.cluster.local @COREDNS-IP</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="293" width="940" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="100" cy="350" r="24" fill="#207448"/>
+    <text x="100" y="350" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+    
+    <g transform="translate(138, 322)" stroke="#207448" stroke-width="3.5" fill="none">
+      <circle cx="28" cy="28" r="12"/>
+      <path d="M28 4 L28 12 M28 44 L28 52 M4 28 L12 28 M44 28 L52 28 M11 11 L17 17 M39 39 L45 45 M11 45 L17 39 M39 17 L45 11"/>
+    </g>
+    
+    <text x="210" y="333" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">by Service ClusterIP:</text>
+    <text x="210" y="375" font-family="sans-serif" font-size="24" fill="#303a36">tests kube-proxy rules</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="426" width="940" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="100" cy="483" r="24" fill="#207448"/>
+    <text x="100" y="483" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+    
+    <g transform="translate(138, 455)" stroke="#207448" stroke-width="3.5" fill="none">
+      <rect x="4" y="6" width="48" height="44" rx="6"/>
+      <line x1="4" y1="18" x2="52" y2="18"/>
+      <circle cx="12" cy="12" r="2.5" fill="#207448"/>
+      <circle cx="20" cy="12" r="2.5" fill="#207448"/>
+    </g>
+    
+    <text x="210" y="466" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">by a specific backend pod IP:</text>
+    <text x="210" y="508" font-family="sans-serif" font-size="24" fill="#303a36">bypasses kube-proxy</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="559" width="940" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="100" cy="621" r="24" fill="#207448"/>
+    <text x="100" y="621" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+    
+    <g transform="translate(138, 593)" stroke="#207448" stroke-width="3.5" fill="none">
+      <rect x="4" y="4" width="34" height="34" rx="4"/>
+      <rect x="18" y="18" width="34" height="34" rx="4"/>
+    </g>
+    
+    <text x="210" y="605" font-family="sans-serif" font-size="24" fill="#303a36">same test from the node in the host namespace and</text>
+    <text x="210" y="647" font-family="sans-serif" font-size="24" fill="#303a36">from inside the pod namespace (<tspan font-family="monospace">nsenter -n</tspan>)</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="702" width="940" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="100" cy="764" r="24" fill="#207448"/>
+    <text x="100" y="764" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+    
+    <g transform="translate(138, 736)" stroke="#207448" stroke-width="3.5" fill="none">
+      <line x1="4" y1="16" x2="52" y2="16"/>
+      <line x1="4" y1="40" x2="52" y2="40"/>
+      <circle cx="20" cy="16" r="5" fill="#207448"/>
+      <circle cx="36" cy="40" r="5" fill="#207448"/>
+      <path d="M28 20 L28 36" stroke-dasharray="3 3"/>
+    </g>
+    
+    <text x="210" y="748" font-family="sans-serif" font-size="24" fill="#303a36">capture on the client veth, the node uplink and</text>
+    <text x="210" y="790" font-family="sans-serif" font-size="24" fill="#303a36">the server veth to see where packets disappear</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="845" width="940" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="100" cy="952" r="24" fill="#207448"/>
+    <text x="100" y="952" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">6</text>
+    
+    <g transform="translate(138, 924)" stroke="#207448" stroke-width="3.5" fill="none">
+      <path d="M28 4 L48 12 L48 28 C48 42 28 52 28 52 C28 52 8 42 8 28 L8 12 Z"/>
+      <path d="M20 28 L26 34 L38 22"/>
+    </g>
+    
+    <text x="210" y="876" font-family="sans-serif" font-size="24" fill="#303a36"><tspan font-weight="bold" fill="#207448">policy counters: </tspan><tspan font-family="monospace">iptables -L -nv,</tspan></text>
+    <text x="210" y="908" font-family="monospace" font-size="24" fill="#303a36">cilium monitor --type drop,</text>
+    <text x="210" y="940" font-family="monospace" font-size="24" fill="#303a36">hubble observe --verdict DROPPED;</text>
+    <text x="210" y="974" font-family="sans-serif" font-size="24" fill="#303a36"><tspan font-family="monospace">conntrack -E</tspan> for live events;</text>
+    <text x="210" y="1006" font-family="sans-serif" font-size="24" fill="#303a36">MTU with <tspan font-family="monospace">ping -M do -s 1422;</tspan></text>
+    <text x="210" y="1038" font-family="sans-serif" font-size="24" fill="#303a36">ARP and neighbour state with <tspan font-family="monospace">ip neigh</tspan></text>
+  </g>
+
+  
+  <g>
+    <rect x="1045" y="80" width="515" height="505" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="1045" y="80" width="515" height="60" rx="16" fill="#e8f1ea"/>
+    <rect x="1045" y="124" width="515" height="16" fill="#e8f1ea"/>
+    <line x1="1045" y1="140" x2="1560" y2="140" stroke="#207448" stroke-width="2"/>
+    <text x="1075" y="120" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Two deductions</text>
+
+    
+    <rect x="1065" y="155" width="475" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1085, 170)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="16" cy="16" r="12"/>
+      <path d="M11 28 L21 28 M13 33 L19 33"/>
+    </g>
+    <text x="1085" y="240" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">name fails but ClusterIP works:</text>
+    <text x="1085" y="278" font-family="sans-serif" font-size="24" fill="#207448">fault is in DNS,</text>
+    <text x="1085" y="310" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">not the Service</text>
+
+    
+    <rect x="1065" y="350" width="475" height="220" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(1085, 365)" stroke="#db8129" stroke-width="3" fill="none">
+      <circle cx="16" cy="16" r="12"/>
+      <line x1="16" y1="10" x2="16" y2="18"/>
+      <circle cx="16" cy="22" r="1.5" fill="#db8129"/>
+    </g>
+    <text x="1085" y="432" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">ClusterIP fails but</text>
+    <text x="1085" y="466" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">backend pod IP works:</text>
+    <text x="1085" y="510" font-family="sans-serif" font-size="24" fill="#db8129">kube-proxy or the</text>
+    <text x="1085" y="542" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Service routing rules</text>
+  </g>
+
+  
+  <g>
+    <rect x="1045" y="605" width="515" height="485" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="1045" y="605" width="515" height="60" rx="16" fill="#e8f1ea"/>
+    <rect x="1045" y="649" width="515" height="16" fill="#e8f1ea"/>
+    <line x1="1045" y1="665" x2="1560" y2="665" stroke="#207448" stroke-width="2"/>
+    <text x="1075" y="645" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Timing command</text>
+
+    
+    <g transform="translate(1485, 610)" stroke="#207448" stroke-width="3.5" fill="none">
+      <circle cx="24" cy="24" r="20"/>
+      <polyline points="24,12 24,24 34,24"/>
+    </g>
+
+    
+    <rect x="1065" y="680" width="475" height="390" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1090" y="735" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">curl -sv with -w</text>
+    <text x="1115" y="795" font-family="monospace" font-size="24" fill="#303a36">dns=time_namelookup</text>
+    <text x="1115" y="855" font-family="monospace" font-size="24" fill="#303a36">connect=time_connect</text>
+    <text x="1115" y="915" font-family="monospace" font-size="24" fill="#303a36">ttfb=time_starttransfer</text>
+    <text x="1115" y="975" font-family="monospace" font-size="24" fill="#303a36">total=time_total</text>
+  </g>
+
+  
+  <rect x="40" y="1115" width="1520" height="65" rx="12" fill="#207448"/>
+  <text x="800" y="1155" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Tip: the last test that fails points at the layer that broke</text>
+</svg>

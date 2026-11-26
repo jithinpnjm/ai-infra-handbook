@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Four host-level surprises: ARP flux, UDP buffer overflow, checksum offload and veth CPU</title>
+  <desc>A four-panel technical infographic illustrating host-level network surprises: ARP flux, UDP buffer overflow, TCP checksum offload failure, and veth CPU bottleneck, along with their symptoms, causes, and fixes.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="48" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">
+    <tspan x="800" dy="0">Four host-level surprises: ARP flux, UDP buffer overflow,</tspan>
+    <tspan x="800" dy="54">checksum offload and veth CPU</tspan>
+  </text>
+
+  
+  <g id="panel-case-4">
+    <rect x="40" y="120" width="740" height="484" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(60, 134)">
+      <rect x="0" y="4" width="46" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="14" cy="18" r="3" fill="#207448" />
+      <circle cx="32" cy="18" r="3" fill="#207448" />
+      <path d="M14 38 v8 h18 v-8" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="122" y="165" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Case 4: ARP flux and rp_filter</text>
+
+    
+    <rect x="55" y="186" width="710" height="130" rx="8" fill="#ffffff" stroke="#d2ded5" stroke-width="1.5" />
+    <rect x="55" y="186" width="6" height="130" rx="3" fill="#d9534f" />
+    <text x="75" y="217" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">two hosts on the same subnet cannot</tspan>
+      <tspan x="75" dy="27">communicate; <tspan font-family="monospace">ip neigh</tspan> shows <tspan font-family="monospace">INCOMPLETE</tspan>;</tspan>
+      <tspan x="75" dy="27">captures show ARP requests and replies</tspan>
+      <tspan x="75" dy="27">yet the host ignores them</tspan>
+    </text>
+
+    
+    <rect x="55" y="324" width="710" height="130" rx="8" fill="#ffffff" stroke="#d2ded5" stroke-width="1.5" />
+    <rect x="55" y="324" width="6" height="130" rx="3" fill="#607d8b" />
+    <text x="75" y="355" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">a host with several interfaces on one subnet</tspan>
+      <tspan x="75" dy="27">answers ARP for any local IP on any interface,</tspan>
+      <tspan x="75" dy="27">so replies leave from the wrong NIC; strict</tspan>
+      <tspan x="75" dy="27"><tspan font-family="monospace">rp_filter</tspan> drops the asymmetric traffic</tspan>
+    </text>
+
+    
+    <rect x="55" y="462" width="710" height="126" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <rect x="55" y="462" width="6" height="126" rx="3" fill="#207448" />
+    <text x="75" y="497" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0"><tspan font-family="monospace">arp_ignore=1, arp_announce=2, rp_filter=2,</tspan></tspan>
+      <tspan x="75" dy="28">source-based routing (chapter 2.24);</tspan>
+      <tspan x="75" dy="28">better: one subnet per NIC</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-case-5">
+    <rect x="820" y="120" width="740" height="484" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(840, 134)">
+      <path d="M4 10 h38 v26 a8 8 0 0 1 -8 8 h-22 a8 8 0 0 1 -8 -8 z" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="10" y1="22" x2="36" y2="22" stroke="#207448" stroke-width="3" stroke-dasharray="4,3" />
+      <line x1="10" y1="32" x2="36" y2="32" stroke="#207448" stroke-width="3" />
+      <path d="M23 2 v8 m-5 -4 l5 -4 l5 4" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    
+    <text x="902" y="165" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Case 5: UDP receive buffer overflow</text>
+
+    
+    <rect x="835" y="186" width="710" height="86" rx="8" fill="#ffffff" stroke="#d2ded5" stroke-width="1.5" />
+    <rect x="835" y="186" width="6" height="86" rx="3" fill="#d9534f" />
+    <text x="855" y="222" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="855" dy="0">metric graphs have gaps under load;</tspan>
+      <tspan x="855" dy="28">servers do not crash</tspan>
+    </text>
+
+    
+    <rect x="835" y="280" width="710" height="142" rx="8" fill="#ffffff" stroke="#d2ded5" stroke-width="1.5" />
+    <rect x="835" y="280" width="6" height="142" rx="3" fill="#607d8b" />
+    <text x="855" y="315" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="855" dy="0">UDP has no flow control or retransmission;</tspan>
+      <tspan x="855" dy="27">when the receiver's socket buffer</tspan>
+      <tspan x="855" dy="27">(<tspan font-family="monospace">rmem_default</tspan>) overflows the kernel drops</tspan>
+      <tspan x="855" dy="27">silently and counts <tspan font-family="monospace">UdpRcvbufErrors</tspan></tspan>
+    </text>
+
+    
+    <rect x="835" y="430" width="710" height="158" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <rect x="835" y="430" width="6" height="158" rx="3" fill="#207448" />
+    <text x="855" y="465" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="855" dy="0">monitor <tspan font-family="monospace">nstat</tspan> and <tspan font-family="monospace">ss -ump</tspan>, raise <tspan font-family="monospace">SO_RCVBUF</tspan></tspan>
+      <tspan x="855" dy="27">and <tspan font-family="monospace">rmem_max</tspan>, add receivers with</tspan>
+      <tspan x="855" dy="27"><tspan font-family="monospace">SO_REUSEPORT</tspan>, batch metrics,</tspan>
+      <tspan x="855" dy="27">TCP where loss matters</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-case-7">
+    <rect x="40" y="624" width="740" height="484" rx="16" fill="#fdf7f0" stroke="#db8129" stroke-width="2" />
+
+    
+    <g transform="translate(60, 638)">
+      <rect x="0" y="4" width="46" height="38" rx="5" fill="none" stroke="#db8129" stroke-width="4" />
+      <line x1="8" y1="15" x2="26" y2="15" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="8" y1="23" x2="26" y2="23" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <circle cx="34" cy="27" r="7" fill="none" stroke="#db8129" stroke-width="2.5" />
+      <line x1="30" y1="23" x2="38" y2="31" stroke="#db8129" stroke-width="2.5" />
+      <line x1="38" y1="23" x2="30" y2="31" stroke="#db8129" stroke-width="2.5" />
+    </g>
+
+    
+    <text x="122" y="669" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Case 7: TCP checksum offload failure</text>
+
+    
+    <rect x="55" y="688" width="710" height="86" rx="8" fill="#ffffff" stroke="#f0d5be" stroke-width="1.5" />
+    <rect x="55" y="688" width="6" height="86" rx="3" fill="#d9534f" />
+    <text x="75" y="724" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">ping works, SSH hangs after the</tspan>
+      <tspan x="75" dy="28">version exchange</tspan>
+    </text>
+
+    
+    <rect x="55" y="782" width="710" height="160" rx="8" fill="#ffffff" stroke="#f0d5be" stroke-width="1.5" />
+    <rect x="55" y="782" width="6" height="160" rx="3" fill="#db8129" />
+    <text x="75" y="815" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">a driver or firmware bug makes the sender's</tspan>
+      <tspan x="75" dy="26">NIC compute wrong checksums with TX offload</tspan>
+      <tspan x="75" dy="26">on; ping uses small packets and never</tspan>
+      <tspan x="75" dy="26">reaches the failing path; the receiver</tspan>
+      <tspan x="75" dy="26">drops the larger segments</tspan>
+    </text>
+
+    
+    <rect x="55" y="950" width="710" height="138" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+    <rect x="55" y="950" width="6" height="138" rx="3" fill="#db8129" />
+    <text x="75" y="985" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0"><tspan font-family="monospace">ethtool -K eth0 tx off</tspan>, then update driver</tspan>
+      <tspan x="75" dy="27">and firmware; a bad cksum on the sender is</tspan>
+      <tspan x="75" dy="27">harmless, at the receiver it is real</tspan>
+      <tspan x="75" dy="27">(chapter 2.26)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-case-9">
+    <rect x="820" y="624" width="740" height="484" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(840, 638)">
+      <rect x="6" y="6" width="34" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="14" y="14" width="18" height="18" rx="2" fill="#207448" fill-opacity="0.2" />
+      <path d="M14 0 v6 M23 0 v6 M32 0 v6 M14 40 v6 M23 40 v6 M32 40 v6 M0 14 h6 M0 23 h6 M0 32 h6 M40 14 h6 M40 23 h6 M40 32 h6" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="902" y="669" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Case 9: veth CPU bottleneck</text>
+
+    
+    <rect x="835" y="688" width="710" height="86" rx="8" fill="#ffffff" stroke="#d2ded5" stroke-width="1.5" />
+    <rect x="835" y="688" width="6" height="86" rx="3" fill="#d9534f" />
+    <text x="855" y="724" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="855" dy="0">pod tops out near 15 Gb/s on a 100G host,</tspan>
+      <tspan x="855" dy="28">one core at 100% softirq</tspan>
+    </text>
+
+    
+    <rect x="835" y="782" width="710" height="126" rx="8" fill="#ffffff" stroke="#d2ded5" stroke-width="1.5" />
+    <rect x="835" y="782" width="6" height="126" rx="3" fill="#607d8b" />
+    <text x="855" y="818" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="855" dy="0">each flow crossing a veth pair is processed</tspan>
+      <tspan x="855" dy="28">in softirq on a single CPU, which sets</tspan>
+      <tspan x="855" dy="28">the ceiling</tspan>
+    </text>
+
+    
+    <rect x="835" y="916" width="710" height="172" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <rect x="835" y="916" width="6" height="172" rx="3" fill="#207448" />
+    <text x="855" y="956" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="855" dy="0">host networking, ipvlan or macvlan, SR-IOV,</tspan>
+      <tspan x="855" dy="30">RDMA secondary interfaces, or an eBPF</tspan>
+      <tspan x="855" dy="30">host-routing CNI</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1122" width="1520" height="60" rx="10" fill="#207448" />
+    <text x="800" y="1161" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Silent loss needs counters, so always chart drops</text>
+  </g>
+</svg>

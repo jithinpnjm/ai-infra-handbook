@@ -1,0 +1,228 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>site.yml imports the tiers in dependency order</title>
+  <desc>Visual infographic explaining how playbooks/site.yml imports the five tier playbooks in dependency order from baseline to verify.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 z" fill="#207448"/>
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">site.yml imports the tiers in dependency order</text>
+
+  
+  <g id="file-card-site">
+    <rect x="460" y="118" width="680" height="206" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 460 130 Q 460 118 472 118 L 1128 118 Q 1140 118 1140 130 L 1140 158 L 460 158 Z" fill="#e8f1ea"/>
+    <line x1="460" y1="158" x2="1140" y2="158" stroke="#207448" stroke-width="1.5"/>
+    
+    <path d="M 482 128 h 14 l 6 6 v 13 h -20 z" fill="none" stroke="#207448" stroke-width="2" stroke-linejoin="round"/>
+    <polyline points="496,128 496,134 502,134" fill="none" stroke="#207448" stroke-width="2"/>
+    
+    <text x="525" y="146" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">playbooks/site.yml</text>
+    
+    <text x="495" y="186" font-family="monospace" font-size="24" fill="#303a36">- import_playbook: baseline.yml</text>
+    <text x="495" y="214" font-family="monospace" font-size="24" fill="#303a36">- import_playbook: database.yml</text>
+    <text x="495" y="242" font-family="monospace" font-size="24" fill="#303a36">- import_playbook: app.yml</text>
+    <text x="495" y="270" font-family="monospace" font-size="24" fill="#303a36">- import_playbook: web.yml</text>
+    <text x="495" y="298" font-family="monospace" font-size="24" fill="#303a36">- import_playbook: verify.yml</text>
+  </g>
+
+  
+  
+  <g id="note-tags-db">
+    <rect x="50" y="488" width="370" height="128" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="75" y="528" font-weight="bold" fill="#207448">--tags db</tspan>
+      <tspan x="75" y="560">runs only the</tspan>
+      <tspan x="75" y="592">tagged tier</tspan>
+    </text>
+    
+    <line x1="420" y1="552" x2="460" y2="552" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+  </g>
+
+  
+  <g id="note-limit-app">
+    <rect x="50" y="626" width="370" height="128" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="75" y="666" font-weight="bold" fill="#207448">-l app</tspan>
+      <tspan x="75" y="698">limits the run to</tspan>
+      <tspan x="75" y="730">one host group</tspan>
+    </text>
+    
+    <line x1="420" y1="690" x2="460" y2="690" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+  </g>
+
+  
+  
+  <g id="label-db-app">
+    <rect x="1180" y="557" width="380" height="128" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="2.5"/>
+    <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="1205" y="597">the database must exist</tspan>
+      <tspan x="1205" y="629">before the app</tspan>
+      <tspan x="1205" y="661">tries to connect</tspan>
+    </text>
+    
+    <line x1="800" y1="621" x2="1180" y2="621" stroke="#db8129" stroke-width="2" stroke-dasharray="6,4"/>
+  </g>
+
+  
+  <g id="label-app-web">
+    <rect x="1180" y="695" width="380" height="128" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1205" y="735">the app must answer</tspan>
+      <tspan x="1205" y="767">before the proxy</tspan>
+      <tspan x="1205" y="799">sends it traffic</tspan>
+    </text>
+    
+    <path d="M 1140 690 H 1160 V 759 H 1180" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+    <path d="M 1140 828 H 1160 V 759" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+  </g>
+
+  
+  
+  <line x1="800" y1="462" x2="800" y2="504" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="800" y1="600" x2="800" y2="642" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)"/>
+
+  
+  <line x1="800" y1="738" x2="800" y2="780" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="800" y1="876" x2="800" y2="918" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  
+  <g id="box-1">
+    <rect x="460" y="366" width="680" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="502" cy="414" r="24" fill="#207448"/>
+    <text x="502" y="414" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(546, 386)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="4"/>
+      <line x1="4" y1="20" x2="52" y2="20"/>
+      <circle cx="14" cy="13" r="2" fill="#207448"/>
+      <circle cx="22" cy="13" r="2" fill="#207448"/>
+      <polyline points="14,32 20,37 14,42"/>
+      <line x1="26" y1="42" x2="38" y2="42"/>
+    </g>
+    
+    <text x="622" y="406" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">baseline.yml</text>
+    
+    <rect x="865" y="383" width="160" height="32" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="945" y="406" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">baseline</text>
+    
+    <text x="622" y="440" font-family="sans-serif" font-size="24" fill="#303a36">OS baseline on every host</text>
+  </g>
+
+  
+  <g id="box-2">
+    <rect x="460" y="504" width="680" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="502" cy="552" r="24" fill="#207448"/>
+    <text x="502" y="552" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(546, 524)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="22" ry="8"/>
+      <path d="M 6 14 v 24 c 0 6 10 9 22 9 s 22 -3 22 -9 v -24"/>
+      <path d="M 6 26 c 0 6 10 9 22 9 s 22 -3 22 -9"/>
+    </g>
+    
+    <text x="622" y="544" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">database.yml</text>
+    
+    <rect x="865" y="521" width="72" height="32" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="901" y="544" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">db</text>
+    
+    <text x="622" y="578" font-family="sans-serif" font-size="24" fill="#303a36">PostgreSQL on the db group</text>
+  </g>
+
+  
+  <g id="box-3">
+    <rect x="460" y="642" width="680" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="502" cy="690" r="24" fill="#207448"/>
+    <text x="502" y="690" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(546, 662)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="6"/>
+      <line x1="4" y1="18" x2="52" y2="18" stroke-width="3"/>
+      <circle cx="12" cy="12" r="2" fill="#207448"/>
+      <circle cx="18" cy="12" r="2" fill="#207448"/>
+      <circle cx="24" cy="12" r="2" fill="#207448"/>
+      <rect x="12" y="26" width="14" height="16" rx="2" stroke-width="2.5"/>
+      <line x1="32" y1="28" x2="44" y2="28" stroke-width="2.5"/>
+      <line x1="32" y1="36" x2="44" y2="36" stroke-width="2.5"/>
+    </g>
+    
+    <text x="622" y="682" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">app.yml</text>
+    
+    <rect x="780" y="659" width="85" height="32" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="822" y="682" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">app</text>
+    
+    <text x="622" y="716" font-family="sans-serif" font-size="24" fill="#303a36">application on the app group</text>
+  </g>
+
+  
+  <g id="box-4">
+    <rect x="460" y="780" width="680" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="502" cy="828" r="24" fill="#207448"/>
+    <text x="502" y="828" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(546, 800)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <ellipse cx="28" cy="28" rx="10" ry="22" stroke-width="3"/>
+      <line x1="6" y1="28" x2="50" y2="28" stroke-width="3"/>
+      <line x1="12" y1="16" x2="44" y2="16" stroke-width="2.5"/>
+      <line x1="12" y1="40" x2="44" y2="40" stroke-width="2.5"/>
+    </g>
+    
+    <text x="622" y="820" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">web.yml</text>
+    
+    <rect x="780" y="797" width="85" height="32" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="822" y="820" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">web</text>
+    
+    <text x="622" y="854" font-family="sans-serif" font-size="24" fill="#303a36">nginx reverse proxy</text>
+  </g>
+
+  
+  <g id="box-5">
+    <rect x="460" y="918" width="680" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="502" cy="966" r="24" fill="#207448"/>
+    <text x="502" y="966" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g transform="translate(546, 938)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 48 14 V 28 C 48 40 28 50 28 50 C 28 50 8 40 8 28 V 14 Z"/>
+      <polyline points="18,28 25,35 38,20"/>
+    </g>
+    
+    <text x="622" y="958" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">verify.yml</text>
+    
+    <rect x="830" y="935" width="130" height="32" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="895" y="958" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">verify</text>
+    
+    <text x="622" y="992" font-family="sans-serif" font-size="24" fill="#303a36">end-to-end verification</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="1056" width="1520" height="104" rx="12" fill="#207448"/>
+    <text font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      <tspan x="800" y="1098">The database must exist before the app tries to connect,</tspan>
+      <tspan x="800" y="1136">and the app must answer before the proxy sends it traffic.</tspan>
+    </text>
+  </g>
+</svg>

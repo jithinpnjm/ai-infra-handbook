@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Six questions to ask the team leader and what each reveals</title>
+  <desc>Infographic table outlining six key questions to ask a team leader during an interview, what each reveals about team culture and operations, plus a reserve question and interview rules.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="70" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Six questions to ask the team leader and what each reveals</text>
+
+  
+  <g id="table-header">
+    <rect x="40" y="105" width="1520" height="48" rx="6" fill="#207448" />
+    <text x="70" y="139" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#ffffff">Topic</text>
+    <text x="385" y="139" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#ffffff">Question to ask</text>
+    <text x="1210" y="139" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#ffffff">What you learn</text>
+  </g>
+
+  
+  <g id="row-1">
+    <rect x="40" y="161" width="1520" height="86" rx="8" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5" />
+    <line x1="360" y1="169" x2="360" y2="239" stroke="#e0eae2" stroke-width="1.5" />
+    <line x1="1185" y1="169" x2="1185" y2="239" stroke="#e0eae2" stroke-width="1.5" />
+    
+    
+    <path d="M78 182 C70 182 66 189 66 199 L63 207 L93 207 L90 199 C90 189 86 182 78 182 Z M74 211 C74 213 76 215 78 215 C80 215 82 213 82 211" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round" />
+    <text x="115" y="214" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">On-call</text>
+    
+    <text x="385" y="196" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="385" dy="0">How is the rota built, how often would I be paged,</tspan>
+      <tspan x="385" dy="30">and what share of pages need a human?</tspan>
+    </text>
+    
+    <text x="1210" y="211" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">load and alert quality</text>
+  </g>
+
+  
+  <g id="row-2">
+    <rect x="40" y="255" width="1520" height="86" rx="8" fill="#f0f6f1" stroke="#d0ded2" stroke-width="1.5" />
+    <line x1="360" y1="263" x2="360" y2="333" stroke="#e0eae2" stroke-width="1.5" />
+    <line x1="1185" y1="263" x2="1185" y2="333" stroke="#e0eae2" stroke-width="1.5" />
+    
+    
+    <circle cx="78" cy="298" r="18" stroke="#207448" stroke-width="3" fill="none" />
+    <circle cx="78" cy="298" r="8" stroke="#207448" stroke-width="3" fill="none" />
+    <line x1="78" y1="274" x2="78" y2="280" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="78" y1="316" x2="78" y2="322" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="115" y="308" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">SLOs</text>
+    
+    <text x="385" y="290" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="385" dy="0">Which SLOs does the team own for Token Factory,</tspan>
+      <tspan x="385" dy="30">and who decides when they are missed?</tspan>
+    </text>
+    
+    <text x="1210" y="290" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+      <tspan x="1210" dy="0">whether reliability</tspan>
+      <tspan x="1210" dy="30">has authority</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-3">
+    <rect x="40" y="349" width="1520" height="86" rx="8" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5" />
+    <line x1="360" y1="357" x2="360" y2="427" stroke="#e0eae2" stroke-width="1.5" />
+    <line x1="1185" y1="357" x2="1185" y2="427" stroke="#e0eae2" stroke-width="1.5" />
+    
+    
+    <path d="M78 370 L98 406 L58 406 Z" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round" />
+    <line x1="78" y1="382" x2="78" y2="393" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="78" cy="400" r="1.5" fill="#207448" />
+    <text x="115" y="388" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">
+      <tspan x="115" dy="0">Incident</tspan>
+      <tspan x="115" dy="32">review</tspan>
+    </text>
+    
+    <text x="385" y="384" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="385" dy="0">What happened in your last significant incident,</tspan>
+      <tspan x="385" dy="30">and what changed afterwards?</tspan>
+    </text>
+    
+    <text x="1210" y="384" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+      <tspan x="1210" dy="0">blameless culture</tspan>
+      <tspan x="1210" dy="30">in practice</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-4">
+    <rect x="40" y="443" width="1520" height="86" rx="8" fill="#f0f6f1" stroke="#d0ded2" stroke-width="1.5" />
+    <line x1="360" y1="451" x2="360" y2="521" stroke="#e0eae2" stroke-width="1.5" />
+    <line x1="1185" y1="451" x2="1185" y2="521" stroke="#e0eae2" stroke-width="1.5" />
+    
+    
+    <rect x="63" y="468" width="30" height="30" rx="3" stroke="#207448" stroke-width="3" fill="none" />
+    <rect x="71" y="476" width="14" height="14" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <line x1="69" y1="462" x2="69" y2="468" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+    <line x1="78" y1="462" x2="78" y2="468" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+    <line x1="87" y1="462" x2="87" y2="468" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+    <line x1="69" y1="498" x2="69" y2="504" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+    <line x1="78" y1="498" x2="78" y2="504" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+    <line x1="87" y1="498" x2="87" y2="504" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+    <text x="115" y="496" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">GPU fleet</text>
+    
+    <text x="385" y="478" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="385" dy="0">How does the team find and replace failing GPUs</tspan>
+      <tspan x="385" dy="30">or nodes, and how much is automated?</tspan>
+    </text>
+    
+    <text x="1210" y="478" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+      <tspan x="1210" dy="0">maturity of</tspan>
+      <tspan x="1210" dy="30">self-healing</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-5">
+    <rect x="40" y="537" width="1520" height="86" rx="8" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5" />
+    <line x1="360" y1="545" x2="360" y2="615" stroke="#e0eae2" stroke-width="1.5" />
+    <line x1="1185" y1="545" x2="1185" y2="615" stroke="#e0eae2" stroke-width="1.5" />
+    
+    
+    <circle cx="78" cy="580" r="18" stroke="#207448" stroke-width="3" fill="none" />
+    <polygon points="78,567 84,578 78,575 72,578" fill="#207448" />
+    <polygon points="78,593 84,582 78,585 72,582" fill="#207448" />
+    <text x="115" y="590" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Roadmap</text>
+    
+    <text x="385" y="572" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="385" dy="0">What is the biggest reliability risk on the</tspan>
+      <tspan x="385" dy="30">roadmap for the next two quarters?</tspan>
+    </text>
+    
+    <text x="1210" y="572" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+      <tspan x="1210" dy="0">where you would</tspan>
+      <tspan x="1210" dy="30">spend your time</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-6">
+    <rect x="40" y="631" width="1520" height="86" rx="8" fill="#f0f6f1" stroke="#d0ded2" stroke-width="1.5" />
+    <line x1="360" y1="639" x2="360" y2="709" stroke="#e0eae2" stroke-width="1.5" />
+    <line x1="1185" y1="639" x2="1185" y2="709" stroke="#e0eae2" stroke-width="1.5" />
+    
+    
+    <rect x="62" y="663" width="14" height="26" rx="2" stroke="#207448" stroke-width="2.5" fill="none" />
+    <rect x="80" y="663" width="14" height="26" rx="2" stroke="#207448" stroke-width="2.5" fill="none" />
+    <line x1="78" y1="659" x2="78" y2="693" stroke="#207448" stroke-width="1.5" stroke-dasharray="2 2" />
+    <text x="115" y="684" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Team split</text>
+    
+    <text x="385" y="666" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="385" dy="0">How is work split between Token Factory and the</tspan>
+      <tspan x="385" dy="30">cloud platform, and who owns what at the boundary?</tspan>
+    </text>
+    
+    <text x="1210" y="666" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+      <tspan x="1210" dy="0">ownership and</tspan>
+      <tspan x="1210" dy="30">handoffs</tspan>
+    </text>
+  </g>
+
+  
+  <g id="reserve-question">
+    <rect x="40" y="735" width="1520" height="95" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="2.5" />
+    
+    
+    <polygon points="80,758 84,770 96,770 87,778 90,790 80,782 70,790 73,778 64,770 76,770" stroke="#db8129" stroke-width="3" fill="none" stroke-linejoin="round" />
+    
+    <text x="125" y="774" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#db8129">Reserve question</text>
+    <text x="125" y="808" font-family="sans-serif" font-size="24px" fill="#303a36">what would make someone fail in this role in the first six months?</text>
+  </g>
+
+  
+  <g id="rules-panel">
+    <rect x="40" y="848" width="1520" height="315" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="68" y="865" width="34" height="42" rx="3" stroke="#207448" stroke-width="3" fill="none" />
+    <path d="M78 865 V861 C78 859 80 858 82 858 H88 C90 858 92 859 92 861 V865" stroke="#207448" stroke-width="2" fill="none" />
+    <line x1="77" y1="877" x2="93" y2="877" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="77" y1="886" x2="93" y2="886" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="77" y1="895" x2="87" y2="895" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    
+    <text x="125" y="897" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Rules</text>
+    
+    
+    <rect x="65" y="918" width="715" height="105" rx="8" fill="#ffffff" stroke="#c0d4c4" stroke-width="1.5" />
+    <text x="90" y="960" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="90" dy="0">bring six on paper, written in full sentences,</tspan>
+      <tspan x="90" dy="32">ask the ones the conversation has not answered</tspan>
+    </text>
+    
+    
+    <rect x="65" y="1038" width="715" height="105" rx="8" fill="#ffffff" stroke="#c0d4c4" stroke-width="1.5" />
+    <text x="90" y="1080" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="90" dy="0">do not ask what the posting</tspan>
+      <tspan x="90" dy="32">or website already answers</tspan>
+    </text>
+    
+    
+    <rect x="800" y="918" width="735" height="105" rx="8" fill="#ffffff" stroke="#c0d4c4" stroke-width="1.5" />
+    <text x="825" y="954" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="825" dy="0">a leader who cannot say how many pages a week</tspan>
+      <tspan x="825" dy="28">the team gets, or answers defensively about</tspan>
+      <tspan x="825" dy="28">incidents, is telling you something</tspan>
+    </text>
+    
+    
+    <rect x="800" y="1038" width="735" height="105" rx="8" fill="#ffffff" stroke="#c0d4c4" stroke-width="1.5" />
+    <text x="825" y="1098" font-family="sans-serif" font-size="24px" fill="#303a36">salary goes to the recruiter</text>
+  </g>
+</svg>

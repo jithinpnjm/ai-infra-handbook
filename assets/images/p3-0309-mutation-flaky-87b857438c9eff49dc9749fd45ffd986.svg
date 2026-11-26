@@ -1,0 +1,289 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Is the suite any good? Mutants, and treating flakes as defects</title>
+  <desc>Visual comparison between mutation testing to reveal test suite assertion strength and treating flaky tests as defects through quarantine, reproduction, and root-cause fixes.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Is the suite any good? Mutants, and treating flakes as defects</text>
+
+  
+  <g transform="translate(40, 85)">
+    <rect width="1520" height="86" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <path d="M 32 23 L 52 23 L 47 43 L 67 43 L 62 63 L 42 63 M 38 33 L 58 33 M 34 53 L 54 53" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="80" y="37" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      line coverage, branch coverage <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="normal">(branch = true)</tspan> and mutation testing:
+    </text>
+    <text x="80" y="67" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      only mutation tells you whether the suite actually catches regressions
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 195)">
+    
+    <rect width="740" height="870" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <text x="370" y="45" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Mutation testing (mutmut, cosmic-ray)</text>
+
+    
+    <g transform="translate(25, 70)">
+      <rect width="690" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      
+      <circle cx="45" cy="45" r="24" fill="#207448" />
+      <text x="45" y="53" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+      
+      
+      <g transform="translate(85, 20)">
+        <rect x="0" y="0" width="46" height="52" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+        <path d="M 10 16 L 18 24 L 10 32 M 24 32 L 36 32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      </g>
+
+      
+      <text x="155" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        change the code, for example flip <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold">> to >=</tspan>
+      </text>
+      <text x="155" y="76" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        or remove a branch
+      </text>
+      <text x="155" y="108" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        (each changed copy is a mutant)
+      </text>
+    </g>
+
+    
+    <path d="M 370 205 L 370 238" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(195, 240)">
+      <rect width="350" height="72" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      
+      <circle cx="42" cy="36" r="24" fill="#207448" />
+      <text x="42" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+      
+      
+      <g transform="translate(80, 14)">
+        <path d="M 14 4 L 30 4 M 22 4 L 22 18 L 6 40 A 4 4 0 0 0 10 44 L 34 44 A 4 4 0 0 0 38 40 L 22 18" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+        <circle cx="18" cy="34" r="2" fill="#207448" />
+        <circle cx="26" cy="30" r="2" fill="#207448" />
+      </g>
+
+      
+      <text x="135" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">run the tests</text>
+    </g>
+
+    
+    <path d="M 285 312 V 338 H 190 V 358" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <path d="M 455 312 V 338 H 550 V 358" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+    
+    <g transform="translate(25, 360)">
+      <rect width="330" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      
+      <g transform="translate(30, 20)">
+        <path d="M 24 6 L 42 14 V 28 C 42 38 24 46 24 46 C 24 46 6 38 6 28 V 14 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+        <path d="M 16 26 L 22 32 L 32 18" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      
+      <text x="30" y="98" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">tests fail:</text>
+      <text x="30" y="132" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">the mutant is killed,</text>
+      <text x="30" y="166" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">good</text>
+    </g>
+
+    
+    <g transform="translate(385, 360)">
+      <rect width="330" height="195" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="3" />
+      
+      
+      <g transform="translate(30, 18)">
+        <path d="M 24 8 L 44 42 L 4 42 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round" />
+        <line x1="24" y1="22" x2="24" y2="30" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+        <circle cx="24" cy="36" r="2" fill="#db8129" />
+      </g>
+
+      
+      <text x="30" y="86" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">tests still pass:</text>
+      <text x="30" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">the mutant survives,</text>
+      <text x="30" y="150" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">which points to</text>
+      <text x="30" y="182" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">a weak test</text>
+    </g>
+
+    
+    <g transform="translate(25, 580)">
+      <rect width="690" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      
+      <g transform="translate(24, 38)">
+        <circle cx="26" cy="26" r="22" fill="none" stroke="#207448" stroke-width="3" />
+        <path d="M 12 36 A 16 16 0 1 1 40 36" fill="none" stroke="#207448" stroke-width="3" />
+        <line x1="26" y1="26" x2="36" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      </g>
+
+      
+      <text x="88" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        coverage tells you which lines ran,
+      </text>
+      <text x="88" y="82" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+        not whether your assertions are meaningful
+      </text>
+    </g>
+
+    
+    <g transform="translate(25, 725)">
+      <rect width="690" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      
+      <g transform="translate(24, 38)">
+        <circle cx="26" cy="26" r="22" fill="none" stroke="#207448" stroke-width="3" />
+        <circle cx="26" cy="26" r="14" fill="none" stroke="#207448" stroke-width="2" />
+        <circle cx="26" cy="26" r="5" fill="#207448" />
+      </g>
+
+      
+      <text x="88" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+        use it on the critical core:
+      </text>
+      <text x="88" y="74" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        parsers, rules and planners,
+      </text>
+      <text x="88" y="104" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        not the whole repository
+      </text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(820, 195)">
+    
+    <rect width="740" height="870" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <text x="370" y="45" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Flaky tests: a defect, not a nuisance</text>
+
+    
+    <g transform="translate(25, 70)">
+      <rect width="690" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      
+      <g transform="translate(24, 45)">
+        <circle cx="16" cy="16" r="12" fill="none" stroke="#207448" stroke-width="3" />
+        <circle cx="38" cy="38" r="12" fill="none" stroke="#207448" stroke-width="3" />
+        <line x1="24" y1="24" x2="30" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+        <path d="M 38 12 L 44 18 M 12 38 L 18 44" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      </g>
+
+      
+      <text x="90" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">usual causes:</text>
+      <text x="90" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">shared state, test ordering, real time,</text>
+      <text x="90" y="98" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">real network, resource contention,</text>
+      <text x="90" y="128" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">race conditions</text>
+    </g>
+
+    
+    <g transform="translate(25, 235)">
+      <rect width="690" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      
+      <g transform="translate(24, 32)">
+        <rect x="4" y="6" width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+        <path d="M 4 18 L 40 50 M 12 6 L 48 42 M 4 36 L 20 50 M 30 6 L 48 24" stroke="#207448" stroke-width="2" />
+      </g>
+
+      
+      <text x="90" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        quarantine with a marker
+      </text>
+      <text x="90" y="86" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        and an issue
+      </text>
+    </g>
+
+    
+    <g transform="translate(25, 375)">
+      <rect width="690" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      
+      <g transform="translate(24, 40)">
+        <circle cx="26" cy="26" r="22" fill="none" stroke="#207448" stroke-width="3" />
+        <path d="M 12 26 A 14 14 0 1 1 26 40" fill="none" stroke="#207448" stroke-width="3" />
+        <path d="M 26 34 L 26 42 L 34 42" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+        <line x1="10" y1="10" x2="42" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      </g>
+
+      
+      <text x="90" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+        do not silently retry everything
+      </text>
+      <text x="90" y="76" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        with <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold">pytest-rerunfailures</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(25, 530)">
+      <rect width="690" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      
+      <g transform="translate(24, 52)">
+        <path d="M 6 18 A 18 18 0 0 1 36 8 L 44 14" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+        <path d="M 34 14 L 44 14 L 44 4" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M 44 34 A 18 18 0 0 1 14 44 L 6 38" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+        <path d="M 16 38 L 6 38 L 6 48" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      
+      <text x="90" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">reproduce with</text>
+      <text x="90" y="74" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold">-p randomly</tspan> seeds,
+      </text>
+      <text x="90" y="106" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold">pytest --count</tspan> loops
+      </text>
+      <text x="90" y="138" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        or <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold">xdist</tspan> stress runs
+      </text>
+    </g>
+
+    
+    <g transform="translate(25, 710)">
+      <rect width="690" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      
+      <g transform="translate(24, 40)">
+        <path d="M 32 8 A 12 12 0 0 0 18 20 L 6 32 A 4 4 0 0 0 10 38 L 14 34 L 18 38 A 4 4 0 0 0 24 38 L 36 26 A 12 12 0 0 0 44 12 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      </g>
+
+      
+      <text x="90" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+        fix the root cause
+      </text>
+      <text x="90" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        and fail the build
+      </text>
+      <text x="90" y="112" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        on any new flake
+      </text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(40, 1090)">
+    <rect width="1520" height="75" rx="12" fill="#207448" />
+    <text x="760" y="47" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#ffffff">A surviving mutant is a weak test</text>
+  </g>
+</svg>

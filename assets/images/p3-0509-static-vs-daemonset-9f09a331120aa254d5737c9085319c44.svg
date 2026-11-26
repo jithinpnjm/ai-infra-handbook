@@ -1,0 +1,238 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Static pod versus DaemonSet pod</title>
+  <desc>Technical infographic comparing Kubernetes static pods managed directly by kubelet from local manifests with DaemonSet pods placed and managed across the fleet by kube-controller-manager through the API server.</desc>
+
+  <defs>
+    <filter id="card-shadow" x="-2%" y="-3%" width="104%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#303a36" flood-opacity="0.06" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Static pod versus DaemonSet pod</text>
+
+  
+  <g id="top-strip">
+    <rect x="30" y="85" width="1540" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)" />
+
+    
+    <g transform="translate(52, 120)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="2" width="22" height="14" rx="3" />
+      <rect x="2" y="20" width="22" height="14" rx="3" />
+      <rect x="2" y="38" width="22" height="14" rx="3" />
+      <path d="M 28 9 H 44 L 52 27 L 44 45 H 28" />
+      <circle cx="52" cy="27" r="3" fill="#207448" />
+    </g>
+
+    
+    <text x="125" y="124" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">three pod sources into the pod manager</text>
+
+    
+    <rect x="125" y="140" width="1420" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="835" y="174" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan>API server watch on spec.nodeName, static manifests dir, HTTP manifest URL (rare)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="left-column">
+    
+    <rect x="30" y="235" width="755" height="935" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)" />
+
+    
+    <rect x="45" y="250" width="725" height="68" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(65, 258)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="34" height="42" rx="4" />
+      <line x1="12" y1="16" x2="26" y2="16" />
+      <line x1="12" y1="26" x2="30" y2="26" />
+      <line x1="12" y1="36" x2="22" y2="36" />
+      <circle cx="42" cy="38" r="6" fill="#207448" />
+    </g>
+    <text x="135" y="295" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Static pod</text>
+
+    
+    <g id="static-item-1">
+      <rect x="45" y="332" width="725" height="96" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <g transform="translate(65, 355)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 6 4 H 28 L 38 14 V 46 H 6 Z" />
+        <path d="M 28 4 V 14 H 38" />
+        <line x1="14" y1="24" x2="28" y2="24" />
+        <line x1="14" y1="32" x2="24" y2="32" />
+      </g>
+      <text x="125" y="372" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="125" dy="0">kubelet reads a file in </tspan><tspan font-family="monospace">/etc/kubernetes/</tspan>
+        <tspan x="125" dy="32" font-family="monospace">manifests (staticPodPath)</tspan>
+      </text>
+    </g>
+
+    
+    <g id="static-item-2">
+      <rect x="45" y="442" width="725" height="96" rx="10" fill="#fff5ea" stroke="#db8129" stroke-width="2.5" />
+      <g transform="translate(65, 465)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="24,4 10,26 22,26 16,46 36,20 24,20" />
+      </g>
+      <text x="125" y="482" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+        <tspan x="125" dy="0">works with no API server or scheduler,</tspan>
+        <tspan x="125" dy="32">which solves the chicken-and-egg bootstrap</tspan>
+      </text>
+    </g>
+
+    
+    <g id="static-item-3">
+      <rect x="45" y="552" width="725" height="96" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <g transform="translate(65, 575)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 4 24 C 12 12, 28 12, 36 24 C 28 36, 12 36, 4 24 Z" />
+        <circle cx="20" cy="24" r="5" />
+      </g>
+      <text x="125" y="592" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="125" dy="0">kubelet creates a read-only mirror pod</tspan>
+        <tspan x="125" dy="32">named <tspan font-family="monospace">pod-nodename</tspan> so <tspan font-family="monospace">kubectl</tspan> can see it</tspan>
+      </text>
+    </g>
+
+    
+    <g id="static-item-4">
+      <rect x="45" y="662" width="725" height="96" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <g transform="translate(65, 685)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 8 38 L 14 38 L 34 18 L 28 12 L 8 32 Z" />
+        <line x1="24" y1="16" x2="30" y2="22" />
+        <line x1="6" y1="44" x2="38" y2="44" />
+      </g>
+      <text x="125" y="702" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="125" dy="0">editing the file reconfigures the pod,</tspan>
+        <tspan x="125" dy="32">deleting the file removes it</tspan>
+      </text>
+    </g>
+
+    
+    <g id="static-item-5">
+      <rect x="45" y="772" width="725" height="96" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <g transform="translate(65, 795)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 34 16 A 14 14 0 1 0 38 28" />
+        <polyline points="28,8 36,16 28,24" />
+      </g>
+      <text x="125" y="812" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="125" dy="0"><tspan font-family="monospace">kubectl delete</tspan> of the mirror pod makes</tspan>
+        <tspan x="125" dy="32">the kubelet recreate it</tspan>
+      </text>
+    </g>
+
+    
+    <g id="static-item-6">
+      <rect x="45" y="882" width="725" height="96" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <g transform="translate(65, 905)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="18" width="26" height="22" rx="4" />
+        <path d="M 14 18 V 12 A 7 7 0 0 1 28 12 V 18" />
+        <line x1="6" y1="6" x2="36" y2="42" stroke="#207448" stroke-width="3" />
+      </g>
+      <text x="125" y="922" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="125" dy="0">cannot use ConfigMaps or Secrets</tspan>
+        <tspan x="125" dy="32">from the API</tspan>
+      </text>
+    </g>
+
+    
+    <g id="static-item-7">
+      <rect x="45" y="992" width="725" height="158" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <g transform="translate(65, 1045)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="32" height="14" rx="2" />
+        <rect x="6" y="26" width="32" height="14" rx="2" />
+        <circle cx="12" cy="15" r="1.5" fill="#207448" />
+        <circle cx="12" cy="33" r="1.5" fill="#207448" />
+        <line x1="22" y1="15" x2="32" y2="15" />
+        <line x1="22" y1="33" x2="32" y2="33" />
+      </g>
+      <text x="125" y="1036" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="125" dy="0">used for <tspan font-family="monospace">etcd</tspan>, <tspan font-family="monospace">kube-apiserver</tspan>,</tspan>
+        <tspan x="125" dy="34" font-family="monospace">kube-controller-manager</tspan><tspan font-family="sans-serif">,</tspan>
+        <tspan x="125" dy="34" font-family="monospace">kube-scheduler</tspan><tspan font-family="sans-serif">, </tspan><tspan font-family="monospace">kube-vip</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="right-column">
+    
+    <rect x="815" y="235" width="755" height="935" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)" />
+
+    
+    <rect x="830" y="250" width="725" height="68" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(850, 258)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="16" height="16" rx="3" />
+      <rect x="26" y="6" width="16" height="16" rx="3" />
+      <rect x="15" y="28" width="16" height="16" rx="3" />
+      <line x1="12" y1="22" x2="20" y2="28" />
+      <line x1="34" y1="22" x2="26" y2="28" />
+    </g>
+    <text x="920" y="295" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">DaemonSet pod</text>
+
+    
+    <g id="daemonset-item-1">
+      <rect x="830" y="332" width="725" height="175" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <g transform="translate(850, 395)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="22" cy="22" r="14" />
+        <path d="M 22 4 V 10 M 22 34 V 40 M 4 22 H 10 M 34 22 H 40" />
+        <circle cx="22" cy="22" r="5" />
+      </g>
+      <text x="915" y="394" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="915" dy="0">DaemonSet controller in</tspan>
+        <tspan x="915" dy="35" font-family="monospace">kube-controller-manager</tspan><tspan font-family="sans-serif">,</tspan>
+        <tspan x="915" dy="35">placed through the API server</tspan>
+      </text>
+    </g>
+
+    
+    <g id="daemonset-item-2">
+      <rect x="830" y="542" width="725" height="175" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <g transform="translate(850, 605)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="22" cy="12" rx="16" ry="6" />
+        <path d="M 6 12 V 32 C 6 36, 38 36, 38 32 V 12" />
+        <path d="M 6 22 C 6 26, 38 26, 38 22" />
+      </g>
+      <text x="915" y="622" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="915" dy="0">can mount ConfigMaps,</tspan>
+        <tspan x="915" dy="35">Secrets and PVCs</tspan>
+      </text>
+    </g>
+
+    
+    <g id="daemonset-item-3">
+      <rect x="830" y="752" width="725" height="175" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <g transform="translate(850, 815)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 8 24 A 14 14 0 0 1 34 14" />
+        <polyline points="28,6 36,14 28,20" />
+        <path d="M 36 26 A 14 14 0 0 1 10 36" />
+        <polyline points="16,42 8,34 16,28" />
+      </g>
+      <text x="915" y="845" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="915" dy="0">rolling updates across the fleet</tspan>
+      </text>
+    </g>
+
+    
+    <g id="daemonset-item-4">
+      <rect x="830" y="962" width="725" height="188" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <g transform="translate(850, 1030)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="32" height="30" rx="4" />
+        <line x1="12" y1="2" x2="12" y2="8" />
+        <line x1="22" y1="2" x2="22" y2="8" />
+        <line x1="32" y1="2" x2="32" y2="8" />
+        <line x1="12" y1="38" x2="12" y2="44" />
+        <line x1="22" y1="38" x2="22" y2="44" />
+        <line x1="32" y1="38" x2="32" y2="44" />
+      </g>
+      <text x="915" y="1015" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="915" dy="0">node agents such as <tspan font-family="monospace">nvidia-device-plugin</tspan>,</tspan>
+        <tspan x="915" dy="36" font-family="monospace">dcgm-exporter</tspan><tspan font-family="sans-serif">, </tspan><tspan font-family="monospace">calico-node</tspan><tspan font-family="sans-serif">,</tspan>
+        <tspan x="915" dy="36" font-family="monospace">cilium</tspan><tspan font-family="sans-serif">, </tspan><tspan font-family="monospace">fluent-bit</tspan>
+      </text>
+    </g>
+  </g>
+</svg>

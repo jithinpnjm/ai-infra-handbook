@@ -1,0 +1,315 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Transfer, loss recovery and teardown: why TIME_WAIT fills up</title>
+  <desc>Visual explanation of TCP segment reordering in the receive buffer, loss recovery via fast retransmit and timeout with collapsing congestion window, connection teardown into TIME_WAIT, and ephemeral port exhaustion.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Diagram Title (48px bold, centered) -->
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Transfer, loss recovery and teardown:</tspan>
+    <tspan x="800" dy="54">why TIME_WAIT fills up</tspan>
+  </text>
+
+  <!-- ======================================================== -->
+  <!-- LEFT PANEL: Receiving the body (x=40..520, w=480, h=720) -->
+  <!-- ======================================================== -->
+  <g id="left-panel">
+    <!-- Panel Container -->
+    <rect x="40" y="130" width="480" height="725" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    <!-- Header Icon: Packet stream / download (56x56) -->
+    <g transform="translate(62, 142)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="34" rx="5" />
+      <polyline points="18,20 28,30 38,20" />
+      <line x1="28" y1="12" x2="28" y2="30" />
+      <line x1="12" y1="48" x2="44" y2="48" />
+    </g>
+    <!-- Panel Title (30px bold) -->
+    <text x="136" y="180" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Receiving the body</text>
+
+    <!-- Card 1: segments arrive shuffled (y=210..315, h=105) -->
+    <rect x="60" y="210" width="440" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="280" y="242" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">segments arrive shuffled</text>
+
+    <!-- Shuffled numbered boxes in wrong order: [3] [1] [4] [2] -->
+    <g transform="translate(90, 256)">
+      <!-- Box 1 with number 3 -->
+      <rect x="0" y="0" width="70" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 27 11 L 43 11 L 35 21 C 41 21 45 24 45 30 C 45 36 39 39 31 39 C 25 39 21 36 21 34" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+      <!-- Box 2 with number 1 -->
+      <rect x="85" y="0" width="70" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 113 17 L 121 11 L 121 38 M 111 38 L 131 38" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+      <!-- Box 3 with number 4 -->
+      <rect x="170" y="0" width="70" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 211 11 L 199 27 L 223 27 M 217 21 L 217 38" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+      <!-- Box 4 with number 2 -->
+      <rect x="255" y="0" width="70" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 275 17 C 275 12 281 10 289 10 C 297 10 303 15 303 20 C 303 28 275 38 304 38" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    <!-- Arrow Card 1 -> Card 2 -->
+    <line x1="280" y1="315" x2="280" y2="335" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    <!-- Card 2: socket receive buffer (y=337..440, h=103) -->
+    <rect x="60" y="337" width="440" height="103" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="280" y="371" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">socket receive buffer</text>
+
+    <!-- Reordered buffer visual: [1] [2] [3] [4] -->
+    <g transform="translate(90, 385)">
+      <!-- Box 1 -->
+      <rect x="0" y="0" width="70" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 28 15 L 35 10 L 35 33 M 26 33 L 44 33" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+      <!-- Box 2 -->
+      <rect x="85" y="0" width="70" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 106 15 C 106 11 111 9 118 9 C 125 9 130 13 130 18 C 130 25 106 33 131 33" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+      <!-- Box 3 -->
+      <rect x="170" y="0" width="70" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 196 10 L 210 10 L 203 19 C 208 19 212 21 212 26 C 212 31 207 34 200 34 C 195 34 191 31 191 29" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+
+      <!-- Box 4 -->
+      <rect x="255" y="0" width="70" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 296 10 L 285 24 L 306 24 M 301 19 L 301 33" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    </g>
+
+    <!-- Arrow Card 2 -> Card 3 -->
+    <line x1="280" y1="440" x2="280" y2="458" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    <!-- Card 3: sends ACKs... (y=460..580, h=120) -->
+    <rect x="60" y="460" width="440" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(76, 474)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16" cy="16" r="14" />
+      <polyline points="11,16 15,20 22,12" />
+    </g>
+    <text x="118" y="496" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="118" dy="0">sends ACKs, often one</tspan>
+      <tspan x="76" dy="32">for every second segment,</tspan>
+      <tspan x="76" dy="32">with delayed ACK timers</tspan>
+    </text>
+
+    <!-- Card 4: advertises its window... (y=595..715, h=120) -->
+    <rect x="60" y="595" width="440" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(76, 609)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="28" height="24" rx="3" />
+      <line x1="2" y1="12" x2="30" y2="12" />
+      <line x1="14" y1="12" x2="14" y2="28" />
+    </g>
+    <text x="118" y="631" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="118" dy="0">advertises its window:</tspan>
+      <tspan x="76" dy="32">the amount of data it is</tspan>
+      <tspan x="76" dy="32">ready to accept right now</tspan>
+    </text>
+
+    <!-- Arrow Card 4 -> Card 5 -->
+    <line x1="280" y1="715" x2="280" y2="733" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    <!-- Card 5: curl reads with recv (y=735..815, h=80) -->
+    <rect x="60" y="735" width="440" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(78, 752)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="4,10 12,18 4,26" />
+      <line x1="16" y1="26" x2="28" y2="26" />
+    </g>
+    <text x="290" y="785" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">curl reads with recv</text>
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- MIDDLE PANEL: Loss (x=560..1040, w=480, h=725)           -->
+  <!-- ======================================================== -->
+  <g id="middle-panel">
+    <!-- Panel Container -->
+    <rect x="560" y="130" width="480" height="725" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    <!-- Header Icon: Network Loss / Alert (56x56) -->
+    <g transform="translate(582, 142)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,6 50,48 6,48" />
+      <line x1="28" y1="22" x2="28" y2="34" />
+      <circle cx="28" cy="41" r="2" fill="#207448" />
+    </g>
+    <!-- Panel Title (32px bold) -->
+    <text x="652" y="180" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Loss</text>
+
+    <!-- Route 1: fast retransmit... (x=580, y=210, w=405, h=135) -->
+    <rect x="580" y="210" width="405" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(596, 224)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="8,10 18,18 8,26" />
+      <polyline points="18,10 28,18 18,26" />
+    </g>
+    <text x="638" y="244" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="638" dy="0">fast retransmit</tspan>
+      <tspan x="596" dy="30">after three duplicate</tspan>
+      <tspan x="596" dy="30">ACKs, or through</tspan>
+      <tspan x="596" dy="30">SACK</tspan>
+    </text>
+
+    <!-- Route 2: retransmission timeout fires (x=580, y=365, w=405, h=95) -->
+    <rect x="580" y="365" width="405" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(596, 380)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16" cy="18" r="13" />
+      <polyline points="16,11 16,18 22,18" />
+      <line x1="12" y1="3" x2="20" y2="3" />
+    </g>
+    <text x="638" y="402" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="638" dy="0">retransmission timeout</tspan>
+      <tspan x="596" dy="32">fires</tspan>
+    </text>
+
+    <!-- Merging Routes: Route 1 exits right (x=985, y=277) -> down to y=485 -> left to x=780 -->
+    <path d="M 985 277 L 1008 277 L 1008 485 L 780 485" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Route 2 exits bottom (x=780, y=460) down to merge point (x=780, y=485) -->
+    <line x1="780" y1="460" x2="780" y2="485" stroke="#207448" stroke-width="3.5" />
+    <!-- Single merged arrow entering congestion window target box -->
+    <line x1="780" y1="485" x2="780" y2="513" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    <!-- Target Box: congestion window collapses, then regrows (y=515..825, h=310) -->
+    <rect x="580" y="515" width="440" height="310" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="800" y="555" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="800" dy="0">congestion window</tspan>
+      <tspan x="800" dy="34">collapses, then regrows</tspan>
+    </text>
+
+    <!-- Small sawtooth sketch with axes -->
+    <g transform="translate(600, 615)">
+      <!-- Axes: y=cwnd, x=time -->
+      <line x1="25" y1="15" x2="25" y2="175" stroke="#a9c4b3" stroke-width="2" />
+      <line x1="25" y1="175" x2="385" y2="175" stroke="#a9c4b3" stroke-width="2" />
+
+      <!-- Grid lines -->
+      <line x1="25" y1="70" x2="385" y2="70" stroke="#e8f1ea" stroke-width="1.5" stroke-dasharray="4 4" />
+      <line x1="25" y1="120" x2="385" y2="120" stroke="#e8f1ea" stroke-width="1.5" stroke-dasharray="4 4" />
+
+      <!-- Area fill under sawtooth -->
+      <polygon points="35,175 110,65 110,140 215,50 215,130 325,40 325,120 375,75 375,175" fill="#e8f1ea" opacity="0.6" />
+
+      <!-- Sawtooth curve path -->
+      <path d="M 35 175 L 110 65 L 110 140 L 215 50 L 215 130 L 325 40 L 325 120 L 375 75" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+
+      <!-- Drop marks indicating collapse -->
+      <circle cx="110" cy="65" r="4" fill="#207448" />
+      <circle cx="215" cy="50" r="4" fill="#207448" />
+      <circle cx="325" cy="40" r="4" fill="#207448" />
+    </g>
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- RIGHT PANEL: Closing (x=1080..1560, w=480, h=725)        -->
+  <!-- ======================================================== -->
+  <g id="right-panel">
+    <!-- Panel Container -->
+    <rect x="1080" y="130" width="480" height="725" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    <!-- Header Icon: Disconnect / plug / termination (56x56) -->
+    <g transform="translate(1102, 142)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="10" width="32" height="26" rx="4" />
+      <line x1="20" y1="36" x2="20" y2="48" />
+      <line x1="36" y1="36" x2="36" y2="48" />
+      <line x1="28" y1="2" x2="28" y2="10" />
+      <line x1="18" y1="23" x2="38" y2="23" />
+    </g>
+    <!-- Panel Title (32px bold) -->
+    <text x="1172" y="180" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Closing</text>
+
+    <!-- Node 1: FIN, ACK exchange (or RST on abort) (y=210..330, h=120) -->
+    <rect x="1100" y="210" width="440" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(1118, 226)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="4" y1="10" x2="28" y2="10" />
+      <polyline points="22,4 28,10 22,16" />
+      <line x1="28" y1="22" x2="4" y2="22" />
+      <polyline points="10,16 4,22 10,28" />
+    </g>
+    <text x="1160" y="248" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="1160" dy="0" font-weight="bold" fill="#207448">FIN, ACK exchange</tspan>
+      <tspan x="1118" dy="36">(or RST on abort)</tspan>
+    </text>
+
+    <!-- Arrow Node 1 -> Node 2 -->
+    <line x1="1320" y1="330" x2="1320" y2="353" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    <!-- Node 2: the side that closes first holds... (y=355..565, h=210) -->
+    <rect x="1100" y="355" width="440" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(1118, 370)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16" cy="16" r="14" />
+      <polyline points="16,8 16,16 23,20" />
+    </g>
+    <text x="1158" y="392" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1158" dy="0">the side that closes</tspan>
+      <tspan x="1118" dy="32">first holds the connection</tspan>
+      <tspan x="1118" dy="32" font-weight="bold" fill="#207448">in TIME_WAIT for about</tspan>
+      <tspan x="1118" dy="32" font-weight="bold" fill="#207448">60 seconds on Linux</tspan>
+    </text>
+
+    <!-- Arrow Node 2 -> Node 3 -->
+    <line x1="1320" y1="565" x2="1320" y2="588" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    <!-- Node 3: stops late packets from corrupting... (y=590..815, h=225) -->
+    <rect x="1100" y="590" width="440" height="225" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(1118, 606)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 16 2 L 30 7 L 30 18 C 30 26 16 32 16 32 C 16 32 2 26 2 18 L 2 7 Z" />
+      <polyline points="10,16 14,20 22,12" />
+    </g>
+    <text x="1158" y="628" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1158" dy="0">stops late packets from</tspan>
+      <tspan x="1118" dy="34">corrupting a new</tspan>
+      <tspan x="1118" dy="34">connection that reuses</tspan>
+      <tspan x="1118" dy="34">the same 5-tuple</tspan>
+    </text>
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- WARNING CARD (ORANGE: #db8129) (y=875..995, h=120)        -->
+  <!-- ======================================================== -->
+  <g id="warning-card">
+    <rect x="40" y="875" width="1520" height="120" rx="14" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+    <!-- Warning Icon (Orange Outline) -->
+    <g transform="translate(68, 910)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="26,4 50,46 2,46" />
+      <line x1="26" y1="18" x2="26" y2="30" />
+      <circle cx="26" cy="38" r="2" fill="#db8129" />
+    </g>
+    <text x="140" y="928" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="140" dy="0">Thousands of short connections can exhaust ephemeral ports (32768 to 60999)</tspan>
+      <tspan x="140" dy="40">or fill the table with TIME_WAIT entries</tspan>
+    </text>
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- COMMAND STRIP (y=1015..1080, h=65)                        -->
+  <!-- ======================================================== -->
+  <g id="command-strip">
+    <rect x="40" y="1015" width="1520" height="65" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Terminal Prompt Icon -->
+    <g transform="translate(65, 1030)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6,8 14,16 6,24" />
+      <line x1="18" y1="24" x2="28" y2="24" />
+    </g>
+    <!-- Command 1: ss -s -->
+    <text x="110" y="1056" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">ss -s</text>
+
+    <!-- Divider pipe -->
+    <line x1="220" y1="1027" x2="220" y2="1068" stroke="#a9c4b3" stroke-width="2" />
+
+    <!-- Command 2: ss -tni dst 93.184.216.34 (rtt, cwnd, mss, retrans, bytes) -->
+    <text x="260" y="1056" font-family="monospace" font-size="24" fill="#303a36">ss -tni dst 93.184.216.34 (rtt, cwnd, mss, retrans, bytes)</text>
+  </g>
+
+  <!-- ======================================================== -->
+  <!-- BOTTOM TAKEAWAY BAR (y=1100..1175, h=75)                 -->
+  <!-- ======================================================== -->
+  <g id="bottom-bar">
+    <rect x="40" y="1100" width="1520" height="75" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="1132" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="800" dy="0">If your service opens thousands of short connections,</tspan>
+      <tspan x="800" dy="32">watch the TIME_WAIT count before you scale it up</tspan>
+    </text>
+  </g>
+</svg>

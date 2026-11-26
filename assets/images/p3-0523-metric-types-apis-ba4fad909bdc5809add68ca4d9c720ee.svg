@@ -1,0 +1,213 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Which API each HPA metric type reads</title>
+  <desc>Visual infographic and reference table detailing Kubernetes HPA metric types, their backing source APIs, providers, examples, and operational footer rules.</desc>
+
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which API each HPA metric type reads</text>
+
+  
+  <rect x="60" y="110" width="1480" height="675" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <path d="M 60 118 Q 60 110 68 110 L 1532 110 Q 1540 110 1540 118 L 1540 165 L 60 165 Z" fill="#207448"/>
+  <text x="230" y="146" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Type</text>
+  <text x="590" y="146" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Source API</text>
+  <text x="950" y="146" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Provider</text>
+  <text x="1330" y="146" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Example</text>
+
+  
+  <line x1="400" y1="110" x2="400" y2="785" stroke="#207448" stroke-width="1.5"/>
+  <line x1="780" y1="110" x2="780" y2="785" stroke="#207448" stroke-width="1.5"/>
+  <line x1="1120" y1="110" x2="1120" y2="785" stroke="#207448" stroke-width="1.5"/>
+
+  
+  <line x1="60" y1="295" x2="400" y2="295" stroke="#207448" stroke-width="1.5"/>
+  <line x1="780" y1="295" x2="1540" y2="295" stroke="#207448" stroke-width="1.5"/>
+
+  <line x1="60" y1="415" x2="1540" y2="415" stroke="#207448" stroke-width="1.5"/>
+
+  <line x1="60" y1="545" x2="400" y2="545" stroke="#207448" stroke-width="1.5"/>
+  <line x1="780" y1="545" x2="1540" y2="545" stroke="#207448" stroke-width="1.5"/>
+
+  <line x1="60" y1="655" x2="1540" y2="655" stroke="#207448" stroke-width="1.5"/>
+
+  
+  <rect x="60" y="165" width="340" height="130" fill="#fcfdfc"/>
+  <rect x="60" y="295" width="340" height="120" fill="#f5f8f5"/>
+  <rect x="60" y="415" width="340" height="130" fill="#fcfdfc"/>
+  <rect x="60" y="545" width="340" height="110" fill="#f5f8f5"/>
+  <rect x="60" y="655" width="340" height="130" fill="#fcfdfc"/>
+
+  <rect x="400" y="165" width="380" height="250" fill="#e8f1ea"/>
+  <rect x="400" y="415" width="380" height="240" fill="#e8f1ea"/>
+  <rect x="400" y="655" width="380" height="130" fill="#e8f1ea"/>
+
+  
+  
+  <g transform="translate(205, 178)">
+    <rect x="0" y="0" width="50" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <rect x="13" y="13" width="24" height="24" rx="3" fill="none" stroke="#207448" stroke-width="2"/>
+    <line x1="16" y1="-6" x2="16" y2="0" stroke="#207448" stroke-width="3"/>
+    <line x1="34" y1="-6" x2="34" y2="0" stroke="#207448" stroke-width="3"/>
+    <line x1="16" y1="50" x2="16" y2="56" stroke="#207448" stroke-width="3"/>
+    <line x1="34" y1="50" x2="34" y2="56" stroke="#207448" stroke-width="3"/>
+    <line x1="-6" y1="16" x2="0" y2="16" stroke="#207448" stroke-width="3"/>
+    <line x1="-6" y1="34" x2="0" y2="34" stroke="#207448" stroke-width="3"/>
+    <line x1="50" y1="16" x2="56" y2="16" stroke="#207448" stroke-width="3"/>
+    <line x1="50" y1="34" x2="56" y2="34" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="230" y="265" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Resource</text>
+
+  
+  <text x="800" y="222" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">metrics-server from</tspan>
+    <tspan x="800" dy="36">kubelet and cAdvisor</tspan>
+  </text>
+
+  
+  <text x="1140" y="210" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1140" dy="0">CPU or memory average</tspan>
+    <tspan x="1140" dy="34">utilisation relative to</tspan>
+    <tspan x="1140" dy="34">requests, or average value</tspan>
+  </text>
+
+  
+  
+  <g transform="translate(205, 308)">
+    <rect x="0" y="0" width="50" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <line x1="0" y1="14" x2="50" y2="14" stroke="#207448" stroke-width="2"/>
+    <circle cx="10" cy="7" r="2.5" fill="#207448"/>
+    <circle cx="18" cy="7" r="2.5" fill="#207448"/>
+    <rect x="10" y="22" width="30" height="12" rx="2" fill="none" stroke="#207448" stroke-width="2"/>
+  </g>
+  <text x="230" y="388" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">ContainerResource</text>
+
+  
+  <rect x="425" y="265" width="330" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="590" y="299" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#207448">metrics.k8s.io</text>
+
+  
+  <text x="800" y="360" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">per container</text>
+
+  
+  <text x="1140" y="345" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1140" dy="0">scale on the app container</tspan>
+    <tspan x="1140" dy="36">only, ignoring sidecars</tspan>
+  </text>
+
+  
+  
+  <g transform="translate(202, 428)">
+    <circle cx="14" cy="14" r="11" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="42" cy="14" r="11" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="28" cy="38" r="11" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <line x1="22" y1="20" x2="34" y2="20" stroke="#207448" stroke-width="2"/>
+  </g>
+  <text x="230" y="515" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pods</text>
+
+  
+  <text x="800" y="460" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">via Prometheus</tspan>
+    <tspan x="800" dy="34">Adapter, KEDA or</tspan>
+    <tspan x="800" dy="34">vendor adapters</tspan>
+  </text>
+
+  
+  <text x="1140" y="475" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1140" dy="0">per-pod requests_in_flight</tspan>
+    <tspan x="1140" dy="36">or queue_length_per_pod</tspan>
+  </text>
+
+  
+  
+  <g transform="translate(205, 555)">
+    <polygon points="25,2 48,15 48,39 25,52 2,39 2,15" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <line x1="2" y1="15" x2="25" y2="27" stroke="#207448" stroke-width="2"/>
+    <line x1="48" y1="15" x2="25" y2="27" stroke="#207448" stroke-width="2"/>
+    <line x1="25" y1="52" x2="25" y2="27" stroke="#207448" stroke-width="2"/>
+  </g>
+  <text x="230" y="635" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Object</text>
+
+  
+  <rect x="420" y="510" width="340" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="590" y="544" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#207448">custom.metrics.k8s.io</text>
+
+  
+  <text x="800" y="610" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">for one object</text>
+
+  
+  <text x="1140" y="610" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Ingress requests_per_second</text>
+
+  
+  
+  <g transform="translate(202, 668)">
+    <path d="M 12 36 A 12 12 0 0 1 10 18 A 16 16 0 0 1 36 10 A 18 18 0 0 1 52 22 A 12 12 0 0 1 48 40 L 12 40 Z" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="230" y="750" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">External</text>
+
+  
+  <rect x="415" y="695" width="350" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="590" y="729" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#207448">external.metrics.k8s.io</text>
+
+  
+  <text x="800" y="700" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">via KEDA,</tspan>
+    <tspan x="800" dy="34">Prometheus Adapter</tspan>
+    <tspan x="800" dy="34">or cloud adapters</tspan>
+  </text>
+
+  
+  <text x="1140" y="715" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1140" dy="0">SQS queue length, Pub/Sub</tspan>
+    <tspan x="1140" dy="36">backlog, global QPS</tspan>
+  </text>
+
+  
+  <text x="60" y="835" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Footer rules</text>
+
+  
+  <g transform="translate(60, 855)">
+    <rect x="0" y="0" width="725" height="115" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(24, 30)">
+      <rect x="0" y="16" width="54" height="18" rx="9" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+      <circle cx="36" cy="25" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <circle cx="36" cy="25" r="5" fill="#207448"/>
+    </g>
+    <text x="104" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="104" dy="0">utilisation metrics need requests on all</tspan>
+      <tspan x="104" dy="36">containers or the metric is unavailable</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(815, 855)">
+    <rect x="0" y="0" width="725" height="115" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(24, 30)">
+      <polygon points="27,4 54,48 0,48" fill="#feeede" stroke="#db8129" stroke-width="3"/>
+      <line x1="27" y1="18" x2="27" y2="33" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="27" cy="41" r="2.5" fill="#db8129"/>
+    </g>
+    <text x="104" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="104" dy="0">memory is a poor scaling signal because</tspan>
+      <tspan x="104" dy="36">it does not fall after load drops</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 990)">
+    <rect x="0" y="0" width="1480" height="115" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(24, 30)">
+      <circle cx="27" cy="27" r="24" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+      <polyline points="27,13 27,27 39,27" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="104" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="104" dy="0">freshness delay: metrics-server scrapes kubelets about every 15 s,</tspan>
+      <tspan x="104" dy="36">custom metrics add the Prometheus scrape interval of 15 to 30 s plus the adapter</tspan>
+    </text>
+  </g>
+</svg>

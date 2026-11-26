@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>ABC, virtual subclass, structural ABC or Protocol: which check applies</title>
+  <desc>A decision tree and comparative visual guide contrasting Python ABCs, Protocols, virtual subclasses, and structural ABCs for interface enforcement and loose coupling.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <filter id="card-shadow" x="-3%" y="-2%" width="106%" height="106%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#143b23" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">
+    <tspan x="800" dy="0">ABC, virtual subclass, structural ABC or Protocol:</tspan>
+    <tspan x="800" dy="54">which check applies</tspan>
+  </text>
+
+  
+
+  
+  <rect x="40" y="135" width="930" height="80" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#card-shadow)"/>
+  
+  <g transform="translate(60, 147)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="12" r="8"/>
+    <path d="M 28 20 L 28 34 M 14 46 L 14 34 L 42 34 L 42 46"/>
+    <circle cx="14" cy="48" r="6"/>
+    <circle cx="42" cy="48" r="6"/>
+  </g>
+  <text x="135" y="167" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="135" dy="0">Do you control the hierarchy and want shared</tspan>
+    <tspan x="135" dy="32">concrete code and runtime enforcement?</tspan>
+  </text>
+
+  
+  <path d="M 265 215 L 265 275" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)"/>
+  <rect x="235" y="228" width="60" height="34" rx="17" fill="#db8129"/>
+  <text x="265" y="253" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">yes</text>
+
+  
+  <path d="M 745 215 L 745 275" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
+  <rect x="718" y="228" width="54" height="34" rx="17" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="745" y="253" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">no</text>
+
+  
+  <rect x="40" y="275" width="450" height="565" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3" filter="url(#card-shadow)"/>
+  
+  <g transform="translate(60, 292)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 48 14 L 48 28 C 48 42 28 50 28 50 C 28 50 8 42 8 28 L 8 14 Z"/>
+    <circle cx="28" cy="26" r="6"/>
+    <path d="M 28 32 L 28 38"/>
+  </g>
+  <text x="125" y="330" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">ABC: Provider(ABC)</text>
+  <text x="60" y="372" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="60" dy="0">with @abstractmethod</tspan>
+    <tspan x="60" dy="30">create_vm, delete_vm,</tspan>
+    <tspan x="60" dy="30">find and a concrete</tspan>
+    <tspan x="60" dy="30">template method ensure_vm</tspan>
+    <tspan x="60" dy="30">returning self.find(name)</tspan>
+    <tspan x="60" dy="30">or self.create_vm(name,</tspan>
+    <tspan x="60" dy="30">cpus); a subclass that</tspan>
+    <tspan x="60" dy="30">forgets an abstract method</tspan>
+    <tspan x="60" dy="30">cannot be instantiated:</tspan>
+    <tspan x="60" dy="30">TypeError at creation,</tspan>
+    <tspan x="60" dy="30">not at the first call</tspan>
+  </text>
+
+  
+  <rect x="520" y="275" width="450" height="125" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#card-shadow)"/>
+  
+  <g transform="translate(538, 310)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="44" height="40" rx="4"/>
+    <path d="M 28 8 L 28 48 M 6 28 L 50 28"/>
+  </g>
+  <text x="598" y="315" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="598" dy="0">Are the implementers</tspan>
+    <tspan x="598" dy="30">third-party or unrelated,</tspan>
+    <tspan x="598" dy="30">at a boundary?</tspan>
+  </text>
+
+  
+  <path d="M 745 400 L 745 465" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
+  <rect x="715" y="416" width="60" height="34" rx="17" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="745" y="441" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+
+  
+  <rect x="520" y="465" width="450" height="375" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#card-shadow)"/>
+  
+  <g transform="translate(540, 480)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="20"/>
+    <path d="M 20 22 L 20 28 M 36 22 L 36 28 M 28 34 L 28 40"/>
+  </g>
+  <text x="608" y="515" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Protocol: Sink with</text>
+  <text x="540" y="555" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="540" dy="0">write(self, data: bytes)</tspan>
+    <tspan x="540" dy="28">-> int; flush_to(sink, data)</tspan>
+    <tspan x="540" dy="28">accepts files, sockets,</tspan>
+    <tspan x="540" dy="28">BytesIO and your own</tspan>
+    <tspan x="540" dy="28">classes; static checkers</tspan>
+    <tspan x="540" dy="28">verify conformance;</tspan>
+    <tspan x="540" dy="28">@runtime_checkable allows</tspan>
+    <tspan x="540" dy="28">isinstance but only checks</tspan>
+    <tspan x="540" dy="28">that the methods exist;</tspan>
+    <tspan x="540" dy="28">fakes need no inheritance</tspan>
+  </text>
+
+  
+  <rect x="40" y="865" width="930" height="225" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)"/>
+  
+  <g transform="translate(60, 882)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 8 10 C 18 8 28 14 28 14 C 28 14 38 8 48 10 L 48 44 C 38 42 28 48 28 48 C 28 48 18 42 8 44 Z"/>
+    <path d="M 28 14 L 28 48"/>
+  </g>
+  <text x="125" y="915" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Story</text>
+  <text x="60" y="955" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="60" dy="0">a refactor splits one storage client into two, and</tspan>
+    <tspan x="60" dy="32">isinstance checks still name the old class; the tests pass</tspan>
+    <tspan x="60" dy="32">for reasons that have nothing to do with what the code needs;</tspan>
+    <tspan x="60" dy="32">a protocol describes the interface by the methods an object has</tspan>
+  </text>
+
+  
+
+  
+  <rect x="990" y="135" width="570" height="955" rx="16" fill="#ffffff" stroke="#b8d5c2" stroke-width="2" filter="url(#card-shadow)"/>
+
+  
+  <g transform="translate(1015, 150)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="44" height="40" rx="4"/>
+    <path d="M 6 22 L 50 22 M 20 8 L 20 22 M 36 8 L 36 22"/>
+  </g>
+  <text x="1080" y="185" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Other mechanisms</text>
+
+  
+  <rect x="1010" y="205" width="530" height="190" rx="12" fill="#f5f8f5" stroke="#b8d5c2" stroke-width="2"/>
+  <text x="1030" y="238" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">virtual subclass:</text>
+  <text x="1030" y="270" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1030" dy="0">@Tombola.register class</tspan>
+    <tspan x="1030" dy="28">TomboList(list), verified by</tspan>
+    <tspan x="1030" dy="28">TomboList.__mro__ versus</tspan>
+    <tspan x="1030" dy="28">Tombola._abc_registry;</tspan>
+    <tspan x="1030" dy="28">Provider.register(Third)</tspan>
+  </text>
+
+  
+  <rect x="1010" y="410" width="530" height="260" rx="12" fill="#f5f8f5" stroke="#b8d5c2" stroke-width="2"/>
+  <text x="1030" y="442" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">structural ABC:</text>
+  <text x="1030" y="474" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1030" dy="0">collections.abc.Sized checks</tspan>
+    <tspan x="1030" dy="28">__subclasshook__ for a __len__ entry</tspan>
+    <tspan x="1030" dy="28">in the class's __mro__ dictionaries,</tspan>
+    <tspan x="1030" dy="28">so class Struggle with</tspan>
+    <tspan x="1030" dy="28">def __len__(self): return 23 satisfies</tspan>
+    <tspan x="1030" dy="28">isinstance(Struggle(), abc.Sized)</tspan>
+    <tspan x="1030" dy="28">with no inheritance or register()</tspan>
+  </text>
+
+  
+  <rect x="1010" y="685" width="530" height="225" rx="12" fill="#f5f8f5" stroke="#b8d5c2" stroke-width="2"/>
+  <text x="1030" y="718" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1030" dy="0" font-weight="bold" fill="#207448">Tombola(ABC) abstract load(iterable)</tspan>
+    <tspan x="1030" dy="28">and pick(); pick raises LookupError when</tspan>
+    <tspan x="1030" dy="28">empty (parent of IndexError and KeyError);</tspan>
+    <tspan x="1030" dy="28">concrete loaded() and inspect();</tspan>
+    <tspan x="1030" dy="28">BingoCage and LottoBlower</tspan>
+    <tspan x="1030" dy="28">implement it</tspan>
+  </text>
+
+  
+  <rect x="1010" y="925" width="530" height="150" rx="12" fill="#f5f8f5" stroke="#b8d5c2" stroke-width="2"/>
+  <text x="1030" y="962" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1030" dy="0">goose typing (Alex Martelli) versus</tspan>
+    <tspan x="1030" dy="30">duck typing, static nominal typing and</tspan>
+    <tspan x="1030" dy="30">static duck typing through</tspan>
+    <tspan x="1030" dy="30">typing.Protocol</tspan>
+  </text>
+
+  
+  <rect x="40" y="1115" width="1520" height="60" rx="14" fill="#207448"/>
+  <text x="800" y="1155" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Use an ABC to enforce, a Protocol to keep coupling loose</text>
+</svg>

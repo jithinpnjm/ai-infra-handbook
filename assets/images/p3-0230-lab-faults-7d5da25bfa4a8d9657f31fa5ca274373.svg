@@ -1,0 +1,241 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Fourteen injected faults and the one-line way to inject each</title>
+  <desc>Fourteen injected faults and the one-line way to inject each</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Fourteen injected faults and the one-line way to inject each</text>
+
+  
+  <text x="800" y="108" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">a partner injects one fault; you diagnose with the method and the kit; containerlab fabric from chapter 2.27</text>
+
+  
+  <rect x="40" y="145" width="1140" height="842" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="40" y="145" width="1140" height="58" rx="12" fill="#ffffff"/>
+  <circle cx="75" cy="174" r="20" fill="#207448"/>
+  <text x="75" y="182" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="110" y="182" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">MTU mismatch on one link: </tspan>
+    <tspan font-family="'SF Mono', Menlo, Consolas, monospace">ip link set eth2 mtu 1400 on a leaf</tspan>
+  </text>
+  <line x1="40" y1="203" x2="1180" y2="203" stroke="#e8f1ea" stroke-width="2"/>
+
+  
+  <rect x="40" y="203" width="1140" height="58" fill="#e8f1ea"/>
+  <circle cx="75" cy="232" r="20" fill="#207448"/>
+  <text x="75" y="240" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="110" y="240" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">Silent packet loss on one ECMP member: </tspan>
+    <tspan font-family="'SF Mono', Menlo, Consolas, monospace">tc qdisc add dev eth1 root netem loss 3%</tspan>
+  </text>
+  <line x1="40" y1="261" x2="1180" y2="261" stroke="#e8f1ea" stroke-width="2"/>
+
+  
+  <rect x="40" y="261" width="1140" height="88" fill="#ffffff"/>
+  <circle cx="75" cy="305" r="20" fill="#207448"/>
+  <text x="75" y="313" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <text x="110" y="293" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">One-way link failure: </tspan>
+    <tspan font-family="'SF Mono', Menlo, Consolas, monospace">tc filter dropping packets in one direction, </tspan>
+    <tspan x="110" dy="30" font-family="'SF Mono', Menlo, Consolas, monospace">or nft drop on ingress only</tspan>
+  </text>
+  <line x1="40" y1="349" x2="1180" y2="349" stroke="#e8f1ea" stroke-width="2"/>
+
+  
+  <rect x="40" y="349" width="1140" height="58" fill="#e8f1ea"/>
+  <circle cx="75" cy="378" r="20" fill="#207448"/>
+  <text x="75" y="386" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  <text x="110" y="386" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">Wrong ASN or missing route-map: </tspan>
+    <tspan font-family="'SF Mono', Menlo, Consolas, monospace">edit FRR config and reload</tspan>
+  </text>
+  <line x1="40" y1="407" x2="1180" y2="407" stroke="#e8f1ea" stroke-width="2"/>
+
+  
+  <rect x="40" y="407" width="1140" height="58" fill="#ffffff"/>
+  <circle cx="75" cy="436" r="20" fill="#207448"/>
+  <text x="75" y="444" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  <text x="110" y="444" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">Conntrack exhaustion: </tspan>
+    <tspan font-family="'SF Mono', Menlo, Consolas, monospace">lower nf_conntrack_max and generate connections</tspan>
+  </text>
+  <line x1="40" y1="465" x2="1180" y2="465" stroke="#e8f1ea" stroke-width="2"/>
+
+  
+  <rect x="40" y="465" width="1140" height="58" fill="#e8f1ea"/>
+  <circle cx="75" cy="494" r="20" fill="#207448"/>
+  <text x="75" y="502" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+  <text x="110" y="502" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">DNS slow path: </tspan>
+    <tspan font-family="'SF Mono', Menlo, Consolas, monospace">a dead resolver first in resolv.conf</tspan>
+  </text>
+  <line x1="40" y1="523" x2="1180" y2="523" stroke="#e8f1ea" stroke-width="2"/>
+
+  
+  <rect x="40" y="523" width="1140" height="58" fill="#ffffff"/>
+  <circle cx="75" cy="552" r="20" fill="#207448"/>
+  <text x="75" y="560" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">7</text>
+  <text x="110" y="560" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">Asymmetric routing: </tspan>
+    <tspan font-family="'SF Mono', Menlo, Consolas, monospace">policy route replies out another NIC, rp_filter=1</tspan>
+  </text>
+  <line x1="40" y1="581" x2="1180" y2="581" stroke="#e8f1ea" stroke-width="2"/>
+
+  
+  <rect x="40" y="581" width="1140" height="58" fill="#e8f1ea"/>
+  <circle cx="75" cy="610" r="20" fill="#207448"/>
+  <text x="75" y="618" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">8</text>
+  <text x="110" y="618" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">ECMP hash collision or elephants: </tspan>
+    <tspan font-family="'SF Mono', Menlo, Consolas, monospace">two iperf3 flows crafted onto one link</tspan>
+  </text>
+  <line x1="40" y1="639" x2="1180" y2="639" stroke="#e8f1ea" stroke-width="2"/>
+
+  
+  <rect x="40" y="639" width="1140" height="58" fill="#ffffff"/>
+  <circle cx="75" cy="668" r="20" fill="#207448"/>
+  <text x="75" y="676" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">9</text>
+  <text x="110" y="676" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">Delayed ACK or Nagle: </tspan>
+    <tspan font-family="'SF Mono', Menlo, Consolas, monospace">application sending header and body as separate writes</tspan>
+  </text>
+  <line x1="40" y1="697" x2="1180" y2="697" stroke="#e8f1ea" stroke-width="2"/>
+
+  
+  <rect x="40" y="697" width="1140" height="58" fill="#e8f1ea"/>
+  <circle cx="75" cy="726" r="20" fill="#207448"/>
+  <text x="75" y="734" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">10</text>
+  <text x="110" y="734" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">TCP receive-window starvation: </tspan>
+    <tspan font-family="'SF Mono', Menlo, Consolas, monospace">a server that sleeps before read()</tspan>
+  </text>
+  <line x1="40" y1="755" x2="1180" y2="755" stroke="#e8f1ea" stroke-width="2"/>
+
+  
+  <rect x="40" y="755" width="1140" height="58" fill="#ffffff"/>
+  <circle cx="75" cy="784" r="20" fill="#207448"/>
+  <text x="75" y="792" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">11</text>
+  <text x="110" y="792" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">ARP or neighbour issue: </tspan>
+    <tspan font-family="'SF Mono', Menlo, Consolas, monospace">duplicate IP on the segment</tspan>
+  </text>
+  <line x1="40" y1="813" x2="1180" y2="813" stroke="#e8f1ea" stroke-width="2"/>
+
+  
+  <rect x="40" y="813" width="1140" height="58" fill="#e8f1ea"/>
+  <circle cx="75" cy="842" r="20" fill="#207448"/>
+  <text x="75" y="850" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">12</text>
+  <text x="110" y="850" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">Firewall dropping ICMP: </tspan>
+    <tspan font-family="'SF Mono', Menlo, Consolas, monospace">nft rule dropping type 3 code 4</tspan>
+  </text>
+  <line x1="40" y1="871" x2="1180" y2="871" stroke="#e8f1ea" stroke-width="2"/>
+
+  
+  <rect x="40" y="871" width="1140" height="58" fill="#ffffff"/>
+  <circle cx="75" cy="900" r="20" fill="#207448"/>
+  <text x="75" y="908" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">13</text>
+  <text x="110" y="908" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">Hot spare disabled or flapping link: </tspan>
+    <tspan font-family="'SF Mono', Menlo, Consolas, monospace">ip link set dev X down and up in a 2 s loop</tspan>
+  </text>
+  <line x1="40" y1="929" x2="1180" y2="929" stroke="#e8f1ea" stroke-width="2"/>
+
+  
+  <rect x="40" y="929" width="1140" height="58" rx="12" fill="#e8f1ea"/>
+  <circle cx="75" cy="958" r="20" fill="#207448"/>
+  <text x="75" y="966" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">14</text>
+  <text x="110" y="966" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">CPU or IRQ imbalance: </tspan>
+    <tspan font-family="'SF Mono', Menlo, Consolas, monospace">pin all NIC IRQs to one core</tspan>
+  </text>
+
+  
+  <rect x="1220" y="145" width="340" height="842" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+
+  
+  <rect x="1236" y="162" width="308" height="120" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <circle cx="1266" cy="192" r="18" fill="#db8129"/>
+  <text x="1266" y="199" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(1480, 172)" stroke="#db8129" stroke-width="4" fill="none">
+    <rect x="0" y="0" width="46" height="38" rx="4"/>
+    <line x1="0" y1="12" x2="46" y2="12"/>
+    <circle cx="8" cy="6" r="1.5" fill="#db8129"/>
+    <circle cx="15" cy="6" r="1.5" fill="#db8129"/>
+    <circle cx="22" cy="6" r="1.5" fill="#db8129"/>
+  </g>
+  <text x="1256" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1256" dy="0">symptom as the</tspan>
+    <tspan x="1256" dy="28">application sees it,</tspan>
+  </text>
+
+  
+  <rect x="1236" y="298" width="308" height="120" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <circle cx="1266" cy="328" r="18" fill="#db8129"/>
+  <text x="1266" y="335" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(1480, 308)" stroke="#db8129" stroke-width="4" stroke-linecap="round" fill="none">
+    <line x1="6" y1="6" x2="40" y2="6"/>
+    <circle cx="16" cy="6" r="4" fill="#ffffff"/>
+    <line x1="6" y1="20" x2="40" y2="20"/>
+    <circle cx="30" cy="20" r="4" fill="#ffffff"/>
+    <line x1="6" y1="34" x2="40" y2="34"/>
+    <circle cx="20" cy="34" r="4" fill="#ffffff"/>
+  </g>
+  <text x="1256" y="376" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1256" dy="0">hypotheses ranked</tspan>
+    <tspan x="1256" dy="28">by likelihood,</tspan>
+  </text>
+
+  
+  <rect x="1236" y="434" width="308" height="185" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <circle cx="1266" cy="464" r="18" fill="#db8129"/>
+  <text x="1266" y="471" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(1482, 444)" stroke="#db8129" stroke-width="4" stroke-linecap="round" fill="none">
+    <circle cx="16" cy="16" r="12"/>
+    <line x1="26" y1="26" x2="40" y2="40"/>
+  </g>
+  <text x="1256" y="512" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1256" dy="0">the half-split points</tspan>
+    <tspan x="1256" dy="28">chosen and the evidence</tspan>
+    <tspan x="1256" dy="28">that confirmed the</tspan>
+    <tspan x="1256" dy="28">cause,</tspan>
+  </text>
+
+  
+  <rect x="1236" y="635" width="308" height="120" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <circle cx="1266" cy="665" r="18" fill="#db8129"/>
+  <text x="1266" y="672" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(1482, 645)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M30 6 A14 14 0 0 0 16 20 L4 32 A4 4 0 0 0 10 38 L22 26 A14 14 0 0 0 36 12 L28 16 L24 12 Z"/>
+  </g>
+  <text x="1256" y="713" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1256" dy="0">immediate and</tspan>
+    <tspan x="1256" dy="28">permanent fixes,</tspan>
+  </text>
+
+  
+  <rect x="1236" y="771" width="308" height="155" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <circle cx="1266" cy="801" r="18" fill="#db8129"/>
+  <text x="1266" y="808" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  
+  <g transform="translate(1482, 781)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M22 6 A12 12 0 0 0 10 18 C10 26 6 30 6 30 L38 30 C38 30 34 26 34 18 A12 12 0 0 0 22 6 Z"/>
+    <path d="M18 34 A4 4 0 0 0 26 34"/>
+  </g>
+  <text x="1256" y="849" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1256" dy="0">the alert or test</tspan>
+    <tspan x="1256" dy="28">that would have</tspan>
+    <tspan x="1256" dy="28">caught it earlier</tspan>
+  </text>
+
+  
+  <rect x="40" y="1060" width="1520" height="60" rx="10" fill="#207448"/>
+  <text x="800" y="1098" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Practise the order of the work, not speed</text>
+</svg>

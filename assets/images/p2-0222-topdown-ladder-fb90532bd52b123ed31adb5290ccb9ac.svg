@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Work the network stack from the application down to the wire, one check per step</title>
+  <desc>Infographic illustrating the eight-step network troubleshooting ladder from application symptoms down to the wire, contrasted with bottom-up hardware counter investigation.</desc>
+
+  <defs>
+    <marker id="arrow-down" viewBox="0 0 12 12" refX="6" refY="10" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 2 2 L 6 10 L 10 2 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-up-thin" viewBox="0 0 12 12" refX="6" refY="2" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 2 10 L 6 2 L 10 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="76" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Work the network stack from the application down to the wire,</text>
+  <text x="800" y="124" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">one check per step</text>
+
+  
+  <rect x="460" y="146" width="310" height="32" rx="8" fill="#eef3ef" stroke="#8fa89b" stroke-width="1.5" />
+  <text x="615" y="169" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#52635a" text-anchor="middle">Application symptom</text>
+
+  
+  <line x1="615" y1="178" x2="615" y2="214" stroke="#207448" stroke-width="3" marker-end="url(#arrow-down)" />
+
+  
+  <rect x="70" y="214" width="1090" height="62" rx="10" fill="#ffffff" stroke="#9ec1ad" stroke-width="2" />
+  <circle cx="115" cy="245" r="24" fill="#207448" />
+  <text x="115" y="253" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(175, 245)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="0" cy="0" r="8" />
+    <line x1="0" y1="-15" x2="0" y2="-9" />
+    <line x1="0" y1="9" x2="0" y2="15" />
+    <line x1="-15" y1="0" x2="-9" y2="0" />
+    <line x1="9" y1="0" x2="15" y2="0" />
+    <line x1="-11" y1="-11" x2="-6" y2="-6" />
+    <line x1="6" y1="6" x2="11" y2="11" />
+    <line x1="-11" y1="11" x2="-6" y2="6" />
+    <line x1="6" y1="-6" x2="11" y2="-11" />
+  </g>
+  <text x="225" y="254" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Process listening? <tspan font-family="'SF Mono', Consolas, monospace" font-size="24" font-weight="600" fill="#207448">ss -tulpn</tspan></text>
+
+  
+  <line x1="615" y1="276" x2="615" y2="316" stroke="#207448" stroke-width="3" marker-end="url(#arrow-down)" />
+
+  
+  <rect x="70" y="316" width="1090" height="84" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <circle cx="115" cy="358" r="24" fill="#db8129" />
+  <text x="115" y="366" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(175, 358)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-18" y="-9" width="12" height="18" rx="2" />
+    <rect x="6" y="-9" width="12" height="18" rx="2" />
+    <line x1="-6" y1="0" x2="6" y2="0" />
+  </g>
+  <text x="225" y="350" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Local and peer connect: <tspan font-family="'SF Mono', Consolas, monospace" font-size="24" font-weight="600" fill="#db8129">nc -zv.</tspan> <tspan font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="normal" fill="#4a5752">Refused means a RST, timed out means a drop</tspan></text>
+
+  
+  <line x1="615" y1="400" x2="615" y2="440" stroke="#207448" stroke-width="3" marker-end="url(#arrow-down)" />
+
+  
+  <rect x="70" y="440" width="1090" height="62" rx="10" fill="#ffffff" stroke="#9ec1ad" stroke-width="2" />
+  <circle cx="115" cy="471" r="24" fill="#207448" />
+  <text x="115" y="479" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(175, 471)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="0" cy="0" r="14" />
+    <line x1="-14" y1="0" x2="14" y2="0" />
+    <ellipse cx="0" cy="0" rx="7" ry="14" />
+  </g>
+  <text x="225" y="480" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">DNS and proxy: <tspan font-family="'SF Mono', Consolas, monospace" font-size="24" font-weight="600" fill="#207448">getent hosts, env grep proxy</tspan></text>
+
+  
+  <line x1="615" y1="502" x2="615" y2="542" stroke="#207448" stroke-width="3" marker-end="url(#arrow-down)" />
+
+  
+  <rect x="70" y="542" width="1090" height="62" rx="10" fill="#ffffff" stroke="#9ec1ad" stroke-width="2" />
+  <circle cx="115" cy="573" r="24" fill="#207448" />
+  <text x="115" y="581" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g transform="translate(175, 573)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="0" cy="0" r="14" />
+    <line x1="-10" y1="0" x2="10" y2="0" />
+    <polyline points="6,-4 10,0 6,4" />
+    <line x1="0" y1="-10" x2="0" y2="10" />
+    <polyline points="-4,6 0,10 4,6" />
+  </g>
+  <text x="225" y="582" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Route and source: <tspan font-family="'SF Mono', Consolas, monospace" font-size="24" font-weight="600" fill="#207448">ip route get, ip rule</tspan></text>
+
+  
+  <line x1="615" y1="604" x2="615" y2="644" stroke="#207448" stroke-width="3" marker-end="url(#arrow-down)" />
+
+  
+  <rect x="70" y="644" width="1090" height="62" rx="10" fill="#ffffff" stroke="#9ec1ad" stroke-width="2" />
+  <circle cx="115" cy="675" r="24" fill="#207448" />
+  <text x="115" y="683" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  
+  <g transform="translate(175, 675)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M -13 -13 L 13 -13 C 13 4 0 14 0 16 C 0 14 -13 4 -13 -13 Z" />
+    <line x1="0" y1="-13" x2="0" y2="14" />
+  </g>
+  <text x="225" y="684" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Firewall and conntrack: <tspan font-family="'SF Mono', Consolas, monospace" font-size="24" font-weight="600" fill="#207448">nft list ruleset, conntrack</tspan></text>
+
+  
+  <line x1="615" y1="706" x2="615" y2="746" stroke="#207448" stroke-width="3" marker-end="url(#arrow-down)" />
+
+  
+  <rect x="70" y="746" width="1090" height="62" rx="10" fill="#ffffff" stroke="#9ec1ad" stroke-width="2" />
+  <circle cx="115" cy="777" r="24" fill="#207448" />
+  <text x="115" y="785" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+  
+  <g transform="translate(175, 777)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-18" y="-11" width="14" height="14" rx="2" />
+    <rect x="4" y="-11" width="14" height="14" rx="2" />
+    <path d="M -11 3 L -11 11 L 11 11 L 11 3" />
+  </g>
+  <text x="225" y="786" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Neighbour: <tspan font-family="'SF Mono', Consolas, monospace" font-size="24" font-weight="600" fill="#207448">ip neigh shows REACHABLE or FAILED</tspan></text>
+
+  
+  <line x1="615" y1="808" x2="615" y2="848" stroke="#207448" stroke-width="3" marker-end="url(#arrow-down)" />
+
+  
+  <rect x="70" y="848" width="1090" height="62" rx="10" fill="#ffffff" stroke="#9ec1ad" stroke-width="2" />
+  <circle cx="115" cy="879" r="24" fill="#207448" />
+  <text x="115" y="887" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+  
+  <g transform="translate(175, 879)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-14" y="-13" width="28" height="26" rx="3" />
+    <path d="M -7 13 L -7 5 L 7 5 L 7 13" />
+    <line x1="-5" y1="-8" x2="-5" y2="-3" />
+    <line x1="0" y1="-8" x2="0" y2="-3" />
+    <line x1="5" y1="-8" x2="5" y2="-3" />
+  </g>
+  <text x="225" y="888" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Interface health: <tspan font-family="'SF Mono', Consolas, monospace" font-size="24" font-weight="600" fill="#207448">ip -s link, ethtool</tspan></text>
+
+  
+  <line x1="615" y1="910" x2="615" y2="950" stroke="#207448" stroke-width="3" marker-end="url(#arrow-down)" />
+
+  
+  <rect x="70" y="950" width="1090" height="62" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <circle cx="115" cy="981" r="24" fill="#207448" />
+  <text x="115" y="989" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">8</text>
+  
+  <g transform="translate(175, 981)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-16" y="-10" width="22" height="18" rx="2" />
+    <circle cx="4" cy="2" r="7" />
+    <line x1="9" y1="7" x2="16" y2="13" />
+  </g>
+  <text x="225" y="990" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Capture packets: <tspan font-family="'SF Mono', Consolas, monospace" font-size="24" font-weight="600" fill="#1b5e3a">tcpdump on the interface</tspan></text>
+
+  
+  <line x1="615" y1="1012" x2="615" y2="1042" stroke="#207448" stroke-width="3" marker-end="url(#arrow-down)" />
+
+  
+  <rect x="500" y="1042" width="230" height="32" rx="8" fill="#eef3ef" stroke="#8fa89b" stroke-width="1.5" />
+  <text x="615" y="1065" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#52635a" text-anchor="middle">Wire</text>
+
+  
+  <line x1="1235" y1="1058" x2="1235" y2="162" stroke="#207448" stroke-width="3" marker-end="url(#arrow-up-thin)" />
+  <circle cx="1235" cy="1058" r="4" fill="#207448" />
+
+  
+  <rect x="1265" y="535" width="275" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1290" y="580" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">bottom-up:</text>
+  <text x="1290" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">counters rising,</text>
+  <text x="1290" y="654" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">go from hardware up</text>
+
+  
+  <rect x="70" y="1105" width="1460" height="54" rx="8" fill="#207448" />
+  <text x="800" y="1139" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Choose the direction from the evidence you already have.</text>
+</svg>

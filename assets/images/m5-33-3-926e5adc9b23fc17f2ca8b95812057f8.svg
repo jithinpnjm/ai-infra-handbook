@@ -1,0 +1,269 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>The Network Operator reconcile and State interface</title>
+  <desc>Architecture infographic illustrating the Network Operator reconcile loop and State interface: reconciling NicClusterPolicy and Node events through InfoCatalog, State Manager, component states, manifest rendering, CR status updates, and node wait requeue handling.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The Network Operator reconcile and State interface</text>
+
+  
+  <rect x="60" y="640" width="860" height="520" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="6 6"/>
+  <rect x="1300" y="460" width="280" height="500" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="6 6"/>
+
+  
+
+  
+  <path d="M 320 250 L 320 285 L 450 285 L 450 320" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1270 265 L 1270 285 L 820 285 L 820 320" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 350 440 L 350 480" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 280 625 L 280 680" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 480 697 L 560 697" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 480 740 L 510 740 L 510 792 L 560 792" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 480 765 L 525 765 L 525 892 L 560 892" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 480 785 L 540 785 L 540 997 L 560 997" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 480 805 L 550 805 L 550 1102 L 560 1102" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 900 697 L 960 697" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 280 810 L 280 930" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1060 380 L 1445 380 L 1445 480" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1445 615 L 1445 670" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1445 765 L 1445 835" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="850" y="268" width="370" height="34" rx="6" fill="#f5f8f5"/>
+  <text x="1035" y="292" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">map to the single policy key</text>
+
+  
+  <text x="1465" y="805" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">yes</text>
+
+  
+
+  
+  <g>
+    <rect x="100" y="130" width="440" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+    
+    <path d="M 130 165 C 130 155 186 155 186 165 C 186 175 130 175 130 165 Z" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 130 165 L 130 205 C 130 215 186 215 186 205 L 186 165" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 130 185 C 130 195 186 195 186 185" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <text x="210" y="200" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">NicClusterPolicy</text>
+  </g>
+
+  
+  <g>
+    <rect x="1020" y="120" width="500" height="145" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+    
+    <rect x="1045" y="150" width="56" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <circle cx="1060" cy="163" r="3" fill="#207448"/>
+    <circle cx="1072" cy="163" r="3" fill="#207448"/>
+    <rect x="1045" y="186" width="56" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <circle cx="1060" cy="199" r="3" fill="#207448"/>
+    <circle cx="1072" cy="199" r="3" fill="#207448"/>
+    
+    <text x="1120" y="160" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Node events:</text>
+    <text x="1120" y="200" font-family="sans-serif" font-size="24" fill="#303a36">Mellanox label, taint,</text>
+    <text x="1120" y="235" font-family="sans-serif" font-size="24" fill="#303a36">readiness</text>
+  </g>
+
+  
+  <g>
+    <rect x="280" y="320" width="780" height="120" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    
+    <g transform="translate(310, 352)">
+      <path d="M 28 6 A 22 22 0 1 1 6 28" fill="none" stroke="#db8129" stroke-width="4"/>
+      <path d="M 24 0 L 32 6 L 24 12 Z" fill="#db8129"/>
+      <circle cx="28" cy="28" r="8" fill="none" stroke="#db8129" stroke-width="3.5"/>
+    </g>
+    <text x="390" y="372" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">NicClusterPolicyReconciler.</text>
+    <text x="390" y="414" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">Reconcile</text>
+  </g>
+
+  
+  <g>
+    <rect x="80" y="480" width="540" height="145" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+    
+    <g transform="translate(105, 520)">
+      <rect x="0" y="0" width="46" height="56" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="10" y1="14" x2="36" y2="14" stroke="#207448" stroke-width="3"/>
+      <line x1="10" y1="26" x2="36" y2="26" stroke="#207448" stroke-width="3"/>
+      <line x1="10" y1="38" x2="26" y2="38" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="175" y="522" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Build InfoCatalog:</text>
+    <text x="175" y="562" font-family="sans-serif" font-size="24" fill="#303a36">cluster type, static config,</text>
+    <text x="175" y="598" font-family="sans-serif" font-size="24" fill="#303a36">DOCA driver images</text>
+  </g>
+
+  
+  <g>
+    <rect x="80" y="680" width="400" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+    
+    <g transform="translate(105, 718)">
+      <circle cx="22" cy="22" r="14" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 22 4 L 22 8 M 22 36 L 22 40 M 4 22 L 8 22 M 36 22 L 40 22 M 10 10 L 13 13 M 31 31 L 34 34 M 10 34 L 13 31 M 31 13 L 34 10" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="38" cy="38" r="8" fill="none" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="175" y="734" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">state manager:</text>
+    <text x="175" y="776" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">SyncState</text>
+  </g>
+
+  
+  <g>
+    <rect x="80" y="930" width="400" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+    
+    <g transform="translate(105, 958)">
+      <rect x="0" y="0" width="44" height="54" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 12 28 L 20 36 L 34 18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="175" y="996" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">update CR status</text>
+  </g>
+
+  
+  <g>
+    <rect x="560" y="660" width="340" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(580, 678)">
+      <rect x="6" y="6" width="26" height="26" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="12" y1="0" x2="12" y2="6" stroke="#207448" stroke-width="2.5"/>
+      <line x1="26" y1="0" x2="26" y2="6" stroke="#207448" stroke-width="2.5"/>
+      <line x1="12" y1="32" x2="12" y2="38" stroke="#207448" stroke-width="2.5"/>
+      <line x1="26" y1="32" x2="26" y2="38" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="630" y="708" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">state OFED driver</text>
+  </g>
+
+  
+  <g>
+    <rect x="560" y="755" width="340" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(580, 773)">
+      <circle cx="8" cy="19" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="32" cy="8" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="32" cy="30" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 13 19 L 27 8 M 13 19 L 27 30" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="630" y="803" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">state Multus</text>
+  </g>
+
+  
+  <g>
+    <rect x="560" y="850" width="340" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(580, 870)">
+      <rect x="0" y="0" width="38" height="42" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 12 12 L 26 12 L 26 26 L 12 26 Z" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <line x1="8" y1="42" x2="30" y2="42" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="630" y="888" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">state RDMA shared</text>
+    <text x="630" y="922" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">device plugin</text>
+  </g>
+
+  
+  <g>
+    <rect x="560" y="955" width="340" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(580, 975)">
+      <rect x="0" y="4" width="14" height="34" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="14" y1="12" x2="38" y2="12" stroke="#207448" stroke-width="3"/>
+      <line x1="14" y1="21" x2="38" y2="21" stroke="#207448" stroke-width="3"/>
+      <line x1="14" y1="30" x2="38" y2="30" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="630" y="993" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">state SR-IOV</text>
+    <text x="630" y="1027" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">device plugin</text>
+  </g>
+
+  
+  <g>
+    <rect x="560" y="1060" width="340" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(580, 1080)">
+      <circle cx="19" cy="19" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="3" y1="19" x2="35" y2="19" stroke="#207448" stroke-width="2.5"/>
+      <line x1="19" y1="3" x2="19" y2="35" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="630" y="1098" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">state NV-IPAM</text>
+    <text x="630" y="1132" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">and others</text>
+  </g>
+
+  
+  <g>
+    <rect x="960" y="650" width="340" height="145" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+    
+    <g transform="translate(985, 680)">
+      <rect x="0" y="0" width="44" height="54" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <polyline points="10,18 16,24 28,12" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="10" y1="34" x2="34" y2="34" stroke="#207448" stroke-width="2.5"/>
+      <line x1="10" y1="42" x2="26" y2="42" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="1045" y="694" font-family="sans-serif" font-size="24" fill="#303a36">render manifests,</text>
+    <text x="1045" y="730" font-family="sans-serif" font-size="24" fill="#303a36">create or update,</text>
+    <text x="1045" y="766" font-family="sans-serif" font-size="24" fill="#303a36">check readiness</text>
+  </g>
+
+  
+  <g>
+    <rect x="1320" y="480" width="250" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+    
+    <g transform="translate(1340, 522)">
+      <path d="M 8 0 L 26 0 L 38 12 L 20 30 L 0 30 L 0 8 Z" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="8" cy="8" r="3" fill="#207448"/>
+    </g>
+    <text x="1385" y="525" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">Update</text>
+    <text x="1385" y="560" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">mofed.wait</text>
+    <text x="1340" y="598" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">labels on nodes</text>
+  </g>
+
+  
+  <g>
+    <rect x="1325" y="670" width="240" height="95" rx="20" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+    
+    <g transform="translate(1345, 695)">
+      <circle cx="22" cy="22" r="18" fill="none" stroke="#207448" stroke-width="3"/>
+      <text x="22" y="30" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">?</text>
+    </g>
+    <text x="1395" y="730" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">not ready?</text>
+  </g>
+
+  
+  <g>
+    <rect x="1320" y="835" width="250" height="105" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+    
+    <g transform="translate(1340, 864)">
+      <circle cx="22" cy="22" r="18" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <polyline points="22,10 22,22 30,22" fill="none" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="1390" y="882" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">requeue</text>
+    <text x="1390" y="918" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">with delay</text>
+  </g>
+</svg>

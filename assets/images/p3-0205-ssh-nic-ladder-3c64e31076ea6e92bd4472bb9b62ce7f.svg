@@ -1,0 +1,240 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>SSH works on NIC A but not NIC B: five checks from cheapest to most detailed</title>
+  <desc>Visual diagnostic ladder of five sequential checks to troubleshoot SSH connectivity failures caused by asymmetric routing on multi-homed Linux hosts.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#db8129" />
+    </marker>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="106%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#303a36" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">SSH works on NIC A but not NIC B:</tspan>
+    <tspan x="800" dy="56">five checks from cheapest to most detailed</tspan>
+  </text>
+
+  
+  <g id="left-panel">
+    
+    <rect x="50" y="160" width="500" height="890" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    
+    <g transform="translate(140, 200)">
+      <rect x="0" y="0" width="320" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)" />
+      
+      <rect x="20" y="14" width="34" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="30" y1="38" x2="44" y2="38" stroke="#207448" stroke-width="3" />
+      <line x1="37" y1="38" x2="37" y2="44" stroke="#207448" stroke-width="3" />
+      <line x1="26" y1="44" x2="48" y2="44" stroke="#207448" stroke-width="3" />
+      
+      <path d="M 75 30 Q 110 15 150 30 T 225 30" fill="none" stroke="#207448" stroke-width="2.5" stroke-dasharray="4 4" />
+      <circle cx="270" cy="30" r="8" fill="#207448" />
+    </g>
+
+    
+    <g transform="translate(90, 340)">
+      <rect x="0" y="0" width="420" height="280" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)" />
+      
+      
+      <rect x="50" y="-14" width="90" height="28" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <rect x="80" y="2" width="30" height="8" rx="2" fill="#207448" />
+
+      
+      <rect x="280" y="-14" width="90" height="28" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <rect x="310" y="2" width="30" height="8" rx="2" fill="#207448" />
+
+      
+      <rect x="40" y="55" width="340" height="195" rx="10" fill="#f5f8f5" stroke="#9dbda7" stroke-width="2.5" stroke-dasharray="6 4" />
+
+      
+      <circle cx="80" cy="90" r="14" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 80 82 L 80 98 M 72 90 L 88 90" stroke="#207448" stroke-width="3" />
+
+      
+      <path d="M 325 35 L 325 150 Q 325 190 220 190 T 95 150 L 95 35" fill="none" stroke="#db8129" stroke-width="4" stroke-dasharray="8 6" />
+      
+      
+      <polygon points="210,135 230,135 220,115" fill="#db8129" />
+      <line x1="220" y1="123" x2="220" y2="127" stroke="#ffffff" stroke-width="2" />
+      <circle cx="220" cy="131" r="1.5" fill="#ffffff" />
+    </g>
+
+    
+    
+    <path d="M 415 260 L 415 324" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    
+    
+    <path d="M 185 326 L 185 262" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+    
+    <rect x="75" y="655" width="450" height="365" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    
+    <g transform="translate(276, 680)">
+      <polygon points="24,4 46,42 2,42" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+      <line x1="24" y1="18" x2="24" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <circle cx="24" cy="35" r="2.5" fill="#207448" />
+    </g>
+
+    
+    <text x="100" y="765" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="100" dy="0">request arrives on NIC B,</tspan>
+      <tspan x="100" dy="40">reply leaves via NIC A:</tspan>
+      <tspan x="100" dy="40">asymmetric routing, because</tspan>
+      <tspan x="100" dy="40">Linux uses the weak host</tspan>
+      <tspan x="100" dy="40">model and routes replies</tspan>
+      <tspan x="100" dy="40">by destination only</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="step-1">
+    <rect x="590" y="160" width="960" height="155" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    <circle cx="640" cy="210" r="24" fill="#207448" />
+    <text x="640" y="219" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <g transform="translate(685, 182)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="12" y1="18" x2="44" y2="18" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <circle cx="22" cy="18" r="5" fill="#207448" />
+      <line x1="12" y1="38" x2="44" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <circle cx="34" cy="38" r="5" fill="#207448" />
+    </g>
+    
+    <text x="765" y="220" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Configured?</text>
+    
+    <text x="625" y="265" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">ip addr, ip route, ip rule:</tspan>
+      <tspan font-family="sans-serif"> both NICs configured,</tspan>
+      <tspan x="625" dy="34" font-family="sans-serif">on distinct subnets, with one default gateway?</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1070" y1="315" x2="1070" y2="338" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-2">
+    <rect x="590" y="340" width="960" height="185" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    <circle cx="640" cy="390" r="24" fill="#207448" />
+    <text x="640" y="399" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <g transform="translate(685, 362)">
+      <rect x="6" y="2" width="44" height="52" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 6 46 L 36 38 V 10 L 6 2 Z" fill="none" stroke="#207448" stroke-width="3.5" />
+      <circle cx="30" cy="24" r="3" fill="#207448" />
+      <line x1="18" y1="48" x2="48" y2="48" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <text x="765" y="400" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Which door do replies use?</text>
+    
+    <text x="625" y="442" font-size="24" fill="#303a36">
+      <tspan x="625" dy="0" font-family="sans-serif">ping the server&apos;s B address from a client on subnet B;</tspan>
+      <tspan x="625" dy="34" font-family="sans-serif">on the server </tspan>
+      <tspan font-family="monospace" font-weight="bold">sudo tcpdump -ni any host &lt;client&gt; and icmp:</tspan>
+      <tspan x="625" dy="34" font-family="sans-serif">do requests arrive, and on which interface do replies leave?</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1070" y1="525" x2="1070" y2="548" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-3">
+    <rect x="590" y="550" width="960" height="160" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3.5" filter="url(#shadow)" />
+    
+    <circle cx="640" cy="600" r="24" fill="#db8129" />
+    <text x="640" y="609" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <g transform="translate(685, 572)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#db8129" stroke-width="4" />
+      <path d="M 14 42 L 28 28 L 28 14" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+      <path d="M 28 28 L 42 14" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+      <polyline points="22,14 28,14 28,20" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" />
+      <polyline points="36,14 42,14 42,20" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" />
+      <circle cx="14" cy="42" r="3.5" fill="#db8129" />
+    </g>
+    
+    <text x="765" y="610" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Would the kernel reply on B?</text>
+    
+    <text x="625" y="654" font-size="24" fill="#303a36">
+      <tspan x="625" dy="0" font-family="monospace" font-weight="bold">ip route get &lt;client IP&gt; from &lt;B address&gt;:</tspan>
+      <tspan x="625" dy="34" font-family="sans-serif">if the reply does not leave on NIC B, add policy routing</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1070" y1="710" x2="1070" y2="733" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-4">
+    <rect x="590" y="735" width="960" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    <circle cx="640" cy="785" r="24" fill="#207448" />
+    <text x="640" y="794" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <g transform="translate(685, 757)">
+      <path d="M 28 6 L 50 16 V 32 C 50 44 28 52 28 52 C 28 52 6 44 6 32 V 16 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <line x1="18" y1="28" x2="38" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    
+    <text x="765" y="795" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Is rp_filter dropping it?</text>
+    
+    <text x="625" y="838" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">nstat</tspan>
+      <tspan font-family="sans-serif"> for </tspan>
+      <tspan font-family="monospace" font-weight="bold">IPReversePathFilter</tspan>
+      <tspan font-family="sans-serif">; relax </tspan>
+      <tspan font-family="monospace" font-weight="bold">rp_filter</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1070" y1="870" x2="1070" y2="893" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-5">
+    <rect x="590" y="895" width="960" height="155" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    <circle cx="640" cy="945" r="24" fill="#207448" />
+    <text x="640" y="954" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <g transform="translate(685, 917)">
+      <circle cx="18" cy="38" r="6" fill="#207448" />
+      <path d="M 18 24 C 26 24 32 30 32 38" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <path d="M 18 14 C 32 14 44 26 44 38" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <path d="M 18 4 C 38 4 54 20 54 38" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="6" y1="50" x2="18" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    
+    <text x="765" y="955" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Does the right NIC answer ARP?</text>
+    
+    <text x="625" y="998" font-size="24" fill="#303a36">
+      <tspan x="625" dy="0" font-family="sans-serif">check </tspan>
+      <tspan font-family="monospace" font-weight="bold">arp_ignore</tspan>
+      <tspan font-family="sans-serif"> and </tspan>
+      <tspan font-family="monospace" font-weight="bold">arp_announce</tspan>
+      <tspan x="625" dy="34" font-family="sans-serif">so the right NIC answers for the right address</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="50" y="1095" width="1500" height="70" rx="12" fill="#207448" />
+    <text x="800" y="1139" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">The order is deliberate: cheapest question first</text>
+  </g>
+</svg>

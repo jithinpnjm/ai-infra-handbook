@@ -1,0 +1,198 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Shipping a 70B checkpoint to a live endpoint within the hour</title>
+  <desc>Timeline for a 70 billion parameter FP16 checkpoint on an endpoint with 4 replicas of 4 GPUs.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Shipping a 70B checkpoint to a live endpoint within the hour</text>
+  <text x="800" y="115" text-anchor="middle" font-size="25" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Timeline for a 70 billion parameter FP16 checkpoint on an endpoint with 4 replicas of 4 GPUs.</text>
+
+  
+
+  
+  <rect x="41" y="170" width="345" height="400" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="93" cy="222" r="24" fill="#207448" />
+  <text x="93" y="231" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">1</text>
+  
+  <g transform="translate(295, 194)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 12 36 A 14 14 0 0 1 20 14 A 18 18 0 0 1 44 18 A 12 12 0 0 1 46 36 Z" />
+    <path d="M 28 36 L 28 22 M 22 27 L 28 21 L 34 27" />
+  </g>
+  <text x="61" y="295" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+    <tspan x="61" dy="0">upload to the</tspan>
+    <tspan x="61" dy="34">versioned weights</tspan>
+    <tspan x="61" dy="34">hub with immutable</tspan>
+    <tspan x="61" dy="34">version id and</tspan>
+    <tspan x="61" dy="34">content hash</tspan>
+  </text>
+
+  
+  <line x1="386" y1="370" x2="432" y2="370" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="432" y="170" width="345" height="400" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="484" cy="222" r="24" fill="#207448" />
+  <text x="484" y="231" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">2</text>
+  
+  <g transform="translate(686, 194)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 46 14 C 46 32 28 46 28 48 C 28 46 10 32 10 14 Z" />
+    <path d="M 20 26 L 26 32 L 36 20" />
+  </g>
+  <text x="452" y="315" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+    <tspan x="452" dy="0">hash and</tspan>
+    <tspan x="452" dy="34">architecture check</tspan>
+    <tspan x="452" dy="34">take minutes</tspan>
+  </text>
+
+  
+  <line x1="777" y1="370" x2="823" y2="370" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="823" y="170" width="345" height="400" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="875" cy="222" r="24" fill="#207448" />
+  <text x="875" y="231" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">3</text>
+  
+  <g transform="translate(1077, 194)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 8 L 34 8 M 25 8 L 25 20 L 12 42 C 10 46 13 48 18 48 L 38 48 C 43 48 46 46 44 42 L 31 20 L 31 8" />
+    <path d="M 17 34 L 39 34" />
+  </g>
+  <text x="843" y="315" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+    <tspan x="843" dy="0">scratch eval on</tspan>
+    <tspan x="843" dy="34">one borrowed</tspan>
+    <tspan x="843" dy="34">replica slot</tspan>
+  </text>
+
+  
+  <line x1="1168" y1="370" x2="1214" y2="370" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="1214" y="170" width="345" height="400" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="1266" cy="222" r="24" fill="#207448" />
+  <text x="1266" y="231" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">4</text>
+  
+  <g transform="translate(1468, 194)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="28" cy="14" rx="18" ry="7" />
+    <path d="M 10 14 V 26 C 10 30 18 33 28 33 C 38 33 46 30 46 26 V 14" />
+    <path d="M 10 26 V 38 C 10 42 18 45 28 45 C 38 45 46 42 46 38 V 26" />
+  </g>
+  <text x="1234" y="300" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+    <tspan x="1234" dy="0">pre-stage the</tspan>
+    <tspan x="1234" dy="34">140 GB weights</tspan>
+    <tspan x="1234" dy="34">onto local disk</tspan>
+    <tspan x="1234" dy="34">of the nodes</tspan>
+  </text>
+
+  
+  <path d="M 1386.5 570 L 1386.5 600 Q 1386.5 610 1376.5 610 L 223.5 610 Q 213.5 610 213.5 620 L 213.5 650" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+
+  
+  <rect x="41" y="650" width="345" height="400" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="93" cy="702" r="24" fill="#207448" />
+  <text x="93" y="711" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">5</text>
+  
+  <g transform="translate(295, 674)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="30" r="18" />
+    <path d="M 28 12 V 6 M 24 6 H 32" />
+    <path d="M 28 30 L 28 20 M 28 30 L 36 30" />
+  </g>
+  <text x="61" y="760" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+    <tspan x="61" dy="0">cold start is 170 s</tspan>
+    <tspan x="61" dy="33">under the chapter</tspan>
+    <tspan x="61" dy="33">inputs of which</tspan>
+    <tspan x="61" dy="33">70 s is download;</tspan>
+    <tspan x="61" dy="33">after staging</tspan>
+    <tspan x="61" dy="33">each replica takes</tspan>
+    <tspan x="61" dy="33">about 100 s</tspan>
+  </text>
+
+  
+  <line x1="386" y1="850" x2="432" y2="850" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="432" y="650" width="345" height="400" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+  <circle cx="484" cy="702" r="24" fill="#207448" />
+  <text x="484" y="711" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">6</text>
+  
+  <g transform="translate(686, 674)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="14" y="14" width="28" height="28" rx="4" />
+    <rect x="22" y="22" width="12" height="12" rx="2" fill="#207448" />
+    <path d="M 20 8 V 14 M 28 8 V 14 M 36 8 V 14" />
+    <path d="M 20 42 V 48 M 28 42 V 48 M 36 42 V 48" />
+    <path d="M 8 20 H 14 M 8 28 H 14 M 8 36 H 14" />
+    <path d="M 42 20 H 48 M 42 28 H 48 M 42 36 H 48" />
+  </g>
+  <text x="452" y="760" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+    <tspan x="452" dy="0">rolling update with</tspan>
+    <tspan x="452" dy="33">surge 1 replaces 4</tspan>
+    <tspan x="452" dy="33">replicas one at a</tspan>
+    <tspan x="452" dy="33">time; the surge</tspan>
+    <tspan x="452" dy="33">slot is 4 GPUs</tspan>
+    <tspan x="452" dy="33">together, which must</tspan>
+    <tspan x="452" dy="33">exist on one node</tspan>
+  </text>
+
+  
+  <line x1="777" y1="850" x2="823" y2="850" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="823" y="650" width="345" height="400" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="875" cy="702" r="24" fill="#207448" />
+  <text x="875" y="711" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">7</text>
+  
+  <g transform="translate(1077, 674)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 16 46 L 28 14 L 40 46 M 20 34 H 36" />
+    <circle cx="28" cy="12" r="3" fill="#207448" />
+    <path d="M 18 10 C 14 14 14 18 18 22" />
+    <path d="M 38 10 C 42 14 42 18 38 22" />
+    <path d="M 12 6 C 6 12 6 22 12 28" />
+    <path d="M 44 6 C 50 12 50 22 44 28" />
+  </g>
+  <text x="843" y="790" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+    <tspan x="843" dy="0">canary at 1 percent</tspan>
+    <tspan x="843" dy="34">with the eval gate,</tspan>
+    <tspan x="843" dy="34">step up</tspan>
+  </text>
+
+  
+  <line x1="1168" y1="850" x2="1214" y2="850" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="1214" y="650" width="345" height="400" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="1266" cy="702" r="24" fill="#207448" />
+  <text x="1266" y="711" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">8</text>
+  
+  <g transform="translate(1468, 674)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="8" width="36" height="10" rx="2" />
+    <circle cx="16" cy="13" r="1.5" fill="#207448" />
+    <line x1="36" y1="13" x2="40" y2="13" />
+    <rect x="10" y="22" width="36" height="10" rx="2" />
+    <circle cx="16" cy="27" r="1.5" fill="#207448" />
+    <line x1="36" y1="27" x2="40" y2="27" />
+    <rect x="10" y="36" width="36" height="10" rx="2" />
+    <circle cx="16" cy="41" r="1.5" fill="#207448" />
+    <line x1="36" y1="41" x2="40" y2="41" />
+  </g>
+  <text x="1234" y="780" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+    <tspan x="1234" dy="0">keep old replicas</tspan>
+    <tspan x="1234" dy="34">until peak traffic</tspan>
+    <tspan x="1234" dy="34">has passed on the</tspan>
+    <tspan x="1234" dy="34">new version</tspan>
+  </text>
+
+  
+  <rect x="41" y="1080" width="1518" height="85" rx="12" fill="#207448" />
+  <text x="800" y="1115" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">
+    <tspan x="800" dy="0">measure real load time on the first replica before promising the rest;</tspan>
+    <tspan x="800" dy="33">tell the customer the time budget from the numbers</tspan>
+  </text>
+</svg>

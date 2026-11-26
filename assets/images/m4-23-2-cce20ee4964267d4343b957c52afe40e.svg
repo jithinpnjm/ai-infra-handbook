@@ -1,0 +1,209 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Change lifecycle</title>
+  <desc>Sequence diagram illustrating the change lifecycle across Dev, Git (PR), CI, Reviewers (CODEOWNERS), and Environment.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="46" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Change lifecycle</text>
+
+  
+  
+  <line x1="130" y1="185" x2="130" y2="1140" stroke="#a0baa6" stroke-width="2.5" stroke-dasharray="8 8"/>
+  <line x1="460" y1="185" x2="460" y2="1140" stroke="#a0baa6" stroke-width="2.5" stroke-dasharray="8 8"/>
+  <line x1="790" y1="185" x2="790" y2="1140" stroke="#a0baa6" stroke-width="2.5" stroke-dasharray="8 8"/>
+  <line x1="1120" y1="185" x2="1120" y2="1140" stroke="#a0baa6" stroke-width="2.5" stroke-dasharray="8 8"/>
+  <line x1="1445" y1="185" x2="1445" y2="1140" stroke="#a0baa6" stroke-width="2.5" stroke-dasharray="8 8"/>
+
+  
+  <circle cx="130" cy="1140" r="5" fill="#207448"/>
+  <circle cx="460" cy="1140" r="5" fill="#207448"/>
+  <circle cx="790" cy="1140" r="5" fill="#207448"/>
+  <circle cx="1120" cy="1140" r="5" fill="#207448"/>
+  <circle cx="1445" cy="1140" r="5" fill="#207448"/>
+
+  
+  
+  <g id="participant-dev">
+    <rect x="40" y="68" width="180" height="116" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="130" cy="100" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 106 130 C 106 116, 154 116, 154 130" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="130" y="162" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Dev</text>
+  </g>
+
+  
+  <g id="participant-git">
+    <rect x="350" y="68" width="220" height="116" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <line x1="446" y1="90" x2="446" y2="128" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 446 114 C 446 102, 474 102, 474 90" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="446" cy="90" r="5" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+    <circle cx="446" cy="128" r="5" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+    <circle cx="474" cy="90" r="5" fill="#f5f8f5" stroke="#207448" stroke-width="4"/>
+    <text x="460" y="162" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Git (PR)</text>
+  </g>
+
+  
+  <g id="participant-ci">
+    <rect x="690" y="68" width="200" height="116" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="790" cy="104" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="790" cy="104" r="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="790" y1="82" x2="790" y2="88" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="790" y1="120" x2="790" y2="126" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="768" y1="104" x2="774" y2="104" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="806" y1="104" x2="812" y2="104" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="774" y1="88" x2="779" y2="93" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="801" y1="115" x2="806" y2="120" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="774" y1="120" x2="779" y2="115" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="801" y1="93" x2="806" y2="88" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="790" y="162" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">CI</text>
+  </g>
+
+  
+  <g id="participant-rev">
+    <rect x="970" y="68" width="300" height="116" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <path d="M 1104 84 L 1136 84 C 1136 102, 1120 114, 1120 122 C 1120 114, 1104 102, 1104 84 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 1112 101 L 1118 107 L 1128 95" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1120" y="146" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Reviewers</text>
+    <text x="1120" y="174" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(CODEOWNERS)</text>
+  </g>
+
+  
+  <g id="participant-env">
+    <rect x="1330" y="68" width="230" height="116" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <rect x="1423" y="86" width="44" height="16" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="1433" cy="94" r="2.5" fill="#207448"/>
+    <line x1="1443" y1="94" x2="1457" y2="94" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <rect x="1423" y="108" width="44" height="16" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="1433" cy="116" r="2.5" fill="#207448"/>
+    <line x1="1443" y1="116" x2="1457" y2="116" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="1445" y="162" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Environment</text>
+  </g>
+
+  
+
+  
+  <g id="step-1">
+    <rect x="135" y="210" width="320" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="295" y="236" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="295" dy="0">branch, change code,</tspan>
+      <tspan x="295" dy="28">open PR</tspan>
+    </text>
+    <circle cx="152" cy="285" r="22" fill="#207448"/>
+    <text x="152" y="293" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <line x1="174" y1="285" x2="460" y2="285" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  </g>
+
+  
+  <g id="step-2">
+    <rect x="475" y="300" width="300" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="625" y="326" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="625" dy="0">fmt, validate, lint,</tspan>
+      <tspan x="625" dy="28">scan, tests</tspan>
+    </text>
+    <circle cx="482" cy="375" r="22" fill="#207448"/>
+    <text x="482" y="383" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    <line x1="504" y1="375" x2="790" y2="375" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  </g>
+
+  
+  <g id="step-3">
+    
+    <path d="M 790 435 L 835 435 L 835 475 L 790 475" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <circle cx="760" cy="455" r="22" fill="#207448"/>
+    <text x="760" y="463" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    <rect x="855" y="423" width="370" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1040" y="449" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1040" dy="0">plan per affected stack</tspan>
+      <tspan x="1040" dy="28">(read-only identity)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-4">
+    <rect x="470" y="510" width="310" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="625" y="536" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="625" dy="0">post plan summary +</tspan>
+      <tspan x="625" dy="28">policy results</tspan>
+    </text>
+    <circle cx="768" cy="585" r="22" fill="#207448"/>
+    <text x="768" y="593" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    <line x1="746" y1="585" x2="460" y2="585" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  </g>
+
+  
+  <g id="step-5">
+    <rect x="525" y="600" width="530" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="790" y="626" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="790" dy="0">review code + plan</tspan>
+      <tspan x="790" dy="28">(blast radius, replacements, cost)</tspan>
+    </text>
+    <circle cx="1098" cy="675" r="22" fill="#207448"/>
+    <text x="1098" y="683" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    <line x1="1076" y1="675" x2="460" y2="675" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  </g>
+
+  
+  <g id="step-6">
+    <rect x="515" y="705" width="220" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="625" y="734" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">merge to main</text>
+    <circle cx="482" cy="760" r="22" fill="#207448"/>
+    <text x="482" y="768" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+    <line x1="504" y1="760" x2="790" y2="760" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  </g>
+
+  
+  <g id="step-7">
+    <rect x="915" y="785" width="405" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1117" y="814" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">apply saved plan in staging</text>
+    <circle cx="812" cy="840" r="22" fill="#207448"/>
+    <text x="812" y="848" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">7</text>
+    <line x1="834" y1="840" x2="1445" y2="840" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  </g>
+
+  
+  <g id="step-8">
+    
+    <path d="M 790 885 L 835 885 L 835 925 L 790 925" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <circle cx="760" cy="905" r="22" fill="#207448"/>
+    <text x="760" y="913" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">8</text>
+    <rect x="855" y="884" width="310" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1010" y="913" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">verify (smoke), soak</text>
+  </g>
+
+  
+  <g id="step-9">
+    <rect x="870" y="945" width="495" height="42" rx="8" fill="#fff7ed" stroke="#db8129" stroke-width="2.5"/>
+    <text x="1117" y="974" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">apply to prod behind approval gate</text>
+    <circle cx="812" cy="1000" r="22" fill="#db8129"/>
+    <text x="812" y="1008" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">9</text>
+    <line x1="834" y1="1000" x2="1445" y2="1000" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  </g>
+
+  
+  <g id="step-10">
+    <rect x="465" y="1025" width="320" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="625" y="1051" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="625" dy="0">record apply result,</tspan>
+      <tspan x="625" dy="28">update change log</tspan>
+    </text>
+    <circle cx="768" cy="1100" r="22" fill="#207448"/>
+    <text x="768" y="1108" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">10</text>
+    <line x1="746" y1="1100" x2="460" y2="1100" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  </g>
+</svg>

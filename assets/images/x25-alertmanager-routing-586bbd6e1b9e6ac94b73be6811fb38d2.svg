@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Alertmanager: grouped alerts, route by severity, and inhibition rules</title>
+  <desc>Visual explanation of Alertmanager concepts: alert grouping by cluster and model, routing by severity to pager and ticket receivers, and inhibition rules preventing alert noise.</desc>
+
+  <defs>
+    
+    <marker id="arrow-solid" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-dashed-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-dashed-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1120" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Alertmanager: grouped alerts,</tspan>
+    <tspan x="800" dy="54">route by severity, and inhibition rules</tspan>
+  </text>
+
+  
+  
+  <g id="inhibition-panel">
+    <rect x="660" y="145" width="880" height="255" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(685, 160)">
+      <path d="M 28 4 L 48 12 C 48 32 38 46 28 52 C 18 46 8 32 8 12 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <line x1="16" y1="18" x2="40" y2="42" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    <text x="755" y="200" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Inhibition</text>
+
+    
+    <rect x="685" y="230" width="830" height="72" rx="10" fill="#ffffff" stroke="#c0d8c8" stroke-width="1.5" />
+    <text x="705" y="258" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="705" dy="0"><tspan font-family="'SF Mono', Consolas, Monaco, monospace" font-weight="600">VllmTargetsMissing</tspan> silences <tspan font-family="'SF Mono', Consolas, Monaco, monospace" font-weight="600">ErrorRatioHigh</tspan>,</tspan>
+      <tspan x="705" dy="30"><tspan font-family="'SF Mono', Consolas, Monaco, monospace" font-weight="600">KVCacheSaturated</tspan> and <tspan font-family="'SF Mono', Consolas, Monaco, monospace" font-weight="600">QueueDeep</tspan> in the same cluster</tspan>
+    </text>
+
+    
+    <rect x="685" y="314" width="830" height="66" rx="10" fill="#ffffff" stroke="#c0d8c8" stroke-width="1.5" />
+    <text x="705" y="356" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">A page silences tickets for the same model</text>
+  </g>
+
+  
+  
+  <g transform="translate(45, 435)">
+    <path d="M 28 8 C 21 8 16 13 16 20 L 16 32 L 10 38 L 10 42 L 46 42 L 46 38 L 40 32 L 40 20 C 40 13 35 8 28 8 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 24 44 C 24 46.2 25.8 48 28 48 C 30.2 48 32 44 32 44" fill="none" stroke="#207448" stroke-width="4" />
+  </g>
+
+  
+  <g id="box-vllm">
+    <rect x="45" y="505" width="300" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="195" y="559" text-anchor="middle" font-family="'SF Mono', Consolas, Monaco, monospace" font-size="24" font-weight="600" fill="#303a36">VllmTargetsMissing</text>
+  </g>
+
+  
+  <g id="box-error">
+    <rect x="45" y="635" width="300" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="195" y="689" text-anchor="middle" font-family="'SF Mono', Consolas, Monaco, monospace" font-size="24" font-weight="600" fill="#303a36">ErrorRatioHigh</text>
+  </g>
+
+  
+  <g id="box-queue">
+    <rect x="45" y="765" width="300" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="195" y="819" text-anchor="middle" font-family="'SF Mono', Consolas, Monaco, monospace" font-size="24" font-weight="600" fill="#303a36">QueueDeep</text>
+  </g>
+
+  
+  <g id="box-kvcache">
+    <rect x="45" y="895" width="300" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="195" y="949" text-anchor="middle" font-family="'SF Mono', Consolas, Monaco, monospace" font-size="24" font-weight="600" fill="#303a36">KVCacheSaturated</text>
+  </g>
+
+  
+  
+  <path d="M 45 550 L 20 550 L 20 940" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="6,5" />
+  <path d="M 20 680 L 45 680" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="6,5" marker-end="url(#arrow-dashed-orange)" />
+  <path d="M 20 810 L 45 810" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="6,5" marker-end="url(#arrow-dashed-orange)" />
+  <path d="M 20 940 L 45 940" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="6,5" marker-end="url(#arrow-dashed-orange)" />
+
+  
+  <path d="M 345 550 L 360 550 L 360 940 L 345 940" fill="none" stroke="#207448" stroke-width="2.5" />
+  <line x1="360" y1="745" x2="390" y2="745" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-solid)" />
+
+  
+  <g id="group-container">
+    <rect x="390" y="465" width="340" height="560" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(415, 485)">
+      <path d="M 28 8 L 48 18 L 28 28 L 8 18 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <path d="M 8 28 L 28 38 L 48 28" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <path d="M 8 38 L 28 48 L 48 38" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    </g>
+
+    <text x="485" y="515" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="485" dy="0">Group by</tspan>
+      <tspan x="485" dy="36">cluster and model</tspan>
+    </text>
+
+    
+    <text x="560" y="605" text-anchor="middle" font-family="'SF Mono', Consolas, Monaco, monospace" font-size="24" fill="#303a36">
+      <tspan x="560" dy="0">group_wait 30s,</tspan>
+      <tspan x="560" dy="32">group_interval 5m,</tspan>
+      <tspan x="560" dy="32">repeat_interval 12h</tspan>
+    </text>
+
+    
+    <rect x="405" y="735" width="310" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(532, 765)">
+      <rect x="4" y="10" width="48" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 4 12 L 28 30 L 52 12" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    </g>
+
+    <text x="560" y="865" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="560" dy="0">One notification per</tspan>
+      <tspan x="560" dy="36">model and cluster</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="730" y1="745" x2="770" y2="745" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-solid)" />
+
+  
+  <g id="router-box">
+    <rect x="770" y="625" width="200" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(842, 650)">
+      <circle cx="12" cy="28" r="6" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 18 28 L 32 28" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 32 28 L 44 14" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 32 28 L 44 42" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="48" cy="12" r="4" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="48" cy="44" r="4" fill="none" stroke="#207448" stroke-width="4" />
+    </g>
+
+    <text x="870" y="755" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="870" dy="0">Route by</tspan>
+      <tspan x="870" dy="36">severity</tspan>
+    </text>
+  </g>
+
+  
+  
+  <path d="M 970 700 L 1005 700 L 1005 570 L 1230 570" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-solid)" />
+  
+  
+  <rect x="1015" y="545" width="190" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1110" y="574" text-anchor="middle" font-family="'SF Mono', Consolas, Monaco, monospace" font-size="24" font-weight="600" fill="#207448">severity=page</text>
+
+  
+  <path d="M 970 790 L 1005 790 L 1005 880 L 1230 880" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-solid)" />
+  
+  
+  <rect x="1005" y="855" width="210" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1110" y="884" text-anchor="middle" font-family="'SF Mono', Consolas, Monaco, monospace" font-size="24" font-weight="600" fill="#207448">severity=ticket</text>
+
+  
+  <g id="box-pager">
+    <rect x="1230" y="490" width="310" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(1255, 515)">
+      <rect x="6" y="8" width="44" height="36" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="14" y="16" width="28" height="12" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="14" y1="36" x2="22" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="28" y1="36" x2="36" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="4" x2="14" y2="8" stroke="#207448" stroke-width="4" />
+    </g>
+
+    <text x="1335" y="552" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">pager</text>
+    <text x="1385" y="612" text-anchor="middle" font-family="'SF Mono', Consolas, Monaco, monospace" font-size="24" fill="#303a36">repeat_interval 4h</text>
+  </g>
+
+  
+  <g id="box-ticket">
+    <rect x="1230" y="800" width="310" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(1255, 850)">
+      <path d="M 6 12 L 50 12 L 50 24 C 44 24 44 32 50 32 L 50 44 L 6 44 L 6 32 C 12 32 12 24 6 24 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <line x1="24" y1="20" x2="24" y2="36" stroke="#207448" stroke-width="3" stroke-dasharray="3,3" />
+    </g>
+
+    <text x="1335" y="890" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">ticket</text>
+  </g>
+
+  
+  
+  
+  <path d="M 1540 570 L 1570 570 L 1570 880 L 1540 880" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6,5" marker-end="url(#arrow-dashed-green)" />
+
+</svg>

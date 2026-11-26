@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Why a script works by hand and fails at 2 a.m.: what the environment changes</title>
+  <desc>Visual comparison between running a script interactively and under cron or systemd, showing environment differences, process limits, system inspection, and container considerations.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="50" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Why a script works by hand and fails at 2 a.m.:</text>
+  <text x="800" y="100" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">what the environment changes</text>
+
+  
+  <rect x="40" y="120" width="750" height="470" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(195, 134)">
+    <rect x="0" y="0" width="56" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 12 12 L 22 19 L 12 26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="28" y1="26" x2="42" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="223" y="200" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Run by hand</text>
+
+  
+  <g transform="translate(560, 134)">
+    <circle cx="28" cy="19" r="17" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 28 9 L 28 19 L 38 19" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="24" y1="0" x2="32" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="588" y="200" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Under cron or systemd</text>
+
+  
+  <rect x="56" y="212" width="344" height="58" rx="6" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="72" y="236" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="72" dy="0">Python:</tspan>
+    <tspan x="72" dy="25">the one in your venv</tspan>
+  </text>
+
+  <rect x="416" y="212" width="358" height="58" rx="6" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="432" y="249" font-family="sans-serif" font-size="24" fill="#303a36">a different Python</text>
+
+  
+  <rect x="56" y="278" width="344" height="58" rx="6" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="72" y="315" font-family="monospace" font-size="24" fill="#303a36">PATH: your full PATH</text>
+
+  <rect x="416" y="278" width="358" height="58" rx="6" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="432" y="315" font-family="monospace" font-size="24" fill="#303a36">a shorter PATH</text>
+
+  
+  <rect x="56" y="344" width="344" height="58" rx="6" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="72" y="368" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="72" dy="0">Current directory:</tspan>
+    <tspan x="72" dy="25">where you are</tspan>
+  </text>
+
+  <rect x="416" y="344" width="358" height="58" rx="6" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="432" y="381" font-family="monospace" font-size="24" fill="#303a36">/</text>
+
+  
+  <rect x="56" y="410" width="344" height="58" rx="6" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="72" y="434" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="72" dy="0">Terminal:</tspan>
+    <tspan x="72" dy="25">a TTY to print to</tspan>
+  </text>
+
+  <rect x="416" y="410" width="358" height="58" rx="6" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="432" y="447" font-family="sans-serif" font-size="24" fill="#303a36">no terminal</text>
+
+  
+  <rect x="56" y="482" width="718" height="92" rx="8" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="415" y="536" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">env, locale, umask, user, HOME, signals</text>
+
+  
+  <rect x="810" y="120" width="750" height="470" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(826, 134)">
+    <rect x="0" y="0" width="52" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="12" x2="52" y2="12" stroke="#207448" stroke-width="3"/>
+    <circle cx="22" cy="27" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="28" y1="32" x2="36" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="892" y="153" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="892" dy="0">What the script can read</tspan>
+    <tspan x="892" dy="32">about its world</tspan>
+  </text>
+
+  
+  <rect x="826" y="196" width="718" height="132" rx="8" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="842" y="221" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="842" dy="0">os.environ.get, os.getenv(X, default),</tspan>
+    <tspan x="842" dy="25">os.environ.copy(); sys.argv, sys.executable,</tspan>
+    <tspan x="842" dy="25">sys.platform; platform.node(), machine(),</tspan>
+    <tspan x="842" dy="25">release(); os.getpid(), getppid(),</tspan>
+    <tspan x="842" dy="25">getuid(), geteuid()</tspan>
+  </text>
+
+  
+  <rect x="826" y="336" width="718" height="104" rx="8" fill="#fff7ed" stroke="#db8129" stroke-width="3"/>
+  <text x="842" y="364" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="842" dy="0" font-family="monospace">len(os.sched_getaffinity(0))</tspan>
+    <tspan font-family="sans-serif"> gives usable CPUs</tspan>
+    <tspan x="842" dy="28">and respects cgroups and affinity better</tspan>
+    <tspan x="842" dy="28">than </tspan>
+    <tspan font-family="monospace">os.cpu_count()</tspan>
+  </text>
+
+  
+  <rect x="826" y="448" width="718" height="74" rx="8" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="842" y="476" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="842" dy="0">resource.getrlimit and</tspan>
+    <tspan x="842" dy="27">setrlimit(RLIMIT_NOFILE, (65536, 65536))</tspan>
+  </text>
+
+  
+  <rect x="826" y="530" width="718" height="48" rx="8" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="842" y="562" font-family="monospace" font-size="24" fill="#303a36">os.nice, os.sched_setaffinity, os.setsid</text>
+
+  
+  <rect x="40" y="605" width="1520" height="400" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(60, 617)">
+    <rect x="8" y="8" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="16" y1="0" x2="16" y2="8" stroke="#207448" stroke-width="3"/>
+    <line x1="26" y1="0" x2="26" y2="8" stroke="#207448" stroke-width="3"/>
+    <line x1="36" y1="0" x2="36" y2="8" stroke="#207448" stroke-width="3"/>
+    <line x1="16" y1="44" x2="16" y2="52" stroke="#207448" stroke-width="3"/>
+    <line x1="26" y1="44" x2="26" y2="52" stroke="#207448" stroke-width="3"/>
+    <line x1="36" y1="44" x2="36" y2="52" stroke="#207448" stroke-width="3"/>
+    <line x1="0" y1="16" x2="8" y2="16" stroke="#207448" stroke-width="3"/>
+    <line x1="0" y1="26" x2="8" y2="26" stroke="#207448" stroke-width="3"/>
+    <line x1="0" y1="36" x2="8" y2="36" stroke="#207448" stroke-width="3"/>
+    <line x1="44" y1="16" x2="52" y2="16" stroke="#207448" stroke-width="3"/>
+    <line x1="44" y1="26" x2="52" y2="26" stroke="#207448" stroke-width="3"/>
+    <line x1="44" y1="36" x2="52" y2="36" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="126" y="652" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">/proc, /sys and psutil</text>
+
+  
+  <rect x="56" y="670" width="730" height="154" rx="8" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="72" y="698" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="72" dy="0">psutil.cpu_percent(interval=1, percpu=True),</tspan>
+    <tspan x="72" dy="26">virtual_memory(), disk_usage(/),</tspan>
+    <tspan x="72" dy="26">net_io_counters(pernic=True),</tspan>
+    <tspan x="72" dy="26">process_iter([...]),</tspan>
+    <tspan x="72" dy="26">Process(pid).children(recursive=True)</tspan>
+  </text>
+
+  
+  <rect x="56" y="836" width="730" height="152" rx="8" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="72" y="878" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="72" dy="0">open(/proc/meminfo),</tspan>
+    <tspan x="72" dy="34">Path(/sys/class/net/eth0/speed),</tspan>
+    <tspan x="72" dy="34">Path(/proc/loadavg)</tspan>
+  </text>
+
+  
+  <rect x="810" y="670" width="734" height="130" rx="8" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="826" y="704" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="826" dy="0">values come back as text; files can vanish</tspan>
+    <tspan x="826" dy="30">when a process exits, so handle</tspan>
+    <tspan x="826" dy="30" font-family="monospace">FileNotFoundError</tspan>
+    <tspan font-family="sans-serif"> and </tspan>
+    <tspan font-family="monospace">ProcessLookupError</tspan>
+  </text>
+
+  
+  <rect x="810" y="812" width="734" height="176" rx="8" fill="#ffffff" stroke="#c3d9c8" stroke-width="1.5"/>
+  <text x="826" y="842" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="826" dy="0">containers see namespaced and cgroup-limited</tspan>
+    <tspan x="826" dy="27">views such as </tspan>
+    <tspan font-family="monospace">/sys/fs/cgroup/...</tspan>
+    <tspan font-family="sans-serif">; psutil totals</tspan>
+    <tspan x="826" dy="27">may show the host rather than your limit, so a</tspan>
+    <tspan x="826" dy="27">script can believe it has far more memory than</tspan>
+    <tspan x="826" dy="27">it may use</tspan>
+  </text>
+
+  
+  <rect x="40" y="1020" width="1520" height="84" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(60, 1034)">
+    <path d="M 22 2 L 40 9 L 40 26 C 40 38 22 46 22 46 C 22 46 4 38 4 26 L 4 9 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 14 23 L 20 29 L 31 18" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="120" y="1053" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="120" dy="0">use argparse, do not parse sys.argv by hand; configuration and secrets in environment variables</tspan>
+    <tspan x="120" dy="28">injected by systemd or Kubernetes; never log them wholesale</tspan>
+  </text>
+
+  
+  <rect x="40" y="1120" width="1520" height="60" rx="10" fill="#207448"/>
+  <text x="800" y="1161" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">The script did not change, the world around it did</text>
+</svg>

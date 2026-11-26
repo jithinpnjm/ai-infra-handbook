@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>In a container, count the cores you really get</title>
+  <desc>Visual comparison of container CPU discovery methods, throttling consequences, nested parallelism trap, and worker process lifecycle handling.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">In a container, count the cores you really get</text>
+
+  
+  <g id="header-context">
+    <rect x="40" y="95" width="1520" height="60" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="135" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">A comparison of two numbers on a container started with --cpus=2</text>
+  </g>
+
+  
+  
+  <g id="left-comparison">
+    <rect x="40" y="175" width="740" height="180" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(68, 202)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#db8129" stroke-width="4"/>
+      <rect x="14" y="14" width="28" height="28" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+      <line x1="28" y1="-8" x2="28" y2="0" stroke="#db8129" stroke-width="4"/>
+      <line x1="28" y1="56" x2="28" y2="64" stroke="#db8129" stroke-width="4"/>
+      <line x1="-8" y1="28" x2="0" y2="28" stroke="#db8129" stroke-width="4"/>
+      <line x1="56" y1="28" x2="64" y2="28" stroke="#db8129" stroke-width="4"/>
+    </g>
+    
+    <text x="148" y="222" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">os.cpu_count()</text>
+    <text x="148" y="256" font-family="sans-serif" font-size="24" fill="#303a36">reports the host's CPUs, for example the whole machine</text>
+    
+    
+    <rect x="148" y="280" width="460" height="50" rx="8" fill="#fcf1e5" stroke="#db8129" stroke-width="2"/>
+    <text x="378" y="313" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">wrong number to size a pool by</text>
+  </g>
+
+  
+  <g id="right-comparison">
+    <rect x="820" y="175" width="740" height="180" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(848, 202)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <polyline points="16,28 25,38 42,18" fill="none" stroke="#207448" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="28" y1="-8" x2="28" y2="0" stroke="#207448" stroke-width="4"/>
+      <line x1="28" y1="56" x2="28" y2="64" stroke="#207448" stroke-width="4"/>
+      <line x1="-8" y1="28" x2="0" y2="28" stroke="#207448" stroke-width="4"/>
+      <line x1="56" y1="28" x2="64" y2="28" stroke="#207448" stroke-width="4"/>
+    </g>
+    
+    <text x="928" y="235" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">len(os.sched_getaffinity(0))</text>
+    <text x="928" y="278" font-family="sans-serif" font-size="24" fill="#303a36">or read the cgroup</text>
+    <text x="1136" y="278" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">cpu.max</text>
+    <text x="1234" y="278" font-family="sans-serif" font-size="24" fill="#303a36">file</text>
+  </g>
+
+  
+  <g id="consequence-chain">
+    
+    <g id="step-1">
+      <rect x="40" y="415" width="260" height="175" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+      <circle cx="70" cy="445" r="18" fill="#db8129"/>
+      <text x="70" y="452" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">1</text>
+      
+      <g transform="translate(225, 427)">
+        <rect x="0" y="0" width="45" height="40" rx="5" fill="none" stroke="#db8129" stroke-width="3"/>
+        <line x1="8" y1="12" x2="37" y2="12" stroke="#db8129" stroke-width="3"/>
+        <line x1="8" y1="24" x2="25" y2="24" stroke="#db8129" stroke-width="3"/>
+      </g>
+      <text x="56" y="505" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="56" dy="0">pool sized by</tspan>
+        <tspan x="56" dy="32">the host count</tspan>
+      </text>
+    </g>
+
+    
+    <line x1="300" y1="502" x2="350" y2="502" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+
+    
+    <g id="step-2">
+      <rect x="355" y="415" width="260" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="385" cy="445" r="18" fill="#207448"/>
+      <text x="385" y="452" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">2</text>
+      
+      <g transform="translate(540, 427)">
+        <polygon points="5,10 22,2 40,10 40,30 22,38 5,30" fill="none" stroke="#207448" stroke-width="3"/>
+        <line x1="22" y1="2" x2="22" y2="38" stroke="#207448" stroke-width="3"/>
+      </g>
+      <text x="371" y="505" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="371" dy="0">oversubscribed</tspan>
+        <tspan x="371" dy="32">container</tspan>
+      </text>
+    </g>
+
+    
+    <line x1="615" y1="502" x2="665" y2="502" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+    
+    <g id="step-3">
+      <rect x="670" y="415" width="260" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="700" cy="445" r="18" fill="#207448"/>
+      <text x="700" y="452" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">3</text>
+      
+      <g transform="translate(855, 427)">
+        <circle cx="22" cy="20" r="15" fill="none" stroke="#207448" stroke-width="3"/>
+        <line x1="22" y1="2" x2="22" y2="8" stroke="#207448" stroke-width="3"/>
+        <line x1="22" y1="32" x2="22" y2="38" stroke="#207448" stroke-width="3"/>
+        <line x1="4" y1="20" x2="10" y2="20" stroke="#207448" stroke-width="3"/>
+        <line x1="34" y1="20" x2="40" y2="20" stroke="#207448" stroke-width="3"/>
+      </g>
+      <text x="686" y="505" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="686" dy="0">the kernel</tspan>
+        <tspan x="686" dy="32">throttles it</tspan>
+      </text>
+    </g>
+
+    
+    <line x1="930" y1="502" x2="980" y2="502" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+    
+    <g id="step-4">
+      <rect x="985" y="415" width="275" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="1015" cy="445" r="18" fill="#207448"/>
+      <text x="1015" y="452" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">4</text>
+      
+      <g transform="translate(1190, 427)">
+        <rect x="0" y="0" width="45" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+        <line x1="10" y1="30" x2="10" y2="22" stroke="#207448" stroke-width="4"/>
+        <line x1="22" y1="30" x2="22" y2="12" stroke="#207448" stroke-width="4"/>
+        <line x1="34" y1="30" x2="34" y2="17" stroke="#207448" stroke-width="4"/>
+      </g>
+      <text x="1001" y="505" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="1001" dy="0">throttling shows</tspan>
+        <tspan x="1001" dy="32">up in cpu.stat</tspan>
+      </text>
+    </g>
+
+    
+    <line x1="1260" y1="502" x2="1310" y2="502" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+    
+    <g id="step-5">
+      <rect x="1315" y="415" width="245" height="175" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+      <circle cx="1345" cy="445" r="18" fill="#db8129"/>
+      <text x="1345" y="452" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">5</text>
+      
+      <g transform="translate(1490, 427)">
+        <circle cx="20" cy="20" r="18" fill="none" stroke="#db8129" stroke-width="3"/>
+        <polyline points="20,10 20,20 28,26" fill="none" stroke="#db8129" stroke-width="3"/>
+      </g>
+      <text x="1331" y="520" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">slow runs</text>
+    </g>
+  </g>
+
+  
+  <g id="related-trap">
+    <rect x="40" y="630" width="1520" height="145" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(68, 665)">
+      <polygon points="28,2 54,48 2,48" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="28" y1="18" x2="28" y2="32" stroke="#207448" stroke-width="4"/>
+      <circle cx="28" cy="41" r="3" fill="#207448"/>
+    </g>
+    
+    <text x="145" y="680" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0" font-weight="bold">nested parallelism: a NumPy BLAS threads times a process pool oversubscribes the cores;</tspan>
+      <tspan x="145" dy="36">set </tspan>
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">OMP_NUM_THREADS=1</tspan>
+    </text>
+  </g>
+
+  
+  <g id="orphan-strip">
+    <rect x="40" y="815" width="1520" height="215" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(68, 855)">
+      <path d="M 28 4 L 52 14 L 52 32 C 52 46 28 54 28 54 C 28 54 4 46 4 32 L 4 14 Z" fill="none" stroke="#207448" stroke-width="4"/>
+      <polyline points="18,28 26,36 38,20" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+    
+    <text x="145" y="860" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">under fork children inherit signal handlers: handle </tspan>
+      <tspan font-family="monospace" font-weight="bold">SIGTERM</tspan>
+      <tspan> in the parent and call </tspan>
+      <tspan font-family="monospace" font-weight="bold">pool.terminate()</tspan>
+      <tspan>;</tspan>
+      <tspan x="145" dy="36">if the parent is killed with </tspan>
+      <tspan font-family="monospace" font-weight="bold">SIGKILL</tspan>
+      <tspan>, workers can be orphaned: use </tspan>
+      <tspan font-family="monospace" font-weight="bold">prctl(PR_SET_PDEATHSIG)</tspan>
+      <tspan x="145" dy="36">or a supervisor such as </tspan>
+      <tspan font-weight="bold">systemd</tspan>
+      <tspan> or </tspan>
+      <tspan font-weight="bold">Kubernetes</tspan>
+      <tspan>; use </tspan>
+      <tspan font-family="monospace" font-weight="bold">daemon=True</tspan>
+      <tspan> with care</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-takeaway">
+    <rect x="40" y="1065" width="1520" height="75" rx="12" fill="#207448"/>
+    <text x="800" y="1112" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Size pools to the cores your container really gets, and keep the tasks coarse</text>
+  </g>
+</svg>

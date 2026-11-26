@@ -1,0 +1,201 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A 1,024-GPU cluster address plan: one range per purpose</title>
+  <desc>Visual infographic explaining the network IP address allocation plan for a 1,024-GPU AI training cluster.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">A 1,024-GPU cluster address plan: one range per purpose</text>
+
+  
+  
+  <rect x="40" y="76" width="610" height="86" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="62" y="95" width="46" height="46" rx="4" />
+    <rect x="73" y="106" width="24" height="24" rx="2" fill="#207448" fill-opacity="0.15" />
+    <line x1="77" y1="91" x2="77" y2="95" />
+    <line x1="85" y1="91" x2="85" y2="95" />
+    <line x1="93" y1="91" x2="93" y2="95" />
+    <line x1="77" y1="141" x2="77" y2="145" />
+    <line x1="85" y1="141" x2="85" y2="145" />
+    <line x1="93" y1="141" x2="93" y2="145" />
+    <line x1="58" y1="110" x2="62" y2="110" />
+    <line x1="58" y1="118" x2="62" y2="118" />
+    <line x1="58" y1="126" x2="62" y2="126" />
+    <line x1="108" y1="110" x2="112" y2="110" />
+    <line x1="108" y1="118" x2="112" y2="118" />
+    <line x1="108" y1="126" x2="112" y2="126" />
+  </g>
+  <text x="128" y="129" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">128 nodes x 8 GPUs = 1,024 GPUs</text>
+
+  
+  <rect x="680" y="76" width="880" height="86" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="702" y="95" width="46" height="46" rx="4" />
+    <rect x="710" y="103" width="12" height="12" rx="2" />
+    <rect x="728" y="103" width="12" height="12" rx="2" />
+    <rect x="710" y="121" width="12" height="12" rx="2" />
+    <rect x="728" y="121" width="12" height="12" rx="2" />
+  </g>
+  <text x="768" y="112" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="768" dy="0">each node: 8 back-end NICs (one per GPU), </tspan>
+    <tspan x="768" dy="28">2 front-end NICs, 1 BMC</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="176" width="1080" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 85 196 L 105 204 L 105 224 C 105 238 85 248 85 248 C 85 248 65 238 65 224 L 65 204 Z" />
+    <circle cx="85" cy="220" r="4" fill="#207448" />
+  </g>
+  <text x="126" y="212" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="126" dy="0">Out-of-band (BMC, IPMI, Redfish, </tspan>
+    <tspan x="126" dy="28">switch management): 10.10.0.0/20, 4,094 addresses</tspan>
+  </text>
+
+  
+  <rect x="40" y="268" width="1080" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="63" y="289" width="46" height="42" rx="4" />
+    <line x1="63" y1="301" x2="109" y2="301" />
+    <polyline points="72,311 78,317 72,323" />
+    <line x1="84" y1="323" x2="96" y2="323" />
+  </g>
+  <text x="126" y="304" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="126" dy="0">In-band management and front end </tspan>
+    <tspan x="126" dy="28">(SSH, Slurm, Kubernetes node IPs): 10.20.0.0/20</tspan>
+  </text>
+
+  
+  <rect x="40" y="360" width="1080" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="85" cy="378" rx="20" ry="6" />
+    <path d="M 65 378 L 65 402 C 65 407 74 412 85 412 C 96 412 105 407 105 402 L 105 378" />
+    <path d="M 65 390 C 65 395 74 400 85 400 C 96 400 105 395 105 390" />
+  </g>
+  <text x="126" y="401" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Storage (parallel FS, NFS): 10.30.0.0/20</text>
+
+  
+  <rect x="40" y="428" width="1080" height="118" rx="8" fill="#fef6ed" stroke="#db8129" stroke-width="3" />
+  <g stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="63" y="464" width="46" height="46" rx="6" />
+    <circle cx="75" cy="476" r="4" fill="#db8129" />
+    <circle cx="97" cy="476" r="4" fill="#db8129" />
+    <circle cx="75" cy="498" r="4" fill="#db8129" />
+    <circle cx="97" cy="498" r="4" fill="#db8129" />
+    <line x1="75" y1="476" x2="97" y2="498" />
+    <line x1="97" y1="476" x2="75" y2="498" />
+  </g>
+  <text x="126" y="462" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="126" dy="0">Back-end compute fabric, rail r from 0 to 7: </tspan>
+    <tspan x="126" dy="28">10.100.r.0/21 or 10.(100+r).0.0/22, one subnet per rail </tspan>
+    <tspan x="126" dy="28">so each rail is its own L3 domain or VLAN</tspan>
+  </text>
+
+  
+  <rect x="40" y="550" width="1080" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="85,565 106,577 106,601 85,613 64,601 64,577" />
+    <line x1="85" y1="589" x2="85" y2="613" />
+    <line x1="85" y1="589" x2="106" y2="577" />
+    <line x1="85" y1="589" x2="64" y2="577" />
+  </g>
+  <text x="126" y="586" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="126" dy="0">Kubernetes pod CIDR: 10.64.0.0/14 (262,144 IPs) </tspan>
+    <tspan x="126" dy="28">with /24 per node, 254 pods per node</tspan>
+  </text>
+
+  
+  <rect x="40" y="642" width="1080" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="85" cy="686" r="10" />
+    <line x1="85" y1="667" x2="85" y2="672" />
+    <line x1="85" y1="700" x2="85" y2="705" />
+    <line x1="66" y1="686" x2="71" y2="686" />
+    <line x1="99" y1="686" x2="104" y2="686" />
+    <line x1="72" y1="673" x2="76" y2="677" />
+    <line x1="94" y1="695" x2="98" y2="699" />
+    <line x1="72" y1="699" x2="76" y2="695" />
+    <line x1="94" y1="677" x2="98" y2="673" />
+  </g>
+  <text x="126" y="678" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="126" dy="0">Kubernetes service CIDR: 10.96.0.0/16, 65,534 services, </tspan>
+    <tspan x="126" dy="28">cannot overlap anything routed</tspan>
+  </text>
+
+  
+  <rect x="40" y="734" width="1080" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="85" cy="778" r="18" />
+    <path d="M 85 765 C 93 765 98 770 98 778 C 98 786 91 791 80 791" />
+    <polyline points="84,786 78,791 84,796" />
+  </g>
+  <text x="126" y="770" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="126" dy="0">Loopbacks: 10.255.0.0/24, </tspan>
+    <tspan x="126" dy="28">one /32 per router, leaf and spine</tspan>
+  </text>
+
+  
+  <rect x="40" y="826" width="1080" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="64" y="860" width="16" height="16" rx="3" />
+    <rect x="92" y="860" width="16" height="16" rx="3" />
+    <line x1="80" y1="868" x2="92" y2="868" />
+    <circle cx="86" cy="868" r="2" fill="#207448" />
+  </g>
+  <text x="126" y="862" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="126" dy="0">Point-to-point leaf-spine links: 10.250.0.0/16, </tspan>
+    <tspan x="126" dy="28">each link a /31 or unnumbered BGP</tspan>
+  </text>
+
+  
+  <rect x="1145" y="176" width="415" height="738" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1327" y="202" width="50" height="52" rx="6" />
+    <line x1="1337" y1="216" x2="1367" y2="216" />
+    <line x1="1337" y1="228" x2="1367" y2="228" />
+    <line x1="1337" y1="240" x2="1355" y2="240" />
+    <path d="M 1342 196 L 1362 196" stroke-width="4" />
+  </g>
+  <text x="1165" y="292" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1165" dy="0" font-weight="bold" fill="#207448">Plan rules: </tspan>
+    <tspan x="1165" dy="38">hierarchical, aligned, </tspan>
+    <tspan x="1165" dy="38">summarisable; </tspan>
+    <tspan x="1165" dy="38">no overlap with </tspan>
+    <tspan x="1165" dy="38">anything you may </tspan>
+    <tspan x="1165" dy="38">connect to; </tspan>
+    <tspan x="1165" dy="38">room to grow four </tspan>
+    <tspan x="1165" dy="38">times; documented </tspan>
+    <tspan x="1165" dy="38">in IPAM; one purpose </tspan>
+    <tspan x="1165" dy="38">per range</tspan>
+  </text>
+
+  
+  <rect x="40" y="926" width="1520" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="86" cy="991" r="24" />
+    <line x1="86" y1="961" x2="86" y2="973" />
+    <line x1="86" y1="1009" x2="86" y2="1021" />
+    <line x1="56" y1="991" x2="68" y2="991" />
+    <line x1="104" y1="991" x2="116" y2="991" />
+    <circle cx="86" cy="991" r="8" fill="#207448" fill-opacity="0.2" />
+  </g>
+  <text x="135" y="962" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0" font-weight="bold">Consistent numbering: 10.100.&lt;rail&gt;.&lt;node&gt; tells you </tspan>
+    <tspan x="135" dy="30">the rail and node, and the NIC, without a database lookup; </tspan>
+    <tspan x="135" dy="30">when an alert names an address you know which machine and cable to check</tspan>
+  </text>
+
+  
+  <rect x="40" y="1068" width="1520" height="78" rx="10" fill="#207448" />
+  <g stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="86" cy="1107" r="18" />
+    <line x1="86" y1="1097" x2="86" y2="1111" />
+    <circle cx="86" cy="1118" r="1.5" fill="#ffffff" />
+  </g>
+  <text x="135" y="1116" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Renumbering a live cluster is painful, so settle the plan before the first cable goes in</text>
+</svg>

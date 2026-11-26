@@ -1,0 +1,264 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Grouping 200 failures into a short list of causes</title>
+  <desc>A pipeline of five command-line stations grouping 200 Ansible failure lines into a ranked list of unique causes.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="16" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 8 L 0 14 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Grouping 200 failures into a short list of causes</text>
+
+  
+  <g id="log-stack">
+    <rect x="40" y="205" width="200" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="112" y="222" width="56" height="42" rx="6" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="112" y1="234" x2="168" y2="234" stroke="#207448" stroke-width="2" />
+    <circle cx="122" cy="228" r="2" fill="#207448" />
+    <circle cx="128" cy="228" r="2" fill="#207448" />
+    <circle cx="134" cy="228" r="2" fill="#207448" />
+    <path d="M 124 246 L 132 251 L 124 256" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="136" y1="256" x2="146" y2="256" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+
+    
+    <text x="140" y="295" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="140" dy="0">ansible-</tspan>
+      <tspan x="140" dy="28">playbook</tspan>
+      <tspan x="140" dy="28">output</tspan>
+    </text>
+
+    
+    <rect x="55" y="385" width="170" height="8" rx="4" fill="#b0c4b8" />
+    <rect x="55" y="403" width="140" height="8" rx="4" fill="#b0c4b8" />
+
+    
+    <rect x="48" y="421" width="184" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="140" y="447" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">FAILED</text>
+
+    <rect x="55" y="468" width="155" height="8" rx="4" fill="#b0c4b8" />
+
+    
+    <rect x="48" y="486" width="184" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="140" y="512" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">UNREACHABLE</text>
+
+    <rect x="55" y="533" width="160" height="8" rx="4" fill="#b0c4b8" />
+    <rect x="55" y="551" width="130" height="8" rx="4" fill="#b0c4b8" />
+  </g>
+
+  
+  <line x1="240" y1="390" x2="280" y2="390" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <g id="station-1">
+    
+    <circle cx="387" cy="165" r="24" fill="#207448" />
+    <text x="387" y="175" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+    <rect x="280" y="205" width="215" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 364 225 L 410 225 L 393 252 L 393 277 L 381 271 L 381 252 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+
+    
+    <text x="387" y="318" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="387" dy="0">grep -E</tspan>
+      <tspan x="387" dy="30">fatal:|FAILED</tspan>
+    </text>
+
+    <line x1="305" y1="375" x2="470" y2="375" stroke="#b0c4b8" stroke-width="1.5" />
+
+    
+    <text x="387" y="425" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="387" dy="0">keeps only</tspan>
+      <tspan x="387" dy="36">the failure</tspan>
+      <tspan x="387" dy="36">lines</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="495" y1="390" x2="535" y2="390" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <g id="station-2">
+    
+    <circle cx="637" cy="165" r="24" fill="#207448" />
+    <text x="637" y="175" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+    <rect x="535" y="205" width="205" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="622" cy="235" r="9" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="622" cy="265" r="9" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="629" y1="240" x2="656" y2="265" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="629" y1="260" x2="656" y2="235" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+
+    
+    <text x="637" y="318" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="637" dy="0">sed</tspan>
+      <tspan x="637" dy="30">s/.*=&gt; //</tspan>
+    </text>
+
+    <line x1="555" y1="375" x2="720" y2="375" stroke="#b0c4b8" stroke-width="1.5" />
+
+    
+    <text x="637" y="415" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="637" dy="0">strips the</tspan>
+      <tspan x="637" dy="30">front of</tspan>
+      <tspan x="637" dy="30">each line,</tspan>
+      <tspan x="637" dy="30">leaving the</tspan>
+      <tspan x="637" dy="30">message</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="740" y1="390" x2="780" y2="390" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <g id="station-3">
+    
+    <circle cx="869" cy="165" r="24" fill="#207448" />
+    <text x="869" y="175" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+    <rect x="780" y="205" width="178" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <line x1="855" y1="272" x2="855" y2="230" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M 847 242 L 855 228 L 863 242" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="883" y1="230" x2="883" y2="272" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M 875 260 L 883 274 L 891 260" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+
+    
+    <text x="869" y="335" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">sort</text>
+
+    <line x1="800" y1="375" x2="938" y2="375" stroke="#b0c4b8" stroke-width="1.5" />
+
+    
+    <text x="869" y="415" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="869" dy="0">puts</tspan>
+      <tspan x="869" dy="30">identical</tspan>
+      <tspan x="869" dy="30">messages</tspan>
+      <tspan x="869" dy="30">next to</tspan>
+      <tspan x="869" dy="30">each other</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="958" y1="390" x2="998" y2="390" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <g id="station-4">
+    
+    <circle cx="1068" cy="165" r="24" fill="#207448" />
+    <text x="1068" y="175" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+
+    <rect x="998" y="205" width="140" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <line x1="1048" y1="230" x2="1048" y2="270" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="1058" y1="230" x2="1058" y2="270" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="1068" y1="230" x2="1068" y2="270" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="1078" y1="230" x2="1078" y2="270" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="1042" y1="264" x2="1084" y2="236" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+
+    
+    <text x="1068" y="335" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">uniq -c</text>
+
+    <line x1="1018" y1="375" x2="1118" y2="375" stroke="#b0c4b8" stroke-width="1.5" />
+
+    
+    <text x="1068" y="430" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1068" dy="0">counts</tspan>
+      <tspan x="1068" dy="36">each</tspan>
+      <tspan x="1068" dy="36">message</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1138" y1="390" x2="1178" y2="390" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <g id="station-5">
+    
+    <circle cx="1275" cy="165" r="24" fill="#207448" />
+    <text x="1275" y="175" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+
+    <rect x="1178" y="205" width="194" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="1251" y="230" width="10" height="42" rx="2" fill="#207448" />
+    <rect x="1267" y="244" width="10" height="28" rx="2" fill="#207448" />
+    <rect x="1283" y="258" width="10" height="14" rx="2" fill="#207448" />
+    <line x1="1301" y1="230" x2="1301" y2="268" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <path d="M 1295 260 L 1301 270 L 1307 260" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+    
+    <text x="1275" y="335" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">sort -rn</text>
+
+    <line x1="1198" y1="375" x2="1352" y2="375" stroke="#b0c4b8" stroke-width="1.5" />
+
+    
+    <text x="1275" y="420" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1275" dy="0">lists the</tspan>
+      <tspan x="1275" dy="32">most common</tspan>
+      <tspan x="1275" dy="32">message</tspan>
+      <tspan x="1275" dy="32">first</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1372" y1="390" x2="1412" y2="390" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <g id="ranked-list">
+    <rect x="1412" y="205" width="148" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="1458" y="222" width="56" height="42" rx="6" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="1468" y1="234" x2="1476" y2="234" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="1484" y1="234" x2="1504" y2="234" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="1468" y1="244" x2="1476" y2="244" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="1484" y1="244" x2="1498" y2="244" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="1468" y1="254" x2="1476" y2="254" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="1484" y1="254" x2="1494" y2="254" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+    
+    <rect x="1422" y="295" width="128" height="42" rx="6" fill="#db8129" />
+    <rect x="1428" y="302" width="34" height="28" rx="4" fill="#ffffff" />
+    <rect x="1468" y="309" width="74" height="14" rx="3" fill="#ffffff" />
+
+    
+    <rect x="1422" y="350" width="128" height="40" rx="6" fill="#ffffff" stroke="#b0c4b8" stroke-width="1.5" />
+    <rect x="1428" y="356" width="34" height="28" rx="4" fill="#e8f1ea" />
+    <rect x="1468" y="363" width="62" height="14" rx="3" fill="#207448" />
+
+    
+    <rect x="1422" y="402" width="128" height="40" rx="6" fill="#ffffff" stroke="#b0c4b8" stroke-width="1.5" />
+    <rect x="1428" y="408" width="34" height="28" rx="4" fill="#e8f1ea" />
+    <rect x="1468" y="415" width="50" height="14" rx="3" fill="#70847b" />
+
+    
+    <rect x="1422" y="454" width="128" height="40" rx="6" fill="#ffffff" stroke="#b0c4b8" stroke-width="1.5" />
+    <rect x="1428" y="460" width="34" height="28" rx="4" fill="#e8f1ea" />
+    <rect x="1468" y="467" width="40" height="14" rx="3" fill="#b0c4b8" />
+
+    
+    <rect x="1422" y="506" width="128" height="40" rx="6" fill="#ffffff" stroke="#b0c4b8" stroke-width="1.5" />
+    <rect x="1428" y="512" width="34" height="28" rx="4" fill="#e8f1ea" />
+    <rect x="1468" y="519" width="30" height="14" rx="3" fill="#b0c4b8" />
+  </g>
+
+  
+  <g id="pipeline-note">
+    <rect x="160" y="620" width="1280" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="800" y="658" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="800" dy="0">examine one representative from each group,</tspan>
+      <tspan x="800" dy="32">then sort the failing hosts by group, rack or OS</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="100" y="745" width="1400" height="80" rx="12" fill="#207448" />
+    <text x="800" y="794" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Group the errors first, then examine a few representatives from each group</text>
+  </g>
+</svg>

@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Spot the address: what each special IPv4 range tells you on sight</title>
+  <desc>Visual infographic explaining special IPv4 address ranges and their operational meanings.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Spot the address: what each special IPv4 range tells you on sight</text>
+
+  
+  
+  <g id="card-1">
+    <rect x="40" y="115" width="480" height="250" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="2"/>
+    
+    <g transform="translate(62, 137)">
+      <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <ellipse cx="24" cy="24" rx="10" ry="22" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="2" y1="24" x2="46" y2="24" stroke="#207448" stroke-width="3"/>
+    </g>
+    
+    <text x="126" y="170" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">0.0.0.0/8</text>
+    
+    <text x="64" y="235" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">this network; 0.0.0.0 as a</tspan>
+      <tspan x="64" dy="32">listen address is all interfaces,</tspan>
+      <tspan x="64" dy="32">as a route is default</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-2">
+    <rect x="560" y="115" width="480" height="250" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="2"/>
+    
+    <g transform="translate(582, 135)">
+      <path d="M 24 2 L 44 10 L 44 26 C 44 38 24 46 24 46 C 24 46 4 38 4 26 L 4 10 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M 16 24 L 24 16 L 32 24 M 24 18 L 24 32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="646" y="152" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="646" dy="0">10.0.0.0/8,</tspan>
+      <tspan x="646" dy="34">172.16.0.0/12,</tspan>
+      <tspan x="646" dy="34">192.168.0.0/16</tspan>
+    </text>
+    
+    <text x="584" y="268" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="584" dy="0">private RFC 1918, not routable on</tspan>
+      <tspan x="584" dy="32">the public Internet, overlaps are common</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-3">
+    <rect x="1080" y="115" width="480" height="250" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="2"/>
+    
+    <g transform="translate(1102, 137)">
+      <path d="M 12 36 A 10 10 0 0 1 12 18 A 14 14 0 0 1 36 14 A 12 12 0 0 1 44 26 A 8 8 0 0 1 40 36 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <circle cx="20" cy="27" r="3" fill="#207448"/>
+      <circle cx="32" cy="27" r="3" fill="#207448"/>
+      <line x1="23" y1="27" x2="29" y2="27" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    
+    <text x="1166" y="170" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">100.64.0.0/10</text>
+    
+    <text x="1104" y="222" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1104" dy="0">shared address space or CGNAT,</tspan>
+      <tspan x="1104" dy="32">used by ISPs and some clouds and</tspan>
+      <tspan x="1104" dy="32">Kubernetes designs to avoid</tspan>
+      <tspan x="1104" dy="32">RFC 1918 clashes</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="card-4">
+    <rect x="40" y="385" width="480" height="250" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="2"/>
+    
+    <g transform="translate(62, 407)">
+      <path d="M 38 20 A 16 16 0 1 1 24 8 L 24 2" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 16 8 L 24 2 L 32 8" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    
+    <text x="126" y="440" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">127.0.0.0/8</text>
+    
+    <text x="64" y="500" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">loopback, the whole /8 is the</tspan>
+      <tspan x="64" dy="32">host itself; systemd-resolved stub</tspan>
+      <tspan x="64" dy="32">on 127.0.0.53</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-5">
+    <rect x="560" y="385" width="480" height="250" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(582, 407)">
+      <path d="M 24 4 L 46 42 L 2 42 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+      <line x1="24" y1="18" x2="24" y2="28" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="24" cy="35" r="2.5" fill="#db8129"/>
+    </g>
+    
+    <text x="646" y="440" font-family="monospace" font-size="32" font-weight="bold" fill="#db8129">169.254.0.0/16</text>
+    
+    <text x="584" y="490" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="584" dy="0">link-local APIPA, self-assigned when</tspan>
+      <tspan x="584" dy="30">DHCP fails; cloud metadata server</tspan>
+      <tspan x="584" dy="30">169.254.169.254</tspan>
+    </text>
+    
+    <rect x="584" y="570" width="432" height="46" rx="8" fill="#fbeee0" stroke="#db8129" stroke-width="2"/>
+    <text x="800" y="602" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#b85d10">this host failed to get an address</text>
+  </g>
+
+  
+  <g id="card-6">
+    <rect x="1080" y="385" width="480" height="250" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="2"/>
+    
+    <g transform="translate(1102, 407)">
+      <path d="M 8 4 L 32 4 L 42 14 L 42 44 L 8 44 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M 32 4 L 32 14 L 42 14" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="16" y1="24" x2="34" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="16" y1="32" x2="30" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="1160" y="420" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="1160" dy="0">192.0.2.0/24,</tspan>
+      <tspan x="1160" dy="32">198.51.100.0/24,</tspan>
+      <tspan x="1160" dy="32">203.0.113.0/24</tspan>
+      <tspan x="1160" dy="32">(and 192.0.0.0/24)</tspan>
+    </text>
+    
+    <text x="1104" y="570" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1104" dy="0">documentation TEST-NET,</tspan>
+      <tspan x="1104" dy="32">never on real networks</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="card-7">
+    <rect x="40" y="655" width="480" height="250" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="2"/>
+    
+    <g transform="translate(62, 677)">
+      <path d="M 6 36 A 20 20 0 1 1 42 36" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="24" cy="28" r="3" fill="#207448"/>
+      <line x1="24" y1="28" x2="36" y2="16" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    
+    <text x="126" y="710" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">198.18.0.0/15</text>
+    
+    <text x="64" y="785" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">benchmarking, test labs</text>
+  </g>
+
+  
+  <g id="card-8">
+    <rect x="560" y="655" width="480" height="250" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="2"/>
+    
+    <g transform="translate(582, 677)">
+      <circle cx="24" cy="36" r="4" fill="#207448"/>
+      <path d="M 16 26 A 12 12 0 0 1 32 26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 10 18 A 20 20 0 0 1 38 18" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 4 10 A 28 28 0 0 1 44 10" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="646" y="710" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">224.0.0.0/4</text>
+    
+    <text x="584" y="760" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="584" dy="0">multicast; 224.0.0.1 all hosts,</tspan>
+      <tspan x="584" dy="30">224.0.0.5 and 224.0.0.6 OSPF,</tspan>
+      <tspan x="584" dy="30">224.0.0.18 VRRP, 239/8</tspan>
+      <tspan x="584" dy="30">administratively scoped</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-9">
+    <rect x="1080" y="655" width="480" height="250" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="2"/>
+    
+    <g transform="translate(1102, 677)">
+      <rect x="8" y="18" width="32" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 14 18 L 14 12 A 10 10 0 0 1 34 12 L 34 18" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="24" cy="30" r="3" fill="#207448"/>
+      <line x1="24" y1="33" x2="24" y2="38" stroke="#207448" stroke-width="3"/>
+    </g>
+    
+    <text x="1166" y="710" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">240.0.0.0/4</text>
+    
+    <text x="1104" y="775" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1104" dy="0">reserved Class E;</tspan>
+      <tspan x="1104" dy="32">255.255.255.255 limited broadcast</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-strip">
+    <rect x="40" y="925" width="1520" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(64, 947)">
+      <rect x="4" y="6" width="36" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 12 30 L 12 38 L 44 38 L 44 18 L 40 18" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="16" y1="18" x2="28" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="128" y="964" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" fill="#207448">Overlap traps: </tspan>
+      <tspan>on-premises networks, VPNs, cloud VPCs and peerings, Kubernetes pod and service CIDRs,</tspan>
+      <tspan x="128" dy="34">container bridge defaults (Docker uses 172.17.0.0/16, which can clash with 172.16/12), lab ranges;</tspan>
+      <tspan x="128" dy="34" font-weight="bold">keep a central registry (IPAM: NetBox, phpIPAM, Infoblox)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1105" width="1520" height="65" rx="10" fill="#207448"/>
+    <text x="800" y="1146" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Check every new range against your VPN and peering plans before you assign it</text>
+  </g>
+</svg>

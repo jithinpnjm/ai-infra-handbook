@@ -1,0 +1,265 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>NCCL environment variables grouped by what they decide</title>
+  <desc>Visual categorization of NCCL environment variables across traffic routing, performance tuning, diagnosis switches, reliability, and operational habits.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="62" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">NCCL environment variables grouped by what they decide</text>
+
+  
+  
+  
+  <rect x="40" y="95" width="735" height="510" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="72" cy="138" r="8"/>
+    <circle cx="106" cy="122" r="7"/>
+    <circle cx="106" cy="154" r="7"/>
+    <path d="M80 138 h12 M92 138 v-16 h7 M92 138 v16 h7"/>
+  </g>
+  <text x="130" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Where traffic goes</text>
+
+  
+  <rect x="55" y="175" width="705" height="118" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="75" y="202" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_SOCKET_IFNAME</tspan>
+    <tspan font-family="sans-serif"> interfaces for bootstrap</tspan>
+  </text>
+  <text x="75" y="229" font-family="sans-serif" font-size="24" fill="#303a36">and sockets (prefixes, comma-separated,</text>
+  <text x="75" y="256" font-size="24" fill="#303a36">
+    <tspan font-family="sans-serif">^ excludes, = exact; typical </tspan>
+    <tspan font-family="monospace" fill="#207448">^lo,docker</tspan>
+  </text>
+  <text x="75" y="283" font-family="sans-serif" font-size="24" fill="#303a36">or an explicit fabric NIC)</text>
+
+  
+  <rect x="55" y="301" width="705" height="88" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="75" y="328" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_IB_HCA</tspan>
+    <tspan font-family="sans-serif"> which adapters</tspan>
+  </text>
+  <text x="75" y="355" font-family="sans-serif" font-size="24" fill="#303a36">(hca[:port[:rail[:plane]]],</text>
+  <text x="75" y="382" font-size="24" fill="#303a36">
+    <tspan font-family="sans-serif">example </tspan>
+    <tspan font-family="monospace" fill="#207448">mlx5_0,mlx5_1</tspan>
+    <tspan font-family="sans-serif">)</tspan>
+  </text>
+
+  
+  <rect x="55" y="397" width="705" height="60" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="75" y="422" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_IB_GID_INDEX</tspan>
+    <tspan font-family="sans-serif"> for RoCE,</tspan>
+  </text>
+  <text x="75" y="449" font-size="24" fill="#303a36">
+    <tspan font-family="sans-serif">find with </tspan>
+    <tspan font-family="monospace" fill="#207448">show_gids</tspan>
+  </text>
+
+  
+  <rect x="55" y="465" width="705" height="60" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="75" y="490" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_CROSS_NIC</tspan>
+    <tspan font-family="sans-serif"> whether rings may use</tspan>
+  </text>
+  <text x="75" y="517" font-family="sans-serif" font-size="24" fill="#303a36">different NICs on different nodes</text>
+
+  
+  <rect x="55" y="533" width="705" height="60" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="75" y="558" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_NET_GDR_LEVEL</tspan>
+    <tspan font-family="sans-serif"> maximum GPU-NIC</tspan>
+  </text>
+  <text x="75" y="585" font-family="sans-serif" font-size="24" fill="#303a36">distance for GPUDirect RDMA</text>
+
+  
+  
+  
+  <rect x="825" y="95" width="735" height="510" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M852 148 a22 22 0 1 1 42 0"/>
+    <line x1="873" y1="138" x2="885" y2="124"/>
+  </g>
+  <text x="915" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">How fast it moves</text>
+
+  
+  <rect x="840" y="175" width="705" height="60" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="860" y="200" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_ALGO</tspan>
+    <tspan font-family="sans-serif"> and </tspan>
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_PROTO</tspan>
+    <tspan font-family="sans-serif"> force algorithm</tspan>
+  </text>
+  <text x="860" y="227" font-family="sans-serif" font-size="24" fill="#303a36">or protocol, use only to test</text>
+
+  
+  <rect x="840" y="243" width="705" height="60" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="860" y="268" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_BUFFSIZE</tspan>
+    <tspan font-family="sans-serif"> default 4 MiB (4194304),</tspan>
+  </text>
+  <text x="860" y="295" font-family="sans-serif" font-size="24" fill="#303a36">raise stepwise while watching GPU memory</text>
+
+  
+  <rect x="840" y="311" width="705" height="88" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="860" y="336" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_NSOCKS_PERTHREAD</tspan>
+    <tspan font-family="sans-serif"> times</tspan>
+  </text>
+  <text x="860" y="363" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_SOCKET_NTHREADS</tspan>
+    <tspan font-family="sans-serif"> cannot exceed</tspan>
+  </text>
+  <text x="860" y="390" font-family="sans-serif" font-size="24" fill="#303a36">64 sockets per communicator</text>
+
+  
+  <rect x="840" y="407" width="705" height="60" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="860" y="432" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_MIN_NCHANNELS</tspan>
+    <tspan font-family="sans-serif"> and </tspan>
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_MAX_NCHANNELS</tspan>
+    <tspan font-family="sans-serif">,</tspan>
+  </text>
+  <text x="860" y="459" font-family="sans-serif" font-size="24" fill="#303a36">each channel uses one CUDA block</text>
+
+  
+  <rect x="840" y="475" width="705" height="60" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="860" y="500" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_MNNVL_ENABLE</tspan>
+    <tspan font-family="sans-serif"> for multi-node</tspan>
+  </text>
+  <text x="860" y="527" font-family="sans-serif" font-size="24" fill="#303a36">NVLink such as NVL72</text>
+
+  
+  <rect x="840" y="543" width="705" height="50" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="860" y="575" font-family="monospace" font-weight="bold" font-size="24" fill="#207448">NCCL_IGNORE_CPU_AFFINITY=1</text>
+
+  
+  
+  
+  <rect x="40" y="625" width="735" height="548" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M68 672 l18 -18 a6 6 0 0 1 8 0 l2 2 a6 6 0 0 1 0 8 l-18 18 z"/>
+    <circle cx="96" cy="654" r="10"/>
+  </g>
+  <text x="130" y="678" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Diagnosis switches</text>
+
+  
+  <rect x="55" y="705" width="705" height="88" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="75" y="731" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_DEBUG</tspan>
+    <tspan font-family="sans-serif"> VERSION, WARN, INFO plus</tspan>
+  </text>
+  <text x="75" y="758" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_DEBUG_SUBSYS</tspan>
+    <tspan font-family="sans-serif"> INIT,NET,GRAPH,ENV and</tspan>
+  </text>
+  <text x="75" y="785" font-family="monospace" font-size="24" fill="#207448">NCCL_DEBUG_FILE=file.%h.%p</text>
+
+  
+  <rect x="55" y="801" width="705" height="60" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+  <rect x="55" y="801" width="8" height="60" rx="4" fill="#db8129"/>
+  <text x="75" y="826" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#db8129">NCCL_IB_DISABLE</tspan>
+    <tspan font-family="sans-serif"> falls back to sockets,</tspan>
+  </text>
+  <text x="75" y="853" font-family="sans-serif" font-weight="bold" font-size="24" fill="#db8129">a performance cliff</text>
+
+  
+  <rect x="55" y="869" width="705" height="60" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="75" y="894" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_P2P_LEVEL</tspan>
+    <tspan font-family="sans-serif">, </tspan>
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_P2P_DISABLE</tspan>
+    <tspan font-family="sans-serif">,</tspan>
+  </text>
+  <text x="75" y="921" font-family="monospace" font-weight="bold" font-size="24" fill="#207448">NCCL_SHM_DISABLE</text>
+
+  
+  <rect x="55" y="937" width="705" height="60" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="75" y="962" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_SHARP_DISABLE=1</tspan>
+    <tspan font-family="sans-serif"> to test</tspan>
+  </text>
+  <text x="75" y="989" font-family="sans-serif" font-size="24" fill="#303a36">in-network aggregation</text>
+
+  
+  <rect x="55" y="1005" width="705" height="60" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="75" y="1030" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_TOPO_DUMP_FILE</tspan>
+    <tspan font-family="sans-serif"> and </tspan>
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_TOPO_FILE</tspan>
+  </text>
+  <text x="75" y="1057" font-family="sans-serif" font-size="24" fill="#303a36">for virtualised hosts</text>
+
+  
+  <rect x="55" y="1073" width="705" height="88" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="75" y="1099" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_IB_TIMEOUT</tspan>
+    <tspan font-family="sans-serif"> 4.096 us times 2^value,</tspan>
+  </text>
+  <text x="75" y="1126" font-size="24" fill="#303a36">
+    <tspan font-family="sans-serif">raise if </tspan>
+    <tspan font-family="monospace" fill="#207448">ibv_poll_cq</tspan>
+    <tspan font-family="sans-serif"> error 12</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="825" y="625" width="735" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M853 644 h40 v14 c0 16 -20 24 -20 24 c0 0 -20 -8 -20 -24 z"/>
+  </g>
+  <text x="915" y="674" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Reliability</text>
+
+  
+  <rect x="840" y="698" width="705" height="56" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="860" y="734" font-family="monospace" font-weight="bold" font-size="24" fill="#207448">NCCL_RAS_ENABLE</text>
+
+  
+  
+  
+  <rect x="825" y="785" width="735" height="388" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="853" y="806" width="36" height="42" rx="4"/>
+    <path d="M865 806 v-4 h12 v4"/>
+    <path d="M862 826 l5 5 l10 -10"/>
+  </g>
+  <text x="915" y="836" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Habits</text>
+
+  
+  <rect x="840" y="865" width="705" height="135" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="860" y="896" font-family="sans-serif" font-size="24" fill="#303a36">set only the minimum; site-wide settings in</text>
+  <text x="860" y="926" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">NCCL_CONF_FILE</tspan>
+    <tspan font-family="sans-serif"> or </tspan>
+    <tspan font-family="monospace" fill="#207448">/etc/nccl.conf</tspan>
+    <tspan font-family="sans-serif"> or in the</tspan>
+  </text>
+  <text x="860" y="956" font-family="sans-serif" font-size="24" fill="#303a36">module so users do not paste folklore;</text>
+
+  
+  <rect x="840" y="1015" width="705" height="135" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="860" y="1046" font-size="24" fill="#303a36">
+    <tspan font-family="sans-serif">PyTorch adds </tspan>
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">TORCH_NCCL_ASYNC_ERROR_HANDLING</tspan>
+    <tspan font-family="sans-serif">,</tspan>
+  </text>
+  <text x="860" y="1076" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">TORCH_NCCL_BLOCKING_WAIT</tspan>
+    <tspan font-family="sans-serif"> and</tspan>
+  </text>
+  <text x="860" y="1106" font-family="monospace" font-weight="bold" font-size="24" fill="#207448">init_process_group(timeout=...)</text>
+</svg>

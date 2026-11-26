@@ -1,0 +1,237 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Retry storm versus retry budget and circuit breaker</title>
+  <desc>Visual comparison between an uncontrolled retry storm multiplying backend load and defensive controls using retry budgets, timeouts, and circuit breakers.</desc>
+
+  <defs>
+    
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#db8129" />
+    </marker>
+
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36" text-anchor="middle">
+    Retry storm versus retry budget and circuit breaker
+  </text>
+
+  
+  
+  
+  <rect x="40" y="100" width="640" height="960" rx="16" fill="#fcf8f4" stroke="#db8129" stroke-width="3" />
+
+  
+  <g transform="translate(65, 125)">
+    
+    <path d="M 24 4 L 44 40 L 4 40 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+    <line x1="24" y1="18" x2="24" y2="28" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    <circle cx="24" cy="34" r="2.5" fill="#db8129" />
+    <text x="56" y="32" font-family="sans-serif" font-size="32px" font-weight="bold" fill="#db8129">No budget</text>
+  </g>
+
+  
+  <g transform="translate(325, 430)">
+    <circle cx="35" cy="35" r="55" fill="#faebd7" stroke="#db8129" stroke-width="2" stroke-dasharray="6 4" opacity="0.6" />
+    
+    <path d="M 15 35 A 12 12 0 0 1 33 22 A 16 16 0 0 1 58 27 A 12 12 0 0 1 60 42 L 18 42 A 8 8 0 0 1 15 35 Z" fill="none" stroke="#db8129" stroke-width="3.5" />
+    <path d="M 33 43 L 26 53 L 34 53 L 28 65" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 47 43 L 42 51 L 48 51 L 44 60" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  
+  <rect x="170" y="180" width="380" height="95" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <circle cx="205" cy="227" r="20" fill="#db8129" />
+  <text x="205" y="235" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="238" y="222" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="238">backend times out</tspan>
+    <tspan x="238" dy="30">during a traffic peak</tspan>
+  </text>
+
+  
+  <rect x="370" y="325" width="280" height="95" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <circle cx="405" cy="372" r="20" fill="#db8129" />
+  <text x="405" y="380" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="438" y="367" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="438">every client</tspan>
+    <tspan x="438" dy="30">retries</tspan>
+  </text>
+
+  
+  <rect x="320" y="495" width="330" height="125" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <circle cx="355" cy="557" r="20" fill="#db8129" />
+  <text x="355" y="565" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="388" y="537" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="388">each retry adds</tspan>
+    <tspan x="388" dy="30">load to the backend</tspan>
+    <tspan x="388" dy="30">already struggling</tspan>
+  </text>
+
+  
+  <rect x="70" y="645" width="300" height="95" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <circle cx="105" cy="692" r="20" fill="#db8129" />
+  <text x="105" y="700" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <text x="138" y="687" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="138">backend times</tspan>
+    <tspan x="138" dy="30">out more</tspan>
+  </text>
+
+  
+  <rect x="60" y="390" width="280" height="95" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <circle cx="95" cy="437" r="20" fill="#db8129" />
+  <text x="95" y="445" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  <text x="128" y="432" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="128">even more</tspan>
+    <tspan x="128" dy="30">retries fire</tspan>
+  </text>
+
+  
+  
+  <path d="M 510 275 L 510 320" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+  
+  <path d="M 510 420 L 510 490" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+  
+  <path d="M 320 575 C 290 575, 290 645, 250 645" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+  
+  <path d="M 190 645 L 190 490" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+  
+  <path d="M 190 390 L 190 280" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="70" y="800" width="580" height="135" rx="12" fill="#fff3e6" stroke="#db8129" stroke-width="2.5" />
+  <g transform="translate(100, 845)">
+    <circle cx="20" cy="20" r="18" fill="none" stroke="#db8129" stroke-width="3" />
+    <line x1="20" y1="12" x2="20" y2="22" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <circle cx="20" cy="27" r="2" fill="#db8129" />
+  </g>
+  <text x="375" y="855" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#b55d14" text-anchor="middle">
+    <tspan x="375">retries meant to hide a fault</tspan>
+    <tspan x="375" dy="38">end up multiplying it</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="720" y="100" width="840" height="960" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+  
+  <g transform="translate(745, 125)">
+    
+    <path d="M 24 4 L 42 12 L 42 26 C 42 38 24 46 24 46 C 24 46 6 38 6 26 L 6 12 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 16 24 L 22 30 L 32 18" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="56" y="32" font-family="sans-serif" font-size="32px" font-weight="bold" fill="#207448">With controls</text>
+  </g>
+
+  
+  <rect x="750" y="175" width="780" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(765, 215)">
+    <path d="M 8 36 A 22 22 0 1 1 42 36" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="25" y1="25" x2="35" y2="15" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <circle cx="25" cy="25" r="3" fill="#207448" />
+  </g>
+  <text x="825" y="210" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="825">retry budget: allow retries only as a small</tspan>
+    <tspan x="825" dy="28">share of the normal request rate, so a broken</tspan>
+    <tspan x="825" dy="28">backend receives a little extra work rather</tspan>
+    <tspan x="825" dy="28">than a flood</tspan>
+  </text>
+
+  
+  
+  <rect x="750" y="325" width="375" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(765, 345)">
+    <circle cx="20" cy="20" r="16" fill="none" stroke="#207448" stroke-width="3.5" />
+    <polyline points="20 12 20 20 26 24" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="815" y="374" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">per-try timeouts</text>
+
+  
+  <rect x="1155" y="325" width="375" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1168, 345)">
+    <path d="M 8 20 L 20 8 L 32 20 L 20 32 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+    <circle cx="20" cy="20" r="3" fill="#207448" />
+  </g>
+  <text x="1215" y="360" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+    <tspan x="1215">use hedged requests</tspan>
+    <tspan x="1215" dy="28">carefully</tspan>
+  </text>
+
+  
+  <rect x="750" y="420" width="780" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(765, 442)">
+    <path d="M 10 24 A 14 14 0 1 1 24 38" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <polyline points="4 24 10 24 10 18" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="825" y="455" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="825">retry only idempotent requests, or failures</tspan>
+    <tspan x="825" dy="30">that happen before any bytes were sent</tspan>
+  </text>
+
+  
+  <rect x="750" y="520" width="780" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(765, 545)">
+    <rect x="8" y="10" width="28" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="22" y1="18" x2="22" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <circle cx="22" cy="38" r="4" fill="#207448" />
+  </g>
+  <text x="825" y="552" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="825">caps on concurrent connections, requests</tspan>
+    <tspan x="825" dy="28">and the pending queue per backend; when a cap</tspan>
+    <tspan x="825" dy="28">is reached, shed the load with a 503 and</tspan>
+    <tspan x="825" dy="28">Retry-After instead of queueing without limit;</tspan>
+    <tspan x="825" dy="28">the name is from the electrical breaker that trips</tspan>
+    <tspan x="825" dy="28">when current is too high</tspan>
+  </text>
+
+  
+  <rect x="750" y="730" width="780" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(765, 765)">
+    <circle cx="22" cy="24" r="16" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="22" y1="4" x2="22" y2="8" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <polyline points="22 16 22 24 28 24" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="825" y="765" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="825">set timeouts for connect, for request or stream</tspan>
+    <tspan x="825" dy="30">idle time, and for the total; LLM streams need</tspan>
+    <tspan x="825" dy="30">generous read timeouts and heartbeats</tspan>
+  </text>
+
+  
+  <rect x="750" y="860" width="780" height="185" rx="12" fill="#1b2e23" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(765, 885)">
+    <polyline points="6 10 16 18 6 26" fill="none" stroke="#a8e6cf" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="20" y1="26" x2="32" y2="26" stroke="#a8e6cf" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+  <text x="815" y="892" font-family="monospace, Courier" font-size="24px" fill="#c3e88d">
+    <tspan x="815">circuit_breakers: max_connections 1024,</tspan>
+    <tspan x="815" dy="28">max_pending_requests 256, max_requests 4096;</tspan>
+    <tspan x="815" dy="28">retry_on connect-failure,refused-stream,</tspan>
+    <tspan x="815" dy="28">num_retries 2; outlier_detection</tspan>
+    <tspan x="815" dy="28">consecutive_5xx 5, interval 5s,</tspan>
+    <tspan x="815" dy="28">base_ejection_time 30s</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="40" y="1085" width="1520" height="75" rx="14" fill="#207448" />
+  
+  <g transform="translate(70, 1104)">
+    <circle cx="16" cy="18" r="10" fill="none" stroke="#ffffff" stroke-width="3.5" />
+    <line x1="26" y1="18" x2="42" y2="18" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="36" y1="18" x2="36" y2="24" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+  <text x="820" y="1132" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    Use retry budgets and per-try timeouts so retries do not amplify load during an outage
+  </text>
+</svg>

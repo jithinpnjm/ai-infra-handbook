@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The five-step run ladder for a new playbook</title>
+  <desc>A visual five-rung run ladder and playbook sketch illustrating the five stages of executing an Ansible playbook from syntax check to targeted execution.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">The five-step run ladder for a new playbook</text>
+
+  
+  
+  <rect x="36" y="95" width="16" height="745" rx="8" fill="#207448" />
+  
+  <rect x="938" y="95" width="16" height="745" rx="8" fill="#207448" />
+
+  
+
+  
+  
+  <line x1="36" y1="170" x2="52" y2="170" stroke="#207448" stroke-width="8" stroke-linecap="round" />
+  <line x1="938" y1="170" x2="954" y2="170" stroke="#207448" stroke-width="8" stroke-linecap="round" />
+  
+  <rect x="52" y="105" width="886" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="100" cy="170" r="24" fill="#207448" />
+  <text x="100" y="178" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(142, 142)">
+    <path d="M6 2 h26 l14 14 v38 h-40 z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M32 2 v14 h14" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M14 34 l8 8 l16 -16" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  
+  <text x="215" y="152" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ansible-playbook site.yml --syntax-check:</text>
+  <text x="215" y="196" font-family="sans-serif" font-size="24" fill="#303a36">can Ansible read the file at all? parse only</text>
+
+  
+  
+  <line x1="36" y1="315" x2="52" y2="315" stroke="#207448" stroke-width="8" stroke-linecap="round" />
+  <line x1="938" y1="315" x2="954" y2="315" stroke="#207448" stroke-width="8" stroke-linecap="round" />
+  
+  <rect x="52" y="250" width="886" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="100" cy="315" r="24" fill="#207448" />
+  <text x="100" y="323" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(142, 287)">
+    <rect x="4" y="6" width="22" height="34" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+    <rect x="30" y="6" width="22" height="34" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="10" y1="23" x2="20" y2="23" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="36" y1="23" x2="46" y2="23" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="41" y1="18" x2="41" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <path d="M15 48 h26" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  
+  <text x="215" y="297" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ansible-playbook site.yml --check --diff:</text>
+  <text x="215" y="341" font-family="sans-serif" font-size="24" fill="#303a36">what would change? dry run with diffs</text>
+
+  
+  
+  <line x1="36" y1="460" x2="52" y2="460" stroke="#207448" stroke-width="8" stroke-linecap="round" />
+  <line x1="938" y1="460" x2="954" y2="460" stroke="#207448" stroke-width="8" stroke-linecap="round" />
+  
+  <rect x="52" y="395" width="886" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="100" cy="460" r="24" fill="#207448" />
+  <text x="100" y="468" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(142, 432)">
+    <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="28" cy="28" r="5" fill="#207448" />
+    <line x1="28" y1="6" x2="28" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="28" y1="44" x2="28" y2="50" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="6" y1="28" x2="12" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="44" y1="28" x2="50" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="12" y1="12" x2="17" y2="17" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="39" y1="39" x2="44" y2="44" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="12" y1="44" x2="17" y2="39" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="39" y1="17" x2="44" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  
+  <text x="215" y="442" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ansible-playbook site.yml:</text>
+  <text x="215" y="486" font-family="sans-serif" font-size="24" fill="#303a36">apply, makes the change</text>
+
+  
+  
+  <line x1="36" y1="612" x2="52" y2="612" stroke="#db8129" stroke-width="8" stroke-linecap="round" />
+  <line x1="938" y1="612" x2="954" y2="612" stroke="#db8129" stroke-width="8" stroke-linecap="round" />
+  
+  <rect x="52" y="540" width="886" height="145" rx="12" fill="#fff8ed" stroke="#db8129" stroke-width="3" />
+  
+  <circle cx="100" cy="612" r="24" fill="#db8129" />
+  <text x="100" y="620" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g transform="translate(142, 584)">
+    <path d="M12 28 a18 18 0 1 1 5 13" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    <path d="M8 35 l9 6 l6 -8" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M22 28 l5 5 l9 -9" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  
+  <text x="215" y="578" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">ansible-playbook site.yml again:</text>
+  <text x="215" y="618" font-family="sans-serif" font-size="24" fill="#303a36">did the change stick?</text>
+  <text x="215" y="654" font-family="sans-serif" font-size="24" fill="#303a36">everything ok, changed=0 means idempotent</text>
+
+  
+  
+  <line x1="36" y1="765" x2="52" y2="765" stroke="#207448" stroke-width="8" stroke-linecap="round" />
+  <line x1="938" y1="765" x2="954" y2="765" stroke="#207448" stroke-width="8" stroke-linecap="round" />
+  
+  <rect x="52" y="700" width="886" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="100" cy="765" r="24" fill="#207448" />
+  <text x="100" y="773" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  
+  <g transform="translate(142, 737)">
+    <rect x="8" y="8" width="40" height="20" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="18" cy="18" r="3" fill="#207448" />
+    <circle cx="34" cy="36" r="12" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="43" y1="45" x2="52" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  
+  <text x="215" y="747" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ansible-playbook site.yml --limit gpu01 -v:</text>
+  <text x="215" y="791" font-family="sans-serif" font-size="24" fill="#303a36">one host, more output</text>
+
+  
+  <g transform="translate(52, 860)">
+    <rect x="0" y="0" width="886" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(28, 20)">
+      <rect x="0" y="0" width="38" height="46" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="10" y1="14" x2="28" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="10" y1="24" x2="28" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="10" y1="34" x2="20" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <text x="82" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Side commands</text>
+    
+    <rect x="28" y="85" width="830" height="70" rx="8" fill="#ffffff" stroke="#c0d6c8" stroke-width="1.5" />
+    <text x="48" y="128" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">ansible-playbook site.yml --list-tasks --list-hosts</text>
+  </g>
+
+  
+  <g transform="translate(985, 105)">
+    
+    <rect x="0" y="0" width="575" height="940" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <path d="M0 16 Q0 0 16 0 L559 0 Q575 0 575 16 L575 70 L0 70 Z" fill="#e8f1ea" />
+    <line x1="0" y1="70" x2="575" y2="70" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(24, 16)">
+      <path d="M4 2 h22 l12 12 v24 h-34 z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <path d="M26 2 v12 h12" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <path d="M14 26 c-3 0 -3 3 -5 3 c2 0 2 3 5 3" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <path d="M24 26 c3 0 3 3 5 3 c-2 0 -2 3 -5 3" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    
+    <text x="78" y="47" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Playbook sketch</text>
+
+    
+    <rect x="20" y="90" width="535" height="830" rx="10" fill="#f5f8f5" stroke="#c0d6c8" stroke-width="1.5" />
+
+    
+    <text x="36" y="132" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="36" dy="0" font-weight="bold" fill="#207448">Baseline for GPU nodes,</tspan>
+      <tspan x="36" dy="38">hosts: gpu, become: true,</tspan>
+      <tspan x="36" dy="38">gather_facts: true,</tspan>
+      <tspan x="36" dy="38">vars ntp_package: chrony;</tspan>
+      <tspan x="36" dy="38" font-weight="bold" fill="#207448">tasks:</tspan>
+      <tspan x="36" dy="38">Ensure chrony is installed</tspan>
+      <tspan x="36" dy="38">(ansible.builtin.package,</tspan>
+      <tspan x="36" dy="38">name {{ ntp_package }},</tspan>
+      <tspan x="36" dy="38">state present);</tspan>
+      <tspan x="36" dy="38">Ensure chrony is enabled and</tspan>
+      <tspan x="36" dy="38">running (ansible.builtin.service</tspan>
+      <tspan x="36" dy="38">chronyd, state started,</tspan>
+      <tspan x="36" dy="38">enabled true);</tspan>
+      <tspan x="36" dy="38">Show kernel version</tspan>
+      <tspan x="36" dy="38">(ansible.builtin.debug of</tspan>
+      <tspan x="36" dy="38">inventory_hostname,</tspan>
+      <tspan x="36" dy="38">ansible_kernel,</tspan>
+      <tspan x="36" dy="38">ansible_distribution</tspan>
+      <tspan x="36" dy="38">and version)</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="36" y="1080" width="1528" height="76" rx="12" fill="#207448" />
+  <text x="800" y="1128" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Skipping a step means you learn the answer from the fleet instead of from the terminal</text>
+</svg>

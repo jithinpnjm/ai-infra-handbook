@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>What a router does to your packet, and how it differs from a switch</title>
+  <desc>Visual comparison showing how a Layer 2 switch learns and forwards frames within a broadcast domain versus how a default gateway router inspects, decrements TTL, routes, and fragments IP packets across hops.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48px" font-weight="bold" fill="#303a36" letter-spacing="-0.5px">What a router does to your packet, and how it differs from a switch</text>
+
+  
+  <g id="switch-panel">
+    
+    <rect x="40" y="95" width="730" height="785" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(68, 115)">
+      <rect x="0" y="4" width="56" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="12" y1="20" x2="44" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <polygon points="44,20 36,15 36,25" fill="#207448" />
+      <line x1="44" y1="36" x2="12" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <polygon points="12,36 20,31 20,41" fill="#207448" />
+    </g>
+    
+    <text x="140" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="32px" font-weight="bold" fill="#207448">Switch (layer 2)</text>
+
+    
+    <rect x="70" y="185" width="670" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(95, 204)">
+      <rect x="0" y="0" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 8 0 L 8 10 L 12 10 L 12 16 L 20 16 L 20 10 L 24 10 L 24 0" fill="none" stroke="#207448" stroke-width="2" />
+    </g>
+    <text x="145" y="229" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#303a36">a frame arrives on port 3.</text>
+
+    
+    <line x1="405" y1="255" x2="405" y2="283" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="70" y="285" width="670" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="112" cy="345" r="24" fill="#207448" />
+    <text x="112" y="353" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">1</text>
+    <text x="155" y="323" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="155" dy="0">learn: the source MAC lives on</tspan>
+      <tspan x="155" dy="32">this port, recorded in the</tspan>
+      <tspan x="155" dy="32">MAC address table</tspan>
+    </text>
+
+    
+    <line x1="405" y1="405" x2="405" y2="433" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="70" y="435" width="670" height="180" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="112" cy="525" r="24" fill="#207448" />
+    <text x="112" y="533" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">2</text>
+    <text x="155" y="473" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="155" dy="0">forward to the port where the</tspan>
+      <tspan x="155" dy="31">destination MAC was learned; if the</tspan>
+      <tspan x="155" dy="31">destination is unknown or broadcast,</tspan>
+      <tspan x="155" dy="31">flood to every port except the one</tspan>
+      <tspan x="155" dy="31">it came in on</tspan>
+    </text>
+
+    
+    <rect x="70" y="645" width="670" height="210" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+    
+    <g transform="translate(95, 726)">
+      <circle cx="24" cy="24" r="8" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 12 12 A 18 18 0 0 0 12 36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <path d="M 36 12 A 18 18 0 0 1 36 36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <path d="M 6 6 A 27 27 0 0 0 6 42" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <path d="M 42 6 A 27 27 0 0 1 42 42" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="160" y="683" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="160" dy="0">ignores IP addresses; defines the</tspan>
+      <tspan x="160" dy="32">broadcast domain, the set of machines</tspan>
+      <tspan x="160" dy="32">that hear each other's shouts; ARP</tspan>
+      <tspan x="160" dy="32">broadcasts reach every host in the</tspan>
+      <tspan x="160" dy="32">VLAN or subnet</tspan>
+    </text>
+  </g>
+
+  
+  <g id="router-panel">
+    
+    <rect x="830" y="95" width="730" height="785" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(858, 115)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      
+      <line x1="16" y1="20" x2="40" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <polygon points="40,20 33,16 33,24" fill="#207448" />
+      <line x1="40" y1="36" x2="16" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <polygon points="16,36 23,32 23,40" fill="#207448" />
+      <line x1="20" y1="40" x2="20" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <polygon points="20,16 16,23 24,23" fill="#207448" />
+      <line x1="36" y1="16" x2="36" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <polygon points="36,40 32,33 40,33" fill="#207448" />
+    </g>
+    
+    <text x="930" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="32px" font-weight="bold" fill="#207448">Router (the default gateway)</text>
+
+    
+    <rect x="860" y="175" width="670" height="105" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(885, 210)">
+      <rect x="0" y="0" width="36" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="12" y1="0" x2="12" y2="24" stroke="#207448" stroke-width="2" stroke-dasharray="3 3" />
+      <path d="M 22 28 L 32 38" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <circle cx="20" cy="26" r="6" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="945" y="212" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="945" dy="0">receives frames addressed to its own MAC,</tspan>
+      <tspan x="945" dy="30">strips the Ethernet header and examines</tspan>
+      <tspan x="945" dy="30">the IP header</tspan>
+    </text>
+
+    
+    <line x1="1195" y1="280" x2="1195" y2="293" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="860" y="295" width="670" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="902" cy="337" r="24" fill="#207448" />
+    <text x="902" y="345" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">1</text>
+    <text x="945" y="331" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="945" dy="0">Longest prefix match of the destination</tspan>
+      <tspan x="945" dy="30">in the routing table (the FIB)</tspan>
+    </text>
+
+    
+    <line x1="1195" y1="380" x2="1195" y2="393" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="860" y="395" width="670" height="160" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <circle cx="902" cy="475" r="24" fill="#db8129" />
+    <text x="902" y="483" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">2</text>
+    <text x="945" y="427" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="945" dy="0">Decrement the TTL (hop limit) and</tspan>
+      <tspan x="945" dy="28">recompute the IPv4 header checksum;</tspan>
+      <tspan x="945" dy="28">at zero drop the packet and send</tspan>
+      <tspan x="945" dy="28">ICMP Time Exceeded, which is how</tspan>
+      <tspan x="945" dy="28">traceroute works</tspan>
+    </text>
+
+    
+    <line x1="1195" y1="555" x2="1195" y2="568" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="860" y="570" width="670" height="105" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="902" cy="622" r="24" fill="#207448" />
+    <text x="902" y="630" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">3</text>
+    <text x="945" y="604" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="945" dy="0">Choose the egress interface and next</tspan>
+      <tspan x="945" dy="28">hop, resolve its MAC with ARP or ND,</tspan>
+      <tspan x="945" dy="28">build a new Ethernet header and forward</tspan>
+    </text>
+
+    
+    <line x1="1195" y1="675" x2="1195" y2="688" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="860" y="690" width="670" height="165" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="902" cy="772" r="24" fill="#207448" />
+    <text x="902" y="780" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">4</text>
+    <text x="945" y="722" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="945" dy="0">If the packet is larger than the egress</tspan>
+      <tspan x="945" dy="28">MTU: fragment it for IPv4 when DF is</tspan>
+      <tspan x="945" dy="28">not set, otherwise drop it and send</tspan>
+      <tspan x="945" dy="28">ICMP Fragmentation Needed or Packet</tspan>
+      <tspan x="945" dy="28">Too Big (Path MTU Discovery)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="footer-section">
+    <rect x="40" y="920" width="1520" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(68, 944)">
+      <circle cx="26" cy="26" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <ellipse cx="26" cy="26" rx="10" ry="24" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="2" y1="26" x2="50" y2="26" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="145" y="961" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="145" dy="0">A typical path has 8 to 20 hops; routers build tables with OSPF or IS-IS inside networks</tspan>
+      <tspan x="145" dy="34">and BGP between them; anycast announces one IP from many places</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1060" width="1520" height="80" rx="8" fill="#207448" />
+    <text x="800" y="1110" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28px" font-weight="bold" fill="#ffffff">If the destination looks slow, trace the path first</text>
+  </g>
+</svg>

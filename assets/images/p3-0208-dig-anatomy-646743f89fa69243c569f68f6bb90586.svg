@@ -1,0 +1,269 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Reading a dig answer, and why dig and getent can disagree</title>
+  <desc>Visual explanation of dig answer sections, flags, cache verification, and the divergence between direct DNS queries and libc NSS resolution paths.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reading a dig answer, and why dig and getent can disagree</text>
+
+  
+
+  
+  <rect x="40" y="110" width="415" height="175" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(60, 130)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="40" height="48" rx="4" />
+    <line x1="0" y1="14" x2="40" y2="14" />
+    <circle cx="8" cy="7" r="2" fill="#207448" />
+    <circle cx="16" cy="7" r="2" fill="#207448" />
+    <line x1="8" y1="26" x2="32" y2="26" />
+    <line x1="8" y1="36" x2="24" y2="36" />
+  </g>
+  <text x="120" y="150" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="120" dy="0">Header: status (NOERROR)</tspan>
+    <tspan x="120" dy="34" font-family="ui-monospace, monospace" font-size="24" font-weight="normal" fill="#303a36">and flags qr rd ra aa tc ad,</tspan>
+    <tspan x="120" dy="34" font-family="system-ui, sans-serif" font-size="24" font-weight="normal" fill="#303a36">and the counts</tspan>
+  </text>
+
+  
+  <rect x="40" y="295" width="415" height="90" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(60, 315)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="18" r="14" />
+    <line x1="28" y1="28" x2="42" y2="42" />
+    <path d="M 14 14 Q 18 10 22 14 Q 22 18 18 20 L 18 23" />
+    <circle cx="18" cy="27" r="1" fill="#207448" />
+  </g>
+  <text x="130" y="352" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Question</text>
+
+  
+  <rect x="40" y="395" width="415" height="170" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(60, 415)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="40" height="48" rx="4" />
+    <line x1="8" y1="14" x2="14" y2="14" />
+    <line x1="20" y1="14" x2="32" y2="14" />
+    <polyline points="8,26 14,32 26,20" stroke="#207448" stroke-width="3" />
+    <line x1="8" y1="40" x2="32" y2="40" />
+  </g>
+  <text x="120" y="442" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="120" dy="0">Answer: name,</tspan>
+    <tspan x="120" dy="36" font-family="system-ui, sans-serif" font-size="24" font-weight="normal" fill="#303a36">remaining TTL, class IN,</tspan>
+    <tspan x="120" dy="36" font-family="system-ui, sans-serif" font-size="24" font-weight="normal" fill="#303a36">type, data</tspan>
+  </text>
+
+  
+  <rect x="40" y="575" width="415" height="90" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(60, 595)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 20 4 L 38 10 L 38 24 C 38 36 20 44 20 44 C 20 44 2 36 2 24 L 2 10 Z" />
+    <line x1="20" y1="14" x2="20" y2="34" />
+  </g>
+  <text x="130" y="632" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Authority</text>
+
+  
+  <rect x="40" y="675" width="415" height="90" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(60, 695)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="6" width="38" height="38" rx="6" />
+    <line x1="21" y1="15" x2="21" y2="35" />
+    <line x1="11" y1="25" x2="31" y2="25" />
+  </g>
+  <text x="130" y="732" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Additional</text>
+
+  
+  <rect x="40" y="775" width="415" height="170" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(60, 805)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="24" r="18" />
+    <polyline points="20,14 20,24 28,28" />
+  </g>
+  <text x="120" y="835" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="120" dy="0">Footer: query time,</tspan>
+    <tspan x="120" dy="38" font-family="system-ui, sans-serif" font-size="24" font-weight="normal" fill="#303a36">server, message size</tspan>
+  </text>
+
+  
+  <rect x="470" y="110" width="315" height="425" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(492, 126)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="4" y1="2" x2="4" y2="40" />
+    <path d="M 4 6 C 16 2, 22 12, 34 6 L 34 24 C 22 30, 16 20, 4 24 Z" fill="#207448" fill-opacity="0.15" />
+  </g>
+  <text x="546" y="154" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">Flags</text>
+
+  
+  <text x="492" y="200" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">aa</tspan> authoritative
+    <tspan x="492" dy="28">answer</tspan>
+  </text>
+
+  
+  <text x="492" y="275" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">ra</tspan> recursion is
+    <tspan x="492" dy="28">available</tspan>
+  </text>
+
+  
+  <text x="492" y="350" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">tc</tspan> truncated, retry
+    <tspan x="492" dy="28">over TCP</tspan>
+  </text>
+
+  
+  <text x="492" y="425" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">ad</tspan> the resolver
+    <tspan x="492" dy="28">validated the data</tspan>
+    <tspan x="492" dy="28">with DNSSEC</tspan>
+  </text>
+
+  
+  <rect x="470" y="550" width="315" height="395" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(605, 575)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="22" cy="12" rx="20" ry="8" />
+    <path d="M 2 12 L 2 32 C 2 37 11 41 22 41 C 33 41 42 37 42 32 L 42 12" />
+    <path d="M 2 22 C 2 27 11 31 22 31 C 33 31 42 27 42 22" />
+  </g>
+  <text x="492" y="660" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="492" dy="0" font-weight="bold" fill="#207448">Cache check: ask twice</tspan>
+    <tspan x="492" dy="36">a few seconds apart;</tspan>
+    <tspan x="492" dy="36">if the TTL has dropped</tspan>
+    <tspan x="492" dy="36">you were talking to a</tspan>
+    <tspan x="492" dy="36">cache</tspan>
+  </text>
+
+  
+
+  
+  <rect x="815" y="110" width="490" height="205" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(835, 126)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="44" height="34" rx="4" />
+    <polyline points="8,10 16,17 8,24" />
+    <line x1="20" y1="24" x2="32" y2="24" />
+  </g>
+  <text x="895" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">dig, nslookup:</tspan> DNS straight to the
+    <tspan x="835" dy="32">server you name or the first in</tspan>
+    <tspan x="835" dy="32" font-family="ui-monospace, monospace">resolv.conf;</tspan> skips <tspan font-family="ui-monospace, monospace">/etc/hosts,</tspan>
+    <tspan x="835" dy="32"><tspan font-family="ui-monospace, monospace">nsswitch,</tspan> the search path logic</tspan>
+    <tspan x="835" dy="32">of libc and NSS modules</tspan>
+  </text>
+
+  
+  <rect x="815" y="335" width="490" height="150" rx="10" fill="#fff7ed" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(835, 350)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="44" height="36" rx="4" />
+    <line x1="0" y1="10" x2="44" y2="10" />
+    <circle cx="8" cy="5" r="1.5" fill="#db8129" />
+    <circle cx="15" cy="5" r="1.5" fill="#db8129" />
+    <path d="M 22 18 L 22 28 M 17 23 L 27 23" />
+  </g>
+  <text x="895" y="378" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#db8129">getent hosts, ping, curl:</tspan>
+    <tspan x="835" dy="36">through the C library,</tspan>
+    <tspan x="835" dy="36">like your application</tspan>
+  </text>
+
+  
+  <rect x="1375" y="235" width="185" height="140" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(1447, 252)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="20" r="18" />
+    <circle cx="20" cy="20" r="10" />
+    <circle cx="20" cy="20" r="3" fill="#207448" />
+  </g>
+  <text x="1467" y="335" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">the answer</text>
+
+  
+  <path d="M 1305 212 L 1340 212 L 1340 280 L 1373 280" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1305 410 L 1340 410 L 1340 330 L 1373 330" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow-orange)" />
+
+  
+
+  
+  <rect x="815" y="505" width="745" height="98" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(835, 528)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="4" width="44" height="26" rx="4" />
+    <line x1="10" y1="30" x2="10" y2="38" />
+    <line x1="34" y1="30" x2="34" y2="38" />
+    <line x1="4" y1="38" x2="40" y2="38" />
+    <circle cx="12" cy="17" r="3" fill="#207448" />
+    <circle cx="24" cy="17" r="3" fill="#207448" />
+  </g>
+  <text x="895" y="546" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">resolvectl query:</tspan> systemd-resolved's view,
+    <tspan x="895" dy="32">per link, shows which interface and server answered</tspan>
+  </text>
+
+  
+  <rect x="815" y="618" width="745" height="98" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(835, 642)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="22" cy="8" r="5" fill="#207448" />
+    <circle cx="10" cy="32" r="5" />
+    <circle cx="34" cy="32" r="5" />
+    <line x1="22" y1="13" x2="10" y2="27" />
+    <line x1="22" y1="13" x2="34" y2="27" />
+  </g>
+  <text x="895" y="658" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">dig +trace:</tspan> follow the delegation chain
+    <tspan x="895" dy="32">from the root, bypassing caches</tspan>
+  </text>
+
+  
+  <rect x="815" y="731" width="745" height="98" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(835, 755)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="22" cy="20" r="16" />
+    <ellipse cx="22" cy="20" rx="8" ry="16" />
+    <line x1="6" y1="20" x2="38" y2="20" />
+  </g>
+  <text x="895" y="772" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">dig +nsid:</tspan> which anycast instance
+    <tspan x="895" dy="32">answered</tspan>
+  </text>
+
+  
+  <rect x="815" y="844" width="745" height="98" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(835, 768)" />
+  <g transform="translate(835, 868)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="36" height="30" rx="3" />
+    <circle cx="12" cy="21" r="3" fill="#207448" />
+    <line x1="22" y1="21" x2="32" y2="21" />
+  </g>
+  <text x="895" y="885" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">dig @8.8.8.8 name:</tspan>
+    <tspan x="895" dy="32">ask a specific server</tspan>
+  </text>
+
+  
+  <rect x="40" y="975" width="1520" height="135" rx="12" fill="#207448" stroke="#165132" stroke-width="2" />
+  
+  <g transform="translate(70, 1018)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="20" r="18" />
+    <polyline points="12,20 18,26 28,14" />
+  </g>
+  <text x="800" y="1032" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+    <tspan x="800" dy="0">When dig works but the application fails, compare dig with getent hosts,</tspan>
+    <tspan x="800" dy="42">then check nsswitch.conf, the search domains and which resolver the application uses</tspan>
+  </text>
+</svg>

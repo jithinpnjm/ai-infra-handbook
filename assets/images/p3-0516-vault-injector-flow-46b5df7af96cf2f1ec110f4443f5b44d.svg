@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Vault Agent Injector: from annotation to a file in the pod</title>
+  <desc>Visual explanation of how Vault Agent Injector watches Kubernetes pod templates, injects sidecars, authenticates via TokenReview, and renders secrets to local files.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="5" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="#207448">Vault Agent Injector: from annotation to a file in the pod</text>
+
+  
+
+  
+  <g id="setup-box">
+    <rect x="50" y="85" width="710" height="230" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(75, 102)" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="8" />
+      <path d="M20,4 L20,9 M20,31 L20,36 M4,20 L9,20 M31,20 L36,20 M8.7,8.7 L12.2,12.2 M27.8,27.8 L31.3,31.3 M8.7,31.3 L12.2,27.8 M27.8,12.2 L31.3,8.7" />
+    </g>
+    <text x="130" y="130" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Setup box</text>
+    
+    <text x="75" y="165" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">vault auth enable kubernetes</text>
+    <text x="75" y="196" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">vault write auth/kubernetes/config with</text>
+    <text x="95" y="224" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">kubernetes_host, kubernetes_ca_cert,</text>
+    <text x="95" y="252" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">token_reviewer_jwt</text>
+    <text x="75" y="280" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">vault policy write team-a</text>
+    <text x="75" y="306" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">vault write auth/kubernetes/role/database</text>
+  </g>
+
+  
+  <g id="step-1">
+    <rect x="840" y="85" width="710" height="230" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="875" cy="120" r="24" fill="#207448" />
+    <text x="875" y="129" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(915, 100)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="4" y="4" width="32" height="32" rx="4" />
+      <path d="M10,12 L30,12 M10,20 L30,20 M10,28 L22,28" />
+    </g>
+    <text x="970" y="128" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 1</text>
+    
+    <text x="865" y="162" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="865" dy="0">Deployment pod template carries annotations</tspan>
+      <tspan x="865" dy="27" font-family="ui-monospace, monospace">vault.hashicorp.com/agent-inject true,</tspan>
+      <tspan x="865" dy="27" font-family="ui-monospace, monospace">agent-inject-status update, role database,</tspan>
+      <tspan x="865" dy="27" font-family="ui-monospace, monospace">agent-inject-secret-db-creds secrets/db/creds,</tspan>
+      <tspan x="865" dy="27">and an agent-inject-template-db-creds</tspan>
+      <tspan x="865" dy="27">Go template that formats a JDBC string</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1195" y1="315" x2="1195" y2="338" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+
+  
+  <g id="step-3">
+    <rect x="50" y="340" width="710" height="220" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="85" cy="375" r="24" fill="#207448" />
+    <text x="85" y="384" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(125, 355)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="14" cy="20" r="9" />
+      <path d="M23,20 L38,20 M31,20 L31,26 M36,20 L36,26" />
+    </g>
+    <text x="180" y="383" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 3</text>
+
+    <text x="75" y="445" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">Agent sends the pod ServiceAccount token</tspan>
+      <tspan x="75" dy="36">to Vault Kubernetes auth</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-2">
+    <rect x="840" y="340" width="710" height="220" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="875" cy="375" r="24" fill="#207448" />
+    <text x="875" y="384" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(915, 355)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M8,32 L20,20 M17,17 L23,23 M22,12 L28,18 M15,5 L35,25 M28,38 L38,28" />
+      <circle cx="8" cy="32" r="3" />
+    </g>
+    <text x="970" y="383" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 2</text>
+
+    <text x="865" y="422" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="865" dy="0">Webhook runs on every Pod CREATE or UPDATE</tspan>
+      <tspan x="865" dy="28">but changes only pods with the annotations;</tspan>
+      <tspan x="865" dy="28">it injects the vault-agent-init init container</tspan>
+      <tspan x="865" dy="28">and, because status is update, the long-running</tspan>
+      <tspan x="865" dy="28">vault-agent sidecar</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="840" y1="450" x2="762" y2="450" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="405" y1="560" x2="405" y2="583" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+
+  
+  <g id="step-4">
+    <rect x="50" y="585" width="710" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="85" cy="620" r="24" fill="#207448" />
+    <text x="85" y="629" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(125, 600)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M20,6 L6,12 L6,22 C6,30 12,36 20,40 C28,36 34,30 34,22 L34,12 Z" />
+      <path d="M14,21 L18,25 L26,17" />
+    </g>
+    <text x="180" y="628" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 4</text>
+
+    <text x="75" y="688" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">Vault calls the Kubernetes TokenReview API</tspan>
+      <tspan x="75" dy="36">to validate the token</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-5">
+    <rect x="840" y="585" width="710" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="875" cy="620" r="24" fill="#207448" />
+    <text x="875" y="629" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g transform="translate(915, 600)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="20" cy="14" r="7" />
+      <path d="M8,34 C8,26 14,24 20,24 C26,24 32,26 32,34" />
+      <rect x="4" y="4" width="32" height="34" rx="4" />
+    </g>
+    <text x="970" y="628" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 5</text>
+
+    <text x="865" y="662" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="865" dy="0">Vault matches a role:</tspan>
+      <tspan x="865" dy="28" font-family="ui-monospace, monospace">vault write auth/kubernetes/role/database</tspan>
+      <tspan x="865" dy="28" font-family="ui-monospace, monospace">bound_service_account_names=webapp</tspan>
+      <tspan x="865" dy="28" font-family="ui-monospace, monospace">bound_service_account_namespaces=team-a</tspan>
+      <tspan x="865" dy="28" font-family="ui-monospace, monospace">policies=team-a ttl=20m</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="760" y1="690" x2="838" y2="690" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="1195" y1="795" x2="1195" y2="818" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+
+  
+  <g id="step-7">
+    <rect x="50" y="820" width="710" height="210" rx="14" fill="#fcf9f5" stroke="#db8129" stroke-width="3.5" />
+    
+    <circle cx="85" cy="855" r="24" fill="#db8129" />
+    <text x="85" y="864" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">7</text>
+    
+    <g transform="translate(125, 835)" stroke="#db8129" stroke-width="3" fill="none">
+      <path d="M8,6 L24,6 L32,14 L32,38 L8,38 Z" />
+      <path d="M24,6 L24,14 L32,14" />
+      <circle cx="18" cy="26" r="4" />
+      <path d="M21,29 L26,34 M23,31 L26,28" />
+    </g>
+    <text x="180" y="863" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#db8129">Step 7</text>
+
+    <text x="75" y="915" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">Agent renders the secret to</tspan>
+      <tspan x="75" dy="34" font-family="ui-monospace, monospace">/vault/secrets/db-creds;</tspan>
+      <tspan x="75" dy="34">the sidecar refreshes leased or rotated secrets</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-6">
+    <rect x="840" y="820" width="710" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="875" cy="855" r="24" fill="#207448" />
+    <text x="875" y="864" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+    
+    <g transform="translate(915, 835)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="8" y="16" width="24" height="20" rx="3" />
+      <path d="M14,16 L14,11 C14,7 17,5 20,5 C23,5 26,7 26,11 L26,16" />
+      <circle cx="20" cy="26" r="2" fill="#207448" />
+    </g>
+    <text x="970" y="863" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 6</text>
+
+    <text x="865" y="920" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="865" dy="0">Policy team-a:</tspan>
+      <tspan x="865" dy="36" font-family="ui-monospace, monospace">path secret/data/team-a/* capabilities read</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="840" y1="925" x2="762" y2="925" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="1065" width="1500" height="75" rx="12" fill="#207448" />
+    <text x="800" y="1112" text-anchor="middle" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">the application sees only a file and never talks to Vault</text>
+  </g>
+</svg>

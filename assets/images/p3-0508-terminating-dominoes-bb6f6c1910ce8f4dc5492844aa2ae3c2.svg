@@ -1,0 +1,262 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1190" width="1600" height="1190">
+  <title>Stuck in Terminating: find the first domino</title>
+  <desc>Visual explanation of the cascade of failures causing Kubernetes pods to become stuck in Terminating status, highlighting the initial D-state mount hang and alternative root causes.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1190" fill="#f5f8f5" />
+
+  
+  <text x="60" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Stuck in Terminating: find the first domino</text>
+
+  
+
+  
+  <rect x="60" y="115" width="450" height="255" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  
+  <circle cx="98" cy="153" r="24" fill="#db8129" />
+  <text x="98" y="153" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+  
+  <g transform="translate(438, 128)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="26" cy="11" rx="20" ry="7" />
+    <path d="M 6 11 v 14 c 0 4 9 7 20 7 s 20 -3 20 -7 v -14" />
+    <path d="M 6 25 v 14 c 0 4 9 7 20 7 s 20 -3 20 -7 v -14" />
+    <line x1="16" y1="25" x2="36" y2="25" stroke="#db8129" stroke-width="4" />
+  </g>
+  
+  <text x="84" y="214" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="84" dy="0">Process in D state</tspan>
+    <tspan x="84" dy="31">(uninterruptible I/O sleep)</tspan>
+    <tspan x="84" dy="31">on a hung NFS, Lustre or</tspan>
+    <tspan x="84" dy="31">Ceph mount cannot</tspan>
+    <tspan x="84" dy="31">handle SIGKILL</tspan>
+  </text>
+
+  
+  <line x1="510" y1="242" x2="573" y2="242" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="575" y="115" width="450" height="255" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="613" cy="153" r="24" fill="#207448" />
+  <text x="613" y="153" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+  
+  <g transform="translate(953, 128)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="40" height="34" rx="4" />
+    <line x1="16" y1="8" x2="16" y2="42" />
+    <line x1="26" y1="8" x2="26" y2="42" />
+    <line x1="36" y1="8" x2="36" y2="42" />
+    <circle cx="36" cy="32" r="9" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <line x1="32" y1="28" x2="40" y2="36" stroke="#207448" stroke-width="3" />
+    <line x1="40" y1="28" x2="32" y2="36" stroke="#207448" stroke-width="3" />
+  </g>
+  
+  <text x="599" y="248" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="599" dy="0">Container never exits</tspan>
+  </text>
+
+  
+  <line x1="1025" y1="242" x2="1088" y2="242" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="1090" y="115" width="450" height="255" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="1128" cy="153" r="24" fill="#207448" />
+  <text x="1128" y="153" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+  
+  <g transform="translate(1468, 128)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="26" cy="25" r="12" />
+    <line x1="26" y1="7" x2="26" y2="13" />
+    <line x1="26" y1="37" x2="26" y2="43" />
+    <line x1="8" y1="25" x2="14" y2="25" />
+    <line x1="38" y1="25" x2="44" y2="25" />
+    <line x1="13" y1="12" x2="18" y2="17" />
+    <line x1="34" y1="33" x2="39" y2="38" />
+    <line x1="13" y1="38" x2="18" y2="33" />
+    <line x1="34" y1="17" x2="39" y2="12" />
+  </g>
+  
+  <text x="1114" y="234" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1114" dy="0">runc cannot destroy the</tspan>
+    <tspan x="1114" dy="34">container cgroup</tspan>
+  </text>
+
+  
+  <path d="M 1315 370 V 398 H 285 V 423" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+
+  
+  <rect x="60" y="425" width="450" height="255" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="98" cy="463" r="24" fill="#207448" />
+  <text x="98" y="463" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+  
+  <g transform="translate(438, 438)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="26" cy="12" rx="18" ry="6" />
+    <path d="M 8 12 v 18 c 0 3.5 8 6 18 6 s 18 -2.5 18 -6 v -18" />
+    <line x1="18" y1="38" x2="34" y2="48" stroke="#207448" stroke-width="3" />
+    <line x1="34" y1="38" x2="18" y2="48" stroke="#207448" stroke-width="3" />
+  </g>
+  
+  <text x="84" y="522" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="84" dy="0">CSI cannot unmount the</tspan>
+    <tspan x="84" dy="31">busy volume:</tspan>
+    <tspan x="84" dy="31" font-family="monospace">EBUSY Device or</tspan>
+    <tspan x="84" dy="31" font-family="monospace">resource busy</tspan>
+  </text>
+
+  
+  <line x1="510" y1="552" x2="573" y2="552" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="575" y="425" width="450" height="255" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="613" cy="463" r="24" fill="#207448" />
+  <text x="613" y="463" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+  
+  <g transform="translate(953, 438)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="11" y="11" width="30" height="30" rx="4" />
+    <line x1="18" y1="4" x2="18" y2="11" />
+    <line x1="26" y1="4" x2="26" y2="11" />
+    <line x1="34" y1="4" x2="34" y2="11" />
+    <line x1="18" y1="41" x2="18" y2="48" />
+    <line x1="26" y1="41" x2="26" y2="48" />
+    <line x1="34" y1="41" x2="34" y2="48" />
+    <line x1="4" y1="18" x2="11" y2="18" />
+    <line x1="4" y1="26" x2="11" y2="26" />
+    <line x1="4" y1="34" x2="11" y2="34" />
+    <line x1="41" y1="18" x2="48" y2="18" />
+    <line x1="41" y1="26" x2="48" y2="26" />
+    <line x1="41" y1="34" x2="48" y2="34" />
+  </g>
+  
+  <text x="599" y="522" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="599" dy="0">Sandbox and cleanup</tspan>
+    <tspan x="599" dy="31">(CNI DEL, device and CPU</tspan>
+    <tspan x="599" dy="31">manager releases)</tspan>
+    <tspan x="599" dy="31">cannot finish</tspan>
+  </text>
+
+  
+  <line x1="1025" y1="552" x2="1088" y2="552" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="1090" y="425" width="450" height="255" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="1128" cy="463" r="24" fill="#207448" />
+  <text x="1128" y="463" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">6</text>
+  
+  <g transform="translate(1468, 438)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="26" cy="26" r="18" />
+    <polyline points="26 14 26 26 34 30" />
+  </g>
+  
+  <text x="1114" y="530" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1114" dy="0">Pod stays Terminating</tspan>
+    <tspan x="1114" dy="34">until the mount recovers</tspan>
+    <tspan x="1114" dy="34">or the node is rebooted</tspan>
+  </text>
+
+  
+  <rect x="60" y="715" width="1480" height="295" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <text x="85" y="756" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Other first dominoes</text>
+
+  
+  <rect x="80" y="775" width="268" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(188, 790)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="12" y="8" width="28" height="36" rx="4" />
+    <line x1="20" y1="16" x2="32" y2="16" />
+    <line x1="20" y1="24" x2="32" y2="24" />
+    <circle cx="26" cy="34" r="2" fill="#207448" />
+    <line x1="4" y1="4" x2="48" y2="48" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="214" y="872" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="214" dy="0">kubelet</tspan>
+    <tspan x="214" dy="30">unresponsive or</tspan>
+    <tspan x="214" dy="30">partitioned</tspan>
+  </text>
+
+  
+  <rect x="373" y="775" width="268" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(481, 790)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 26 8 L 42 14 V 26 C 42 36 26 44 26 44 C 26 44 10 36 10 26 V 14 Z" />
+    <circle cx="26" cy="24" r="3" fill="#207448" />
+    <line x1="26" y1="27" x2="26" y2="33" />
+  </g>
+  <text x="507" y="886" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="507" dy="0">finalizer on the</tspan>
+    <tspan x="507" dy="34">pod (rare)</tspan>
+  </text>
+
+  
+  <rect x="666" y="775" width="268" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(774, 790)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="26" cy="26" r="14" />
+    <line x1="26" y1="6" x2="26" y2="12" />
+    <line x1="26" y1="40" x2="26" y2="46" />
+    <line x1="6" y1="26" x2="12" y2="26" />
+    <line x1="40" y1="26" x2="46" y2="26" />
+    <line x1="22" y1="20" x2="22" y2="32" stroke="#207448" stroke-width="3" />
+    <line x1="30" y1="20" x2="30" y2="32" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="800" y="886" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">runtime shim</tspan>
+    <tspan x="800" dy="34">hang</tspan>
+  </text>
+
+  
+  <rect x="959" y="775" width="268" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(1067, 790)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="12" y="14" width="28" height="20" rx="4" />
+    <line x1="20" y1="34" x2="20" y2="44" />
+    <line x1="32" y1="34" x2="32" y2="44" />
+    <line x1="14" y1="8" x2="38" y2="8" />
+    <line x1="26" y1="8" x2="26" y2="14" />
+    <line x1="16" y1="18" x2="36" y2="30" stroke="#207448" stroke-width="3" />
+    <line x1="36" y1="18" x2="16" y2="30" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="1093" y="886" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1093" dy="0">CNI DEL</tspan>
+    <tspan x="1093" dy="34">failure</tspan>
+  </text>
+
+  
+  <rect x="1252" y="775" width="268" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(1360, 790)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="26" cy="26" r="18" />
+    <polyline points="26 14 26 26 35 26" />
+    <line x1="26" y1="4" x2="26" y2="8" />
+    <line x1="20" y1="4" x2="32" y2="4" />
+  </g>
+  <text x="1386" y="872" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1386" dy="0">preStop hook</tspan>
+    <tspan x="1386" dy="30">past the grace</tspan>
+    <tspan x="1386" dy="30">period</tspan>
+  </text>
+
+  
+  <rect x="60" y="1035" width="1480" height="115" rx="14" fill="#fdf2f2" stroke="#c53030" stroke-width="2.5" />
+  
+  <g transform="translate(90, 1065)" stroke="#c53030" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 26 6 L 48 44 H 4 Z" />
+    <line x1="26" y1="18" x2="26" y2="30" stroke="#c53030" stroke-width="3.5" />
+    <circle cx="26" cy="37" r="2" fill="#c53030" stroke="none" />
+  </g>
+  
+  <text x="160" y="1078" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#991b1b">
+    <tspan x="160" dy="0">Do not use <tspan font-family="monospace">--force --grace-period=0</tspan> on StatefulSet pods or RWO volumes unless</tspan>
+    <tspan x="160" dy="36">sure the node cannot still run them: split brain and data corruption risk</tspan>
+  </text>
+</svg>

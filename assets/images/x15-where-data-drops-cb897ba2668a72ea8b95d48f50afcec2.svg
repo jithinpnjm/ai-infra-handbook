@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>The pipeline can lose data in four places, and the memory limiter goes first</title>
+  <desc>Visual explanation of data drop points across metric and log collection pipelines, collector processing order, and deliberate drop hierarchy.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="drop-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#303a36" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5" />
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" y="56">The pipeline can lose data in four places,</tspan>
+    <tspan x="800" y="112">and the memory limiter goes first</tspan>
+  </text>
+
+  
+
+  
+  <rect x="60" y="145" width="240" height="340" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="180" cy="195" r="24" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="180" y1="195" x2="194" y2="181" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <circle cx="180" cy="195" r="4" fill="#207448" />
+  
+  <text x="180" y="265" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Scrape</text>
+  <text x="180" y="325" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="180" y="325">Prometheus</tspan>
+    <tspan x="180" y="357">pulls metrics</tspan>
+  </text>
+
+  
+  <rect x="340" y="145" width="255" height="340" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <rect x="443" y="175" width="48" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="459" y1="175" x2="459" y2="215" stroke="#207448" stroke-width="3" />
+  <line x1="475" y1="175" x2="475" y2="215" stroke="#207448" stroke-width="3" />
+  
+  <text x="467.5" y="265" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Remote write</text>
+  <text x="467.5" y="325" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="467.5" y="325">queue to the</tspan>
+    <tspan x="467.5" y="357">long-term store</tspan>
+  </text>
+
+  
+  <rect x="635" y="145" width="325" height="340" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="797.5" cy="180" r="14" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 797.5 160 L 797.5 166 M 797.5 194 L 797.5 200 M 777.5 180 L 783.5 180 M 811.5 180 L 817.5 180 M 783.5 166 L 788 170.5 M 807 189.5 L 811.5 194 M 783.5 194 L 788 189.5 M 807 170.5 L 811.5 166" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <circle cx="797.5" cy="180" r="5" fill="#207448" />
+  
+  <text x="797.5" y="224" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Collector</text>
+  <text x="797.5" y="258" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="797.5" y="258">receiver with</tspan>
+    <tspan x="797.5" y="286">memory limiter,</tspan>
+    <tspan x="797.5" y="314">then exporter queue</tspan>
+  </text>
+  
+  <rect x="650" y="344" width="295" height="126" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="678" cy="378" r="18" fill="#207448" />
+  <text x="678" y="386" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="708" y="386" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">memory_limiter</text>
+  
+  <circle cx="678" cy="436" r="18" fill="#207448" />
+  <text x="678" y="444" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="708" y="444" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">batch</text>
+
+  
+  <rect x="1000" y="145" width="250" height="340" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <rect x="1101" y="172" width="48" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="1109" y1="188" x2="1141" y2="188" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="1109" y1="200" x2="1133" y2="200" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  
+  <text x="1125" y="265" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Log agent</text>
+  <text x="1125" y="335" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">node buffer</text>
+
+  
+  <rect x="1290" y="145" width="250" height="340" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <ellipse cx="1415" cy="180" rx="24" ry="9" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 1391 180 L 1391 212 A 24 9 0 0 0 1439 212 L 1439 180" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 1391 196 A 24 9 0 0 0 1439 196" fill="none" stroke="#207448" stroke-width="3" />
+  
+  <text x="1415" y="265" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Log store</text>
+
+  
+  <line x1="300" y1="315" x2="340" y2="315" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="595" y1="315" x2="635" y2="315" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="960" y1="315" x2="1000" y2="315" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="1250" y1="315" x2="1290" y2="315" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+
+  
+  <line x1="180" y1="485" x2="180" y2="534" stroke="#303a36" stroke-width="3" marker-end="url(#drop-arrow)" />
+  <rect x="60" y="550" width="240" height="160" rx="8" fill="#ffffff" stroke="#303a36" stroke-width="2" />
+  <circle cx="180" cy="550" r="16" fill="#ffffff" stroke="#303a36" stroke-width="3" />
+  <line x1="174" y1="544" x2="186" y2="556" stroke="#303a36" stroke-width="3" stroke-linecap="round" />
+  <line x1="186" y1="544" x2="174" y2="556" stroke="#303a36" stroke-width="3" stroke-linecap="round" />
+  <text x="180" y="596" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="180" y="596">a sample or</tspan>
+    <tspan x="180" y="626">label limit</tspan>
+    <tspan x="180" y="656">fails the</tspan>
+    <tspan x="180" y="686">whole scrape</tspan>
+  </text>
+
+  
+  <line x1="467.5" y1="485" x2="467.5" y2="534" stroke="#303a36" stroke-width="3" marker-end="url(#drop-arrow)" />
+  <rect x="340" y="550" width="255" height="160" rx="8" fill="#ffffff" stroke="#303a36" stroke-width="2" />
+  <circle cx="467.5" cy="550" r="16" fill="#ffffff" stroke="#303a36" stroke-width="3" />
+  <line x1="461.5" y1="544" x2="473.5" y2="556" stroke="#303a36" stroke-width="3" stroke-linecap="round" />
+  <line x1="473.5" y1="544" x2="461.5" y2="556" stroke="#303a36" stroke-width="3" stroke-linecap="round" />
+  <text x="467.5" y="612" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="467.5" y="612">store slow</tspan>
+    <tspan x="467.5" y="644">for more than</tspan>
+    <tspan x="467.5" y="676">2 hours</tspan>
+  </text>
+
+  
+  <line x1="797.5" y1="485" x2="797.5" y2="534" stroke="#303a36" stroke-width="3" marker-end="url(#drop-arrow)" />
+  <rect x="635" y="550" width="325" height="160" rx="8" fill="#ffffff" stroke="#303a36" stroke-width="2" />
+  <circle cx="797.5" cy="550" r="16" fill="#ffffff" stroke="#303a36" stroke-width="3" />
+  <line x1="791.5" y1="544" x2="803.5" y2="556" stroke="#303a36" stroke-width="3" stroke-linecap="round" />
+  <line x1="803.5" y1="544" x2="791.5" y2="556" stroke="#303a36" stroke-width="3" stroke-linecap="round" />
+  <text x="797.5" y="628" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="797.5" y="628">memory limiter</tspan>
+    <tspan x="797.5" y="660">refuses data</tspan>
+  </text>
+
+  
+  <line x1="1125" y1="485" x2="1125" y2="534" stroke="#303a36" stroke-width="3" marker-end="url(#drop-arrow)" />
+  <rect x="1000" y="550" width="250" height="160" rx="8" fill="#ffffff" stroke="#303a36" stroke-width="2" />
+  <circle cx="1125" cy="550" r="16" fill="#ffffff" stroke="#303a36" stroke-width="3" />
+  <line x1="1119" y1="544" x2="1131" y2="556" stroke="#303a36" stroke-width="3" stroke-linecap="round" />
+  <line x1="1131" y1="544" x2="1119" y2="556" stroke="#303a36" stroke-width="3" stroke-linecap="round" />
+  <text x="1125" y="628" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1125" y="628">buffer</tspan>
+    <tspan x="1125" y="660">overflow</tspan>
+  </text>
+
+  
+  <line x1="1415" y1="485" x2="1415" y2="534" stroke="#303a36" stroke-width="3" marker-end="url(#drop-arrow)" />
+  <rect x="1290" y="550" width="250" height="160" rx="8" fill="#ffffff" stroke="#303a36" stroke-width="2" />
+  <circle cx="1415" cy="550" r="16" fill="#ffffff" stroke="#303a36" stroke-width="3" />
+  <line x1="1409" y1="544" x2="1421" y2="556" stroke="#303a36" stroke-width="3" stroke-linecap="round" />
+  <line x1="1421" y1="544" x2="1409" y2="556" stroke="#303a36" stroke-width="3" stroke-linecap="round" />
+  <text x="1415" y="612" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1415" y="612">rate limit or</tspan>
+    <tspan x="1415" y="644">stream limit</tspan>
+    <tspan x="1415" y="676">hit</tspan>
+  </text>
+
+  
+  <rect x="60" y="755" width="280" height="105" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="200" y="802" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="200" y="802">1 drop debug</tspan>
+    <tspan x="200" y="834">logs</tspan>
+  </text>
+
+  <rect x="380" y="755" width="300" height="105" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="530" y="802" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="530" y="802">2 drop</tspan>
+    <tspan x="530" y="834">healthy traces</tspan>
+  </text>
+
+  <rect x="720" y="755" width="390" height="105" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="915" y="802" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="915" y="802">3 drop low-value</tspan>
+    <tspan x="915" y="834">per-pod metrics</tspan>
+  </text>
+
+  
+  <rect x="1150" y="755" width="390" height="105" rx="10" fill="#fdf2e9" stroke="#db8129" stroke-width="3" />
+  <text x="1345" y="802" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1345" y="802">never drop SLI series</tspan>
+    <tspan x="1345" y="834">or the ledger</tspan>
+  </text>
+
+  
+  <rect x="60" y="905" width="1480" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="800" y="946" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    <tspan x="800" y="946">Put the memory limiter first, choose the drop order in advance,</tspan>
+    <tspan x="800" y="980">and alert on every place data can disappear.</tspan>
+  </text>
+</svg>

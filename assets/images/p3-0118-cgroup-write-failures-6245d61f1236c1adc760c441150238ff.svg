@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>A cgroup write failed: what to check</title>
+  <desc>A diagnostic infographic explaining common cgroup write failure symptoms, corresponding checks, and side notes.</desc>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">A cgroup write failed: what to check</text>
+
+  
+  <g>
+    <rect x="40" y="92" width="1520" height="118" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <circle cx="80" cy="151" r="24" fill="#207448" />
+    <text x="80" y="151" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+    
+    <g transform="translate(122, 123)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="12" r="6" />
+      <path d="M 28,18 L 28,30 M 14,30 L 42,30 M 14,30 L 14,38 M 42,30 L 42,38" />
+      <circle cx="14" cy="44" r="6" />
+      <circle cx="42" cy="44" r="6" />
+    </g>
+    
+    <text x="198" y="140" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">echo ... &gt;</tspan>
+      <tspan x="198" dy="36"><tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">cgroup.subtree_control</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> fails</tspan></tspan>
+    </text>
+    
+    <line x1="755" y1="107" x2="755" y2="195" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.4" />
+    
+    <text x="780" y="128" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">the group still has processes, or the parent</tspan>
+      <tspan x="780" dy="32">has not enabled that controller yet;</tspan>
+      <tspan x="780" dy="32">enable controllers from the top down</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="222" width="1520" height="118" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <circle cx="80" cy="281" r="24" fill="#207448" />
+    <text x="80" y="281" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+    
+    <g transform="translate(122, 253)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="14" x2="48" y2="14" />
+      <circle cx="20" cy="14" r="5" fill="#e8f1ea" />
+      <line x1="8" y1="28" x2="48" y2="28" />
+      <circle cx="36" cy="28" r="5" fill="#e8f1ea" />
+      <line x1="8" y1="42" x2="34" y2="42" stroke-dasharray="3 3" />
+      <path d="M 40,38 L 48,46 M 48,38 L 40,46" />
+    </g>
+    
+    <text x="198" y="270" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="198" dy="0">A controller is missing</tspan>
+      <tspan x="198" dy="36">in v2</tspan>
+    </text>
+    
+    <line x1="755" y1="237" x2="755" y2="325" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.4" />
+    
+    <text x="780" y="272" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">probably mounted in a v1 hierarchy (hybrid mode), or</tspan>
+      <tspan x="780" dy="34">unsupported by the kernel config: <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">cat /proc/cgroups</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="352" width="1520" height="118" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <circle cx="80" cy="411" r="24" fill="#207448" />
+    <text x="80" y="411" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+    
+    <g transform="translate(122, 383)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28,6 L 46,13 L 46,28 C 46,40 28,48 28,48 C 28,48 10,40 10,28 L 10,13 Z" />
+      <rect x="22" y="24" width="12" height="10" rx="2" fill="#e8f1ea" />
+      <path d="M 25,24 V 19 C 25,17 31,17 31,19 V 24" />
+    </g>
+    
+    <text x="198" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="198" dy="0">A process will not move</tspan>
+      <tspan x="198" dy="36">into a group</tspan>
+    </text>
+    
+    <line x1="755" y1="367" x2="755" y2="455" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.4" />
+    
+    <text x="780" y="388" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">you wrote a TID instead of a PID; the target is a threaded</tspan>
+      <tspan x="780" dy="32">or invalid cgroup; no write permission on the closest</tspan>
+      <tspan x="780" dy="32">common ancestor&apos;s <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">cgroup.procs</tspan> (v2 delegation rule)</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="482" width="1520" height="118" rx="8" fill="#fef5ed" stroke="#db8129" stroke-width="2.5" />
+    
+    <circle cx="80" cy="541" r="24" fill="#db8129" />
+    <text x="80" y="541" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+    
+    <g transform="translate(122, 513)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="40" height="36" rx="4" />
+      <line x1="8" y1="20" x2="48" y2="20" />
+      <path d="M 18,36 L 28,26 L 38,36" />
+      <circle cx="28" cy="26" r="3" fill="#db8129" />
+    </g>
+    
+    <text x="198" y="530" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="198" dy="0">A limit looks ineffective</tspan>
+      <tspan x="198" dy="36">inside a container</tspan>
+    </text>
+    
+    <line x1="755" y1="497" x2="755" y2="585" stroke="#db8129" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.6" />
+    
+    <text x="780" y="532" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">the tool reads the host&apos;s <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">/proc</tspan>;</tspan>
+      <tspan x="780" dy="34">check <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">/sys/fs/cgroup</tspan> from inside the container</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="612" width="1520" height="118" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <circle cx="80" cy="671" r="24" fill="#207448" />
+    <text x="80" y="671" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+    
+    <g transform="translate(122, 643)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="20" />
+      <polyline points="28,14 28,28 38,28" />
+      <line x1="28" y1="2" x2="28" y2="6" />
+      <line x1="48" y1="12" x2="45" y2="15" />
+    </g>
+    
+    <text x="198" y="660" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="198" dy="0"><tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">dmesg: sched:</tspan></tspan>
+      <tspan x="198" dy="36" font-family="system-ui, -apple-system, sans-serif">RT throttling activated</tspan>
+    </text>
+    
+    <line x1="755" y1="627" x2="755" y2="715" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.4" />
+    
+    <text x="780" y="648" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">a real-time task used its 95% share: fix the task, not</tspan>
+      <tspan x="780" dy="32">the limit; also check systemd <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">CPUAffinity</tspan>, tuned isolation,</tspan>
+      <tspan x="780" dy="32">the <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">irqbalance</tspan> ban mask</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="742" width="1520" height="118" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <circle cx="80" cy="801" r="24" fill="#207448" />
+    <text x="80" y="801" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">6</text>
+    
+    <g transform="translate(122, 773)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="36" width="36" height="10" rx="2" />
+      <rect x="14" y="23" width="28" height="10" rx="2" />
+      <rect x="18" y="10" width="20" height="10" rx="2" stroke-dasharray="3 2" />
+    </g>
+    
+    <text x="198" y="790" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="198" dy="0" font-family="system-ui, -apple-system, sans-serif">Large <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">nr_dying_descendants</tspan></tspan>
+      <tspan x="198" dy="36" font-family="system-ui, -apple-system, sans-serif">in <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">cgroup.stat</tspan></tspan>
+    </text>
+    
+    <line x1="755" y1="757" x2="755" y2="845" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.4" />
+    
+    <text x="780" y="778" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">dying cgroups pile up after heavy container churn,</tspan>
+      <tspan x="780" dy="32">memory not yet reclaimed; a known source of slowdowns</tspan>
+      <tspan x="780" dy="32">that depends on kernel version</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g>
+    <rect x="40" y="876" width="670" height="148" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <g transform="translate(62, 926)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6,12 L 18,12 L 23,18 L 42,18 L 42,38 L 6,38 Z" />
+      <line x1="16" y1="28" x2="32" y2="28" />
+    </g>
+    <text x="124" y="922" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="124" dy="0">Remove a cgroup with <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">rmdir</tspan>, not <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">rm -r</tspan>,</tspan>
+      <tspan x="124" dy="34">and only when it has no processes</tspan>
+      <tspan x="124" dy="34">and no children</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="730" y="876" width="830" height="148" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <g transform="translate(754, 926)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="9" />
+      <path d="M 24,6 L 24,11 M 24,37 L 24,42 M 6,24 L 11,24 M 37,24 L 42,24 M 11,11 L 15,15 M 33,33 L 37,37 M 37,11 L 33,15 M 11,37 L 15,33" />
+    </g>
+    <text x="814" y="914" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="814" dy="0">Docker or Kubernetes failing after a distro upgrade</tspan>
+      <tspan x="814" dy="30">usually means the distro moved to v2; old <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">cAdvisor</tspan>,</tspan>
+      <tspan x="814" dy="30">Docker before 20.10 and NVIDIA toolkit</tspan>
+      <tspan x="814" dy="30">before 1.4 can misbehave</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="1044" width="1520" height="72" rx="8" fill="#207448" />
+    <text x="800" y="1089" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Read the failure message, then check ownership, controllers and version</text>
+  </g>
+</svg>

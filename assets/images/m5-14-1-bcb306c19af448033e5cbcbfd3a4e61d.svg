@@ -1,0 +1,212 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Overlay networks</title>
+  <desc>Sequence diagram illustrating pod-to-pod network communication across an overlay network with encapsulation and decapsulation.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="52" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="bold">Overlay networks</text>
+
+  
+  <rect x="45" y="80" width="250" height="1090" rx="16" fill="#e8f1ea" opacity="0.4"/>
+  <rect x="360" y="80" width="250" height="1090" rx="16" fill="#e8f1ea" opacity="0.4"/>
+  <rect x="675" y="80" width="250" height="1090" rx="16" fill="#e8f1ea" opacity="0.4"/>
+  <rect x="990" y="80" width="250" height="1090" rx="16" fill="#e8f1ea" opacity="0.4"/>
+  <rect x="1305" y="80" width="250" height="1090" rx="16" fill="#e8f1ea" opacity="0.4"/>
+
+  
+  <line x1="170" y1="290" x2="170" y2="1170" stroke="#207448" stroke-width="3" stroke-dasharray="8 8" opacity="0.5"/>
+  <line x1="485" y1="290" x2="485" y2="1170" stroke="#207448" stroke-width="3" stroke-dasharray="8 8" opacity="0.5"/>
+  <line x1="800" y1="290" x2="800" y2="1170" stroke="#207448" stroke-width="3" stroke-dasharray="8 8" opacity="0.5"/>
+  <line x1="1115" y1="290" x2="1115" y2="1170" stroke="#207448" stroke-width="3" stroke-dasharray="8 8" opacity="0.5"/>
+  <line x1="1430" y1="290" x2="1430" y2="1170" stroke="#207448" stroke-width="3" stroke-dasharray="8 8" opacity="0.5"/>
+
+  
+
+  
+  <g>
+    <rect x="45" y="80" width="250" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="142" y="96" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="142" y1="110" x2="198" y2="110" stroke="#207448" stroke-width="3"/>
+    <circle cx="152" cy="103" r="2.5" fill="#207448"/>
+    <circle cx="161" cy="103" r="2.5" fill="#207448"/>
+    <circle cx="170" cy="103" r="2.5" fill="#207448"/>
+    <rect x="151" y="118" width="16" height="16" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="173" y="118" width="16" height="16" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    
+    <text x="170" y="174" text-anchor="middle" fill="#303a36" font-family="sans-serif">
+      <tspan x="170" dy="0" font-size="30" font-weight="bold">Pod A</tspan>
+      <tspan x="170" dy="32" font-size="24" font-family="monospace">10.244.1.5</tspan>
+      <tspan x="170" dy="30" font-size="24">(Node A</tspan>
+      <tspan x="170" dy="30" font-size="24" font-family="monospace">192.168.0.11)</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="360" y="80" width="250" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="457" y="96" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 467 122 L 503 122 M 495 116 L 503 122 L 495 128" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="475" cy="132" r="3" fill="#207448"/>
+    <circle cx="495" cy="132" r="3" fill="#207448"/>
+    
+    <text x="485" y="178" text-anchor="middle" fill="#303a36" font-family="sans-serif">
+      <tspan x="485" dy="0" font-size="30" font-weight="bold">Node A</tspan>
+      <tspan x="485" dy="34" font-size="24">vxlan/geneve</tspan>
+      <tspan x="485" dy="30" font-size="24">device</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="675" y="80" width="250" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 780 138 L 814 138 A 12 12 0 0 0 822 116 A 16 16 0 0 0 792 108 A 12 12 0 0 0 774 122 A 10 10 0 0 0 780 138 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="788" y1="126" x2="806" y2="126" stroke="#207448" stroke-width="3"/>
+    
+    <text x="800" y="192" text-anchor="middle" fill="#303a36" font-family="sans-serif">
+      <tspan x="800" dy="0" font-size="30" font-weight="bold">Underlay</tspan>
+      <tspan x="800" dy="36" font-size="24">network</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="990" y="80" width="250" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="1087" y="96" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 1097 122 L 1133 122 M 1125 116 L 1133 122 L 1125 128" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="1105" cy="132" r="3" fill="#207448"/>
+    <circle cx="1125" cy="132" r="3" fill="#207448"/>
+    
+    <text x="1115" y="178" text-anchor="middle" fill="#303a36" font-family="sans-serif">
+      <tspan x="1115" dy="0" font-size="30" font-weight="bold">Node B</tspan>
+      <tspan x="1115" dy="34" font-size="24">vxlan/geneve</tspan>
+      <tspan x="1115" dy="30" font-size="24">device</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1305" y="80" width="250" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="1402" y="96" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="1402" y1="110" x2="1458" y2="110" stroke="#207448" stroke-width="3"/>
+    <circle cx="1412" cy="103" r="2.5" fill="#207448"/>
+    <circle cx="1421" cy="103" r="2.5" fill="#207448"/>
+    <circle cx="1430" cy="103" r="2.5" fill="#207448"/>
+    <rect x="1411" y="118" width="16" height="16" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="1433" y="118" width="16" height="16" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    
+    <text x="1430" y="174" text-anchor="middle" fill="#303a36" font-family="sans-serif">
+      <tspan x="1430" dy="0" font-size="30" font-weight="bold">Pod B</tspan>
+      <tspan x="1430" dy="32" font-size="24" font-family="monospace">10.244.2.9</tspan>
+      <tspan x="1430" dy="30" font-size="24">(Node B</tspan>
+      <tspan x="1430" dy="30" font-size="24" font-family="monospace">192.168.0.12)</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g>
+    
+    <rect x="207" y="305" width="240" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="327" y="337" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan x="327" dy="0">IP packet</tspan>
+      <tspan x="327" dy="30" font-family="monospace">10.244.1.5 →</tspan>
+      <tspan x="327" dy="30" font-family="monospace">10.244.2.9</tspan>
+      <tspan x="327" dy="30">(MTU 1450)</tspan>
+    </text>
+    
+    <line x1="194" y1="455" x2="485" y2="455" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    
+    <circle cx="170" cy="455" r="24" fill="#207448"/>
+    <text x="170" y="463" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="24" font-weight="bold">1</text>
+  </g>
+
+  
+  
+  <g>
+    
+    <rect x="545" y="475" width="240" height="165" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="665" y="507" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan x="665" dy="0">lookup:</tspan>
+      <tspan x="665" dy="30" font-family="monospace">10.244.2.0/24</tspan>
+      <tspan x="665" dy="30">is on VTEP</tspan>
+      <tspan x="665" dy="30" font-family="monospace">192.168.0.12</tspan>
+      <tspan x="665" dy="30">(FDB/route)</tspan>
+    </text>
+    
+    <path d="M 509 490 L 532 490 L 532 645 L 485 645" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    
+    <circle cx="485" cy="490" r="24" fill="#207448"/>
+    <text x="485" y="498" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="24" font-weight="bold">2</text>
+  </g>
+
+  
+  
+  <g>
+    
+    <rect x="522" y="660" width="240" height="225" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    <text x="642" y="692" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan x="642" dy="0">outer UDP 4789:</tspan>
+      <tspan x="642" dy="30" font-family="monospace">192.168.0.11 →</tspan>
+      <tspan x="642" dy="30" font-family="monospace">192.168.0.12 +</tspan>
+      <tspan x="642" dy="30">VXLAN VNI</tspan>
+      <tspan x="642" dy="30">(network</tspan>
+      <tspan x="642" dy="30">identifier) +</tspan>
+      <tspan x="642" dy="30">inner packet</tspan>
+    </text>
+    
+    <line x1="509" y1="900" x2="800" y2="900" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+    
+    <circle cx="485" cy="900" r="24" fill="#db8129"/>
+    <text x="485" y="908" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="24" font-weight="bold">3</text>
+  </g>
+
+  
+  
+  <g>
+    
+    <rect x="837" y="925" width="240" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="957" y="960" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan x="957" dy="0">delivered by</tspan>
+      <tspan x="957" dy="30">normal routing</tspan>
+    </text>
+    
+    <line x1="824" y1="1025" x2="1115" y2="1025" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    
+    <circle cx="800" cy="1025" r="24" fill="#207448"/>
+    <text x="800" y="1033" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="24" font-weight="bold">4</text>
+  </g>
+
+  
+  
+  <g>
+    
+    <rect x="1152" y="1050" width="240" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1272" y="1082" text-anchor="middle" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan x="1272" dy="0">decapsulate →</tspan>
+      <tspan x="1272" dy="30">inner packet</tspan>
+      <tspan x="1272" dy="30">delivered to</tspan>
+      <tspan x="1272" dy="30">pod veth</tspan>
+    </text>
+    
+    <line x1="1139" y1="1160" x2="1430" y2="1160" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    
+    <circle cx="1115" cy="1160" r="24" fill="#207448"/>
+    <text x="1115" y="1168" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="24" font-weight="bold">5</text>
+  </g>
+</svg>

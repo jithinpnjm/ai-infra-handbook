@@ -1,0 +1,245 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Drill-down halves the search space</title>
+  <desc>Visual infographic explaining the three stages of performance drill-down: monitoring, identification, and analysis, with a binary decision tree halving the search space and a worked example of disk saturation.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Drill-down halves the search space</text>
+
+  
+
+  
+  <g id="stage-1">
+    <rect x="50" y="95" width="410" height="195" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(227, 107)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="34" rx="4" />
+      <path d="M 12 24 L 20 24 L 24 16 L 30 32 L 35 24 L 44 24" />
+      <line x1="20" y1="46" x2="36" y2="46" />
+      <line x1="28" y1="40" x2="28" y2="46" />
+    </g>
+    
+    <circle cx="105" cy="188" r="24" fill="#207448" />
+    <text x="145" y="197" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="105" y="197" text-anchor="middle" fill="#ffffff" font-weight="bold">1</tspan>
+      <tspan x="145" y="197" font-weight="bold" fill="#303a36">Monitoring: </tspan>
+      <tspan x="75" y="238" font-size="24" font-weight="normal" fill="#303a36">records statistics </tspan>
+      <tspan x="75" y="268" font-size="24" font-weight="normal" fill="#303a36">and alerts</tspan>
+    </text>
+  </g>
+
+  
+  <g id="stage-2">
+    <rect x="500" y="95" width="440" height="195" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(692, 107)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="22" r="16" />
+      <line x1="36" y1="34" x2="50" y2="48" />
+      <circle cx="24" cy="22" r="6" />
+    </g>
+    
+    <circle cx="545" cy="188" r="24" fill="#207448" />
+    <text x="585" y="197" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="545" y="197" text-anchor="middle" fill="#ffffff" font-weight="bold">2</tspan>
+      <tspan x="585" y="197" font-weight="bold" fill="#303a36">Identification: </tspan>
+      <tspan x="525" y="232" font-size="24" font-weight="normal" fill="#303a36">narrows to one resource </tspan>
+      <tspan x="525" y="258" font-size="24" font-weight="normal" fill="#303a36">on one machine </tspan>
+      <tspan x="525" y="280" font-size="24" font-weight="normal" fill="#303a36">(the 60-second tools)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="stage-3">
+    <rect x="980" y="95" width="570" height="195" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(1237, 107)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="42" rx="4" />
+      <path d="M 10 28 L 18 28 L 24 16 L 32 38 L 38 28 L 46 28" />
+      <circle cx="24" cy="16" r="2" fill="#207448" />
+      <circle cx="32" cy="38" r="2" fill="#207448" />
+    </g>
+    
+    <circle cx="1025" cy="188" r="24" fill="#207448" />
+    <text x="1065" y="197" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1025" y="197" text-anchor="middle" fill="#ffffff" font-weight="bold">3</tspan>
+      <tspan x="1065" y="197" font-weight="bold" fill="#303a36">Analysis: </tspan>
+      <tspan x="1010" y="238" font-size="24" font-weight="normal" fill="#303a36">traces or profiles to </tspan>
+      <tspan x="1010" y="268" font-size="24" font-weight="normal" fill="#303a36">find the cause</tspan>
+    </text>
+  </g>
+
+  
+  
+  <line x1="460" y1="192" x2="496" y2="192" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  
+  <line x1="940" y1="192" x2="976" y2="192" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="tool-row">
+    
+    <rect x="980" y="325" width="570" height="74" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,4" />
+
+    
+    <rect x="985" y="337" width="125" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1047" y="371" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">strace</text>
+
+    
+    <rect x="1115" y="337" width="95" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1162" y="371" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">perf</text>
+
+    
+    <rect x="1215" y="337" width="170" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1300" y="371" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">BCC tools</text>
+
+    
+    <rect x="1390" y="337" width="155" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1467" y="371" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">bpftrace</text>
+  </g>
+
+  
+  <line x1="1265" y1="290" x2="1265" y2="321" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+
+  
+  <line x1="600" y1="290" x2="600" y2="325" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="tree-root">
+    <rect x="360" y="330" width="480" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(380, 347)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="32" height="32" rx="4" />
+      <path d="M 20 4 L 20 12 M 28 4 L 28 12 M 36 4 L 36 12" />
+      <path d="M 20 44 L 20 52 M 28 44 L 28 52 M 36 44 L 36 52" />
+      <path d="M 4 20 L 12 20 M 4 28 L 12 28 M 4 36 L 12 36" />
+      <path d="M 44 20 L 52 20 M 44 28 L 52 28 M 44 36 L 52 36" />
+    </g>
+    <text x="460" y="386" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">On-CPU or off-CPU?</text>
+  </g>
+
+  
+  <path d="M 480 420 V 455 H 255 V 476" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 720 420 V 455 H 710 V 476" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <g id="branch-on-cpu">
+    <rect x="50" y="480" width="410" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(70, 512)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="4" />
+      <circle cx="28" cy="28" r="8" />
+      <line x1="28" y1="4" x2="28" y2="10" />
+      <line x1="28" y1="46" x2="28" y2="52" />
+      <line x1="4" y1="28" x2="10" y2="28" />
+      <line x1="46" y1="28" x2="52" y2="28" />
+    </g>
+    <text x="145" y="532" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="145" y="532" font-weight="bold" fill="#303a36">On-CPU: </tspan>
+      <tspan x="145" y="572" font-size="24" font-weight="normal" fill="#303a36">perf samples the CPU</tspan>
+    </text>
+  </g>
+
+  
+  <g id="branch-off-cpu">
+    <rect x="500" y="480" width="420" height="120" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+    
+    <g transform="translate(520, 512)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <polyline points="28,14 28,28 38,28" />
+      <line x1="24" y1="2" x2="32" y2="2" />
+    </g>
+    <text x="595" y="532" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="595" y="532" font-weight="bold" fill="#303a36">Off-CPU: </tspan>
+      <tspan x="595" y="572" font-size="24" font-weight="normal" fill="#303a36">waiting for something</tspan>
+    </text>
+  </g>
+
+  
+  
+  <path d="M 610 600 V 635 H 510 V 656" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 810 600 V 635 H 815 V 656" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="subbranch-queueing">
+    <rect x="390" y="660" width="240" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(490, 672)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="6" y1="10" x2="34" y2="10" />
+      <line x1="6" y1="20" x2="34" y2="20" />
+      <line x1="6" y1="30" x2="34" y2="30" />
+      <circle cx="10" cy="10" r="1.5" fill="#207448" />
+      <circle cx="10" cy="20" r="1.5" fill="#207448" />
+      <circle cx="10" cy="30" r="1.5" fill="#207448" />
+    </g>
+    <text x="510" y="752" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Queueing?</text>
+  </g>
+
+  
+  <g id="subbranch-serviced">
+    <rect x="670" y="660" width="290" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(795, 672)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="8" />
+      <path d="M 20 4 L 20 9 M 20 31 L 20 36 M 4 20 L 9 20 M 31 20 L 36 20 M 9 9 L 12 12 M 28 28 L 31 31 M 9 31 L 12 28 M 28 12 L 31 9" />
+    </g>
+    <text x="815" y="752" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Being serviced?</text>
+  </g>
+
+  
+  <g id="tree-note">
+    <rect x="50" y="815" width="890" height="70" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6,4" />
+    <text x="495" y="859" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Each question throws away half the causes</text>
+  </g>
+
+  
+  <g id="worked-example">
+    <rect x="980" y="435" width="570" height="450" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+    
+    <g transform="translate(1010, 455)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="22" ry="8" />
+      <path d="M 6 14 V 28 C 6 32 16 36 28 36 C 40 36 50 32 50 28 V 14" />
+      <path d="M 6 28 V 42 C 6 46 16 50 28 50 C 40 50 50 46 50 42 V 28" />
+      <line x1="16" y1="28" x2="22" y2="28" />
+      <line x1="16" y1="42" x2="22" y2="42" />
+    </g>
+
+    
+    <text x="1085" y="495" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">Slow-disks story</text>
+
+    
+    <rect x="1005" y="535" width="520" height="320" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+
+    
+    <text x="1035" y="585" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1035" dy="0">USE shows disk near 80 percent; </tspan>
+      <tspan x="1035" dy="52">iostat at one second shows </tspan>
+      <tspan x="1035" dy="52">100 percent; off-CPU tracing </tspan>
+      <tspan x="1035" dy="52">shows the database blocked </tspan>
+      <tspan x="1035" dy="52">on file system reads.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="50" y="930" width="1500" height="90" rx="14" fill="#207448" />
+    <text x="800" y="986" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Name one resource before you reach for a tracer.</text>
+  </g>
+
+</svg>

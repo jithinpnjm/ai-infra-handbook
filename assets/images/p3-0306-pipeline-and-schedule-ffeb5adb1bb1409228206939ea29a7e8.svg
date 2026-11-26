@@ -1,0 +1,192 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Paged pipelines and drift-free periodic loops</title>
+  <desc>Infographic explaining streaming pagination with bounded queues and drift-free periodic loops using asyncio and time.monotonic.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Paged pipelines and drift-free periodic loops</text>
+
+  
+  <rect x="40" y="95" width="740" height="955" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="410" y="145" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#207448">Streaming and pagination</text>
+
+  
+  <rect x="70" y="175" width="680" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="115" cy="216" r="24" fill="#207448" />
+  <text x="115" y="216" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(155, 188)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="6" y="6" width="30" height="42" rx="4" />
+    <line x1="13" y1="16" x2="29" y2="16" />
+    <line x1="13" y1="24" x2="29" y2="24" />
+    <line x1="13" y1="32" x2="23" y2="32" />
+    <path d="M 32 36 L 48 36 M 42 30 L 48 36 L 42 42" />
+  </g>
+  
+  <text x="230" y="226" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">producer</text>
+  
+  <text x="95" y="278" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">async for page in client.list_pages(): </tspan>
+    <tspan x="95" dy="36">&#160;&#160;&#160;&#160;await q.put(page)</tspan>
+  </text>
+
+  
+  <line x1="410" y1="345" x2="410" y2="395" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="70" y="395" width="680" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="115" cy="440" r="24" fill="#207448" />
+  <text x="115" y="440" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(155, 412)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 6 12 L 6 44 L 50 44 L 50 12" />
+    <rect x="12" y="18" width="8" height="20" rx="2" fill="#e8f1ea" />
+    <rect x="24" y="18" width="8" height="20" rx="2" fill="#e8f1ea" />
+    <rect x="36" y="18" width="8" height="20" rx="2" fill="#e8f1ea" />
+  </g>
+  
+  <text x="230" y="450" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">bounded queue</text>
+  
+  <g transform="translate(95, 485)">
+    <rect x="0" y="0" width="630" height="32" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <rect x="15" y="6" width="90" height="20" rx="4" fill="#207448" />
+    <rect x="120" y="6" width="90" height="20" rx="4" fill="#207448" />
+    <rect x="225" y="6" width="90" height="20" rx="4" fill="#207448" />
+    <rect x="330" y="6" width="90" height="20" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 2" />
+    <rect x="435" y="6" width="90" height="20" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 2" />
+    <rect x="540" y="6" width="75" height="20" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 2" />
+  </g>
+
+  
+  <line x1="410" y1="535" x2="410" y2="585" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="70" y="585" width="680" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="115" cy="626" r="24" fill="#207448" />
+  <text x="115" y="626" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(155, 598)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="6" y="8" width="18" height="18" rx="3" />
+    <rect x="32" y="8" width="18" height="18" rx="3" />
+    <rect x="19" y="30" width="18" height="18" rx="3" />
+    <line x1="15" y1="26" x2="24" y2="30" />
+    <line x1="41" y1="26" x2="32" y2="30" />
+  </g>
+  
+  <text x="230" y="636" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">several consumers</text>
+  
+  <text x="95" y="688" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">process pages in parallel </tspan>
+    <tspan x="95" dy="36">under bounded concurrency</tspan>
+  </text>
+
+  
+  <rect x="70" y="805" width="680" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(95, 825)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="8" y="12" width="40" height="32" rx="4" />
+    <line x1="16" y1="6" x2="16" y2="12" />
+    <line x1="28" y1="6" x2="28" y2="12" />
+    <line x1="40" y1="6" x2="40" y2="12" />
+    <line x1="16" y1="44" x2="16" y2="50" />
+    <line x1="28" y1="44" x2="28" y2="50" />
+    <line x1="40" y1="44" x2="40" y2="50" />
+    <line x1="14" y1="28" x2="42" y2="28" stroke-width="4" />
+  </g>
+  
+  <text x="175" y="865" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">memory stays flat because the </tspan>
+    <tspan x="175" dy="36">queue bound limits how many </tspan>
+    <tspan x="175" dy="36">pages wait at once</tspan>
+  </text>
+
+  
+  <rect x="820" y="95" width="740" height="955" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1190" y="145" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#207448">Periodic loop</text>
+
+  
+  <rect x="850" y="175" width="680" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(875, 195)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 44 22 A 18 18 0 1 0 46 32" />
+    <polyline points="36 12 46 22 36 26" />
+  </g>
+  
+  <text x="945" y="222" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="945" dy="0">while not stop.is_set(): </tspan>
+    <tspan x="945" dy="36">&#160;&#160;&#160;&#160;await run_once(); </tspan>
+    <tspan x="875" dy="46">await asyncio.wait_for(stop.wait(), </tspan>
+    <tspan x="875" dy="36">timeout=interval)</tspan>
+  </text>
+
+  
+  <rect x="850" y="425" width="680" height="175" rx="12" fill="#fffbf5" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(875, 445)" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <polygon points="17 6 39 6 50 17 50 39 39 50 17 50 6 39 6 17" />
+    <line x1="28" y1="18" x2="28" y2="30" stroke-width="4" />
+    <circle cx="28" cy="38" r="2.5" fill="#db8129" />
+  </g>
+  
+  <text x="945" y="475" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="945" dy="0">the wait is interruptible, so a stop </tspan>
+    <tspan x="945" dy="36">signal ends the loop without waiting </tspan>
+    <tspan x="945" dy="36">out the full interval</tspan>
+  </text>
+
+  
+  <rect x="850" y="640" width="680" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(875, 660)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="28" cy="28" r="22" />
+    <polyline points="28 14 28 28 38 28" />
+    <line x1="28" y1="6" x2="28" y2="10" />
+    <line x1="50" y1="28" x2="46" y2="28" />
+    <line x1="28" y1="50" x2="28" y2="46" />
+    <line x1="6" y1="28" x2="10" y2="28" />
+  </g>
+  
+  <text x="945" y="688" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="945" dy="0">use time.monotonic() for intervals </tspan>
+    <tspan x="945" dy="36">that do not drift; compute the next </tspan>
+    <tspan x="875" dy="44">deadline instead of sleeping a fixed </tspan>
+    <tspan x="875" dy="36">amount so drift does not build up</tspan>
+  </text>
+
+  
+  <rect x="850" y="885" width="680" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(875, 905)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="6" y="10" width="44" height="38" rx="4" />
+    <line x1="6" y1="22" x2="50" y2="22" />
+    <line x1="16" y1="6" x2="16" y2="12" />
+    <line x1="40" y1="6" x2="40" y2="12" />
+    <circle cx="20" cy="32" r="3" fill="#207448" />
+    <circle cx="36" cy="32" r="3" fill="#207448" />
+  </g>
+  
+  <text x="945" y="942" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="945" dy="0">cron-style schedules: systemd timers, </tspan>
+    <tspan x="945" dy="36">Kubernetes CronJobs or APScheduler</tspan>
+  </text>
+
+  
+  <rect x="40" y="1090" width="1520" height="70" rx="12" fill="#207448" />
+  
+  <g transform="translate(390, 1102)" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 6 12 Q 23 6 40 12 Q 40 32 23 42 Q 6 32 6 12 Z" />
+    <polyline points="15 24 21 30 31 18" />
+  </g>
+  <text x="820" y="1134" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Wait on the stop event, not on a bare sleep</text>
+</svg>

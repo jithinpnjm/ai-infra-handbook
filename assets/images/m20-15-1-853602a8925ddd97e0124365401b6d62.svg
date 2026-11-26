@@ -1,0 +1,315 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>The pipeline at a glance</title>
+  <desc>Visual pipeline overview showing telemetry flows for metrics, traces, logs, and billing converging at long-term stores and Grafana.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The pipeline at a glance</text>
+
+  
+
+  
+  <path d="M 280 175 L 410 175" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 280 365 H 345 V 215 H 410" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="345" y="162" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">scrape</text>
+
+  
+  <path d="M 630 195 L 770 195" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="700" y="180" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">rules</text>
+
+  
+  <path d="M 950 195 L 1110 195" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="1030" y="160" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1030" dy="0">remote</tspan>
+    <tspan x="1030" dy="26">write</tspan>
+  </text>
+
+  
+  <path d="M 1310 195 L 1400 195" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 280 405 L 410 405" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="345" y="370" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="345" dy="0">OTLP</tspan>
+    <tspan x="345" dy="26">spans</tspan>
+  </text>
+
+  
+  <path d="M 630 405 L 770 405" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="700" y="370" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="700" dy="0">by trace</tspan>
+    <tspan x="700" dy="26">id</tspan>
+  </text>
+
+  
+  <path d="M 950 405 L 1110 405" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1310 405 L 1400 405" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 280 445 H 345 V 575 H 410" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="370" y="535" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="370" dy="0">log</tspan>
+    <tspan x="370" dy="26">lines</tspan>
+  </text>
+
+  
+  <path d="M 630 615 L 1110 615" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1310 615 L 1400 615" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 280 825 L 410 825" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 630 825 L 770 825" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+
+  
+
+  
+  <g id="node-gpu-exporters">
+    <rect x="40" y="120" width="240" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(160, 154)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="-16" y="-16" width="32" height="32" rx="4" />
+      <rect x="-8" y="-8" width="16" height="16" />
+      <line x1="-10" y1="-21" x2="-10" y2="-16" />
+      <line x1="10" y1="-21" x2="10" y2="-16" />
+      <line x1="-10" y1="16" x2="-10" y2="21" />
+      <line x1="10" y1="16" x2="10" y2="21" />
+      <line x1="-21" y1="-10" x2="-16" y2="-10" />
+      <line x1="-21" y1="10" x2="-16" y2="10" />
+      <line x1="16" y1="-10" x2="21" y2="-10" />
+      <line x1="16" y1="10" x2="21" y2="10" />
+    </g>
+    <text x="160" y="206" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="160" dy="0">GPU and</tspan>
+      <tspan x="160" dy="32">node exporters</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-prometheus">
+    <rect x="410" y="120" width="220" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(520, 155)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M -18 8 A 20 20 0 1 1 18 8" />
+      <circle cx="0" cy="8" r="3" fill="#207448" />
+      <line x1="0" y1="8" x2="11" y2="-3" />
+      <line x1="-14" y1="-6" x2="-10" y2="-3" />
+      <line x1="0" y1="-12" x2="0" y2="-7" />
+    </g>
+    <text x="520" y="212" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="520" dy="0">Prometheus</tspan>
+      <tspan x="520" dy="32">per region</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-rollups">
+    <rect x="770" y="120" width="180" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(860, 156)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="-20" y1="16" x2="20" y2="16" />
+      <rect x="-16" y="4" width="8" height="12" />
+      <rect x="-4" y="-4" width="8" height="20" />
+      <rect x="8" y="-14" width="8" height="30" />
+    </g>
+    <text x="860" y="228" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Roll-ups</text>
+  </g>
+
+  
+  <g id="node-long-term-store">
+    <rect x="1110" y="120" width="200" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1210, 154)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="0" cy="-12" rx="18" ry="6" />
+      <path d="M -18 -12 V 12 A 18 6 0 0 0 18 12 V -12" />
+      <path d="M -18 0 A 18 6 0 0 0 18 0" />
+    </g>
+    <text x="1210" y="212" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1210" dy="0">Long-term</tspan>
+      <tspan x="1210" dy="32">store</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-engines-gateway">
+    <rect x="40" y="330" width="240" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(160, 365)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="-18" y="-16" width="36" height="14" rx="2" />
+      <rect x="-18" y="2" width="36" height="14" rx="2" />
+      <circle cx="-10" cy="-9" r="1.5" fill="#207448" />
+      <circle cx="-5" cy="-9" r="1.5" fill="#207448" />
+      <circle cx="-10" cy="9" r="1.5" fill="#207448" />
+      <circle cx="-5" cy="9" r="1.5" fill="#207448" />
+      <line x1="8" y1="-9" x2="12" y2="-9" />
+      <line x1="8" y1="9" x2="12" y2="9" />
+    </g>
+    <text x="160" y="422" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="160" dy="0">Engines and</tspan>
+      <tspan x="160" dy="32">gateway</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-edge-collector">
+    <rect x="410" y="330" width="220" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(520, 365)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="-18,-14 18,-14 6,2 6,14 -6,14 -6,2" />
+      <line x1="-12" y1="-6" x2="12" y2="-6" stroke-width="2" />
+    </g>
+    <text x="520" y="422" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="520" dy="0">Edge</tspan>
+      <tspan x="520" dy="32">collector</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-tail-sampler">
+    <rect x="770" y="330" width="180" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(860, 365)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="0" cy="0" r="16" />
+      <path d="M -16 0 H 16" />
+      <path d="M 0 -16 V 16" />
+      <circle cx="-7" cy="-7" r="2" fill="#207448" />
+      <circle cx="7" cy="7" r="2" fill="#207448" />
+    </g>
+    <text x="860" y="422" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="860" dy="0">Tail</tspan>
+      <tspan x="860" dy="32">sampler</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-trace-store">
+    <rect x="1110" y="330" width="200" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1210, 365)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="0" cy="-12" rx="18" ry="6" />
+      <path d="M -18 -12 V 12 A 18 6 0 0 0 18 12 V -12" />
+      <line x1="-10" y1="-2" x2="4" y2="-2" stroke-width="3" />
+      <line x1="-4" y1="4" x2="10" y2="4" stroke-width="3" />
+    </g>
+    <text x="1210" y="422" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1210" dy="0">Trace</tspan>
+      <tspan x="1210" dy="32">store</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-agent">
+    <rect x="410" y="540" width="220" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(520, 575)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="0" cy="0" r="9" />
+      <line x1="0" y1="-17" x2="0" y2="-13" />
+      <line x1="0" y1="13" x2="0" y2="17" />
+      <line x1="-17" y1="0" x2="-13" y2="0" />
+      <line x1="13" y1="0" x2="17" y2="0" />
+      <line x1="-12" y1="-12" x2="-9" y2="-9" />
+      <line x1="9" y1="9" x2="12" y2="12" />
+      <line x1="12" y1="-12" x2="9" y2="-9" />
+      <line x1="-9" y1="9" x2="-12" y2="12" />
+    </g>
+    <text x="520" y="632" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="520" dy="0">Node</tspan>
+      <tspan x="520" dy="32">agent</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-log-store">
+    <rect x="1110" y="540" width="200" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1210, 575)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M -12 -16 H 6 L 14 -8 V 16 H -12 Z" />
+      <polyline points="6,-16 6,-8 14,-8" />
+      <line x1="-6" y1="-2" x2="6" y2="-2" stroke-width="2.5" />
+      <line x1="-6" y1="4" x2="6" y2="4" stroke-width="2.5" />
+      <line x1="-6" y1="10" x2="2" y2="10" stroke-width="2.5" />
+    </g>
+    <text x="1210" y="632" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1210" dy="0">Log</tspan>
+      <tspan x="1210" dy="32">store</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-gateway-usage">
+    <rect x="40" y="750" width="240" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(160, 783)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M -14 -16 H 14 V 16 L 9 13 L 4 16 L 0 13 L -4 16 L -9 13 L -14 16 Z" />
+      <line x1="-7" y1="-8" x2="7" y2="-8" stroke-width="2.5" />
+      <line x1="-7" y1="-2" x2="7" y2="-2" stroke-width="2.5" />
+      <line x1="-7" y1="4" x2="2" y2="4" stroke-width="2.5" />
+    </g>
+    <text x="160" y="832" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="160" dy="0">Gateway</tspan>
+      <tspan x="160" dy="30">usage records</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-durable-queue">
+    <rect x="410" y="750" width="220" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(520, 785)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="-18" y="-12" width="36" height="24" rx="4" />
+      <line x1="-6" y1="-12" x2="-6" y2="12" />
+      <line x1="6" y1="-12" x2="6" y2="12" />
+    </g>
+    <text x="520" y="842" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="520" dy="0">Durable</tspan>
+      <tspan x="520" dy="32">queue</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-billing-ledger">
+    <rect x="770" y="750" width="180" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(860, 785)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="-16" y="-14" width="32" height="28" rx="3" />
+      <line x1="-8" y1="-14" x2="-8" y2="14" stroke-width="2" />
+      <line x1="-1" y1="-6" x2="9" y2="-6" stroke-width="2" />
+      <line x1="-1" y1="0" x2="9" y2="0" stroke-width="2" />
+      <line x1="-1" y1="6" x2="9" y2="6" stroke-width="2" />
+    </g>
+    <text x="860" y="842" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="860" dy="0">Billing</tspan>
+      <tspan x="860" dy="32">ledger</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-grafana">
+    <rect x="1400" y="120" width="160" height="570" rx="12" fill="#fdf6ed" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(1480, 275)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="-24" y="-16" width="48" height="32" rx="3" />
+      <line x1="-6" y1="16" x2="-6" y2="23" />
+      <line x1="6" y1="16" x2="6" y2="23" />
+      <line x1="-14" y1="23" x2="14" y2="23" />
+      <polyline points="-16,4 -8,-4 0,2 8,-8 16,-2" stroke-width="3" />
+    </g>
+    <text x="1480" y="345" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129">Grafana</text>
+  </g>
+</svg>

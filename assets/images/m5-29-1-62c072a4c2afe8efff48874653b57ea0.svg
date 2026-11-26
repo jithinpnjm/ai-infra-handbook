@@ -1,0 +1,276 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Typical operator reconcile structure</title>
+  <desc>Visual flowchart of the Kubernetes operator reconcile cycle showing event trigger, work queue, reconcile invocation, cache get, deletion check, finalizer handling, validation, desired child computation, child mutation, observation, status update, and requeue logic.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 18 9 L 0 16 z" fill="#207448"/>
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#303a36" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Typical operator reconcile structure</text>
+
+  
+  
+  
+
+  
+  <path d="M 1255 1020 L 1255 1150 L 30 1150 L 30 110 L 525 110 L 525 170" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="8 6" marker-end="url(#arrow-green)"/>
+  <rect x="520" y="1128" width="480" height="38" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="760" y="1155" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">waiting on external → RequeueAfter</text>
+
+  
+  <path d="M 1195 1020 L 1195 1095 L 60 1095 L 60 140 L 565 140 L 565 170" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <rect x="650" y="1075" width="220" height="38" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="760" y="1102" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">error → backoff</text>
+
+  
+  
+  
+
+  
+  <g transform="translate(85, 175)" filter="url(#shadow)">
+    <rect width="330" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="42" cy="42" r="22" fill="#207448"/>
+    <text x="42" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <path d="M 285 24 L 270 46 L 284 46 L 268 70 L 295 40 L 281 40 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    
+    <text x="35" y="96" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Event:</text>
+    <text x="35" y="128" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">CR created/updated/</text>
+    <text x="35" y="156" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">deleted OR owned</text>
+    <text x="35" y="184" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">object changed OR</text>
+    <text x="35" y="212" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">periodic resync</text>
+  </g>
+
+  
+  <path d="M 415 290 L 465 290" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(475, 175)" filter="url(#shadow)">
+    <rect width="280" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="42" cy="42" r="22" fill="#207448"/>
+    <text x="42" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <rect x="235" y="26" width="30" height="10" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="235" y="42" width="30" height="10" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="235" y="58" width="30" height="10" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    
+    <text x="30" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Work queue</text>
+    <text x="30" y="160" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">(namespace/name)</text>
+  </g>
+
+  
+  <path d="M 755 290 L 805 290" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(815, 175)" filter="url(#shadow)">
+    <rect width="270" height="230" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    <circle cx="42" cy="42" r="22" fill="#db8129"/>
+    <text x="42" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <path d="M 235 44 A 12 12 0 1 0 259 44 A 12 12 0 1 0 235 44 M 247 26 L 247 32 M 247 56 L 247 62 M 229 44 L 235 44 M 259 44 L 265 44 M 234 31 L 239 36 M 255 52 L 260 57 M 234 57 L 239 52 M 255 36 L 260 31" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="30" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Reconcile</text>
+    <text x="30" y="160" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">(request)</text>
+  </g>
+
+  
+  <path d="M 1085 290 L 1135 290" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(1145, 175)" filter="url(#shadow)">
+    <rect width="370" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="42" cy="42" r="22" fill="#207448"/>
+    <text x="42" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    <ellipse cx="325" cy="35" rx="18" ry="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 307 35 L 307 55 A 18 7 0 0 0 343 55 L 343 35" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 333 53 L 345 65" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="30" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Get CR (cache);</text>
+    <text x="30" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">if gone → return</text>
+  </g>
+
+  
+  <path d="M 1215 405 L 1215 475" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  
+  
+
+  
+  <g transform="translate(85, 485)" filter="url(#shadow)">
+    <rect width="280" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="42" cy="42" r="22" fill="#207448"/>
+    <text x="42" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">8</text>
+    
+    <path d="M 235 30 L 255 30 L 255 50 L 235 50 Z M 245 30 L 245 50 M 235 40 L 255 40" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 255 50 L 265 60" fill="none" stroke="#207448" stroke-width="3.5"/>
+    
+    <text x="25" y="106" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Compute desired</text>
+    <text x="25" y="146" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">children from spec</text>
+  </g>
+
+  
+  <path d="M 415 600 L 375 600" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(425, 485)" filter="url(#shadow)">
+    <rect width="320" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="42" cy="42" r="22" fill="#207448"/>
+    <text x="42" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">7</text>
+    
+    <path d="M 275 25 L 295 33 L 295 48 C 295 60 275 68 275 68 C 275 68 255 60 255 48 L 255 33 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 268 46 L 273 51 L 283 41" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="25" y="102" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Validate / default</text>
+    <text x="25" y="142" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(defensive),</text>
+    <text x="25" y="174" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">resolve references</text>
+  </g>
+
+  
+  <path d="M 795 600 L 755 600" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(805, 485)" filter="url(#shadow)">
+    <rect width="255" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="42" cy="42" r="22" fill="#207448"/>
+    <text x="42" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+    
+    <rect x="210" y="36" width="26" height="22" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 216 36 L 216 28 A 7 7 0 0 1 230 28 L 230 36" fill="none" stroke="#207448" stroke-width="3"/>
+    
+    <text x="25" y="106" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Ensure finalizer</text>
+    <text x="25" y="146" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">present</text>
+  </g>
+
+  
+  <path d="M 1115 600 L 1070 600" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="1092" y="585" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">no</text>
+
+  
+  <g transform="translate(1125, 485)" filter="url(#shadow)">
+    <rect width="200" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="42" cy="42" r="22" fill="#207448"/>
+    <text x="42" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    
+    <circle cx="160" cy="42" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 155 35 A 6 6 0 0 1 165 37 C 165 42 160 43 160 47 M 160 52 L 160 54" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="20" y="106" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">deletionTimestamp</text>
+    <text x="20" y="146" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">set?</text>
+  </g>
+
+  
+  <path d="M 1325 600 L 1370 600" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="1348" y="585" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+
+  
+  <g transform="translate(1380, 485)" filter="url(#shadow)">
+    <rect width="180" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 130 25 L 145 40 M 137 32 L 122 47 L 126 55 L 140 51 Z M 122 55 L 115 65 L 130 65 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    
+    <text x="15" y="96" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Run finalizer</text>
+    <text x="15" y="126" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">cleanup →</text>
+    <text x="15" y="156" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">remove</text>
+    <text x="15" y="184" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">finalizer →</text>
+    <text x="15" y="212" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">return</text>
+  </g>
+
+  
+  <path d="M 225 715 L 225 785" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  
+  
+
+  
+  <g transform="translate(85, 795)" filter="url(#shadow)">
+    <rect width="365" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="42" cy="42" r="22" fill="#207448"/>
+    <text x="42" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">9</text>
+    
+    <rect x="315" y="25" width="22" height="16" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <rect x="323" y="35" width="22" height="16" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+    
+    <text x="25" y="96" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Create/patch/delete</text>
+    <text x="25" y="126" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">children</text>
+    <text x="25" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(SSA or CreateOrUpdate),</text>
+    <text x="25" y="196" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">set ownerRefs</text>
+  </g>
+
+  
+  <path d="M 450 910 L 490 910" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(500, 795)" filter="url(#shadow)">
+    <rect width="300" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="42" cy="42" r="22" fill="#207448"/>
+    <text x="42" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">10</text>
+    
+    <path d="M 245 42 C 245 42 257 30 270 30 C 283 30 295 42 295 42 C 295 42 283 54 270 54 C 257 54 245 42 245 42 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="270" cy="42" r="5" fill="#207448"/>
+    
+    <text x="25" y="100" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Observe actual state:</text>
+    <text x="25" y="142" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">children status,</text>
+    <text x="25" y="176" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">external systems</text>
+  </g>
+
+  
+  <path d="M 800 910 L 840 910" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(850, 795)" filter="url(#shadow)">
+    <rect width="310" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="42" cy="42" r="22" fill="#207448"/>
+    <text x="42" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">11</text>
+    
+    <path d="M 265 26 L 285 26 L 285 58 L 275 52 L 265 58 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 252 40 L 260 48 L 278 30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="22" y="96" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Update CR</text>
+    <text x="22" y="128" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">status.conditions,</text>
+    <text x="22" y="160" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">observedGeneration</text>
+    <text x="22" y="196" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(status subresource)</text>
+  </g>
+
+  
+  <path d="M 1160 910 L 1200 910" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(1210, 795)" filter="url(#shadow)">
+    <rect width="180" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="42" cy="42" r="22" fill="#207448"/>
+    <text x="42" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">12</text>
+    
+    <path d="M 148 30 A 14 14 0 1 1 134 44" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 148 24 L 148 32 L 140 32" fill="none" stroke="#207448" stroke-width="3"/>
+    
+    <text x="20" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Needs</text>
+    <text x="20" y="158" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">requeue?</text>
+  </g>
+
+  
+  <path d="M 1390 910 L 1430 910" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="1410" y="895" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">done</text>
+
+  
+  <g transform="translate(1440, 795)" filter="url(#shadow)">
+    <rect width="130" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 85 28 L 85 64 M 85 28 L 110 38 L 85 48 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    
+    <text x="15" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">return</text>
+    <text x="15" y="158" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">Result{}</text>
+  </g>
+
+</svg>

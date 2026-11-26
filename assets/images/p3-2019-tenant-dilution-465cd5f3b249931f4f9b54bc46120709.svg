@@ -1,0 +1,307 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>A global ratio hides one tenant, and per-tenant detail has a series cost</title>
+  <desc>Visual infographic explaining how a global error ratio dilutes and hides a single failing tenant, the prohibitive cardinality cost of per-tenant Prometheus histograms, and the design pattern of per-model paging with per-tenant ticketing and low-traffic guards.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+    <tspan x="800" dy="0">A global ratio hides one tenant,</tspan>
+    <tspan x="800" dy="56">and per-tenant detail has a series cost</tspan>
+  </text>
+
+  
+  
+  <g id="card-dilution">
+    <rect x="40" y="145" width="480" height="480" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(252, 165)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="4" />
+      <line x1="4" y1="20" x2="52" y2="20" />
+      <line x1="4" y1="34" x2="52" y2="34" />
+      <circle cx="12" cy="13" r="2.5" fill="#207448" />
+      <circle cx="20" cy="13" r="2.5" fill="#207448" />
+      <circle cx="12" cy="27" r="2.5" fill="#207448" />
+      <circle cx="20" cy="27" r="2.5" fill="#207448" />
+      <circle cx="12" cy="41" r="2.5" fill="#207448" />
+      <circle cx="20" cy="41" r="2.5" fill="#207448" />
+      <line x1="36" y1="13" x2="44" y2="13" />
+      <line x1="36" y1="27" x2="44" y2="27" />
+      <line x1="36" y1="41" x2="44" y2="41" />
+    </g>
+
+    <text x="280" y="254" font-size="24" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+      <tspan x="280" dy="0" font-size="30" font-weight="bold">100 tenants with</tspan>
+      <tspan x="280" dy="38" font-size="30" font-weight="bold">equal traffic;</tspan>
+      <tspan x="280" dy="36">one tenant has 100</tspan>
+      <tspan x="280" dy="34">percent errors; global</tspan>
+      <tspan x="280" dy="34">error ratio = 1 percent;</tspan>
+      <tspan x="280" dy="34">against a 99.9 percent</tspan>
+      <tspan x="280" dy="34">target burn rate =</tspan>
+      <tspan x="280" dy="34">0.01 / 0.001 = 10</tspan>
+    </text>
+
+    
+    <g transform="translate(185, 542)" stroke="#207448" stroke-width="1.5" fill="#ffffff">
+      
+      <rect x="-4" y="-4" width="198" height="68" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      
+      <rect x="0" y="0" width="16" height="10" rx="2" fill="#303a36" stroke="#303a36" stroke-width="1.5" />
+      <rect x="20" y="0" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="40" y="0" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="60" y="0" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="80" y="0" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="100" y="0" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="120" y="0" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="140" y="0" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="160" y="0" width="16" height="10" rx="2" fill="#207448" />
+      
+      <rect x="0" y="14" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="20" y="14" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="40" y="14" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="60" y="14" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="80" y="14" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="100" y="14" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="120" y="14" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="140" y="14" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="160" y="14" width="16" height="10" rx="2" fill="#207448" />
+
+      <rect x="0" y="28" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="20" y="28" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="40" y="28" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="60" y="28" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="80" y="28" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="100" y="28" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="120" y="28" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="140" y="28" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="160" y="28" width="16" height="10" rx="2" fill="#207448" />
+
+      <rect x="0" y="42" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="20" y="42" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="40" y="42" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="60" y="42" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="80" y="42" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="100" y="42" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="120" y="42" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="140" y="42" width="16" height="10" rx="2" fill="#207448" />
+      <rect x="160" y="42" width="16" height="10" rx="2" fill="#207448" />
+    </g>
+  </g>
+
+  
+  <g id="card-alert-paradox">
+    <rect x="40" y="665" width="480" height="495" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+    
+    
+    <g transform="translate(252, 690)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 8 C 18 8 10 16 10 26 C 10 38 4 42 4 42 L 52 42 C 52 42 46 38 46 26 C 46 16 38 8 28 8 Z" />
+      <circle cx="28" cy="48" r="4" fill="#db8129" />
+      <line x1="28" y1="2" x2="28" y2="8" />
+    </g>
+
+    <text x="280" y="785" font-size="24" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+      <tspan x="280" dy="0" font-size="30" font-weight="bold">Burn 10 pages through</tspan>
+      <tspan x="280" dy="38" font-size="30" font-weight="bold">the 6-hour rule</tspan>
+      <tspan x="280" dy="36">(threshold 6) but not</tspan>
+      <tspan x="280" dy="34">through the fast 14.4 rule,</tspan>
+      <tspan x="280" dy="34">while that customer is</tspan>
+      <tspan x="280" dy="34">fully down</tspan>
+    </text>
+
+    
+    <g transform="translate(90, 1025)" stroke-linecap="round" stroke-linejoin="round">
+      
+      <rect x="0" y="0" width="380" height="95" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="1.5" />
+      
+      <rect x="25" y="18" width="330" height="22" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <rect x="25" y="18" width="220" height="22" rx="4" fill="#207448" />
+      <line x1="160" y1="12" x2="160" y2="46" stroke="#303a36" stroke-width="2.5" />
+      
+      <rect x="25" y="55" width="330" height="22" rx="4" fill="#f5f8f5" stroke="#db8129" stroke-width="1.5" />
+      <rect x="25" y="55" width="140" height="22" rx="4" fill="#db8129" opacity="0.3" />
+      <line x1="260" y1="49" x2="260" y2="83" stroke="#db8129" stroke-width="2.5" />
+      
+      <circle cx="245" cy="29" r="6" fill="#207448" />
+      <circle cx="165" cy="66" r="6" fill="#db8129" />
+    </g>
+  </g>
+
+  
+  <g id="card-cardinality-cost">
+    <rect x="560" y="145" width="480" height="1015" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(772, 165)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="4" />
+      <line x1="14" y1="42" x2="14" y2="30" />
+      <line x1="23" y1="42" x2="23" y2="20" />
+      <line x1="32" y1="42" x2="32" y2="14" />
+      <line x1="41" y1="42" x2="41" y2="24" />
+    </g>
+
+    <text x="800" y="254" font-size="24" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+      <tspan x="800" dy="0" font-size="30" font-weight="bold">TTFT histogram with</tspan>
+      <tspan x="800" dy="38" font-size="30" font-weight="bold">22 buckets plus a count</tspan>
+      <tspan x="800" dy="36">series is about 23 series per</tspan>
+      <tspan x="800" dy="34">tenant and model pair; 1,000</tspan>
+      <tspan x="800" dy="34">tenants x 20 models x 23 =</tspan>
+      <tspan x="800" dy="34">460,000 series for one metric</tspan>
+    </text>
+
+    
+    <g transform="translate(605, 520)" stroke-linecap="round" stroke-linejoin="round">
+      
+      <rect x="0" y="0" width="390" height="580" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      
+      <rect x="25" y="25" width="340" height="85" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+      
+      <rect x="35" y="15" width="320" height="10" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      
+      <line x1="45" y1="50" x2="345" y2="50" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+      <line x1="45" y1="75" x2="345" y2="75" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+      <rect x="55" y="38" width="40" height="18" rx="3" fill="#207448" />
+      <rect x="110" y="38" width="40" height="18" rx="3" fill="#207448" />
+      <rect x="165" y="38" width="40" height="18" rx="3" fill="#207448" />
+      <circle cx="240" cy="47" r="3" fill="#207448" />
+      <circle cx="255" cy="47" r="3" fill="#207448" />
+      <circle cx="270" cy="47" r="3" fill="#207448" />
+      <rect x="295" y="38" width="40" height="18" rx="3" fill="#207448" />
+
+      
+      <g stroke="#207448" stroke-width="3" fill="none">
+        <line x1="190" y1="125" x2="200" y2="135" />
+        <line x1="200" y1="125" x2="190" y2="135" />
+      </g>
+
+      
+      <rect x="25" y="150" width="340" height="85" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+      <g fill="#207448" stroke="#207448" stroke-width="1.5">
+        <rect x="45" y="170" width="45" height="45" rx="4" fill="#e8f1ea" />
+        <rect x="100" y="170" width="45" height="45" rx="4" fill="#e8f1ea" />
+        <rect x="155" y="170" width="45" height="45" rx="4" fill="#e8f1ea" />
+        <circle cx="225" cy="192" r="3" fill="#207448" />
+        <circle cx="240" cy="192" r="3" fill="#207448" />
+        <circle cx="255" cy="192" r="3" fill="#207448" />
+        <rect x="290" y="170" width="45" height="45" rx="4" fill="#e8f1ea" />
+      </g>
+
+      
+      <g stroke="#207448" stroke-width="3" fill="none">
+        <line x1="190" y1="250" x2="200" y2="260" />
+        <line x1="200" y1="250" x2="190" y2="260" />
+      </g>
+
+      
+      <rect x="25" y="275" width="340" height="110" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+      
+      <g stroke="#207448" stroke-width="2" fill="#207448">
+        <rect x="45" y="345" width="8" height="25" rx="1" />
+        <rect x="57" y="335" width="8" height="35" rx="1" />
+        <rect x="69" y="320" width="8" height="50" rx="1" />
+        <rect x="81" y="305" width="8" height="65" rx="1" />
+        <rect x="93" y="295" width="8" height="75" rx="1" />
+        <rect x="105" y="310" width="8" height="60" rx="1" />
+        <rect x="117" y="325" width="8" height="45" rx="1" />
+        <rect x="129" y="340" width="8" height="30" rx="1" />
+        <circle cx="155" cy="350" r="3" fill="#207448" />
+        <circle cx="170" cy="350" r="3" fill="#207448" />
+        <circle cx="185" cy="350" r="3" fill="#207448" />
+        <rect x="205" y="295" width="8" height="75" rx="1" />
+        <rect x="217" y="330" width="8" height="40" rx="1" />
+        
+        <line x1="245" y1="335" x2="345" y2="335" stroke="#207448" stroke-width="3" />
+        <polyline points="245,355 270,325 295,340 320,305 345,315" fill="none" stroke="#207448" stroke-width="2.5" />
+      </g>
+
+      
+      <g stroke="#207448" stroke-width="3">
+        <line x1="185" y1="405" x2="205" y2="405" />
+        <line x1="185" y1="415" x2="205" y2="415" />
+      </g>
+
+      
+      <rect x="25" y="435" width="340" height="115" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+      
+      <g stroke="#207448" stroke-width="1.5" opacity="0.6">
+        <line x1="45" y1="465" x2="345" y2="465" />
+        <line x1="45" y1="480" x2="345" y2="480" />
+        <line x1="45" y1="495" x2="345" y2="495" />
+        <line x1="45" y1="510" x2="345" y2="510" />
+        <line x1="45" y1="525" x2="345" y2="525" />
+      </g>
+      <circle cx="195" cy="495" r="28" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <path d="M 183 495 L 207 495 M 195 483 L 195 507" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+  </g>
+
+  
+  
+  <g id="card-design">
+    <rect x="1080" y="145" width="480" height="295" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(1292, 165)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 10 L 50 10 L 34 32 L 34 46 L 22 50 L 22 32 Z" />
+      <line x1="16" y1="18" x2="40" y2="18" />
+    </g>
+
+    <text x="1320" y="254" font-size="24" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+      <tspan x="1320" dy="0" font-size="30" font-weight="bold">page on per-model</tspan>
+      <tspan x="1320" dy="38" font-size="30" font-weight="bold">ratios,</tspan>
+      <tspan x="1320" dy="36">ticket on per-tenant ratios,</tspan>
+      <tspan x="1320" dy="34">guard low-traffic series</tspan>
+    </text>
+
+    
+    <g transform="translate(1125, 385)">
+      <rect x="0" y="0" width="115" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="16" cy="16" r="6" fill="#207448" />
+      <line x1="32" y1="16" x2="100" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+      <rect x="135" y="0" width="115" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="151" cy="16" r="6" fill="#207448" />
+      <line x1="167" y1="16" x2="235" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+      <rect x="270" y="0" width="120" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="286" cy="16" r="6" fill="#207448" />
+      <line x1="302" y1="16" x2="375" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+  </g>
+
+  
+  <g id="card-guard-example">
+    <rect x="1080" y="480" width="480" height="680" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(1292, 502)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 40 A 24 24 0 1 1 48 40" />
+      <line x1="28" y1="40" x2="40" y2="24" />
+      <circle cx="28" cy="40" r="3.5" fill="#207448" />
+      <line x1="28" y1="12" x2="28" y2="18" />
+      <line x1="14" y1="20" x2="18" y2="24" />
+      <line x1="42" y1="20" x2="38" y2="24" />
+    </g>
+
+    <text x="1320" y="588" font-size="24" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+      <tspan x="1320" dy="0" font-size="30" font-weight="bold">tenant with 3 requests</tspan>
+      <tspan x="1320" dy="38" font-size="30" font-weight="bold">per minute</tspan>
+      <tspan x="1320" dy="36">(0.05 requests per second)</tspan>
+      <tspan x="1320" dy="34">and every one failing has</tspan>
+      <tspan x="1320" dy="34">a 100 percent ratio but the</tspan>
+      <tspan x="1320" dy="34">rule needs more than 0.1</tspan>
+      <tspan x="1320" dy="34">requests per second over</tspan>
+      <tspan x="1320" dy="34">three days, so it does not</tspan>
+      <tspan x="1320" dy="34">fire; tenant a at 100</tspan>
+      <tspan x="1320" dy="34">requests per second and</tspan>
+      <tspan x="1320" dy="34">0.2 percent errors fires,</tspan>
+      <tspan x="1320" dy="34">tenant b stays silent;</tspan>
+      <tspan x="1320" dy="34">a dedicated contract</tspan>
+      <tspan x="1320" dy="34">tenant can get an absolute</tspan>
+      <tspan x="1320" dy="34">count of failures in an</tspan>
+      <tspan x="1320" dy="34">hour instead</tspan>
+    </text>
+  </g>
+</svg>

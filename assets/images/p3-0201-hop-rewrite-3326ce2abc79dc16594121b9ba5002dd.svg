@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>What changes at each router hop and what stays the same</title>
+  <desc>Visual infographic showing how MAC addresses change at each router hop while IP addresses remain constant end-to-end along a network path from Laptop to Server.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">What changes at each router hop and what stays the same</text>
+
+  
+  <g id="link-1-card">
+    <rect x="110" y="110" width="360" height="330" rx="12" fill="#ffffff" stroke="#b8cfc2" stroke-width="2" />
+    
+    <rect x="126" y="126" width="328" height="40" rx="6" fill="#f5f8f5" stroke="#b8cfc2" stroke-width="1.5" />
+    <text x="290" y="154" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">src MAC: laptop NIC</text>
+    
+    <rect x="126" y="174" width="328" height="72" rx="6" fill="#f5f8f5" stroke="#b8cfc2" stroke-width="1.5" />
+    <text x="290" y="202" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="290" dy="0">dst MAC: gateway's MAC</tspan>
+      <tspan x="290" dy="30">(bb:bb:bb:00:00:01)</tspan>
+    </text>
+    
+    <rect x="126" y="254" width="328" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="290" y="282" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">src IP 10.0.0.15</text>
+    
+    <rect x="126" y="302" width="328" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="290" y="330" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">dst IP 93.184.216.34</text>
+    
+    <rect x="126" y="350" width="328" height="40" rx="6" fill="#f5f8f5" stroke="#b8cfc2" stroke-width="1.5" />
+    <text x="290" y="378" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">TTL: initial</text>
+  </g>
+
+  
+  <g id="link-2-card">
+    <rect x="600" y="110" width="360" height="330" rx="12" fill="#ffffff" stroke="#b8cfc2" stroke-width="2" />
+    
+    <rect x="616" y="130" width="328" height="48" rx="6" fill="#fff3e6" stroke="#db8129" stroke-width="2" />
+    <text x="780" y="162" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">src MAC: router 1</text>
+    
+    <rect x="616" y="188" width="328" height="48" rx="6" fill="#fff3e6" stroke="#db8129" stroke-width="2" />
+    <text x="780" y="220" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">dst MAC: router 2</text>
+    
+    <rect x="616" y="246" width="328" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="780" y="278" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">src and dst IP: same</text>
+    
+    <rect x="616" y="304" width="328" height="48" rx="6" fill="#f5f8f5" stroke="#b8cfc2" stroke-width="1.5" />
+    <text x="780" y="336" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">TTL: one lower</text>
+  </g>
+
+  
+  <g id="link-3-card">
+    <rect x="1020" y="110" width="360" height="330" rx="12" fill="#ffffff" stroke="#b8cfc2" stroke-width="2" />
+    
+    <rect x="1036" y="130" width="328" height="48" rx="6" fill="#fff3e6" stroke="#db8129" stroke-width="2" />
+    <text x="1200" y="162" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">src MAC: router 2</text>
+    
+    <rect x="1036" y="188" width="328" height="48" rx="6" fill="#fff3e6" stroke="#db8129" stroke-width="2" />
+    <text x="1200" y="220" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">dst MAC: server</text>
+    
+    <rect x="1036" y="246" width="328" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1200" y="278" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">IP: same</text>
+    
+    <rect x="1036" y="304" width="328" height="48" rx="6" fill="#f5f8f5" stroke="#b8cfc2" stroke-width="1.5" />
+    <text x="1200" y="336" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">TTL: one lower again</text>
+  </g>
+
+  
+
+  
+  <g id="node-1">
+    <rect x="40" y="480" width="170" height="170" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <rect x="105" y="502" width="40" height="26" rx="2" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="97" y1="534" x2="153" y2="534" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="125" y="590" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="125" dy="0">Laptop</tspan>
+      <tspan x="125" dy="36" font-size="24" font-family="monospace" font-weight="normal">10.0.0.15</tspan>
+    </text>
+  </g>
+
+  
+  <g id="link-1-arrow">
+    <line x1="210" y1="565" x2="266" y2="565" stroke="#207448" stroke-width="4" />
+    <line x1="314" y1="565" x2="368" y2="565" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+    <circle cx="290" cy="565" r="24" fill="#207448" />
+    <text x="290" y="574" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  </g>
+
+  
+  <g id="node-2">
+    <rect x="370" y="480" width="300" height="170" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <rect x="500" y="506" width="40" height="22" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="510" y1="506" x2="502" y2="496" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="530" y1="506" x2="538" y2="496" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="512" cy="517" r="2" fill="#207448" />
+    <circle cx="528" cy="517" r="2" fill="#207448" />
+    <text x="520" y="590" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="520" dy="0">Router 1</tspan>
+      <tspan x="520" dy="36" font-size="24" font-weight="normal">(gateway 10.0.0.1)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="link-2-arrow">
+    <line x1="670" y1="565" x2="756" y2="565" stroke="#207448" stroke-width="4" />
+    <line x1="804" y1="565" x2="888" y2="565" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+    <circle cx="780" cy="565" r="24" fill="#207448" />
+    <text x="780" y="574" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  </g>
+
+  
+  <g id="node-3">
+    <rect x="890" y="480" width="180" height="170" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <rect x="960" y="506" width="40" height="22" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="970" y1="506" x2="962" y2="496" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="990" y1="506" x2="998" y2="496" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="972" cy="517" r="2" fill="#207448" />
+    <circle cx="988" cy="517" r="2" fill="#207448" />
+    <text x="980" y="608" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Router 2</text>
+  </g>
+
+  
+  <g id="link-3-arrow">
+    <line x1="1070" y1="565" x2="1176" y2="565" stroke="#207448" stroke-width="4" />
+    <line x1="1224" y1="565" x2="1328" y2="565" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+    <circle cx="1200" cy="565" r="24" fill="#207448" />
+    <text x="1200" y="574" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  </g>
+
+  
+  <g id="node-4">
+    <rect x="1330" y="480" width="230" height="170" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <rect x="1425" y="500" width="40" height="34" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="1425" y1="511" x2="1465" y2="511" stroke="#207448" stroke-width="3" />
+    <line x1="1425" y1="523" x2="1465" y2="523" stroke="#207448" stroke-width="3" />
+    <circle cx="1433" cy="506" r="1.5" fill="#207448" />
+    <circle cx="1433" cy="517" r="1.5" fill="#207448" />
+    <circle cx="1433" cy="529" r="1.5" fill="#207448" />
+    <text x="1445" y="590" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1445" dy="0">Server</tspan>
+      <tspan x="1445" dy="36" font-size="24" font-family="monospace" font-weight="normal">93.184.216.34</tspan>
+    </text>
+  </g>
+
+  
+  <g id="parcel-comparison-strip">
+    <rect x="40" y="690" width="1520" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="733" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="800" dy="0">The IP address is the street address and never changes;</tspan>
+      <tspan x="800" dy="36">the MAC address is the next-depot label and is rewritten at every stop</tspan>
+    </text>
+  </g>
+
+  
+  <g id="side-note">
+    <rect x="40" y="825" width="1520" height="145" rx="12" fill="#ffffff" stroke="#b8cfc2" stroke-width="2" stroke-dasharray="6 4" />
+    <text x="800" y="865" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="800" dy="0">Unless NAT is involved: at the edge of a private network, NAT or PAT swaps a private source</tspan>
+      <tspan x="800" dy="36">address and port for a public one and reverses it for replies; RFC 1918 ranges</tspan>
+      <tspan x="800" dy="36" font-family="monospace" font-weight="bold" fill="#207448">10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1005" width="1520" height="95" rx="12" fill="#207448" />
+    <text x="800" y="1046" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      <tspan x="800" dy="0">MAC addresses change at every router hop,</tspan>
+      <tspan x="800" dy="36">but IP addresses stay the same end to end unless NAT is involved</tspan>
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,253 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 990" width="1600" height="990">
+  <title>How an etcd write reaches quorum</title>
+  <desc>Visual infographic explaining how an etcd write reaches quorum across leader and follower nodes with disk fsync requirements</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#143d26" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="990" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">How an etcd write reaches quorum</text>
+
+  
+  <g transform="translate(41, 130)">
+    <rect width="270" height="560" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    <circle cx="40" cy="40" r="24" fill="#207448" />
+    <text x="40" y="49" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <text x="76" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 1</text>
+    
+    <g transform="translate(107, 78)">
+      <rect x="0" y="0" width="56" height="50" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="0" y1="16" x2="56" y2="16" stroke="#207448" stroke-width="4" />
+      <circle cx="12" cy="8" r="3" fill="#207448" />
+      <circle cx="22" cy="8" r="3" fill="#207448" />
+      <circle cx="32" cy="8" r="3" fill="#207448" />
+    </g>
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="135" y="185">kube-apiserver</tspan>
+      <tspan x="135" y="217">sends a gRPC</tspan>
+      <tspan x="135" y="249">write (Put or</tspan>
+      <tspan x="135" y="281">Txn) to the</tspan>
+      <tspan x="135" y="313">etcd leader</tspan>
+    </text>
+    
+    <rect x="18" y="360" width="234" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(35, 385)">
+      <rect x="0" y="0" width="200" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <path d="M 28 23 L 172 23" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+      <circle cx="28" cy="23" r="6" fill="#207448" />
+      
+      <rect x="40" y="70" width="120" height="50" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="3" />
+      <line x1="55" y1="86" x2="145" y2="86" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="55" y1="102" x2="115" y2="102" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+  </g>
+
+  
+  <line x1="311" y1="410" x2="351" y2="410" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(353, 130)">
+    <rect width="270" height="560" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    <circle cx="40" cy="40" r="24" fill="#207448" />
+    <text x="40" y="49" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <text x="76" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 2</text>
+    
+    <g transform="translate(107, 78)">
+      <circle cx="28" cy="26" r="16" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 28 4 L 28 10 M 28 42 L 28 48 M 6 26 L 12 26 M 44 26 L 50 26 M 12 10 L 16 14 M 40 38 L 44 42 M 12 42 L 16 38 M 40 14 L 44 10" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="135" y="170">the leader</tspan>
+      <tspan x="135" y="200">appends the</tspan>
+      <tspan x="135" y="230">entry to its</tspan>
+      <tspan x="135" y="260">WAL with an</tspan>
+      <tspan x="135" y="290">fsync, then</tspan>
+      <tspan x="135" y="320">broadcasts</tspan>
+      <tspan x="135" y="350">AppendEntries</tspan>
+      <tspan x="135" y="380">to followers</tspan>
+      <tspan x="135" y="410">on port 2380</tspan>
+    </text>
+    
+    <rect x="18" y="440" width="234" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(40, 452)">
+      
+      <path d="M 10 16 C 10 9 45 9 45 16 C 45 23 10 23 10 16 Z" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <path d="M 10 16 L 10 42 C 10 49 45 49 45 42 L 45 16" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 10 29 C 10 36 45 36 45 29" fill="none" stroke="#207448" stroke-width="3" />
+      
+      <path d="M 75 30 L 140 12" stroke="#207448" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)" />
+      <path d="M 75 30 L 140 48" stroke="#207448" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)" />
+      <circle cx="75" cy="30" r="5" fill="#207448" />
+    </g>
+  </g>
+
+  
+  <line x1="623" y1="410" x2="663" y2="410" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(665, 130)">
+    
+    <rect width="270" height="560" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" filter="url(#shadow)" />
+    
+    <circle cx="40" cy="40" r="24" fill="#207448" />
+    <text x="40" y="49" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <text x="76" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 3</text>
+    
+    <g transform="translate(107, 78)">
+      <rect x="4" y="4" width="48" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="4" y1="24" x2="52" y2="24" stroke="#207448" stroke-width="3" />
+      <circle cx="14" cy="14" r="3" fill="#207448" />
+      <circle cx="14" cy="34" r="3" fill="#207448" />
+    </g>
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="135" y="170">each follower</tspan>
+      <tspan x="135" y="202">appends to its</tspan>
+      <tspan x="135" y="234">own WAL and</tspan>
+      <tspan x="135" y="266">calls fsync,</tspan>
+      <tspan x="135" y="298">then replies</tspan>
+      <tspan x="135" y="330">with an</tspan>
+      <tspan x="135" y="362">acknowledgment</tspan>
+    </text>
+
+    
+    <g transform="translate(18, 400)">
+      <rect width="234" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <path d="M 24 16 C 24 12 44 12 44 16 C 44 20 24 20 24 16 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 24 16 L 24 38 C 24 42 44 42 44 38 L 44 16" fill="none" stroke="#207448" stroke-width="2" />
+      <path d="M 24 27 C 24 31 44 31 44 27" fill="none" stroke="#207448" stroke-width="2" />
+      
+      <polyline points="72,28 82,38 102,18" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 130 28 L 200 28" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+    </g>
+
+    
+    <g transform="translate(18, 478)">
+      <rect width="234" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <path d="M 24 16 C 24 12 44 12 44 16 C 44 20 24 20 24 16 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <path d="M 24 16 L 24 38 C 24 42 44 42 44 38 L 44 16" fill="none" stroke="#207448" stroke-width="2" />
+      <path d="M 24 27 C 24 31 44 31 44 27" fill="none" stroke="#207448" stroke-width="2" />
+      
+      <polyline points="72,28 82,38 102,18" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 130 28 L 200 28" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+    </g>
+  </g>
+
+  
+  <line x1="935" y1="410" x2="975" y2="410" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(977, 130)">
+    <rect width="270" height="560" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    <circle cx="40" cy="40" r="24" fill="#207448" />
+    <text x="40" y="49" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    <text x="76" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 4</text>
+    
+    <g transform="translate(107, 78)">
+      <path d="M 28 4 L 48 12 L 48 28 C 48 42 28 50 28 50 C 28 50 8 42 8 28 L 8 12 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <polyline points="20,26 26,32 36,20" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="135" y="170">once a quorum</tspan>
+      <tspan x="135" y="202">has fsynced,</tspan>
+      <tspan x="135" y="234">the leader</tspan>
+      <tspan x="135" y="266">commits the</tspan>
+      <tspan x="135" y="298">entry and</tspan>
+      <tspan x="135" y="330">applies it to</tspan>
+      <tspan x="135" y="362">the bbolt</tspan>
+      <tspan x="135" y="394">B+tree</tspan>
+    </text>
+    
+    <rect x="18" y="430" width="234" height="114" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(35, 442)">
+      
+      <circle cx="36" cy="20" r="12" fill="#207448" />
+      <polyline points="30,20 34,24 42,16" fill="none" stroke="#ffffff" stroke-width="2.5" />
+      <circle cx="82" cy="20" r="12" fill="#207448" />
+      <polyline points="76,20 80,24 88,16" fill="none" stroke="#ffffff" stroke-width="2.5" />
+      <circle cx="128" cy="20" r="12" fill="none" stroke="#207448" stroke-width="2.5" />
+      
+      <rect x="66" y="46" width="32" height="16" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <line x1="70" y1="62" x2="42" y2="76" stroke="#207448" stroke-width="2" />
+      <line x1="94" y1="62" x2="122" y2="76" stroke="#207448" stroke-width="2" />
+      <rect x="24" y="76" width="36" height="16" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <rect x="104" y="76" width="36" height="16" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <line x1="60" y1="84" x2="104" y2="84" stroke="#207448" stroke-width="2" stroke-dasharray="3 2" />
+    </g>
+  </g>
+
+  
+  <line x1="1247" y1="410" x2="1287" y2="410" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(1289, 130)">
+    <rect width="270" height="560" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    <circle cx="40" cy="40" r="24" fill="#207448" />
+    <text x="40" y="49" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    <text x="76" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 5</text>
+    
+    <g transform="translate(107, 78)">
+      <circle cx="28" cy="26" r="22" fill="none" stroke="#207448" stroke-width="4" />
+      <polyline points="18,26 25,33 38,18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="135" y="210">success</tspan>
+      <tspan x="135" y="246">returns to</tspan>
+      <tspan x="135" y="282">kube-apiserver</tspan>
+    </text>
+    
+    <rect x="18" y="360" width="234" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(35, 385)">
+      
+      <rect x="0" y="0" width="200" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <path d="M 172 23 L 28 23" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+      <circle cx="172" cy="23" r="6" fill="#207448" />
+      
+      <g transform="translate(50, 70)">
+        <circle cx="50" cy="25" r="24" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+        <polyline points="40,25 47,32 60,18" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+    </g>
+  </g>
+
+  
+  <g transform="translate(260, 722)">
+    <rect width="1080" height="110" rx="16" fill="#fff9f2" stroke="#db8129" stroke-width="3" filter="url(#shadow)" />
+    
+    <g transform="translate(42, 33)">
+      <polygon points="22,4 40,38 4,38" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+      <line x1="22" y1="18" x2="22" y2="26" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <circle cx="22" cy="32" r="2.5" fill="#db8129" />
+    </g>
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="570" y="47">every write waits for a disk fsync on a majority,</tspan>
+      <tspan x="570" y="81">so a slow disk stalls the whole control plane</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(41, 866)">
+    <rect width="1518" height="84" rx="14" fill="#207448" filter="url(#shadow)" />
+    <text x="759" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">the slowest disk on the majority sets the write latency</text>
+  </g>
+</svg>

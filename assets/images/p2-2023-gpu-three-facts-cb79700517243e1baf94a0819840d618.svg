@@ -1,0 +1,241 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Three GPU facts: device plugin, limits, and taints</title>
+  <desc>Infographic explaining three core Kubernetes GPU facts: the device plugin advertises GPUs, GPUs go in limits, and GPU nodes are tainted.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="78" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Three GPU facts: device plugin, limits, and taints</text>
+
+  
+  <g id="card-1">
+    
+    <rect x="40" y="120" width="480" height="740" rx="20" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="96" cy="175" r="24" fill="#207448"/>
+    <text x="96" y="184" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <g transform="translate(252, 147)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="14" y="14" width="28" height="28" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <line x1="14" y1="0" x2="14" y2="8" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="0" x2="28" y2="8" stroke="#207448" stroke-width="3"/>
+      <line x1="42" y1="0" x2="42" y2="8" stroke="#207448" stroke-width="3"/>
+      <line x1="14" y1="48" x2="14" y2="56" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="48" x2="28" y2="56" stroke="#207448" stroke-width="3"/>
+      <line x1="42" y1="48" x2="42" y2="56" stroke="#207448" stroke-width="3"/>
+      <line x1="0" y1="14" x2="8" y2="14" stroke="#207448" stroke-width="3"/>
+      <line x1="0" y1="28" x2="8" y2="28" stroke="#207448" stroke-width="3"/>
+      <line x1="0" y1="42" x2="8" y2="42" stroke="#207448" stroke-width="3"/>
+      <line x1="48" y1="14" x2="56" y2="14" stroke="#207448" stroke-width="3"/>
+      <line x1="48" y1="28" x2="56" y2="28" stroke="#207448" stroke-width="3"/>
+      <line x1="48" y1="42" x2="56" y2="42" stroke="#207448" stroke-width="3"/>
+    </g>
+
+    
+    <text x="280" y="250" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="280" dy="0">The device plugin</tspan>
+      <tspan x="280" dy="38">advertises GPUs</tspan>
+    </text>
+
+    
+    <line x1="64" y1="315" x2="496" y2="315" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <rect x="64" y="335" width="432" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(86, 355)">
+      <rect x="0" y="0" width="130" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <rect x="12" y="14" width="106" height="18" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="24" cy="23" r="3" fill="#207448"/>
+      <rect x="12" y="46" width="106" height="18" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="24" cy="55" r="3" fill="#207448"/>
+      <rect x="12" y="78" width="106" height="18" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="24" cy="87" r="3" fill="#207448"/>
+    </g>
+
+    
+    <rect x="236" y="355" width="240" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6,6"/>
+    
+    <line x1="256" y1="410" x2="456" y2="410" stroke="#207448" stroke-width="2" stroke-dasharray="4,4"/>
+    <circle cx="356" cy="410" r="14" fill="none" stroke="#207448" stroke-width="2"/>
+    <line x1="346" y1="410" x2="366" y2="410" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="120" y="525" width="320" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="160" y="517" width="16" height="8" rx="2" fill="#207448"/>
+    <rect x="210" y="517" width="16" height="8" rx="2" fill="#207448"/>
+    <rect x="260" y="517" width="16" height="8" rx="2" fill="#207448"/>
+    <rect x="310" y="517" width="16" height="8" rx="2" fill="#207448"/>
+    <rect x="360" y="517" width="16" height="8" rx="2" fill="#207448"/>
+    
+    <rect x="160" y="600" width="16" height="8" rx="2" fill="#207448"/>
+    <rect x="210" y="600" width="16" height="8" rx="2" fill="#207448"/>
+    <rect x="260" y="600" width="16" height="8" rx="2" fill="#207448"/>
+    <rect x="310" y="600" width="16" height="8" rx="2" fill="#207448"/>
+    <rect x="360" y="600" width="16" height="8" rx="2" fill="#207448"/>
+    
+    <text x="280" y="572" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">GPUs</text>
+
+    
+    <line x1="356" y1="517" x2="356" y2="475" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+    
+    <rect x="64" y="640" width="432" height="195" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="280" y="725" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="280" dy="0">A GPU is not built</tspan>
+      <tspan x="280" dy="40">into Kubernetes</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-2">
+    
+    <rect x="560" y="120" width="480" height="740" rx="20" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="616" cy="175" r="24" fill="#207448"/>
+    <text x="616" y="184" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <g transform="translate(772, 147)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="14" y1="12" x2="14" y2="44" stroke="#207448" stroke-width="3"/>
+      <circle cx="14" cy="24" r="5" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="12" x2="28" y2="44" stroke="#207448" stroke-width="3"/>
+      <circle cx="28" cy="36" r="5" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+      <line x1="42" y1="12" x2="42" y2="44" stroke="#207448" stroke-width="3"/>
+      <circle cx="42" cy="20" r="5" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    </g>
+
+    
+    <text x="800" y="270" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">GPUs go in limits</text>
+
+    
+    <line x1="584" y1="315" x2="1016" y2="315" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <rect x="584" y="335" width="432" height="265" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="584" y="335" width="432" height="38" rx="14" fill="#bed7c7"/>
+    <rect x="584" y="359" width="432" height="14" fill="#bed7c7"/>
+    <circle cx="606" cy="354" r="5" fill="#207448"/>
+    <circle cx="622" cy="354" r="5" fill="#207448"/>
+    <circle cx="638" cy="354" r="5" fill="#207448"/>
+
+    
+    <rect x="614" y="395" width="372" height="66" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    <text x="800" y="437" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">limits: nvidia.com/gpu</text>
+
+    
+    <g transform="translate(640, 485)">
+      
+      <rect x="0" y="0" width="120" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <line x1="16" y1="28" x2="104" y2="28" stroke="#207448" stroke-width="3"/>
+      <line x1="16" y1="46" x2="80" y2="46" stroke="#207448" stroke-width="2"/>
+      <line x1="16" y1="64" x2="96" y2="64" stroke="#207448" stroke-width="2"/>
+
+      
+      <rect x="142" y="34" width="36" height="6" rx="3" fill="#207448"/>
+      <rect x="142" y="50" width="36" height="6" rx="3" fill="#207448"/>
+
+      
+      <rect x="200" y="0" width="120" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <line x1="216" y1="28" x2="304" y2="28" stroke="#207448" stroke-width="3"/>
+      <line x1="216" y1="46" x2="280" y2="46" stroke="#207448" stroke-width="2"/>
+      <line x1="216" y1="64" x2="296" y2="64" stroke="#207448" stroke-width="2"/>
+    </g>
+
+    
+    <rect x="584" y="640" width="432" height="195" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="688" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="800" dy="0">A limit without a request:</tspan>
+      <tspan x="800" dy="36">the request becomes</tspan>
+      <tspan x="800" dy="36">the limit. Both set:</tspan>
+      <tspan x="800" dy="36">they must be equal</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-3">
+    
+    <rect x="1080" y="120" width="480" height="740" rx="20" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="1136" cy="175" r="24" fill="#207448"/>
+    <text x="1136" y="184" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g transform="translate(1292, 147)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 28 10 L 46 17 L 46 31 C 46 41 37 47 28 50 C 19 47 10 41 10 31 L 10 17 Z" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="22" x2="28" y2="34" stroke="#207448" stroke-width="3"/>
+      <circle cx="28" cy="40" r="2" fill="#207448"/>
+    </g>
+
+    
+    <text x="1320" y="250" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1320" dy="0">GPU nodes</tspan>
+      <tspan x="1320" dy="38">are tainted</tspan>
+    </text>
+
+    
+    <line x1="1104" y1="315" x2="1536" y2="315" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <rect x="1104" y="335" width="432" height="265" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="1124" y="355" width="392" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1320" y="394" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">nvidia.com/gpu=true</text>
+
+    
+    <g transform="translate(1124, 440)">
+      
+      <line x1="0" y1="30" x2="16" y2="30" stroke="#207448" stroke-width="3"/>
+      <line x1="4" y1="50" x2="16" y2="50" stroke="#207448" stroke-width="3"/>
+      <line x1="0" y1="70" x2="16" y2="70" stroke="#207448" stroke-width="3"/>
+
+      
+      <rect x="24" y="8" width="160" height="114" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+      
+      <circle cx="80" cy="65" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="80" cy="65" r="7" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <line x1="96" y1="65" x2="136" y2="65" stroke="#207448" stroke-width="3"/>
+      <line x1="120" y1="65" x2="120" y2="77" stroke="#207448" stroke-width="3"/>
+      <line x1="134" y1="65" x2="134" y2="77" stroke="#207448" stroke-width="3"/>
+
+      
+      <line x1="195" y1="65" x2="280" y2="65" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+      
+      <rect x="290" y="14" width="92" height="102" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+      <line x1="310" y1="65" x2="362" y2="65" stroke="#207448" stroke-width="2" stroke-dasharray="3,3"/>
+      <line x1="336" y1="39" x2="336" y2="91" stroke="#207448" stroke-width="2" stroke-dasharray="3,3"/>
+    </g>
+
+    
+    <rect x="1104" y="640" width="432" height="195" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1320" y="725" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="1320" dy="0">A taint repels pods</tspan>
+      <tspan x="1320" dy="40">unless they tolerate it</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="40" y="890" width="1520" height="70" rx="16" fill="#207448"/>
+  <text x="800" y="934" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Three facts you must be able to say</text>
+</svg>

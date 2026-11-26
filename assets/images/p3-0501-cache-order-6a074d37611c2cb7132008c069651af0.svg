@@ -1,0 +1,228 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Layer order decides how much a code edit rebuilds</title>
+  <desc>Infographic comparing careless Dockerfile layer ordering where code edits force dependency reinstalls against cache-friendly order where dependencies remain cached.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Layer order decides how much a code edit rebuilds</text>
+
+  
+  <g id="careless-stack">
+    
+    <rect x="40" y="115" width="500" height="735" rx="16" fill="#fcf7f7" stroke="#e0b4b0" stroke-width="2" />
+
+    
+    <g transform="translate(65, 135)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#c93b2b" stroke-width="4" />
+      <line x1="28" y1="16" x2="28" y2="30" stroke="#c93b2b" stroke-width="4" stroke-linecap="round" />
+      <circle cx="28" cy="39" r="2.5" fill="#c93b2b" />
+    </g>
+
+    
+    <text x="135" y="173" font-family="sans-serif" font-size="32" font-weight="bold" fill="#c93b2b">Careless order</text>
+
+    
+    <text x="280" y="222" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">edit one line of code</text>
+    <path d="M 120 230 L 460 230 L 460 368 L 426 368" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+    
+    <rect x="70" y="250" width="350" height="68" rx="8" fill="#fdf0e2" stroke="#db8129" stroke-width="3" />
+    <g transform="translate(85, 264)">
+      <rect x="0" y="0" width="40" height="40" rx="6" fill="none" stroke="#db8129" stroke-width="3" />
+      <polyline points="10,20 18,28 10,36" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="22" y1="36" x2="32" y2="36" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="145" y="293" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">RUN pip install</text>
+
+    
+    <rect x="70" y="334" width="350" height="68" rx="8" fill="#fdf0e2" stroke="#db8129" stroke-width="3" />
+    <g transform="translate(85, 348)">
+      <rect x="0" y="0" width="40" height="40" rx="6" fill="none" stroke="#db8129" stroke-width="3" />
+      <polyline points="12,14 28,14 28,30" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <rect x="8" y="10" width="24" height="24" rx="3" fill="none" stroke="#db8129" stroke-width="3" />
+    </g>
+    <text x="145" y="377" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">COPY . .</text>
+
+    
+    <rect x="70" y="418" width="350" height="68" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(85, 432)">
+      <ellipse cx="20" cy="10" rx="14" ry="6" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 6 10 L 6 28 A 14 6 0 0 0 34 28 L 34 10" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="145" y="461" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">FROM base</text>
+
+    
+    <rect x="65" y="520" width="450" height="290" rx="12" fill="#fdf0e2" stroke="#db8129" stroke-width="2" />
+    <g transform="translate(85, 540)">
+      <circle cx="28" cy="28" r="22" fill="none" stroke="#db8129" stroke-width="4" />
+      <polyline points="28,15 28,29 37,29" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="155" y="562" font-weight="bold" fill="#db8129">rebuilt: every commit forces</tspan>
+      <tspan x="85" y="614">a full dependency reinstall</tspan>
+      <tspan x="85" y="662">(a 10-minute reinstall in</tspan>
+      <tspan x="85" y="710">the checkpoint example)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="cache-friendly-stack">
+    
+    <rect x="580" y="115" width="520" height="735" rx="16" fill="#f5fbf7" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(605, 135)">
+      <path d="M 28 6 L 48 14 L 48 28 C 48 40 28 50 28 50 C 28 50 8 40 8 28 L 8 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <polyline points="18,26 25,33 38,18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    
+    <text x="670" y="173" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Cache-friendly order</text>
+
+    
+    <rect x="610" y="215" width="460" height="65" rx="8" fill="#fdf0e2" stroke="#db8129" stroke-width="3" />
+    <g transform="translate(625, 228)">
+      <rect x="0" y="0" width="38" height="38" rx="6" fill="none" stroke="#db8129" stroke-width="3" />
+      <polyline points="10,12 26,12 26,28" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <rect x="6" y="8" width="22" height="22" rx="3" fill="none" stroke="#db8129" stroke-width="3" />
+    </g>
+    <text x="685" y="256" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">COPY src/</text>
+
+    
+    <rect x="610" y="292" width="460" height="52" rx="8" fill="#fdf0e2" stroke="#db8129" stroke-width="2" />
+    <text x="840" y="327" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">rebuilt in about 1 second</text>
+
+    
+    <rect x="610" y="360" width="460" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(625, 373)">
+      <rect x="0" y="0" width="38" height="38" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+      <polyline points="10,18 18,26 10,34" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="22" y1="34" x2="30" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="685" y="401" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">RUN pip install</text>
+
+    
+    <rect x="610" y="440" width="460" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(625, 453)">
+      <rect x="4" y="16" width="30" height="20" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 11 16 L 11 10 C 11 5 27 5 27 10 L 27 16" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="685" y="481" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">COPY requirements.lock</text>
+
+    
+    <rect x="610" y="520" width="460" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(625, 533)">
+      <ellipse cx="19" cy="9" rx="14" ry="5" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 5 9 L 5 26 A 14 5 0 0 0 33 26 L 33 9" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="685" y="561" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">FROM base</text>
+
+    
+    <rect x="610" y="610" width="460" height="70" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(630, 622)">
+      <circle cx="23" cy="23" r="18" fill="none" stroke="#207448" stroke-width="3" />
+      <polyline points="15,23 21,29 31,17" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="860" y="653" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">cache hit, digest matches</text>
+  </g>
+
+  
+  <g id="right-sidebar">
+    
+    <rect x="1140" y="115" width="420" height="735" rx="16" fill="#e8f1ea" stroke="#c0d1c5" stroke-width="2" />
+
+    
+    <g transform="translate(1170, 140)">
+      <rect x="0" y="0" width="56" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      <line x1="0" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="3" />
+      <circle cx="12" cy="9" r="3" fill="#207448" />
+      <circle cx="22" cy="9" r="3" fill="#207448" />
+      <circle cx="32" cy="9" r="3" fill="#207448" />
+    </g>
+
+    
+    <rect x="1165" y="225" width="370" height="585" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1190" y="280">Same idea in the</tspan>
+      <tspan x="1190" y="330">Node.js example:</tspan>
+      <tspan x="1190" y="380" font-family="monospace" font-weight="bold">COPY package*.json,</tspan>
+      <tspan x="1190" y="430" font-family="monospace" font-weight="bold">RUN npm install,</tspan>
+      <tspan x="1190" y="480">then</tspan>
+      <tspan x="1255" y="480" font-family="monospace" font-weight="bold">COPY . .</tspan>
+      <tspan x="1190" y="530">so editing</tspan>
+      <tspan x="1190" y="580" font-family="monospace" font-weight="bold">server.js</tspan>
+      <tspan x="1190" y="630">rebuilds only</tspan>
+      <tspan x="1190" y="680">the last layer</tspan>
+    </text>
+  </g>
+
+  
+  <g id="domino-row">
+    
+    <rect x="40" y="875" width="1520" height="150" rx="12" fill="#ffffff" stroke="#c0d1c5" stroke-width="2" />
+
+    
+    <g transform="translate(65, 905)">
+      
+      <rect x="0" y="5" width="26" height="80" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <circle cx="13" cy="25" r="3" fill="#207448" />
+      <line x1="4" y1="45" x2="22" y2="45" stroke="#207448" stroke-width="2" />
+      <circle cx="13" cy="65" r="3" fill="#207448" />
+
+      
+      <rect x="55" y="5" width="26" height="80" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <circle cx="68" cy="25" r="3" fill="#207448" />
+      <line x1="59" y1="45" x2="77" y2="45" stroke="#207448" stroke-width="2" />
+      <circle cx="68" cy="65" r="3" fill="#207448" />
+
+      
+      <rect x="110" y="5" width="26" height="80" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <circle cx="123" cy="25" r="3" fill="#207448" />
+      <line x1="114" y1="45" x2="132" y2="45" stroke="#207448" stroke-width="2" />
+      <circle cx="123" cy="65" r="3" fill="#207448" />
+
+      
+      <rect x="165" y="5" width="26" height="80" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <circle cx="178" cy="25" r="3" fill="#207448" />
+      <line x1="169" y1="45" x2="187" y2="45" stroke="#207448" stroke-width="2" />
+      <circle cx="178" cy="65" r="3" fill="#207448" />
+
+      
+      <g transform="translate(225, 45) rotate(42)">
+        <rect x="0" y="0" width="26" height="80" rx="4" fill="#fdf0e2" stroke="#db8129" stroke-width="3" />
+        <circle cx="13" cy="25" r="3" fill="#db8129" />
+        <line x1="4" y1="40" x2="22" y2="40" stroke="#db8129" stroke-width="2" />
+        <circle cx="13" cy="55" r="3" fill="#db8129" />
+      </g>
+    </g>
+
+    
+    <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="380" y="942">rarely changing pieces first, so a change near the front</tspan>
+      <tspan x="380" y="982">is the only one that knocks the rest down</tspan>
+    </text>
+  </g>
+
+  
+  <text x="800" y="1062" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Layers match RUN, COPY and ADD; ENV, LABEL and CMD change only metadata.</text>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="1095" width="1520" height="70" rx="12" fill="#207448" />
+    <g transform="translate(65, 1107)">
+      <rect x="6" y="18" width="34" height="24" rx="4" fill="none" stroke="#ffffff" stroke-width="4" />
+      <path d="M 14 18 L 14 11 C 14 5 32 5 32 11 L 32 18" fill="none" stroke="#ffffff" stroke-width="4" />
+    </g>
+    <text x="800" y="1141" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Copy the lockfile before the source.</text>
+  </g>
+</svg>

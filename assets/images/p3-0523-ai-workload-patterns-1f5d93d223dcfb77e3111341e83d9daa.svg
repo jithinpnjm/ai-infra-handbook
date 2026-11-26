@@ -1,0 +1,232 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Autoscaling patterns per AI workload</title>
+  <desc>A comprehensive comparison table of pod and node autoscaling patterns across seven AI workload categories, plus a multi-metric safety rule strip.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <g id="title-group">
+    
+    <g transform="translate(48, 36)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="28" cy="28" r="10" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M28 4 L28 12 M28 44 L28 52 M4 28 L12 28 M44 28 L52 28 M11 11 L17 17 M39 39 L45 45 M11 45 L17 39 M39 11 L45 17" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="124" y="76" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Autoscaling patterns per AI workload</text>
+  </g>
+
+  
+  
+  <g id="table-headers" transform="translate(40, 114)">
+    <rect x="0" y="0" width="380" height="54" rx="8" fill="#207448"/>
+    <text x="24" y="37" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#f5f8f5">Workload</text>
+
+    <rect x="400" y="0" width="570" height="54" rx="8" fill="#207448"/>
+    <text x="424" y="37" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#f5f8f5">Pod scaling</text>
+
+    <rect x="990" y="0" width="530" height="54" rx="8" fill="#207448"/>
+    <text x="1014" y="37" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#f5f8f5">Node scaling</text>
+  </g>
+
+  
+  
+  <g id="row-1" transform="translate(40, 182)">
+    
+    <rect x="0" y="0" width="380" height="152" rx="8" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(20, 20)">
+      <rect x="4" y="4" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="14" y="14" width="20" height="20" rx="3" fill="#207448"/>
+      <path d="M14 4 L14 0 M24 4 L24 0 M34 4 L34 0 M14 44 L14 48 M24 44 L24 48 M34 44 L34 48 M4 14 L0 14 M4 24 L0 24 M4 34 L0 34 M44 14 L48 14 M44 24 L48 24 M44 34 L48 34" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="80" y="52" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">LLM online inference</text>
+    <text x="80" y="86" font-family="sans-serif" font-size="24px" fill="#303a36">(vLLM, Triton, TGI)</text>
+
+    
+    <rect x="400" y="0" width="570" height="152" rx="8" fill="#e8f1ea"/>
+    <text x="424" y="44" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="424" dy="0">HPA or KEDA on queue depth, concurrency,</tspan>
+      <tspan x="424" dy="34">KV-cache</tspan>
+      <tspan x="424" dy="34">min 1 to 2; slow scale-down</tspan>
+    </text>
+
+    
+    <rect x="990" y="0" width="530" height="152" rx="8" fill="#e8f1ea"/>
+    <text x="1014" y="38" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="1014" dy="0">fixed reserved GPU pool plus burst</tspan>
+      <tspan x="1014" dy="30">autoscaled pool, overprovision pause pods,</tspan>
+      <tspan x="1014" dy="30">pre-pulled images</tspan>
+      <tspan x="1014" dy="32">replica start 2 to 15 min</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-2" transform="translate(40, 346)">
+    <rect x="0" y="0" width="380" height="92" rx="8" fill="#e8f1ea"/>
+    
+    <g transform="translate(20, 18)">
+      <polygon points="24,4 44,14 24,24 4,14" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <polyline points="4,24 24,34 44,24" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <polyline points="4,34 24,44 44,34" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    </g>
+    <text x="80" y="42" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+      <tspan x="80" dy="0">Embedding and reranker</tspan>
+      <tspan x="80" dy="30">services</tspan>
+    </text>
+
+    
+    <rect x="400" y="0" width="570" height="92" rx="8" fill="#e8f1ea"/>
+    <text x="424" y="42" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="424" dy="0">HPA on CPU or GPU concurrency,</tspan>
+      <tspan x="424" dy="30">smaller replicas</tspan>
+    </text>
+
+    
+    <rect x="990" y="0" width="530" height="92" rx="8" fill="#e8f1ea"/>
+    <text x="1014" y="54" font-family="sans-serif" font-size="24px" fill="#303a36">autoscaled L4 or L40S pool</text>
+  </g>
+
+  
+  <g id="row-3" transform="translate(40, 450)">
+    <rect x="0" y="0" width="380" height="114" rx="8" fill="#e8f1ea"/>
+    
+    <g transform="translate(20, 29)">
+      <rect x="6" y="6" width="36" height="10" rx="2" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="6" y="22" width="36" height="10" rx="2" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="6" y="38" width="36" height="10" rx="2" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="80" y="65" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Batch inference</text>
+
+    
+    <rect x="400" y="0" width="570" height="114" rx="8" fill="#e8f1ea"/>
+    <text x="424" y="48" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="424" dy="0">KEDA on queue backlog,</tspan>
+      <tspan x="424" dy="32">Jobs with parallelism</tspan>
+    </text>
+
+    
+    <rect x="990" y="0" width="530" height="114" rx="8" fill="#e8f1ea"/>
+    <text x="1014" y="40" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="1014" dy="0">cluster autoscaler or Karpenter on Pending,</tspan>
+      <tspan x="1014" dy="32">spot allowed</tspan>
+      <tspan x="1014" dy="32">scale to zero</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-4" transform="translate(40, 576)">
+    <rect x="0" y="0" width="380" height="126" rx="8" fill="#e8f1ea"/>
+    
+    <g transform="translate(20, 35)">
+      <circle cx="10" cy="14" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="38" cy="14" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="24" cy="40" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="16" y1="14" x2="32" y2="14" stroke="#207448" stroke-width="3"/>
+      <line x1="13" y1="19" x2="21" y2="35" stroke="#207448" stroke-width="3"/>
+      <line x1="35" y1="19" x2="27" y2="35" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="80" y="71" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Training</text>
+
+    
+    <rect x="400" y="0" width="570" height="126" rx="8" fill="#e8f1ea"/>
+    <text x="424" y="42" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="424" dy="0">not HPA-based, fixed job size,</tspan>
+      <tspan x="424" dy="32">elastic training can scale workers</tspan>
+      <tspan x="424" dy="32">within min and max</tspan>
+    </text>
+
+    
+    <rect x="990" y="0" width="530" height="126" rx="8" fill="#e8f1ea"/>
+    <text x="1014" y="42" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="1014" dy="0">admit with Kueue, provision nodes atomically;</tspan>
+      <tspan x="1014" dy="32">scale events trigger rendezvous restarts</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-5" transform="translate(40, 714)">
+    <rect x="0" y="0" width="380" height="106" rx="8" fill="#e8f1ea"/>
+    
+    <g transform="translate(20, 25)">
+      <circle cx="12" cy="28" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="38" cy="14" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="38" cy="42" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="19" y1="24" x2="31" y2="18" stroke="#207448" stroke-width="3"/>
+      <line x1="19" y1="32" x2="31" y2="38" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="80" y="48" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+      <tspan x="80" dy="0">Data processing</tspan>
+      <tspan x="80" dy="32">(Spark, Ray)</tspan>
+    </text>
+
+    
+    <rect x="400" y="0" width="570" height="106" rx="8" fill="#e8f1ea"/>
+    <text x="424" y="60" font-family="sans-serif" font-size="24px" fill="#303a36">operator-driven dynamic allocation</text>
+
+    
+    <rect x="990" y="0" width="530" height="106" rx="8" fill="#e8f1ea"/>
+    <text x="1014" y="48" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="1014" dy="0">Ray autoscaler talks to Kubernetes through</tspan>
+      <tspan x="1014" dy="32">KubeRay</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-6" transform="translate(40, 832)">
+    <rect x="0" y="0" width="380" height="96" rx="8" fill="#e8f1ea"/>
+    
+    <g transform="translate(20, 20)">
+      <rect x="4" y="6" width="40" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <polyline points="12,18 20,23 12,28" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="24" y1="28" x2="34" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="80" y="46" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+      <tspan x="80" dy="0">Interactive notebooks</tspan>
+    </text>
+
+    
+    <rect x="400" y="0" width="570" height="96" rx="8" fill="#e8f1ea"/>
+    <text x="424" y="56" font-family="sans-serif" font-size="24px" fill="#303a36">none per user</text>
+
+    
+    <rect x="990" y="0" width="530" height="96" rx="8" fill="#e8f1ea"/>
+    <text x="1014" y="44" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="1014" dy="0">pool scaling plus idle culling,</tspan>
+      <tspan x="1014" dy="32">quotas cap spend</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-7" transform="translate(40, 940)">
+    <rect x="0" y="0" width="380" height="96" rx="8" fill="#e8f1ea"/>
+    
+    <g transform="translate(20, 20)">
+      <path d="M24 6 L42 12 L42 26 C42 37 24 45 24 45 C24 45 6 37 6 26 L6 12 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M16 25 L22 31 L32 19" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="80" y="56" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Gateways and ingress</text>
+
+    
+    <rect x="400" y="0" width="570" height="96" rx="8" fill="#e8f1ea"/>
+    <text x="424" y="56" font-family="sans-serif" font-size="24px" fill="#303a36">HPA on CPU, RPS or connections</text>
+
+    
+    <rect x="990" y="0" width="530" height="96" rx="8" fill="#e8f1ea"/>
+    <text x="1014" y="56" font-family="sans-serif" font-size="24px" fill="#303a36">keep at least 3 for HA</text>
+  </g>
+
+  
+  <g id="rule-strip" transform="translate(40, 1058)">
+    <rect x="0" y="0" width="1520" height="102" rx="10" fill="#207448"/>
+    
+    <g transform="translate(24, 23)">
+      <circle cx="28" cy="28" r="26" fill="none" stroke="#f5f8f5" stroke-width="4"/>
+      <path d="M16 28 L24 36 L40 18" fill="none" stroke="#f5f8f5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="96" y="42" font-family="sans-serif" font-size="26px" fill="#f5f8f5">
+      <tspan font-weight="bold">multi-metric safety: </tspan>
+      <tspan>scale up on queue depth OR latency,</tspan>
+    </text>
+    <text x="96" y="78" font-family="sans-serif" font-size="26px" fill="#f5f8f5">scale down only when both are low over a long window</text>
+  </g>
+</svg>

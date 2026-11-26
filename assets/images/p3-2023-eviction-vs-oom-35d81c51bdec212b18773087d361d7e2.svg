@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Drill 5: eviction storm versus OOM kill</title>
+  <desc>Visual comparison between kubelet node-pressure eviction storm and Linux kernel OOM kill behavior.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-left-green" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 10 1.5 L 2 5 L 10 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Drill 5: eviction storm versus OOM kill</text>
+
+  
+  <rect x="40" y="90" width="1520" height="80" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="65" y="125" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Two-lane comparison for batch pods that request 2Gi and use 14Gi with no limits,</text>
+  <text x="65" y="155" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">while inference pods have requests equal to limits.</text>
+
+  
+  <rect x="40" y="195" width="880" height="855" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <path d="M 40 207 A 12 12 0 0 1 52 195 L 908 195 A 12 12 0 0 1 920 207 L 920 255 L 40 255 Z" fill="#e8f1ea" />
+  <line x1="40" y1="255" x2="920" y2="255" stroke="#207448" stroke-width="1.5" />
+  <text x="60" y="237" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Eviction by kubelet</text>
+
+  
+  <rect x="60" y="265" width="840" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="95" cy="325" r="24" fill="#207448" />
+  <text x="95" y="333" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(135, 297)" stroke="#207448" stroke-width="3.5" fill="none">
+    <path d="M 8 44 A 22 22 0 1 1 48 44" stroke-linecap="round" />
+    <line x1="28" y1="30" x2="42" y2="18" stroke-linecap="round" />
+    <circle cx="28" cy="30" r="3" fill="#207448" />
+  </g>
+  <text x="205" y="300" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">node-pressure signal such as memory.available below 100Mi</text>
+  <text x="205" y="332" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(other hard thresholds: nodefs.available below 10 percent,</text>
+  <text x="205" y="364" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">imagefs.available below 15 percent)</text>
+
+  
+  <line x1="480" y1="385" x2="480" y2="423" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="60" y="425" width="840" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="95" cy="485" r="24" fill="#207448" />
+  <text x="95" y="493" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(135, 457)" stroke="#207448" stroke-width="3.5" fill="none">
+    <rect x="6" y="8" width="44" height="40" rx="4" />
+    <line x1="6" y1="28" x2="50" y2="28" />
+    <circle cx="14" cy="18" r="2.5" fill="#207448" />
+    <circle cx="14" cy="38" r="2.5" fill="#207448" />
+    <line x1="38" y1="14" x2="38" y2="22" stroke-linecap="round" />
+    <circle cx="38" cy="24" r="1" fill="#207448" />
+  </g>
+  <text x="205" y="460" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">The node was low on resource: memory</text>
+  <text x="205" y="492" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">node condition MemoryPressure True and a</text>
+  <text x="205" y="524" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">memory-pressure taint that appears and disappears</text>
+
+  
+  <line x1="480" y1="545" x2="480" y2="583" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="60" y="585" width="840" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="95" cy="652" r="24" fill="#207448" />
+  <text x="95" y="660" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(135, 624)" stroke="#207448" stroke-width="3.5" fill="none">
+    <line x1="28" y1="10" x2="28" y2="46" stroke-linecap="round" />
+    <line x1="10" y1="18" x2="46" y2="18" stroke-linecap="round" />
+    <path d="M 10 18 L 4 34 L 16 34 Z" stroke-linejoin="round" />
+    <path d="M 46 18 L 40 34 L 52 34 Z" stroke-linejoin="round" />
+  </g>
+  <text x="205" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">first pods whose usage exceeds requests,</text>
+  <text x="205" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">by priority then how far over; QoS does not order</text>
+  <text x="205" y="682" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">eviction but predicts it; requests equal to limits</text>
+  <text x="205" y="712" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">are evicted last</text>
+
+  
+  <line x1="480" y1="720" x2="480" y2="758" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="60" y="760" width="840" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="95" cy="820" r="24" fill="#207448" />
+  <text x="95" y="828" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g transform="translate(135, 792)" stroke="#207448" stroke-width="3.5" fill="none">
+    <rect x="8" y="10" width="40" height="38" rx="4" />
+    <line x1="18" y1="20" x2="38" y2="38" stroke-linecap="round" />
+    <line x1="38" y1="20" x2="18" y2="38" stroke-linecap="round" />
+  </g>
+  <text x="205" y="795" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">pod phase set to Failed</text>
+  <text x="205" y="827" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">PDB and termination grace period ignored for hard thresholds</text>
+  <text x="205" y="859" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">an evicted pod does not come back by itself</text>
+
+  
+  <line x1="480" y1="880" x2="480" y2="918" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="60" y="920" width="840" height="110" rx="8" fill="#fef8f0" stroke="#db8129" stroke-width="3" />
+  <circle cx="95" cy="975" r="24" fill="#db8129" />
+  <text x="95" y="983" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  
+  <g transform="translate(135, 947)" stroke="#db8129" stroke-width="3.5" fill="none">
+    <path d="M 44 26 A 18 18 0 1 1 38 14" stroke-linecap="round" />
+    <polyline points="38 6 38 16 48 16" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 28 22 L 28 34" stroke-linecap="round" />
+    <path d="M 22 28 L 34 28" stroke-linecap="round" />
+  </g>
+  <text x="205" y="962" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">the Deployment controller creates replacements</text>
+  <text x="205" y="994" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">that repeat the growth</text>
+
+  
+  <path d="M 900 975 H 912 V 325 H 902" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-left-green)" />
+
+  
+  <rect x="960" y="195" width="600" height="855" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <path d="M 960 207 A 12 12 0 0 1 972 195 L 1548 195 A 12 12 0 0 1 1560 207 L 1560 255 L 960 255 Z" fill="#e8f1ea" />
+  <line x1="960" y1="255" x2="1560" y2="255" stroke="#207448" stroke-width="1.5" />
+  <text x="980" y="237" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Kernel OOM kill</text>
+
+  
+  <rect x="980" y="265" width="560" height="180" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="1015" cy="355" r="24" fill="#207448" />
+  <text x="1015" y="363" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(1055, 327)" stroke="#207448" stroke-width="3.5" fill="none">
+    <rect x="8" y="10" width="40" height="36" rx="3" />
+    <line x1="8" y1="22" x2="48" y2="22" />
+    <line x1="16" y1="46" x2="16" y2="52" />
+    <line x1="24" y1="46" x2="24" y2="52" />
+    <line x1="32" y1="46" x2="32" y2="52" />
+    <line x1="40" y1="46" x2="40" y2="52" />
+  </g>
+  <text x="1125" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">memory runs out before</text>
+  <text x="1125" y="375" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">the kubelet can reclaim</text>
+
+  
+  <line x1="1260" y1="445" x2="1260" y2="503" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="980" y="505" width="560" height="200" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="1015" cy="605" r="24" fill="#207448" />
+  <text x="1015" y="613" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(1055, 577)" stroke="#207448" stroke-width="3.5" fill="none">
+    <circle cx="28" cy="28" r="18" />
+    <line x1="28" y1="4" x2="28" y2="14" />
+    <line x1="28" y1="42" x2="28" y2="52" />
+    <line x1="4" y1="28" x2="14" y2="28" />
+    <line x1="42" y1="28" x2="52" y2="28" />
+    <circle cx="28" cy="28" r="3" fill="#207448" />
+  </g>
+  <text x="1125" y="575" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">victim chosen by</text>
+  <text x="1125" y="610" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">oom_score_adj,</text>
+  <text x="1125" y="645" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">-997 for Guaranteed pods</text>
+
+  
+  <line x1="1260" y1="705" x2="1260" y2="763" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="980" y="765" width="560" height="180" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="1015" cy="855" r="24" fill="#207448" />
+  <text x="1015" y="863" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(1055, 827)" stroke="#207448" stroke-width="3.5" fill="none">
+    <rect x="8" y="12" width="38" height="34" rx="3" />
+    <path d="M 38 20 A 11 11 0 1 1 34 14" stroke-linecap="round" />
+    <polyline points="34 8 34 16 42 16" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="1125" y="840" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">killed container restarts</text>
+  <text x="1125" y="875" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">under the restart policy</text>
+
+  
+  <rect x="40" y="1070" width="1520" height="90" rx="10" fill="#207448" />
+  <text x="70" y="1108" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">stop the source first, cap or move the batch workload, set requests near true usage,</text>
+  <text x="70" y="1140" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">do not delete node taints by hand, reserve memory for the kubelet, separate serving and batch pools</text>
+</svg>

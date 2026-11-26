@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Connection symptoms, likely cause and the check to run</title>
+  <desc>An eight row reference table mapping Ansible connection symptoms to their likely causes and diagnostic checks.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Connection symptoms, likely cause and the check to run</text>
+
+  
+  
+  <rect x="40" y="78" width="470" height="62" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(56, 85)">
+    <polygon points="24,6 4,44 44,44" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="24" y1="18" x2="24" y2="30" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="24" cy="38" r="2.5" fill="#207448"/>
+  </g>
+  <text x="118" y="120" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Symptom</text>
+
+  
+  <rect x="510" y="78" width="420" height="62" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(526, 85)">
+    <circle cx="20" cy="20" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="30" y1="30" x2="42" y2="42" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="584" y="120" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Likely cause</text>
+
+  
+  <rect x="930" y="78" width="630" height="62" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(946, 85)">
+    <rect x="4" y="6" width="42" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 12 18 L 20 24 L 12 30" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="24" y1="30" x2="34" y2="30" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+  <text x="1006" y="120" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Check</text>
+
+  
+  <rect x="40" y="152" width="1520" height="138" rx="8" fill="#fff5eb" stroke="#db8129" stroke-width="3"/>
+  <path d="M 40 160 A 8 8 0 0 1 48 152 L 52 152 L 52 290 L 48 290 A 8 8 0 0 1 40 282 Z" fill="#db8129"/>
+  <line x1="510" y1="152" x2="510" y2="290" stroke="#f4ceab" stroke-width="1.5"/>
+  <line x1="930" y1="152" x2="930" y2="290" stroke="#f4ceab" stroke-width="1.5"/>
+
+  <text x="66" y="206" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="66" dy="0">UNREACHABLE ...</tspan>
+    <tspan x="66" dy="32">Permission denied (publickey)</tspan>
+  </text>
+
+  <text x="534" y="206" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="534" dy="0">wrong user or key,</tspan>
+    <tspan x="534" dy="32">key not authorised</tspan>
+  </text>
+
+  <text x="954" y="186" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="954" dy="0">ssh -v user@host, ansible -vvvv,</tspan>
+    <tspan x="954" dy="28">ansible_user,</tspan>
+    <tspan x="954" dy="28">ansible_ssh_private_key_file,</tspan>
+    <tspan x="954" dy="28">ssh-add -l</tspan>
+  </text>
+
+  
+  <rect x="40" y="298" width="1520" height="112" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <line x1="510" y1="298" x2="510" y2="410" stroke="#e0ece3" stroke-width="1.5"/>
+  <line x1="930" y1="298" x2="930" y2="410" stroke="#e0ece3" stroke-width="1.5"/>
+
+  <text x="66" y="346" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="66" dy="0">Host key verification</tspan>
+    <tspan x="66" dy="30">failed</tspan>
+  </text>
+
+  <text x="534" y="360" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">new or changed host key</text>
+
+  <text x="954" y="332" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="954" dy="0">ssh-keyscan, fix known_hosts;</tspan>
+    <tspan x="954" dy="28">investigate changed keys:</tspan>
+    <tspan x="954" dy="28">could be a MITM or a reinstall</tspan>
+  </text>
+
+  
+  <rect x="40" y="418" width="1520" height="112" rx="8" fill="#e8f1ea" stroke="#c8dcd0" stroke-width="1.5"/>
+  <line x1="510" y1="418" x2="510" y2="530" stroke="#d5e4d9" stroke-width="1.5"/>
+  <line x1="930" y1="418" x2="930" y2="530" stroke="#d5e4d9" stroke-width="1.5"/>
+
+  <text x="66" y="466" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="66" dy="0">Missing sudo password or</tspan>
+    <tspan x="66" dy="30">sudo: a terminal is required</tspan>
+  </text>
+
+  <text x="534" y="466" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="534" dy="0">passwordless sudo missing</tspan>
+    <tspan x="534" dy="30">or requiretty</tspan>
+  </text>
+
+  <text x="954" y="452" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="954" dy="0">-K, sudoers drop-in,</tspan>
+    <tspan x="954" dy="28">disable requiretty for the</tspan>
+    <tspan x="954" dy="28">automation user</tspan>
+  </text>
+
+  
+  <rect x="40" y="538" width="1520" height="112" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <line x1="510" y1="538" x2="510" y2="650" stroke="#e0ece3" stroke-width="1.5"/>
+  <line x1="930" y1="538" x2="930" y2="650" stroke="#e0ece3" stroke-width="1.5"/>
+
+  <text x="66" y="586" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="66" dy="0">/bin/sh: python: not found</tspan>
+    <tspan x="66" dy="30">or interpreter errors</tspan>
+  </text>
+
+  <text x="534" y="586" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="534" dy="0">no Python on target</tspan>
+    <tspan x="534" dy="30">or wrong path</tspan>
+  </text>
+
+  <text x="954" y="572" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="954" dy="0">raw bootstrap,</tspan>
+    <tspan x="954" dy="28">ansible_python_interpreter,</tspan>
+    <tspan x="954" dy="28">interpreter_python</tspan>
+  </text>
+
+  
+  <rect x="40" y="658" width="1520" height="112" rx="8" fill="#e8f1ea" stroke="#c8dcd0" stroke-width="1.5"/>
+  <line x1="510" y1="658" x2="510" y2="770" stroke="#d5e4d9" stroke-width="1.5"/>
+  <line x1="930" y1="658" x2="930" y2="770" stroke="#d5e4d9" stroke-width="1.5"/>
+
+  <text x="66" y="706" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="66" dy="0">Failed to connect to the host</tspan>
+    <tspan x="66" dy="30">via ssh: Connection timed out</tspan>
+  </text>
+
+  <text x="534" y="706" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="534" dy="0">network, firewall or DNS;</tspan>
+    <tspan x="534" dy="30">wrong ansible_host</tspan>
+  </text>
+
+  <text x="954" y="692" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="954" dy="0">ssh, nc -vz host 22,</tspan>
+    <tspan x="954" dy="28">bastion with ProxyJump via</tspan>
+    <tspan x="954" dy="28">ansible_ssh_common_args</tspan>
+  </text>
+
+  
+  <rect x="40" y="778" width="1520" height="112" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <line x1="510" y1="778" x2="510" y2="890" stroke="#e0ece3" stroke-width="1.5"/>
+  <line x1="930" y1="778" x2="930" y2="890" stroke="#e0ece3" stroke-width="1.5"/>
+
+  <text x="66" y="840" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Slow runs</text>
+
+  <text x="534" y="812" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="534" dy="0">fact gathering, no pipelining</tspan>
+    <tspan x="534" dy="28">or multiplexing, DNS lookups</tspan>
+    <tspan x="534" dy="28">on SSH (UseDNS), low forks</tspan>
+  </text>
+
+  <text x="954" y="826" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="954" dy="0">profile_tasks, pipelining,</tspan>
+    <tspan x="954" dy="30">ControlPersist, gathering, forks</tspan>
+  </text>
+
+  
+  <rect x="40" y="898" width="1520" height="92" rx="8" fill="#e8f1ea" stroke="#c8dcd0" stroke-width="1.5"/>
+  <line x1="510" y1="898" x2="510" y2="990" stroke="#d5e4d9" stroke-width="1.5"/>
+  <line x1="930" y1="898" x2="930" y2="990" stroke="#d5e4d9" stroke-width="1.5"/>
+
+  <text x="66" y="938" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="66" dy="0">Module warns about</tspan>
+    <tspan x="66" dy="28">discovered interpreter</tspan>
+  </text>
+
+  <text x="534" y="950" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">interpreter discovery</text>
+
+  <text x="954" y="938" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="954" dy="0">interpreter_python=auto_silent</tspan>
+    <tspan x="954" dy="28">or explicit variable</tspan>
+  </text>
+
+  
+  <rect x="40" y="998" width="1520" height="92" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <line x1="510" y1="998" x2="510" y2="1090" stroke="#e0ece3" stroke-width="1.5"/>
+  <line x1="930" y1="998" x2="930" y2="1090" stroke="#e0ece3" stroke-width="1.5"/>
+
+  <text x="66" y="1050" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Changes silently skipped</text>
+
+  <text x="534" y="1038" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="534" dy="0">pattern matched no hosts</tspan>
+    <tspan x="534" dy="28">or --limit too narrow</tspan>
+  </text>
+
+  <text x="954" y="1038" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="954" dy="0">--list-hosts,</tspan>
+    <tspan x="954" dy="28">ansible-inventory --graph</tspan>
+  </text>
+
+  
+  <rect x="40" y="1106" width="1520" height="64" rx="8" fill="#207448"/>
+  <text x="800" y="1146" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Connection failures happen before any of your tasks run, so no playbook change can fix them</text>
+</svg>

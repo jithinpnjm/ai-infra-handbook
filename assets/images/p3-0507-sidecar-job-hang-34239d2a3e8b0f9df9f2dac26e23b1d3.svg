@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Why a native sidecar lets a Job finish</title>
+  <desc>Comparison of Kubernetes Job pod lifecycles: spec.containers helper vs native sidecar in initContainers with restartPolicy Always.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36" text-anchor="middle">Why a native sidecar lets a Job finish</text>
+
+  
+  <g id="lane-1">
+    
+    <rect x="50" y="100" width="470" height="960" rx="16" fill="#fcf6f6" stroke="#d32f2f" stroke-width="2"/>
+
+    
+    <text x="285" y="142" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#d32f2f" text-anchor="middle">Old way: helper in</text>
+    <text x="285" y="176" font-family="monospace" font-size="26px" font-weight="bold" fill="#d32f2f" text-anchor="middle">spec.containers</text>
+    <line x1="80" y1="195" x2="490" y2="195" stroke="#ffcdd2" stroke-width="2"/>
+
+    
+    <g id="node-old-1">
+      <rect x="75" y="225" width="420" height="130" rx="12" fill="#ffffff" stroke="#e57373" stroke-width="1.5"/>
+      
+      <g transform="translate(95, 262)">
+        <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#d32f2f" stroke-width="4"/>
+        <line x1="0" y1="16" x2="56" y2="16" stroke="#d32f2f" stroke-width="2"/>
+        <circle cx="8" cy="8" r="2.5" fill="#d32f2f"/>
+        <circle cx="16" cy="8" r="2.5" fill="#d32f2f"/>
+        <path d="M 20 36 L 36 36 M 30 28 L 38 36 L 30 44" fill="none" stroke="#d32f2f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <text x="175" y="300" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">worker exits 0</text>
+    </g>
+
+    
+    <g id="node-old-2">
+      <rect x="75" y="425" width="420" height="130" rx="12" fill="#ffffff" stroke="#e57373" stroke-width="1.5"/>
+      
+      <g transform="translate(95, 462)">
+        <circle cx="28" cy="28" r="18" fill="none" stroke="#d32f2f" stroke-width="4" stroke-dasharray="8 4"/>
+        <circle cx="28" cy="28" r="7" fill="none" stroke="#d32f2f" stroke-width="3"/>
+        <path d="M 44 20 L 48 28 L 40 28" fill="#d32f2f"/>
+      </g>
+      <text x="175" y="485" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">proxy or log shipper</text>
+      <text x="175" y="520" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">keeps running</text>
+    </g>
+
+    
+    <g id="node-old-3">
+      <rect x="75" y="625" width="420" height="130" rx="12" fill="#ffffff" stroke="#e57373" stroke-width="1.5"/>
+      
+      <g transform="translate(95, 662)">
+        <circle cx="28" cy="28" r="24" fill="none" stroke="#d32f2f" stroke-width="4"/>
+        <polyline points="28,12 28,28 40,28" fill="none" stroke="#d32f2f" stroke-width="3.5" stroke-linecap="round"/>
+      </g>
+      <text x="175" y="685" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">pod stays Running</text>
+      <text x="175" y="720" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">with 1/2 Ready</text>
+    </g>
+
+    
+    <g id="node-old-4">
+      <rect x="75" y="825" width="420" height="130" rx="12" fill="#ffebee" stroke="#c62828" stroke-width="2.5"/>
+      
+      <g transform="translate(95, 862)">
+        <polygon points="17,4 39,4 52,17 52,39 39,52 17,52 4,39 4,17" fill="none" stroke="#c62828" stroke-width="4"/>
+        <line x1="28" y1="16" x2="28" y2="32" stroke="#c62828" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="28" cy="40" r="2.5" fill="#c62828"/>
+      </g>
+      <text x="175" y="885" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#c62828">Job never</text>
+      <text x="175" y="922" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#c62828">completes</text>
+    </g>
+  </g>
+
+  
+  <g id="lane-2">
+    
+    <rect x="560" y="100" width="990" height="960" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <text x="1055" y="142" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448" text-anchor="middle">Native sidecar: initContainers entry</text>
+    <text x="1055" y="176" font-family="monospace" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">with restartPolicy Always</text>
+    <line x1="590" y1="195" x2="1520" y2="195" stroke="#c2dec9" stroke-width="2"/>
+
+    
+    <g id="stagehand-note">
+      <rect x="585" y="205" width="940" height="74" rx="10" fill="#f0f7f2" stroke="#81c784" stroke-width="2" stroke-dasharray="6 4"/>
+      
+      <g transform="translate(605, 214)">
+        <path d="M 4 8 L 52 8 M 8 8 L 8 48 M 48 8 L 48 48 M 8 16 Q 28 28 48 16 M 8 32 Q 28 44 48 32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      </g>
+      <text x="680" y="238" font-family="sans-serif" font-size="24px" fill="#303a36">set up before the show, stays backstage,</text>
+      <text x="680" y="266" font-family="sans-serif" font-size="24px" fill="#303a36">leaves after the last performer</text>
+    </g>
+
+    
+    <g id="step-1">
+      <rect x="585" y="295" width="940" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="625" cy="335" r="24" fill="#207448"/>
+      <text x="625" y="343" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+      
+      <g transform="translate(665, 307)">
+        <rect x="2" y="6" width="14" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+        <rect x="20" y="14" width="14" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+        <rect x="38" y="22" width="14" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+      </g>
+      <text x="740" y="344" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#303a36">init containers run one after another</text>
+    </g>
+
+    
+    <line x1="625" y1="375" x2="625" y2="423" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+    
+    <g id="step-2">
+      <rect x="585" y="425" width="940" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="625" cy="470" r="24" fill="#207448"/>
+      <text x="625" y="478" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      
+      <g transform="translate(665, 442)">
+        <path d="M 28 6 L 48 14 L 48 30 Q 48 46 28 52 Q 8 46 8 30 L 8 14 Z" fill="none" stroke="#207448" stroke-width="3"/>
+        <path d="M 16 30 L 22 30 L 26 22 L 30 38 L 34 30 L 40 30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <text x="740" y="463" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">native sidecar starts before the app and</text>
+      <text x="740" y="495" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">kubelet waits for its startup or readiness probe</text>
+    </g>
+
+    
+    <line x1="625" y1="515" x2="625" y2="563" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+    
+    <g id="step-3">
+      <rect x="585" y="565" width="940" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="625" cy="605" r="24" fill="#207448"/>
+      <text x="625" y="613" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+      
+      <g transform="translate(665, 577)">
+        <rect x="4" y="6" width="48" height="42" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+        <line x1="4" y1="18" x2="52" y2="18" stroke="#207448" stroke-width="2"/>
+        <polygon points="24,24 36,32 24,40" fill="#207448"/>
+      </g>
+      <text x="740" y="614" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">app containers run</text>
+    </g>
+
+    
+    <line x1="625" y1="645" x2="625" y2="693" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+    
+    <g id="step-4">
+      <rect x="585" y="695" width="940" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="625" cy="735" r="24" fill="#207448"/>
+      <text x="625" y="743" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+      
+      <g transform="translate(665, 707)">
+        <path d="M 12 48 L 12 8 L 34 8 L 34 48" fill="none" stroke="#207448" stroke-width="3.5"/>
+        <path d="M 24 28 L 48 28 M 40 20 L 48 28 L 40 36" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <text x="740" y="744" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">app exits</text>
+    </g>
+
+    
+    <line x1="625" y1="775" x2="625" y2="823" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+    
+    <g id="step-5">
+      <rect x="585" y="825" width="940" height="90" rx="12" fill="#fff8f0" stroke="#db8129" stroke-width="3"/>
+      <circle cx="625" cy="870" r="24" fill="#db8129"/>
+      <text x="625" y="878" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+      
+      <g transform="translate(665, 842)">
+        <circle cx="28" cy="28" r="16" fill="none" stroke="#db8129" stroke-width="4"/>
+        <line x1="16" y1="16" x2="40" y2="40" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+        <line x1="28" y1="4" x2="28" y2="10" stroke="#db8129" stroke-width="3"/>
+        <line x1="28" y1="46" x2="28" y2="52" stroke="#db8129" stroke-width="3"/>
+        <line x1="4" y1="28" x2="10" y2="28" stroke="#db8129" stroke-width="3"/>
+        <line x1="46" y1="28" x2="52" y2="28" stroke="#db8129" stroke-width="3"/>
+      </g>
+      <text x="740" y="878" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#db8129">kubelet terminates the sidecar automatically</text>
+    </g>
+
+    
+    <line x1="625" y1="915" x2="625" y2="963" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+    
+    <g id="step-6">
+      <rect x="585" y="965" width="940" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="625" cy="1005" r="24" fill="#207448"/>
+      <text x="625" y="1013" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+      
+      <g transform="translate(665, 977)">
+        <circle cx="28" cy="28" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+        <path d="M 16 28 L 24 36 L 40 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <text x="740" y="1014" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448">Job completes</text>
+    </g>
+  </g>
+
+  
+  <g id="footer-rule">
+    <rect x="50" y="1080" width="1500" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(75, 1102)">
+      <rect x="6" y="6" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <rect x="18" y="18" width="20" height="20" fill="none" stroke="#207448" stroke-width="2"/>
+      <line x1="16" y1="0" x2="16" y2="6" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="0" x2="28" y2="6" stroke="#207448" stroke-width="3"/>
+      <line x1="40" y1="0" x2="40" y2="6" stroke="#207448" stroke-width="3"/>
+      <line x1="16" y1="50" x2="16" y2="56" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="50" x2="28" y2="56" stroke="#207448" stroke-width="3"/>
+      <line x1="40" y1="50" x2="40" y2="56" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="155" y="1124" font-family="monospace" font-size="26px" font-weight="bold" fill="#303a36">effective scheduling request = max(max of init requests, sum of app requests)</text>
+    <text x="155" y="1160" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">with sidecars counted</text>
+  </g>
+</svg>

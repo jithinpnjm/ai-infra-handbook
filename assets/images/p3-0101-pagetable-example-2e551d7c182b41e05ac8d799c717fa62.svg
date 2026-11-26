@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Worked example: translating two virtual addresses with a 4 KiB page table</title>
+  <desc>Visual explanation of translating two virtual addresses to physical memory using a 4 KiB page table, demonstrating both a successful translation to RAM and an unmapped page fault handled by the kernel.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Worked example: translating two virtual addresses</text>
+  <text x="800" y="120" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">with a 4 KiB page table</text>
+
+  
+  <rect x="50" y="150" width="440" height="940" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="70" y="170" width="400" height="55" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="270" y="206" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Page = 4 KiB = 4,096 bytes</text>
+
+  
+  <rect x="70" y="245" width="400" height="645" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <path d="M 70 257 A 12 12 0 0 1 82 245 L 458 245 A 12 12 0 0 1 470 257 L 470 310 L 70 310 Z" fill="#207448" />
+  <line x1="270" y1="245" x2="270" y2="310" stroke="#ffffff" stroke-width="2" />
+  <text x="170" y="287" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Virtual page</text>
+  <text x="370" y="287" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Physical frame</text>
+
+  
+  <rect x="85" y="335" width="370" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="270" y="382" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#207448">2 -&gt; 15</text>
+
+  
+  <rect x="85" y="435" width="370" height="75" rx="8" fill="#f7faf8" stroke="#b8ccbe" stroke-width="1.5" />
+  <text x="270" y="482" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#506156">3 -&gt; 9</text>
+
+  
+  <circle cx="270" cy="570" r="4" fill="#a0b5a6" />
+  <circle cx="270" cy="595" r="4" fill="#a0b5a6" />
+  <circle cx="270" cy="620" r="4" fill="#a0b5a6" />
+
+  
+  <rect x="85" y="795" width="370" height="75" rx="8" fill="#e2e5e3" stroke="#8e9994" stroke-width="2" />
+  <text x="270" y="842" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#4a544f">7 -&gt; not mapped</text>
+
+  
+  <rect x="70" y="910" width="400" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="270" y="944" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="270" dy="0">The MMU does this in hardware</tspan>
+    <tspan x="270" dy="32">on every access</tspan>
+  </text>
+
+
+  
+  <rect x="520" y="150" width="1030" height="430" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(550, 172)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="28" height="28" rx="4" />
+    <line x1="15" y1="2" x2="15" y2="8" />
+    <line x1="22" y1="2" x2="22" y2="8" />
+    <line x1="29" y1="2" x2="29" y2="8" />
+    <line x1="15" y1="36" x2="15" y2="42" />
+    <line x1="22" y1="36" x2="22" y2="42" />
+    <line x1="29" y1="36" x2="29" y2="42" />
+    <line x1="2" y1="15" x2="8" y2="15" />
+    <line x1="2" y1="22" x2="8" y2="22" />
+    <line x1="2" y1="29" x2="8" y2="29" />
+    <line x1="36" y1="15" x2="42" y2="15" />
+    <line x1="36" y1="22" x2="42" y2="22" />
+    <line x1="36" y1="29" x2="42" y2="29" />
+  </g>
+  <text x="610" y="205" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Virtual address 8,320</text>
+
+  
+  <circle cx="575" cy="275" r="24" fill="#207448" />
+  <text x="575" y="283" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+
+  <rect x="615" y="245" width="380" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="805" y="283" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">8,320 = 2 * 4096 + 128</text>
+
+  
+  <rect x="615" y="342" width="220" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="725" y="380" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Virtual page 2</text>
+
+  <rect x="865" y="342" width="170" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="950" y="380" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Offset 128</text>
+
+  
+  <path d="M 725 305 L 725 342" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 900 305 L 950 342" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <circle cx="545" cy="335" r="24" fill="#207448" />
+  <text x="545" y="343" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <path d="M 615 372 L 455 372" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <circle cx="575" cy="475" r="24" fill="#207448" />
+  <text x="575" y="483" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+
+  <rect x="615" y="445" width="430" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="830" y="483" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Physical frame 15 + offset 128</text>
+
+  
+  <path d="M 455 395 L 530 395 L 530 475 L 615 475" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 950 402 L 950 445" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1045 475 L 1130 475" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1130" y="430" width="390" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(1150, 452)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="36" height="24" rx="2" />
+    <line x1="12" y1="30" x2="12" y2="38" />
+    <line x1="20" y1="30" x2="20" y2="38" />
+    <line x1="28" y1="30" x2="28" y2="38" />
+    <line x1="10" y1="14" x2="18" y2="14" />
+    <line x1="26" y1="14" x2="34" y2="14" />
+  </g>
+  <text x="1345" y="484" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">Physical RAM, frame 15</text>
+
+
+  
+  <rect x="520" y="610" width="1030" height="480" rx="16" fill="#fff9f5" stroke="#db8129" stroke-width="3" />
+
+  
+  <g transform="translate(550, 632)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 4 L 38 10 L 38 24 C 38 34 22 42 22 42 C 22 42 6 34 6 24 L 6 10 Z" />
+    <line x1="22" y1="14" x2="22" y2="24" />
+    <circle cx="22" cy="30" r="1.5" fill="#db8129" />
+  </g>
+  <text x="610" y="665" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#db8129">Virtual address 28,736</text>
+
+  
+  <circle cx="575" cy="735" r="24" fill="#207448" />
+  <text x="575" y="743" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+
+  <rect x="615" y="705" width="380" height="60" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="805" y="743" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">28,736 = 7 * 4096 + 64</text>
+
+  
+  <rect x="615" y="802" width="220" height="60" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="725" y="840" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">Virtual page 7</text>
+
+  <rect x="865" y="802" width="170" height="60" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="950" y="840" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Offset 64</text>
+
+  
+  <path d="M 725 765 L 725 802" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+  <path d="M 900 765 L 950 802" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <circle cx="545" cy="795" r="24" fill="#207448" />
+  <text x="545" y="803" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <path d="M 615 832 L 455 832" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <circle cx="575" cy="915" r="24" fill="#207448" />
+  <text x="575" y="923" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+
+  <rect x="615" y="885" width="440" height="60" rx="8" fill="#ffe6d5" stroke="#db8129" stroke-width="2.5" />
+  <g transform="translate(635, 897)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="18,3 34,31 2,31" />
+    <line x1="18" y1="13" x2="18" y2="20" />
+    <circle cx="18" cy="25" r="1.5" fill="#db8129" />
+  </g>
+  <text x="850" y="924" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#db8129">MMU raises a page fault</text>
+
+  
+  <path d="M 455 855 L 530 855 L 530 915 L 615 915" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <path d="M 835 945 L 835 965" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <circle cx="575" cy="1015" r="24" fill="#207448" />
+  <text x="575" y="1023" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+
+  <rect x="615" y="965" width="910" height="105" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <g transform="translate(635, 995)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="22" cy="22" r="8" />
+    <path d="M 22 4 L 22 8 M 22 36 L 22 40 M 4 22 L 8 22 M 36 22 L 40 22 M 9 9 L 12 12 M 32 32 L 35 35 M 9 35 L 12 32 M 32 12 L 35 9" />
+  </g>
+  <text x="705" y="1005" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Kernel takes over: loads the page, allocates a fresh one,</text>
+  <text x="705" y="1045" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">or kills the program (segmentation fault)</text>
+
+</svg>

@@ -1,0 +1,192 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Four parallelism kinds, each with its cost</title>
+  <desc>A comparative table showing the four distributed training parallelism strategies, what they split, when to use each, and their operational costs and risks.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Four parallelism kinds, each with its cost</text>
+
+  
+  <g id="headers">
+    <rect x="40" y="104" width="300" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="190" y="139" text-anchor="middle" font-size="30" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">Kind</text>
+
+    <rect x="380" y="104" width="290" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="525" y="139" text-anchor="middle" font-size="30" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">What it splits</text>
+
+    <rect x="710" y="104" width="380" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="900" y="139" text-anchor="middle" font-size="30" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">Use it when</text>
+
+    <rect x="1130" y="104" width="430" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1345" y="139" text-anchor="middle" font-size="30" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">Cost and risk</text>
+  </g>
+
+  
+  <g id="row-1">
+    
+    <rect x="40" y="194" width="300" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="170" y="206" width="40" height="38" rx="5"/>
+      <line x1="190" y1="212" x2="190" y2="238"/>
+      <line x1="176" y1="225" x2="204" y2="225"/>
+      <line x1="164" y1="216" x2="170" y2="216"/>
+      <line x1="164" y1="234" x2="170" y2="234"/>
+      <line x1="210" y1="216" x2="216" y2="216"/>
+      <line x1="210" y1="234" x2="216" y2="234"/>
+    </g>
+    <text x="190" y="274" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Tensor (TP)</text>
+    
+    <rect x="58" y="292" width="264" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="190" y="322" text-anchor="middle" font-size="24" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">Set TP to</text>
+    <text x="190" y="352" text-anchor="middle" font-size="24" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">GPUs per node</text>
+
+    
+    <rect x="380" y="194" width="290" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="525" y="254" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="525" dy="0">Each layer</tspan>
+      <tspan x="525" dy="34">weights across</tspan>
+      <tspan x="525" dy="34">GPUs</tspan>
+    </text>
+
+    
+    <rect x="710" y="194" width="380" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="900" y="254" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="900" dy="0">Model too big</tspan>
+      <tspan x="900" dy="34">for one GPU, or</tspan>
+      <tspan x="900" dy="34">more cache per GPU</tspan>
+    </text>
+
+    
+    <rect x="1130" y="194" width="430" height="190" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    
+    <rect x="1150" y="208" width="390" height="42" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="2"/>
+    <text x="1345" y="238" text-anchor="middle" font-size="24" font-weight="bold" fill="#db8129" font-family="system-ui, -apple-system, sans-serif">Constant communication</text>
+    <text x="1345" y="284" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="1345" dy="0">Every layer synchronises,</tspan>
+      <tspan x="1345" dy="34">needs fast links</tspan>
+      <tspan x="1345" dy="34">such as NVLink</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-2">
+    
+    <rect x="40" y="424" width="300" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="166" y="436" width="12" height="26" rx="2"/>
+      <line x1="178" y1="449" x2="184" y2="449"/>
+      <rect x="184" y="436" width="12" height="26" rx="2"/>
+      <line x1="196" y1="449" x2="202" y2="449"/>
+      <rect x="202" y="436" width="12" height="26" rx="2"/>
+    </g>
+    <text x="190" y="504" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Pipeline (PP)</text>
+    
+    <rect x="55" y="522" width="270" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="190" y="552" text-anchor="middle" font-size="24" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">Set PP to the</text>
+    <text x="190" y="582" text-anchor="middle" font-size="24" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">number of nodes</text>
+
+    
+    <rect x="380" y="424" width="290" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="525" y="504" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="525" dy="0">Layers across</tspan>
+      <tspan x="525" dy="36">GPUs or nodes</tspan>
+    </text>
+
+    
+    <rect x="710" y="424" width="380" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="900" y="484" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="900" dy="0">Model too big</tspan>
+      <tspan x="900" dy="34">for one node, or</tspan>
+      <tspan x="900" dy="34">GPUs lack NVLink</tspan>
+    </text>
+
+    
+    <rect x="1130" y="424" width="430" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1345" y="524" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Latency penalty</text>
+  </g>
+
+  
+  <g id="row-3">
+    
+    <rect x="40" y="654" width="300" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="170" y="674" width="16" height="12" rx="2"/>
+      <rect x="170" y="692" width="16" height="12" rx="2"/>
+      <rect x="194" y="674" width="16" height="12" rx="2"/>
+      <rect x="194" y="692" width="16" height="12" rx="2"/>
+    </g>
+    <text x="190" y="760" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Data (DP)</text>
+
+    
+    <rect x="380" y="654" width="290" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="525" y="734" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="525" dy="0">Whole model</tspan>
+      <tspan x="525" dy="36">replicated</tspan>
+    </text>
+
+    
+    <rect x="710" y="654" width="380" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="900" y="734" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="900" dy="0">More throughput,</tspan>
+      <tspan x="900" dy="36">not more size</tspan>
+    </text>
+
+    
+    <rect x="1130" y="654" width="430" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1345" y="718" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="1345" dy="0">Full weights per copy,</tspan>
+      <tspan x="1345" dy="34">no latency gain</tspan>
+      <tspan x="1345" dy="34">for one request</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-4">
+    
+    <rect x="40" y="884" width="300" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="190" cy="902" r="5"/>
+      <line x1="187" y1="907" x2="174" y2="927"/>
+      <line x1="190" y1="907" x2="190" y2="927"/>
+      <line x1="193" y1="907" x2="206" y2="927"/>
+      <circle cx="172" cy="932" r="5"/>
+      <circle cx="190" cy="932" r="5"/>
+      <circle cx="208" cy="932" r="5"/>
+    </g>
+    <text x="190" y="990" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Expert (EP)</text>
+
+    
+    <rect x="380" y="884" width="290" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="525" y="964" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="525" dy="0">Experts of</tspan>
+      <tspan x="525" dy="36">an MoE model</tspan>
+    </text>
+
+    
+    <rect x="710" y="884" width="380" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="900" y="964" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="900" dy="0">Mixture-of-experts</tspan>
+      <tspan x="900" dy="36">models</tspan>
+    </text>
+
+    
+    <rect x="1130" y="884" width="430" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1345" y="948" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="1345" dy="0">Uses the TP degree,</tspan>
+      <tspan x="1345" dy="34">MoE layers shard over</tspan>
+      <tspan x="1345" dy="34">TP times DP</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-takeaway">
+    <rect x="40" y="1114" width="1520" height="46" rx="8" fill="#207448"/>
+    <text x="800" y="1145" text-anchor="middle" font-size="24" font-weight="bold" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">Read the cost column before the kind column.</text>
+  </g>
+</svg>

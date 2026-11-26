@@ -1,0 +1,224 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Reuse an existing exporter first, write only the site-specific gaps</title>
+  <desc>Visual comparison showing existing Prometheus exporters on the left versus site-specific monitoring gaps on the right, followed by a three-step test ladder and key takeaway.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Reuse an existing exporter first,</tspan>
+    <tspan x="800" dy="56">write only the site-specific gaps</tspan>
+  </text>
+
+  
+  <g id="left-column">
+    <rect x="50" y="150" width="720" height="590" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="50" y="150" width="720" height="60" rx="16" fill="#207448"/>
+    <rect x="50" y="185" width="720" height="25" fill="#207448"/>
+    <text x="410" y="192" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#ffffff">Already exists</text>
+
+    
+    <rect x="70" y="225" width="680" height="142" rx="10" fill="#ffffff" stroke="#c0d7c5" stroke-width="1.5"/>
+    <g transform="translate(86, 268)">
+      
+      <rect x="0" y="0" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <rect x="14" y="14" width="20" height="20" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <line x1="12" y1="-5" x2="12" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="24" y1="-5" x2="24" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="36" y1="-5" x2="36" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="12" y1="48" x2="12" y2="53" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="24" y1="48" x2="24" y2="53" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="36" y1="48" x2="36" y2="53" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-5" y1="12" x2="0" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-5" y1="24" x2="0" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-5" y1="36" x2="0" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="48" y1="12" x2="53" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="48" y1="24" x2="53" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="48" y1="36" x2="53" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="156" y="254" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="156" dy="0" font-size="30" font-weight="bold" fill="#207448">DCGM exporter:</tspan>
+      <tspan x="156" dy="28" font-size="24">utilisation, memory, temperature,</tspan>
+      <tspan x="156" dy="26" font-size="24">power, clocks, XID errors,</tspan>
+      <tspan x="156" dy="26" font-size="24">NVLink counters, ECC data</tspan>
+    </text>
+
+    
+    <rect x="70" y="380" width="680" height="92" rx="10" fill="#ffffff" stroke="#c0d7c5" stroke-width="1.5"/>
+    <g transform="translate(86, 400)">
+      
+      <rect x="0" y="0" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="8" y1="16" x2="34" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="39" cy="16" r="2.5" fill="#207448"/>
+      <line x1="8" y1="32" x2="34" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="39" cy="32" r="2.5" fill="#207448"/>
+    </g>
+    <text x="156" y="420" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="156" dy="0" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="bold" fill="#207448">node_exporter:</tspan>
+      <tspan x="156" dy="30" font-size="24">the host itself</tspan>
+    </text>
+
+    
+    <rect x="70" y="485" width="680" height="115" rx="10" fill="#ffffff" stroke="#c0d7c5" stroke-width="1.5"/>
+    <g transform="translate(86, 516)">
+      
+      <circle cx="24" cy="24" r="21" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="24" cy="24" r="8" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="24" y1="3" x2="24" y2="16" stroke="#207448" stroke-width="3"/>
+      <line x1="24" y1="32" x2="24" y2="45" stroke="#207448" stroke-width="3"/>
+      <line x1="6" y1="14" x2="17" y2="20" stroke="#207448" stroke-width="3"/>
+      <line x1="31" y1="28" x2="42" y2="34" stroke="#207448" stroke-width="3"/>
+      <line x1="6" y1="34" x2="17" y2="28" stroke="#207448" stroke-width="3"/>
+      <line x1="31" y1="20" x2="42" y2="14" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="156" y="518" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="156" dy="0" font-size="30" font-weight="bold" fill="#207448">NVIDIA GPU Operator deploys</tspan>
+      <tspan x="156" dy="30" font-size="24">DCGM exporter in Kubernetes</tspan>
+      <tspan x="156" dy="28" font-size="24">with a ServiceMonitor</tspan>
+    </text>
+
+    
+    <rect x="70" y="612" width="680" height="104" rx="10" fill="#ffffff" stroke="#c0d7c5" stroke-width="1.5"/>
+    <g transform="translate(86, 638)">
+      
+      <path d="M 6 36 A 21 21 0 1 1 42 36" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="24" y1="24" x2="34" y2="14" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="24" cy="24" r="3.5" fill="#207448"/>
+      <line x1="10" y1="44" x2="38" y2="44" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="156" y="650" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="156" dy="0" font-size="30" font-weight="bold" fill="#207448">IPMI or Redfish exporters:</tspan>
+      <tspan x="156" dy="32" font-size="24">BMC sensors</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-column">
+    <rect x="830" y="150" width="720" height="590" rx="16" fill="#fdf8f3" stroke="#db8129" stroke-width="2"/>
+    <rect x="830" y="150" width="720" height="60" rx="16" fill="#db8129"/>
+    <rect x="830" y="185" width="720" height="25" fill="#db8129"/>
+    <text x="1190" y="192" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#ffffff">Write only for your gaps</text>
+
+    
+    <rect x="850" y="225" width="680" height="110" rx="10" fill="#ffffff" stroke="#edd3be" stroke-width="1.5"/>
+    <g transform="translate(866, 254)">
+      
+      <rect x="0" y="0" width="48" height="48" rx="6" fill="none" stroke="#db8129" stroke-width="3.5"/>
+      <line x1="10" y1="14" x2="38" y2="14" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="10" y1="24" x2="30" y2="24" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="10" y1="34" x2="22" y2="34" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="936" y="254" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="936" dy="0" font-size="30" font-weight="bold" fill="#db8129">scheduler state:</tspan>
+      <tspan x="936" dy="28" font-size="24">Slurm queue depth and node states from</tspan>
+      <tspan x="936" dy="28" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24">sinfo and squeue --json</tspan>
+    </text>
+
+    
+    <rect x="850" y="347" width="680" height="85" rx="10" fill="#ffffff" stroke="#edd3be" stroke-width="1.5"/>
+    <g transform="translate(866, 365)">
+      
+      <circle cx="10" cy="12" r="5" fill="none" stroke="#db8129" stroke-width="3"/>
+      <circle cx="38" cy="12" r="5" fill="none" stroke="#db8129" stroke-width="3"/>
+      <circle cx="10" cy="36" r="5" fill="none" stroke="#db8129" stroke-width="3"/>
+      <circle cx="38" cy="36" r="5" fill="none" stroke="#db8129" stroke-width="3"/>
+      <line x1="15" y1="12" x2="33" y2="12" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="10" y1="17" x2="10" y2="31" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="38" y1="17" x2="38" y2="31" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="15" y1="36" x2="33" y2="36" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="14" y1="16" x2="34" y2="32" stroke="#db8129" stroke-width="2"/>
+    </g>
+    <text x="936" y="380" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="936" dy="0" font-size="30" font-weight="bold" fill="#db8129">fabric health</tspan>
+      <tspan x="936" dy="30" font-size="24">from UFM or ibdiagnet summaries</tspan>
+    </text>
+
+    
+    <rect x="850" y="444" width="680" height="70" rx="10" fill="#ffffff" stroke="#edd3be" stroke-width="1.5"/>
+    <g transform="translate(866, 455)">
+      
+      <ellipse cx="24" cy="11" rx="18" ry="7" fill="none" stroke="#db8129" stroke-width="3"/>
+      <path d="M 6 11 v 14 c 0 3.8 8.1 7 18 7 s 18 -3.2 18 -7 v -14" fill="none" stroke="#db8129" stroke-width="3"/>
+      <path d="M 6 25 v 14 c 0 3.8 8.1 7 18 7 s 18 -3.2 18 -7 v -14" fill="none" stroke="#db8129" stroke-width="3"/>
+      <line x1="24" y1="11" x2="24" y2="46" stroke="#db8129" stroke-width="2" stroke-dasharray="3 3"/>
+    </g>
+    <text x="936" y="488" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">storage tenant quotas</text>
+
+    
+    <rect x="850" y="526" width="680" height="70" rx="10" fill="#ffffff" stroke="#edd3be" stroke-width="1.5"/>
+    <g transform="translate(866, 537)">
+      
+      <circle cx="16" cy="24" r="11" fill="none" stroke="#db8129" stroke-width="3"/>
+      <line x1="27" y1="24" x2="44" y2="24" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="37" y1="24" x2="37" y2="32" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="43" y1="24" x2="43" y2="30" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="936" y="570" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">license counts</text>
+
+    
+    <rect x="850" y="608" width="680" height="108" rx="10" fill="#ffffff" stroke="#edd3be" stroke-width="1.5"/>
+    <g transform="translate(866, 638)">
+      
+      <rect x="2" y="2" width="44" height="44" rx="5" fill="none" stroke="#db8129" stroke-width="3.5"/>
+      <line x1="2" y1="16" x2="46" y2="16" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="18" y1="16" x2="18" y2="46" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="24" y1="24" x2="40" y2="24" stroke="#db8129" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="24" y1="34" x2="36" y2="34" stroke="#db8129" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <text x="936" y="644" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="936" dy="0" font-size="30" font-weight="bold" fill="#db8129">job-level GPU accounting</tspan>
+      <tspan x="936" dy="32" font-size="24">joined to Kubernetes or Slurm metadata</tspan>
+    </text>
+  </g>
+
+  
+  <g id="test-ladder">
+    
+    <rect x="50" y="765" width="450" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="92" cy="807" r="22" fill="#207448"/>
+    <text x="92" y="815" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <text x="75" y="865" fill="#303a36">
+      <tspan x="75" dy="0" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#207448">curl -s localhost:9101/</tspan>
+      <tspan x="75" dy="32" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#207448">metrics | head:</tspan>
+      <tspan x="75" dy="36" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">does it look right</tspan>
+    </text>
+
+    
+    <line x1="500" y1="870" x2="548" y2="870" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+    
+    <rect x="550" y="765" width="460" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="592" cy="807" r="22" fill="#207448"/>
+    <text x="592" y="815" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <text x="575" y="865" fill="#303a36">
+      <tspan x="575" dy="0" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#207448">promtool check metrics:</tspan>
+      <tspan x="575" dy="50" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">lint</tspan>
+    </text>
+
+    
+    <line x1="1010" y1="870" x2="1058" y2="870" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+    
+    <rect x="1060" y="765" width="490" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="1102" cy="807" r="22" fill="#207448"/>
+    <text x="1102" y="815" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <text x="1085" y="865" fill="#303a36">
+      <tspan x="1085" dy="0" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#207448">count({__name__=~"gpu_.*"})</tspan>
+      <tspan x="1085" dy="32" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">in Prometheus:</tspan>
+      <tspan x="1085" dy="36" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">series count</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="50" y="1010" width="1500" height="85" rx="12" fill="#207448"/>
+    <text x="800" y="1063" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Look first for an exporter that already covers the gap</text>
+  </g>
+</svg>

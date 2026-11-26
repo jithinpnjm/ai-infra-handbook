@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1130" width="1600" height="1130">
+  <title>Anatomy of a traceparent header and the spans of a streaming request</title>
+  <desc>Visual explanation of the W3C traceparent header structure and the distributed tracing spans across gateway, router, and engine during a streaming LLM request.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1130" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Anatomy of a traceparent header and</text>
+  <text x="800" y="120" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">the spans of a streaming request</text>
+
+  
+  
+  <rect x="40" y="150" width="340" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="210" y="188" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">version</text>
+  <text x="210" y="222" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(2 hex characters)</text>
+
+  
+  <text x="395" y="202" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="bold" fill="#207448">-</text>
+
+  
+  <rect x="420" y="150" width="370" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="605" y="188" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">trace ID</text>
+  <text x="605" y="222" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(32 hex characters)</text>
+
+  
+  <text x="805" y="202" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="bold" fill="#207448">-</text>
+
+  
+  <rect x="830" y="150" width="370" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1015" y="188" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">parent ID</text>
+  <text x="1015" y="222" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(16 hex characters)</text>
+
+  
+  <text x="1215" y="202" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="bold" fill="#207448">-</text>
+
+  
+  <rect x="1240" y="150" width="320" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1400" y="188" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">trace flags</text>
+  <text x="1400" y="222" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(2 hex characters)</text>
+
+  
+  <rect x="40" y="265" width="980" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="65" y="302" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">each service reads the header, creates a child span</text>
+  <text x="65" y="334" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">and passes it on; W3C Trace Context</text>
+
+  
+  <rect x="1050" y="265" width="510" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1305" y="302" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">least significant bit is</text>
+  <text x="1305" y="334" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">the sampled bit</text>
+
+  
+  <line x1="1400" y1="265" x2="1400" y2="246" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="40" y="375" width="1520" height="130" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(65, 412)">
+    <rect x="0" y="0" width="56" height="56" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="0" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="4" />
+    <circle cx="12" cy="9" r="3" fill="#207448" />
+    <circle cx="22" cy="9" r="3" fill="#207448" />
+    <circle cx="32" cy="9" r="3" fill="#207448" />
+    <path d="M 14 36 L 24 36 M 28 36 L 42 36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="145" y="415" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Gateway request span (server):</text>
+  <text x="145" y="455" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">lives until last token or abort; attributes model, status, finish reason, token counts;</text>
+  <text x="145" y="490" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">event first_token</text>
+
+  
+  <rect x="40" y="525" width="1520" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(65, 550)">
+    <circle cx="28" cy="28" r="12" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="28" y1="4" x2="28" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="28" y1="40" x2="28" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="4" y1="28" x2="16" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="40" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="145" y="565" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Router decision span (internal):</text>
+  <text x="145" y="605" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">until the replica is chosen; replica, retries, queue depth seen</text>
+
+  
+  <rect x="40" y="650" width="1520" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(65, 690)">
+    <rect x="12" y="12" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="20" y1="2" x2="20" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="36" y1="2" x2="36" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="20" y1="44" x2="20" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="36" y1="44" x2="36" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="2" y1="20" x2="12" y2="20" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="2" y1="36" x2="12" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="44" y1="20" x2="54" y2="20" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="44" y1="36" x2="54" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="145" y="690" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Engine request span (server):</text>
+  <text x="145" y="730" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">until last token; queue wait, prefill and decode times as attributes;</text>
+  <text x="145" y="765" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">vLLM v0.32.0 sets these on one span and does not emit a preemption event</text>
+
+  
+  
+  <rect x="40" y="805" width="970" height="145" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(65, 850)">
+    <path d="M 28 6 L 48 14 C 48 36 28 50 28 50 C 28 50 8 36 8 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 20 26 L 26 32 L 36 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="145" y="845" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">the gateway span stays open until the stream ends and</text>
+  <text x="145" y="880" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">its status is set to Error if the stream fails after a 200</text>
+  <text x="145" y="915" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">was sent (status values Unset, Error, Ok)</text>
+
+  
+  <rect x="1030" y="805" width="530" height="145" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1055, 850)">
+    <circle cx="28" cy="28" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <polyline points="28,14 28,28 38,34" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="1135" y="865" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">put the first-token moment</text>
+  <text x="1135" y="902" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">on the span as an event</text>
+
+  
+  <rect x="40" y="970" width="1520" height="115" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(65, 1000)">
+    <rect x="0" y="0" width="56" height="56" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 12 18 L 24 28 L 12 38" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="28" y1="38" x2="44" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="145" y="1016" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan>vLLM tracing flags </tspan>
+    <tspan font-family="ui-monospace, monospace">--otlp-traces-endpoint</tspan>
+    <tspan> and </tspan>
+    <tspan font-family="ui-monospace, monospace">--collect-detailed-traces</tspan>
+  </text>
+  <text x="145" y="1056" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(model, worker or all; can be costly or blocking)</text>
+</svg>

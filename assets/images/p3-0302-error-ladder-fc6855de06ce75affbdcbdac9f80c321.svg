@@ -1,0 +1,218 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Import and install errors: symptom, likely cause, first fix</title>
+  <desc>A three-column diagnostic matrix for Python import and install errors mapping symptoms to likely causes and first fixes, with deeper diagnostic tools.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Import and install errors:</tspan>
+    <tspan x="800" dy="52">symptom, likely cause, first fix</tspan>
+  </text>
+
+  
+  <rect x="40" y="135" width="1520" height="832" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="40" y="135" width="1520" height="96" fill="#fff7f0"/>
+  <rect x="40" y="135" width="8" height="96" fill="#db8129"/>
+  <line x1="40" y1="231" x2="1560" y2="231" stroke="#207448" stroke-width="1" opacity="0.25"/>
+  <text x="64" y="178.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="64" dy="0">ModuleNotFoundError:</tspan>
+    <tspan x="64" dy="28">No module named x</tspan>
+  </text>
+  <text x="544" y="164.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">wrong interpreter or venv,</tspan>
+    <tspan x="544" dy="28">not installed, typo,</tspan>
+    <tspan x="544" dy="28">wrong directory</tspan>
+  </text>
+  <text x="1014" y="164.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1014" dy="0">which python, python -m pip</tspan>
+    <tspan x="1014" dy="28">show x, activate venv,</tspan>
+    <tspan x="1014" dy="28">print sys.path</tspan>
+  </text>
+
+  
+  <rect x="40" y="231" width="1520" height="68" fill="#e8f1ea"/>
+  <line x1="40" y1="299" x2="1560" y2="299" stroke="#207448" stroke-width="1" opacity="0.25"/>
+  <text x="64" y="260.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">ImportError: cannot import</tspan>
+    <tspan x="64" dy="28">name y from x</tspan>
+  </text>
+  <text x="544" y="260.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">version mismatch, circular</tspan>
+    <tspan x="544" dy="28">import or shadowing</tspan>
+  </text>
+  <text x="1014" y="260.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1014" dy="0">check x.__file__ and version,</tspan>
+    <tspan x="1014" dy="28">look for local x.py</tspan>
+  </text>
+
+  
+  <rect x="40" y="299" width="1520" height="68" fill="#ffffff"/>
+  <line x1="40" y1="367" x2="1560" y2="367" stroke="#207448" stroke-width="1" opacity="0.25"/>
+  <text x="64" y="328.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">AttributeError: module x</tspan>
+    <tspan x="64" dy="28">has no attribute</tspan>
+  </text>
+  <text x="544" y="328.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">shadowed module (random.py,</tspan>
+    <tspan x="544" dy="28">requests.py) or old version</tspan>
+  </text>
+  <text x="1014" y="342.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1014" dy="0">rename file, remove __pycache__</tspan>
+  </text>
+
+  
+  <rect x="40" y="367" width="1520" height="68" fill="#e8f1ea"/>
+  <line x1="40" y1="435" x2="1560" y2="435" stroke="#207448" stroke-width="1" opacity="0.25"/>
+  <text x="64" y="396.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">attempted relative import</tspan>
+    <tspan x="64" dy="28">with no known parent package</tspan>
+  </text>
+  <text x="544" y="396.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">running a package file</tspan>
+    <tspan x="544" dy="28">as a script</tspan>
+  </text>
+  <text x="1014" y="410.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1014" dy="0">python -m pkg.module</tspan>
+  </text>
+
+  
+  <rect x="40" y="435" width="1520" height="56" fill="#ffffff"/>
+  <line x1="40" y1="491" x2="1560" y2="491" stroke="#207448" stroke-width="1" opacity="0.25"/>
+  <text x="64" y="472.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">externally-managed-environment</tspan>
+  </text>
+  <text x="544" y="472.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">PEP 668 on system Python</tspan>
+  </text>
+  <text x="1014" y="472.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1014" dy="0">venv, pipx, distribution package</tspan>
+  </text>
+
+  
+  <rect x="40" y="491" width="1520" height="68" fill="#e8f1ea"/>
+  <line x1="40" y1="559" x2="1560" y2="559" stroke="#207448" stroke-width="1" opacity="0.25"/>
+  <text x="64" y="534.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">ResolutionImpossible</tspan>
+  </text>
+  <text x="544" y="534.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">conflicting constraints</tspan>
+  </text>
+  <text x="1014" y="520.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1014" dy="0">read the chain, relax pins, pip</tspan>
+    <tspan x="1014" dy="28">install -vv, separate environments</tspan>
+  </text>
+
+  
+  <rect x="40" y="559" width="1520" height="68" fill="#ffffff"/>
+  <line x1="40" y1="627" x2="1560" y2="627" stroke="#207448" stroke-width="1" opacity="0.25"/>
+  <text x="64" y="588.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">Works in shell, fails</tspan>
+    <tspan x="64" dy="28">in cron or systemd</tspan>
+  </text>
+  <text x="544" y="588.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">different PATH, interpreter</tspan>
+    <tspan x="544" dy="28">or env</tspan>
+  </text>
+  <text x="1014" y="588.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1014" dy="0">absolute venv python path,</tspan>
+    <tspan x="1014" dy="28">Environment=, log sys.executable</tspan>
+  </text>
+
+  
+  <rect x="40" y="627" width="1520" height="68" fill="#e8f1ea"/>
+  <line x1="40" y1="695" x2="1560" y2="695" stroke="#207448" stroke-width="1" opacity="0.25"/>
+  <text x="64" y="656.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">GLIBC_2.xx not found or</tspan>
+    <tspan x="64" dy="28">illegal instruction</tspan>
+  </text>
+  <text x="544" y="656.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">wheel built for newer</tspan>
+    <tspan x="544" dy="28">glibc or CPU</tspan>
+  </text>
+  <text x="1014" y="656.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1014" dy="0">matching manylinux tag or</tspan>
+    <tspan x="1014" dy="28">container, build from source</tspan>
+  </text>
+
+  
+  <rect x="40" y="695" width="1520" height="68" fill="#ffffff"/>
+  <line x1="40" y1="763" x2="1560" y2="763" stroke="#207448" stroke-width="1" opacity="0.25"/>
+  <text x="64" y="724.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">CUDA driver version is</tspan>
+    <tspan x="64" dy="28">insufficient</tspan>
+  </text>
+  <text x="544" y="724.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">wheel CUDA runtime</tspan>
+    <tspan x="544" dy="28">newer than driver</tspan>
+  </text>
+  <text x="1014" y="738.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1014" dy="0">upgrade driver or use cu118</tspan>
+  </text>
+
+  
+  <rect x="40" y="763" width="1520" height="68" fill="#e8f1ea"/>
+  <line x1="40" y1="831" x2="1560" y2="831" stroke="#207448" stroke-width="1" opacity="0.25"/>
+  <text x="64" y="792.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">numpy.core.multiarray</tspan>
+    <tspan x="64" dy="28">failed to import</tspan>
+  </text>
+  <text x="544" y="806.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">NumPy 1 and 2 mismatch</tspan>
+  </text>
+  <text x="1014" y="806.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1014" dy="0">align versions, rebuild extensions</tspan>
+  </text>
+
+  
+  <rect x="40" y="831" width="1520" height="68" fill="#ffffff"/>
+  <line x1="40" y1="899" x2="1560" y2="899" stroke="#207448" stroke-width="1" opacity="0.25"/>
+  <text x="64" y="874.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">Slow imports or startup</tspan>
+  </text>
+  <text x="544" y="860.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">heavy top-level imports,</tspan>
+    <tspan x="544" dy="28">network filesystem</tspan>
+  </text>
+  <text x="1014" y="860.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1014" dy="0">-X importtime, lazy imports,</tspan>
+    <tspan x="1014" dy="28">local copy, container</tspan>
+  </text>
+
+  
+  <rect x="40" y="899" width="1520" height="68" fill="#e8f1ea"/>
+  <text x="64" y="928.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">Different behaviour on</tspan>
+    <tspan x="64" dy="28">two nodes</tspan>
+  </text>
+  <text x="544" y="942.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">unpinned dependency drift</tspan>
+  </text>
+  <text x="1014" y="928.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1014" dy="0">lockfile, hashes, image digests,</tspan>
+    <tspan x="1014" dy="28">pip freeze diff</tspan>
+  </text>
+
+  
+  <line x1="520" y1="135" x2="520" y2="967" stroke="#207448" stroke-width="1.5" opacity="0.4"/>
+  <line x1="990" y1="135" x2="990" y2="967" stroke="#207448" stroke-width="1.5" opacity="0.4"/>
+
+  
+  <rect x="40" y="985" width="1520" height="82" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(60, 998)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="8" width="48" height="40" rx="6"/>
+    <polyline points="14,24 22,30 14,36"/>
+    <line x1="28" y1="36" x2="40" y2="36"/>
+  </g>
+  <text x="135" y="1020" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">pip debug --verbose, pipdeptree, pip index versions pkg,</tspan>
+    <tspan x="135" dy="30">ldd on torch libraries, strace -f -e trace=openat python -c import x</tspan>
+  </text>
+
+  
+  <rect x="40" y="1085" width="1520" height="58" rx="10" fill="#207448"/>
+  <text x="800" y="1124" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Read the error line first, then find the matching row</text>
+</svg>

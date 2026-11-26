@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>assert, warnings and the three ways to see the current exception</title>
+  <desc>Visual infographic explaining assertions, warnings, exception inspection methods, tracebacks, and outer try handling in Python.</desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48px" font-weight="bold" fill="#303a36">assert, warnings and the three ways</text>
+  <text x="800" y="112" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48px" font-weight="bold" fill="#303a36">to see the current exception</text>
+
+  
+
+  
+  <rect x="40" y="140" width="740" height="470" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <path d="M 68 165 L 94 153 L 120 165 C 120 188 107 205 94 212 C 81 205 68 188 68 165 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 85 181 L 92 188 L 105 174" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="135" y="193" font-family="system-ui, -apple-system, sans-serif" font-size="32px" font-weight="bold" fill="#207448">assert</text>
+
+  
+  <rect x="60" y="222" width="700" height="92" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="76" y="250" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">assert cond, message works like</text>
+  <text x="76" y="278" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">if __debug__: if not cond:</text>
+  <text x="76" y="304" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">    raise AssertionError(message)</text>
+
+  
+  <rect x="60" y="324" width="700" height="66" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="76" y="352" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">python -O sets __debug__ to False</text>
+  <text x="76" y="378" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">and compiles every assert out</text>
+
+  
+  <rect x="60" y="400" width="700" height="114" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <rect x="60" y="400" width="10" height="114" rx="4" fill="#db8129"/>
+  <text x="82" y="432" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#db8129">never use assertions for input validation</text>
+  <text x="82" y="464" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#db8129">or security checks: the check disappears</text>
+  <text x="82" y="496" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#db8129">in exactly the builds that matter</text>
+
+  
+  <rect x="60" y="524" width="700" height="70" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="76" y="552" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">assert 1 &lt; 0, Not in this universe!</text>
+  <text x="76" y="580" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">raises AssertionError with that message</text>
+
+
+  
+  <rect x="40" y="625" width="740" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <path d="M 94 640 C 82 640 76 652 76 668 L 72 682 L 116 682 L 112 668 C 112 652 106 640 94 640 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="68" y1="682" x2="120" y2="682" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="94" cy="691" r="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <text x="135" y="677" font-family="system-ui, -apple-system, sans-serif" font-size="32px" font-weight="bold" fill="#207448">warnings</text>
+
+  
+  <rect x="60" y="700" width="700" height="154" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="76" y="728" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">warnings.warn(x is deprecated,</text>
+  <text x="76" y="756" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">DeprecationWarning, stacklevel=2):</text>
+  <text x="76" y="784" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">stacklevel 2 blames the code that made the call;</text>
+  <text x="76" y="814" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">control with -W flags and filters;</text>
+  <text x="76" y="842" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">tests can turn them into errors</text>
+
+
+  
+  <rect x="40" y="885" width="740" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <rect x="70" y="900" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 82 913 L 90 924 L 82 935" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="94" y1="935" x2="106" y2="935" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="135" y="937" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#207448">Outer try for debugging</text>
+
+  
+  <rect x="60" y="955" width="700" height="144" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="76" y="986" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">wrap the program in an outer try, empty except,</text>
+  <text x="76" y="1016" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">print sys.exc_info()[0] and [1];</text>
+  <text x="76" y="1048" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">a test driver logs FAILED name or PASSED name</text>
+  <text x="76" y="1078" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">and keeps going</text>
+
+
+  
+
+  
+  <rect x="820" y="140" width="740" height="630" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <circle cx="862" cy="177" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="874" y1="189" x2="888" y2="203" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="854" y1="177" x2="870" y2="177" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="905" y="192" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#207448">Current exception, three ways</text>
+
+  
+  <rect x="840" y="210" width="700" height="64" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="856" y="236" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">class E(Exception): pass;</text>
+  <text x="856" y="262" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">try: raise E(info) except E as X</text>
+
+  
+  <rect x="840" y="284" width="700" height="114" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="856" y="312" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">print((type(X), X));</text>
+  <text x="856" y="344" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">print(sys.exc_info()[:2]);</text>
+  <text x="856" y="376" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">print((type(sys.exception()), sys.exception()))</text>
+
+  
+  <rect x="840" y="408" width="700" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="856" y="439" font-family="ui-monospace, monospace" font-size="24px" font-weight="bold" fill="#207448">all printing (class __main__.E, E(info))</text>
+
+  
+  <text x="842" y="482" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#207448">Facts</text>
+  <rect x="840" y="494" width="700" height="262" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="856" y="524" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">sys.exc_info() returns (type, value, traceback),</text>
+  <text x="856" y="554" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">or three None values if no exception</text>
+  <text x="856" y="584" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">is being handled; sys.exception() (3.11)</text>
+  <text x="856" y="614" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">returns the instance, the same as</text>
+  <text x="856" y="644" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">sys.exc_info()[1]; the traceback is usually</text>
+  <text x="856" y="674" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">in the instance's __traceback__;</text>
+  <text x="856" y="704" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">documentation calls exc_info old-style,</text>
+  <text x="856" y="734" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">but both work</text>
+
+
+  
+  <rect x="820" y="785" width="740" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <path d="M 852 800 L 878 800 L 892 814 L 892 848 L 852 848 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <polyline points="878,800 878,814 892,814" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="862" y1="822" x2="872" y2="822" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="862" y1="832" x2="882" y2="832" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="862" y1="840" x2="878" y2="840" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="905" y="837" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#207448">Traceback</text>
+
+  
+  <rect x="840" y="855" width="700" height="245" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5"/>
+  <text x="856" y="888" font-family="ui-monospace, monospace" font-size="24px" fill="#303a36">traceback.print_exc(file=open(badly.txt, w))</text>
+  <text x="856" y="922" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">writes the error text to a file while Bye</text>
+  <text x="856" y="956" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">prints to the screen; read tracebacks bottom up:</text>
+  <text x="856" y="990" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">the last line names the error and the lines</text>
+  <text x="856" y="1024" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">above show who called whom;</text>
+  <text x="856" y="1058" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">do not depend on the exact text</text>
+
+
+  
+  <rect x="40" y="1130" width="1520" height="52" rx="8" fill="#207448"/>
+  <text x="800" y="1165" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#ffffff">Use the instance's own methods instead of checking its type</text>
+</svg>

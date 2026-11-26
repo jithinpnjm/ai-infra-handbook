@@ -1,0 +1,215 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Weighted ECMP with link bandwidth</title>
+  <desc>Visual comparison between plain ECMP with equal traffic splitting over unequal links and weighted ECMP using BGP Link Bandwidth Extended Community for proportional traffic distribution.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-comm" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 2 L 7 5 L 0 8 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Weighted ECMP with link bandwidth</text>
+
+  
+  <rect x="60" y="115" width="710" height="740" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(90, 140)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    <line x1="12" y1="28" x2="44" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="28" y1="12" x2="28" y2="44" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="12" cy="28" r="4" fill="#207448" />
+    <circle cx="44" cy="28" r="4" fill="#207448" />
+    <circle cx="28" cy="12" r="4" fill="#207448" />
+    <circle cx="28" cy="44" r="4" fill="#207448" />
+  </g>
+
+  
+  <text x="165" y="180" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Plain ECMP</text>
+
+  
+  <rect x="90" y="220" width="650" height="140" rx="10" fill="#ffffff" stroke="#cbd5cb" stroke-width="1.5" />
+  <text x="115" y="260" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">one leaf with four next-hop links of</tspan>
+    <tspan x="115" dy="34">different capacity, each receiving an</tspan>
+    <tspan x="115" dy="34">equal quarter of the traffic</tspan>
+  </text>
+
+  
+  
+  <rect x="95" y="420" width="120" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <circle cx="125" cy="455" r="7" fill="#207448" />
+  <circle cx="155" cy="455" r="7" fill="#207448" />
+  <circle cx="185" cy="455" r="7" fill="#207448" />
+
+  
+  <rect x="245" y="420" width="120" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <circle cx="275" cy="455" r="7" fill="#207448" />
+  <circle cx="305" cy="455" r="7" fill="#207448" />
+  <circle cx="335" cy="455" r="7" fill="#207448" />
+
+  
+  <rect x="395" y="420" width="120" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <circle cx="425" cy="455" r="7" fill="#207448" />
+  <circle cx="455" cy="455" r="7" fill="#207448" />
+  <circle cx="485" cy="455" r="7" fill="#207448" />
+
+  
+  <rect x="545" y="420" width="120" height="70" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <circle cx="575" cy="455" r="7" fill="#db8129" />
+  <circle cx="605" cy="455" r="7" fill="#db8129" />
+  <circle cx="635" cy="455" r="7" fill="#db8129" />
+
+  
+  <rect x="250" y="730" width="330" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <line x1="280" y1="772" x2="550" y2="772" stroke="#207448" stroke-width="3" stroke-dasharray="6 6" />
+  <circle cx="305" cy="772" r="9" fill="#207448" />
+  <circle cx="380" cy="772" r="9" fill="#207448" />
+  <circle cx="455" cy="772" r="9" fill="#207448" />
+  <circle cx="525" cy="772" r="9" fill="#db8129" />
+
+  
+  
+  <line x1="305" y1="730" x2="155" y2="490" stroke="#d4e3d6" stroke-width="26" stroke-linecap="round" />
+  
+  <line x1="380" y1="730" x2="305" y2="490" stroke="#d4e3d6" stroke-width="26" stroke-linecap="round" />
+  
+  <line x1="455" y1="730" x2="455" y2="490" stroke="#d4e3d6" stroke-width="16" stroke-linecap="round" />
+  
+  <line x1="525" y1="730" x2="605" y2="490" stroke="#fbe4cf" stroke-width="8" stroke-linecap="round" />
+
+  
+  
+  <line x1="305" y1="715" x2="160" y2="505" stroke="#207448" stroke-width="7" marker-end="url(#arrow-green)" />
+  
+  <line x1="380" y1="715" x2="307" y2="505" stroke="#207448" stroke-width="7" marker-end="url(#arrow-green)" />
+  
+  <line x1="455" y1="715" x2="455" y2="505" stroke="#207448" stroke-width="7" marker-end="url(#arrow-green)" />
+  
+  <line x1="525" y1="715" x2="602" y2="505" stroke="#db8129" stroke-width="7" marker-end="url(#arrow-orange)" />
+
+  
+  <circle cx="567" cy="600" r="16" fill="#db8129" />
+  <line x1="567" y1="592" x2="567" y2="603" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+  <circle cx="567" cy="609" r="2" fill="#ffffff" />
+
+
+  
+  <rect x="830" y="115" width="710" height="740" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(860, 136)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    <path d="M 14 28 L 24 16 L 38 16 L 42 28 L 38 40 L 24 40 Z" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="24" cy="28" r="3" fill="#207448" />
+  </g>
+
+  
+  <text x="935" y="162" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="935" dy="0">Link Bandwidth</tspan>
+    <tspan x="935" dy="36">Extended Community</tspan>
+  </text>
+
+  
+  <rect x="860" y="220" width="650" height="170" rx="10" fill="#ffffff" stroke="#cbd5cb" stroke-width="1.5" />
+  <text x="885" y="258" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="885" dy="0">advertising router encodes link speed</tspan>
+    <tspan x="885" dy="34">in the community; the receiver assigns</tspan>
+    <tspan x="885" dy="34">weights proportional to capacity</tspan>
+    <tspan x="885" dy="34">(weighted ECMP, also called UCMP)</tspan>
+  </text>
+
+  
+  
+  <rect x="865" y="420" width="120" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <circle cx="895" cy="455" r="7" fill="#207448" />
+  <circle cx="925" cy="455" r="7" fill="#207448" />
+  <circle cx="955" cy="455" r="7" fill="#207448" />
+
+  
+  <rect x="1015" y="420" width="120" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <circle cx="1045" cy="455" r="7" fill="#207448" />
+  <circle cx="1075" cy="455" r="7" fill="#207448" />
+  <circle cx="1105" cy="455" r="7" fill="#207448" />
+
+  
+  <rect x="1165" y="420" width="120" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <circle cx="1195" cy="455" r="7" fill="#207448" />
+  <circle cx="1225" cy="455" r="7" fill="#207448" />
+  <circle cx="1255" cy="455" r="7" fill="#207448" />
+
+  
+  <rect x="1315" y="420" width="120" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <circle cx="1345" cy="455" r="7" fill="#207448" />
+  <circle cx="1375" cy="455" r="7" fill="#207448" />
+  <circle cx="1405" cy="455" r="7" fill="#207448" />
+
+  
+  <path d="M 910 495 L 900 535 L 1025 725" stroke="#207448" stroke-width="2" stroke-dasharray="4 4" fill="none" marker-end="url(#arrow-comm)" />
+  <path d="M 1060 495 L 1055 535 L 1100 725" stroke="#207448" stroke-width="2" stroke-dasharray="4 4" fill="none" marker-end="url(#arrow-comm)" />
+  <path d="M 1210 495 L 1205 535 L 1175 725" stroke="#207448" stroke-width="2" stroke-dasharray="4 4" fill="none" marker-end="url(#arrow-comm)" />
+  <path d="M 1360 495 L 1350 535 L 1250 725" stroke="#207448" stroke-width="2" stroke-dasharray="4 4" fill="none" marker-end="url(#arrow-comm)" />
+
+  
+  <rect x="1020" y="730" width="330" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <line x1="1050" y1="772" x2="1320" y2="772" stroke="#207448" stroke-width="3" stroke-dasharray="6 6" />
+  <circle cx="1075" cy="772" r="9" fill="#207448" />
+  <circle cx="1150" cy="772" r="9" fill="#207448" />
+  <circle cx="1225" cy="772" r="9" fill="#207448" />
+  <circle cx="1295" cy="772" r="9" fill="#207448" />
+
+  
+  
+  <line x1="1075" y1="730" x2="925" y2="490" stroke="#d4e3d6" stroke-width="26" stroke-linecap="round" />
+  
+  <line x1="1150" y1="730" x2="1075" y2="490" stroke="#d4e3d6" stroke-width="26" stroke-linecap="round" />
+  
+  <line x1="1225" y1="730" x2="1225" y2="490" stroke="#d4e3d6" stroke-width="16" stroke-linecap="round" />
+  
+  <line x1="1295" y1="730" x2="1375" y2="490" stroke="#d4e3d6" stroke-width="8" stroke-linecap="round" />
+
+  
+  
+  <line x1="1075" y1="715" x2="930" y2="505" stroke="#207448" stroke-width="14" marker-end="url(#arrow-green)" />
+  
+  <line x1="1150" y1="715" x2="1077" y2="505" stroke="#207448" stroke-width="14" marker-end="url(#arrow-green)" />
+  
+  <line x1="1225" y1="715" x2="1225" y2="505" stroke="#207448" stroke-width="8" marker-end="url(#arrow-green)" />
+  
+  <line x1="1295" y1="715" x2="1372" y2="505" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <circle cx="1337" cy="600" r="16" fill="#207448" />
+  <path d="M 1329 600 L 1335 606 L 1346 594" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+
+
+  
+  <rect x="60" y="885" width="1480" height="115" rx="12" fill="#207448" />
+
+  
+  <g transform="translate(85, 912)">
+    <rect x="0" y="0" width="60" height="60" rx="8" fill="#ffffff" fill-opacity="0.15" stroke="#ffffff" stroke-width="3" />
+    <circle cx="18" cy="42" r="6" fill="#ffffff" />
+    <circle cx="42" cy="18" r="6" fill="#ffffff" />
+    <line x1="22" y1="38" x2="38" y2="22" stroke="#ffffff" stroke-width="3" />
+    <circle cx="42" cy="42" r="4" fill="none" stroke="#ffffff" stroke-width="2" />
+    <line x1="24" y1="42" x2="38" y2="42" stroke="#ffffff" stroke-width="2" stroke-dasharray="2 2" />
+  </g>
+
+  
+  <text x="165" y="934" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+    <tspan x="165" dy="0">if a spine loses a link to the super-spine, it advertises reduced capacity</tspan>
+    <tspan x="165" dy="36">and leaves send proportionally less through it</tspan>
+  </text>
+</svg>

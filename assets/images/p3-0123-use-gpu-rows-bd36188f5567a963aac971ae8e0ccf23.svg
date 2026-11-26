@@ -1,0 +1,213 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>USE table, GPU side: PCIe, compute, memory, NVLink and power</title>
+  <desc>USE matrix for GPU subsystem examining Utilisation, Saturation, and Errors across PCIe, GPU compute, GPU memory, NVLink, and Power/thermal resources.</desc>
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">USE table, GPU side:</tspan>
+    <tspan x="800" dy="54">PCIe, compute, memory, NVLink and power</tspan>
+  </text>
+
+  
+  <rect x="374" y="144" width="386" height="48" rx="8" fill="#207448"/>
+  <text x="567" y="177" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Utilisation</text>
+  <rect x="774" y="144" width="386" height="48" rx="8" fill="#207448"/>
+  <text x="967" y="177" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Saturation</text>
+  <rect x="1174" y="144" width="386" height="48" rx="8" fill="#207448"/>
+  <text x="1367" y="177" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Errors</text>
+
+  
+  <rect x="40" y="204" width="320" height="136" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(56, 247)">
+    <rect x="4" y="6" width="40" height="28" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="12" y1="34" x2="12" y2="42" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="20" y1="34" x2="20" y2="42" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="28" y1="34" x2="28" y2="42" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="36" y1="34" x2="36" y2="42" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="4" y1="2" x2="4" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <rect x="16" y="14" width="16" height="12" rx="2" fill="#207448"/>
+  </g>
+  <text x="122" y="248" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="122" dy="0">PCIe</tspan>
+    <tspan x="122" dy="34">(GPU, NIC,</tspan>
+    <tspan x="122" dy="34">NVMe)</tspan>
+  </text>
+  <rect x="374" y="204" width="386" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="394" y="241" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="394" dy="0">nvidia-smi dmon PCIe</tspan>
+    <tspan x="394" dy="26">rx/tx versus link</tspan>
+    <tspan x="394" dy="26">capability; lspci -vv</tspan>
+    <tspan x="394" dy="26">link speed and width</tspan>
+  </text>
+  <rect x="774" y="204" width="386" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="794" y="280" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="794" dy="0">(indirect) copy stalls</tspan>
+  </text>
+  <rect x="1174" y="204" width="386" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1194" y="254" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1194" dy="0">AER errors in dmesg,</tspan>
+    <tspan x="1194" dy="26">Xid 79, replay</tspan>
+    <tspan x="1194" dy="26">counters</tspan>
+  </text>
+
+  
+  <rect x="40" y="352" width="320" height="136" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(56, 395)">
+    <rect x="8" y="8" width="34" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <rect x="17" y="17" width="16" height="16" rx="2" fill="#207448"/>
+    <line x1="16" y1="2" x2="16" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="25" y1="2" x2="25" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="34" y1="2" x2="34" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="16" y1="42" x2="16" y2="48" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="25" y1="42" x2="25" y2="48" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="34" y1="42" x2="34" y2="48" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="2" y1="16" x2="8" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="2" y1="25" x2="8" y2="25" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="2" y1="34" x2="8" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="42" y1="16" x2="48" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="42" y1="25" x2="48" y2="25" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="42" y1="34" x2="48" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="122" y="396" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="122" dy="0">GPU compute</tspan>
+    <tspan x="122" dy="34">(SMs, tensor</tspan>
+    <tspan x="122" dy="34">cores)</tspan>
+  </text>
+  <rect x="374" y="352" width="386" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="394" y="402" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="394" dy="0">DCGM SM activity and</tspan>
+    <tspan x="394" dy="26">occupancy, tensor</tspan>
+    <tspan x="394" dy="26">activity, nsys</tspan>
+  </text>
+  <rect x="774" y="352" width="386" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="794" y="389" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="794" dy="0">work queued behind</tspan>
+    <tspan x="794" dy="26">other streams or</tspan>
+    <tspan x="794" dy="26">processes; MPS or</tspan>
+    <tspan x="794" dy="26">time-slice contention</tspan>
+  </text>
+  <rect x="1174" y="352" width="386" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1194" y="389" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1194" dy="0">Xid errors; ECC</tspan>
+    <tspan x="1194" dy="26">errors; thermal or</tspan>
+    <tspan x="1194" dy="26">power throttling</tspan>
+    <tspan x="1194" dy="26">reasons</tspan>
+  </text>
+
+  
+  <rect x="40" y="500" width="320" height="136" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(56, 543)">
+    <rect x="6" y="8" width="38" height="8" rx="2" fill="none" stroke="#207448" stroke-width="3.2"/>
+    <rect x="6" y="20" width="38" height="8" rx="2" fill="none" stroke="#207448" stroke-width="3.2"/>
+    <rect x="6" y="32" width="38" height="8" rx="2" fill="none" stroke="#207448" stroke-width="3.2"/>
+    <line x1="15" y1="8" x2="15" y2="40" stroke="#207448" stroke-width="2.2" stroke-dasharray="2 2"/>
+    <line x1="25" y1="8" x2="25" y2="40" stroke="#207448" stroke-width="2.2" stroke-dasharray="2 2"/>
+    <line x1="35" y1="8" x2="35" y2="40" stroke="#207448" stroke-width="2.2" stroke-dasharray="2 2"/>
+    <circle cx="12" cy="45" r="2" fill="#207448"/>
+    <circle cx="20" cy="45" r="2" fill="#207448"/>
+    <circle cx="28" cy="45" r="2" fill="#207448"/>
+    <circle cx="36" cy="45" r="2" fill="#207448"/>
+  </g>
+  <text x="122" y="544" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="122" dy="0">GPU memory</tspan>
+    <tspan x="122" dy="34">(HBM)</tspan>
+    <tspan x="122" dy="34">capacity</tspan>
+  </text>
+  <rect x="374" y="500" width="386" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="394" y="550" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="394" dy="0">nvidia-smi memory</tspan>
+    <tspan x="394" dy="26">used and total;</tspan>
+    <tspan x="394" dy="26">allocator stats</tspan>
+  </text>
+  <rect x="774" y="500" width="386" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="794" y="537" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="794" dy="0">allocation failures or</tspan>
+    <tspan x="794" dy="26">OOM; unified-memory</tspan>
+    <tspan x="794" dy="26">oversubscription (page</tspan>
+    <tspan x="794" dy="26">migration traffic)</tspan>
+  </text>
+  <rect x="1174" y="500" width="386" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1194" y="550" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1194" dy="0">ECC single and double</tspan>
+    <tspan x="1194" dy="26">bit, retired pages,</tspan>
+    <tspan x="1194" dy="26">row-remapping failures</tspan>
+  </text>
+
+  
+  <rect x="40" y="648" width="320" height="136" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(56, 691)">
+    <rect x="8" y="8" width="34" height="34" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M16 16 L34 34 M34 16 L16 34" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="25" cy="25" r="4" fill="#207448"/>
+    <line x1="25" y1="2" x2="25" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="25" y1="42" x2="25" y2="48" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="2" y1="25" x2="8" y2="25" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="42" y1="25" x2="48" y2="25" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+  <text x="122" y="709" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="122" dy="0">NVLink and</tspan>
+    <tspan x="122" dy="34">NVSwitch</tspan>
+  </text>
+  <rect x="374" y="648" width="386" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="394" y="698" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="394" dy="0">nvidia-smi nvlink,</tspan>
+    <tspan x="394" dy="26">DCGM NVLink bandwidth</tspan>
+    <tspan x="394" dy="26">versus peak</tspan>
+  </text>
+  <rect x="774" y="648" width="386" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="794" y="711" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="794" dy="0">stalls visible in</tspan>
+    <tspan x="794" dy="26">profiler timelines</tspan>
+  </text>
+  <rect x="1174" y="648" width="386" height="136" rx="10" fill="#fffdfa" stroke="#db8129" stroke-width="2.5"/>
+  <text x="1194" y="698" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1194" dy="0">NVLink CRC and replay</tspan>
+    <tspan x="1194" dy="26">errors, </tspan><tspan fill="#db8129" font-weight="bold">Xid 74</tspan><tspan fill="#303a36">, fabric</tspan>
+    <tspan x="1194" dy="26">manager health</tspan>
+  </text>
+
+  
+  <rect x="40" y="796" width="320" height="136" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(56, 839)">
+    <path d="M14 10 A5 5 0 0 1 22 10 V26 A9 9 0 1 1 14 26 Z" fill="none" stroke="#207448" stroke-width="3.2" stroke-linejoin="round"/>
+    <circle cx="18" cy="30" r="4.5" fill="#207448"/>
+    <line x1="18" y1="14" x2="18" y2="27" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polygon points="36,6 27,22 34,22 29,42 43,24 36,24" fill="#207448"/>
+  </g>
+  <text x="122" y="857" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="122" dy="0">Power and</tspan>
+    <tspan x="122" dy="34">thermal</tspan>
+  </text>
+  <rect x="374" y="796" width="386" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="394" y="846" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="394" dy="0">nvidia-smi power draw</tspan>
+    <tspan x="394" dy="26">versus limit, ipmitool</tspan>
+    <tspan x="394" dy="26">sdr, turbostat</tspan>
+  </text>
+  <rect x="774" y="796" width="386" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="794" y="846" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="794" dy="0">clock throttling due to</tspan>
+    <tspan x="794" dy="26">power cap or thermal</tspan>
+    <tspan x="794" dy="26">reasons</tspan>
+  </text>
+  <rect x="1174" y="796" width="386" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1194" y="859" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1194" dy="0">thermal or power faults</tspan>
+    <tspan x="1194" dy="26">in the BMC SEL</tspan>
+  </text>
+
+  
+  <rect x="40" y="946" width="1520" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="977" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">GPU memory bandwidth: DCGM DRAM activity (saturation indirect)</text>
+
+  
+  <rect x="40" y="1006" width="1520" height="78" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="1040" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">A table with three honest blanks teaches you more than a table</tspan>
+    <tspan x="800" dy="32">filled with guesses: every blank is a known unknown</tspan>
+  </text>
+
+  
+  <rect x="40" y="1098" width="1520" height="58" rx="10" fill="#207448"/>
+  <text x="800" y="1138" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Fill this table in for your platform</text>
+</svg>

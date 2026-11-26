@@ -1,0 +1,216 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Seven steps for a CPU problem, finish the first three before tuning</title>
+  <desc>A vertical stepped ladder of seven steps for diagnosing and tuning CPU issues, emphasizing that steps one through three must be completed before any tuning changes are made.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="bold" text-anchor="middle">Seven steps for a CPU problem,</text>
+  <text x="800" y="122" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="bold" text-anchor="middle">finish the first three before tuning</text>
+
+  
+  <g id="step-1">
+    <rect x="60" y="156" width="1120" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="106" cy="201" r="22" fill="#207448" />
+    <text x="106" y="209" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="bold" text-anchor="middle">1</text>
+    
+    <g transform="translate(142, 173)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="4" />
+      <line x1="18" y1="4" x2="18" y2="10" />
+      <line x1="28" y1="4" x2="28" y2="10" />
+      <line x1="38" y1="4" x2="38" y2="10" />
+      <line x1="18" y1="46" x2="18" y2="52" />
+      <line x1="28" y1="46" x2="28" y2="52" />
+      <line x1="38" y1="46" x2="38" y2="52" />
+      <line x1="4" y1="18" x2="10" y2="18" />
+      <line x1="4" y1="28" x2="10" y2="28" />
+      <line x1="4" y1="38" x2="10" y2="38" />
+      <line x1="46" y1="18" x2="52" y2="18" />
+      <line x1="46" y1="28" x2="52" y2="28" />
+      <line x1="46" y1="38" x2="52" y2="38" />
+      <path d="M 16 28 L 22 28 L 25 21 L 31 35 L 34 28 L 40 28" />
+    </g>
+    
+    <text x="216" y="193" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan font-weight="bold">Monitor utilisation and saturation per CPU: </tspan>
+      <tspan font-family="monospace">mpstat</tspan>, <tspan font-family="monospace">PSI</tspan>, <tspan font-family="monospace">runqlat</tspan>;
+    </text>
+    <text x="216" y="225" fill="#303a36" font-family="sans-serif" font-size="24">
+      include container limits and throttling
+    </text>
+  </g>
+
+  
+  <g id="step-2">
+    <rect x="60" y="286" width="1120" height="112" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="106" cy="342" r="22" fill="#207448" />
+    <text x="106" y="350" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="bold" text-anchor="middle">2</text>
+    
+    <g transform="translate(142, 314)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 40 A 20 20 0 1 1 46 40" />
+      <line x1="28" y1="30" x2="38" y2="18" stroke-width="4" />
+      <circle cx="28" cy="30" r="4" fill="#207448" />
+      <line x1="12" y1="22" x2="16" y2="25" />
+      <line x1="28" y1="10" x2="28" y2="15" />
+      <line x1="44" y1="22" x2="40" y2="25" />
+    </g>
+    
+    <text x="216" y="321" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan font-weight="bold">USE method: </tspan>utilisation, saturation, errors
+    </text>
+    <text x="216" y="353" fill="#303a36" font-family="sans-serif" font-size="24">
+      (machine-check and EDAC events, offlined CPUs, thermal
+    </text>
+    <text x="216" y="384" fill="#303a36" font-family="sans-serif" font-size="24">
+      events: <tspan font-family="monospace">dmesg</tspan>, <tspan font-family="monospace">mcelog</tspan>, <tspan font-family="monospace">rasdaemon</tspan>)
+    </text>
+  </g>
+
+  
+  <g id="step-3">
+    <rect x="60" y="438" width="1120" height="112" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="106" cy="494" r="22" fill="#207448" />
+    <text x="106" y="502" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="bold" text-anchor="middle">3</text>
+    
+    <g transform="translate(142, 466)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="22" cy="24" r="10" />
+      <line x1="22" y1="8" x2="22" y2="14" />
+      <line x1="22" y1="34" x2="22" y2="40" />
+      <line x1="6" y1="24" x2="12" y2="24" />
+      <line x1="32" y1="24" x2="38" y2="24" />
+      <circle cx="38" cy="38" r="7" />
+      <line x1="38" y1="27" x2="38" y2="31" />
+      <line x1="38" y1="45" x2="38" y2="49" />
+      <line x1="27" y1="38" x2="31" y2="38" />
+      <line x1="45" y1="38" x2="49" y2="38" />
+    </g>
+    
+    <text x="216" y="473" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan font-weight="bold">Characterise the workload: </tspan>user to system ratio, syscall rate,
+    </text>
+    <text x="216" y="504" fill="#303a36" font-family="sans-serif" font-size="24">
+      context-switch rate (voluntary = blocked, involuntary = preempted;
+    </text>
+    <text x="216" y="535" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan font-family="monospace">pidstat -w</tspan> shows both), interrupt rate, thread count
+    </text>
+  </g>
+
+  
+  <g id="bracket-group">
+    
+    <path d="M 1205 156 Q 1245 156 1245 196 L 1245 333 Q 1245 353 1268 353 Q 1245 353 1245 373 L 1245 510 Q 1245 550 1205 550"
+          stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" />
+    
+    <text x="1290" y="325" fill="#db8129" font-family="sans-serif" font-size="28" font-weight="bold">Finish these</text>
+    <text x="1290" y="360" fill="#db8129" font-family="sans-serif" font-size="28" font-weight="bold">before you tune</text>
+    <text x="1290" y="395" fill="#db8129" font-family="sans-serif" font-size="28" font-weight="bold">anything</text>
+  </g>
+
+  
+  <g id="step-4">
+    <rect x="60" y="590" width="1120" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="106" cy="635" r="22" fill="#207448" />
+    <text x="106" y="643" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="bold" text-anchor="middle">4</text>
+    
+    <g transform="translate(142, 607)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="16" />
+      <line x1="36" y1="36" x2="50" y2="50" stroke-width="4" />
+      <path d="M 24 14 L 24 34" />
+      <path d="M 14 24 L 34 24" />
+      <circle cx="24" cy="24" r="6" stroke-width="2" />
+    </g>
+    
+    <text x="216" y="627" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan font-weight="bold">Profile the code: </tspan>which parts burn the cycles;
+    </text>
+    <text x="216" y="659" fill="#303a36" font-family="sans-serif" font-size="24">
+      if CPU-bound, cycle analysis with IPC and stall types
+    </text>
+  </g>
+
+  
+  <g id="step-5">
+    <rect x="60" y="720" width="1120" height="112" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="106" cy="776" r="22" fill="#207448" />
+    <text x="106" y="784" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="bold" text-anchor="middle">5</text>
+    
+    <g transform="translate(142, 748)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="40" height="14" rx="2" />
+      <rect x="8" y="28" width="40" height="14" rx="2" />
+      <circle cx="16" cy="15" r="2" fill="#207448" />
+      <circle cx="16" cy="35" r="2" fill="#207448" />
+      <line x1="26" y1="15" x2="40" y2="15" />
+      <line x1="26" y1="35" x2="40" y2="35" />
+      <line x1="28" y1="22" x2="28" y2="28" />
+    </g>
+    
+    <text x="216" y="755" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan font-weight="bold">Review the static setup: </tspan>CPU model, microcode, BIOS power,
+    </text>
+    <text x="216" y="786" fill="#303a36" font-family="sans-serif" font-size="24">
+      SMT and NUMA settings, kernel version and scheduler,
+    </text>
+    <text x="216" y="816" fill="#303a36" font-family="sans-serif" font-size="24">
+      governors, mitigations, cgroup limits
+    </text>
+  </g>
+
+  
+  <g id="step-6">
+    <rect x="60" y="872" width="1120" height="76" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="106" cy="910" r="22" fill="#207448" />
+    <text x="106" y="918" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="bold" text-anchor="middle">6</text>
+    
+    <g transform="translate(142, 882)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="16" x2="48" y2="16" />
+      <circle cx="34" cy="16" r="4" fill="#207448" />
+      <line x1="8" y1="28" x2="48" y2="28" />
+      <circle cx="20" cy="28" r="4" fill="#207448" />
+      <line x1="8" y1="40" x2="48" y2="40" />
+      <circle cx="38" cy="40" r="4" fill="#207448" />
+    </g>
+    
+    <text x="216" y="918" fill="#303a36" font-family="sans-serif" font-size="24" font-weight="bold">
+      Tune priority, binding, isolation and limits
+    </text>
+  </g>
+
+  
+  <g id="step-7">
+    <rect x="60" y="988" width="1120" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="106" cy="1032" r="22" fill="#207448" />
+    <text x="106" y="1040" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="bold" text-anchor="middle">7</text>
+    
+    <g transform="translate(142, 1004)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 42 A 22 22 0 1 1 46 42" />
+      <line x1="28" y1="32" x2="42" y2="22" stroke-width="4" />
+      <circle cx="28" cy="32" r="4" fill="#207448" />
+      <line x1="39" y1="14" x2="44" y2="19" stroke-width="3" />
+      <line x1="44" y1="24" x2="50" y2="26" stroke-width="3" />
+    </g>
+    
+    <text x="216" y="1025" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan font-weight="bold">Micro-benchmarks only to establish the limits of the machine: </tspan>
+    </text>
+    <text x="216" y="1057" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan font-family="monospace">sysbench cpu</tspan>, <tspan font-family="monospace">stress-ng</tspan>; they often test compiler flags more than CPUs
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="60" y="1116" width="1480" height="44" rx="8" fill="#207448" />
+    <text x="800" y="1146" fill="#ffffff" font-family="sans-serif" font-size="24" font-weight="bold" text-anchor="middle">
+      A tuning change made without measurements is only a guess
+    </text>
+  </g>
+</svg>

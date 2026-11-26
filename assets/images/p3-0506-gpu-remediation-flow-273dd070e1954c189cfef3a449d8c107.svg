@@ -1,0 +1,272 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200" style="background:#f5f8f5;">
+  <title>Safe GPU fault controller: the gpu7 walk-through</title>
+  <desc>Decision tree and safety controls for automated GPU node cordon, drain, and recovery workflows</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+    <filter id="card-shadow" x="-4%" y="-3%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#207448" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <text x="50" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Safe GPU fault controller: the gpu7 walk-through</text>
+
+  
+  <g id="main-workflow">
+    <rect x="40" y="100" width="1000" height="1060" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="70" y="145" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Decision tree for node gpu7</text>
+
+    
+    <g id="step-start" transform="translate(80, 175)">
+      <rect x="0" y="0" width="920" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+      
+      <circle cx="36" cy="55" r="24" fill="#207448" />
+      <text x="36" y="64" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+      
+      <g transform="translate(76, 27)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="8" width="40" height="40" rx="4" />
+        <rect x="18" y="18" width="20" height="20" />
+        <line x1="20" y1="2" x2="20" y2="8" />
+        <line x1="36" y1="2" x2="36" y2="8" />
+        <line x1="20" y1="48" x2="20" y2="54" />
+        <line x1="36" y1="48" x2="36" y2="54" />
+        <line x1="2" y1="20" x2="8" y2="20" />
+        <line x1="2" y1="36" x2="8" y2="36" />
+        <line x1="48" y1="20" x2="54" y2="20" />
+        <line x1="48" y1="36" x2="54" y2="36" />
+      </g>
+      
+      <text x="150" y="48" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="150" dy="0">Node gpu7 reports Xid errors for several minutes in a row</tspan>
+        <tspan x="150" dy="32">(sustained, not one blip)</tspan>
+      </text>
+    </g>
+
+    
+    <line x1="540" y1="285" x2="540" y2="335" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g id="step-decision-1" transform="translate(180, 335)">
+      <rect x="0" y="0" width="720" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+      
+      <circle cx="36" cy="48" r="24" fill="#207448" />
+      <text x="36" y="57" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      
+      <g transform="translate(76, 20)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="28" y1="8" x2="28" y2="48" />
+        <line x1="12" y1="18" x2="44" y2="18" />
+        <path d="M 6 36 L 18 36 L 12 18 Z" />
+        <path d="M 38 36 L 50 36 L 44 18 Z" />
+        <line x1="18" y1="48" x2="38" y2="48" />
+      </g>
+      <text x="150" y="44" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+        <tspan x="150" dy="0">Global budget free?</tspan>
+        <tspan font-family="monospace" font-size="24" font-weight="normal" fill="#303a36"> (max_concurrent_cordons)</tspan>
+      </text>
+    </g>
+
+    
+    
+    <path d="M 180 382 L 110 382 L 110 470" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    
+    <rect x="118" y="360" width="50" height="34" rx="4" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="143" y="384" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">No</text>
+
+    
+    <line x1="680" y1="430" x2="680" y2="470" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    
+    <rect x="690" y="432" width="60" height="34" rx="4" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="720" y="457" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Yes</text>
+
+    
+    <g id="step-wait-budget" transform="translate(80, 470)">
+      <rect x="0" y="0" width="370" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" filter="url(#card-shadow)" />
+      
+      <g transform="translate(18, 16)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="22" />
+        <polyline points="28 14 28 28 38 28" />
+      </g>
+      <text x="86" y="44" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="86" dy="0">Record a condition</tspan>
+        <tspan x="86" dy="32">on gpu7: waiting for</tspan>
+        <tspan x="86" dy="32">budget, stop</tspan>
+      </text>
+    </g>
+
+    
+    <g id="step-cordon" transform="translate(490, 470)">
+      <rect x="0" y="0" width="510" height="155" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" filter="url(#card-shadow)" />
+      
+      <circle cx="36" cy="42" r="24" fill="#db8129" />
+      <text x="36" y="51" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+      
+      <g transform="translate(76, 14)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 28 6 L 48 14 L 48 28 C 48 42 28 50 28 50 C 28 50 8 42 8 28 L 8 14 Z" />
+        <line x1="20" y1="28" x2="36" y2="28" />
+      </g>
+      <text x="146" y="42" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="146" dy="0">Cordon node, annotate</tspan>
+        <tspan x="146" dy="32">the reason, create</tspan>
+        <tspan x="146" dy="32">drain request</tspan>
+      </text>
+    </g>
+
+    
+    <line x1="745" y1="625" x2="745" y2="675" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+    
+    <g id="step-decision-2" transform="translate(180, 675)">
+      <rect x="0" y="0" width="720" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+      
+      <circle cx="36" cy="48" r="24" fill="#207448" />
+      <text x="36" y="57" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+      
+      <g transform="translate(76, 20)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="16" width="40" height="26" rx="2" />
+        <line x1="16" y1="42" x2="16" y2="50" />
+        <line x1="40" y1="42" x2="40" y2="50" />
+        <line x1="14" y1="36" x2="26" y2="22" />
+        <line x1="30" y1="36" x2="42" y2="22" />
+      </g>
+      <text x="150" y="57" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Drain blocked by a PodDisruptionBudget?</text>
+    </g>
+
+    
+    
+    <path d="M 180 722 L 110 722 L 110 810" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    
+    <rect x="116" y="700" width="60" height="34" rx="4" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="146" y="725" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Yes</text>
+
+    
+    <line x1="680" y1="770" x2="680" y2="810" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    
+    <rect x="690" y="772" width="50" height="34" rx="4" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="715" y="796" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">No</text>
+
+    
+    <g id="step-wait-pdb" transform="translate(80, 810)">
+      <rect x="0" y="0" width="370" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" filter="url(#card-shadow)" />
+      
+      <g transform="translate(18, 16)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="28 6 50 48 6 48" />
+        <line x1="28" y1="22" x2="28" y2="34" />
+        <circle cx="28" cy="42" r="1.5" fill="#207448" />
+      </g>
+      <text x="86" y="46" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="86" dy="0">wait and report, do not</tspan>
+        <tspan x="86" dy="32">force eviction</tspan>
+      </text>
+    </g>
+
+    
+    <g id="step-drain-proceeds" transform="translate(490, 810)">
+      <rect x="0" y="0" width="510" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+      
+      <circle cx="36" cy="42" r="24" fill="#207448" />
+      <text x="36" y="51" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+      
+      <g transform="translate(76, 14)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="8" width="28" height="40" rx="2" />
+        <polyline points="28 20 44 28 28 36" />
+        <line x1="44" y1="28" x2="20" y2="28" />
+      </g>
+      <text x="146" y="66" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">drain proceeds</text>
+    </g>
+
+    
+    <line x1="745" y1="930" x2="745" y2="975" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g id="step-uncordon" transform="translate(180, 975)">
+      <rect x="0" y="0" width="720" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+      
+      <circle cx="36" cy="52" r="24" fill="#207448" />
+      <text x="36" y="61" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+      
+      <g transform="translate(76, 24)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="22" />
+        <polyline points="18 28 25 36 38 20" />
+      </g>
+      <text x="146" y="48" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="146" dy="0">Uncordon only after a health-check</tspan>
+        <tspan x="146" dy="32">Job passes</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="side-callouts" transform="translate(1070, 100)">
+    
+    <g transform="translate(0, 0)">
+      <rect x="0" y="0" width="490" height="235" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+      
+      <g transform="translate(24, 20)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 46 22 A 20 20 0 1 0 48 30" />
+        <polyline points="46 10 46 22 34 22" />
+      </g>
+      <text x="96" y="48" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="96" dy="0">Every pass starts from the</tspan>
+        <tspan x="96" dy="36">cluster as it is now; if the</tspan>
+        <tspan x="96" dy="36">cordon exists do nothing new</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(0, 265)">
+      <rect x="0" y="0" width="490" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+      
+      <g transform="translate(24, 20)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 12 28 A 18 18 0 1 1 24 45" />
+        <polyline points="6 28 12 28 12 22" />
+        <circle cx="28" cy="28" r="4" fill="#207448" />
+      </g>
+      <text x="96" y="48" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="96" dy="0">Restart halfway is safe, no</tspan>
+        <tspan x="96" dy="36">memory of earlier actions</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(0, 500)">
+      <rect x="0" y="0" width="490" height="295" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+      
+      <g transform="translate(24, 20)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="22" />
+        <circle cx="28" cy="28" r="12" />
+        <circle cx="28" cy="28" r="3" fill="#207448" />
+        <line x1="28" y1="2" x2="28" y2="10" />
+        <line x1="28" y1="46" x2="28" y2="54" />
+        <line x1="2" y1="28" x2="10" y2="28" />
+        <line x1="46" y1="28" x2="54" y2="28" />
+      </g>
+      <text x="96" y="48" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="96" dy="0">Blast radius: if 80 percent of</tspan>
+        <tspan x="96" dy="36">500 nodes alert at once</tspan>
+        <tspan x="96" dy="36">(400 nodes) the budget stops</tspan>
+        <tspan x="96" dy="36">a total outage</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(0, 825)">
+      <rect x="0" y="0" width="490" height="235" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#card-shadow)" />
+      
+      <g transform="translate(24, 20)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="18" width="40" height="20" rx="10" />
+        <circle cx="18" cy="28" r="6" fill="#207448" />
+      </g>
+      <text x="96" y="48" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="96" dy="0">Keep a flag or label that</tspan>
+        <tspan x="96" dy="36">switches automation off</tspan>
+      </text>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,290 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Baseline and static audit: what to record and what usually turns up</title>
+  <desc>Comparison of healthy-node baseline collection against static audit findings for AI infrastructure nodes.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text id="main-title" x="800" y="64" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Baseline and static audit: </tspan>
+    <tspan x="800" dy="48">what to record and what usually turns up</tspan>
+  </text>
+
+  
+  <rect id="left-panel" x="40" y="142" width="600" height="958" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(60, 156)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="10" width="44" height="42" rx="5"/>
+    <path d="M 18 10 V 6 A 4 4 0 0 1 22 2 H 34 A 4 4 0 0 1 38 6 V 10 Z"/>
+    <path d="M 16 26 L 24 34 L 40 18"/>
+  </g>
+
+  
+  <text id="left-title" x="132" y="190" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="132" dy="0">Record a baseline on a </tspan>
+    <tspan x="132" dy="34">healthy node</tspan>
+  </text>
+
+  
+  <rect id="checklist-box" x="60" y="244" width="560" height="558" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+  
+  <rect id="chk-item-1" x="76" y="256" width="528" height="62" rx="8" fill="#f8faf8" stroke="#207448" stroke-width="1.2"/>
+  <g transform="translate(90, 269)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="18" r="14"/>
+    <polyline points="18,10 18,18 24,22"/>
+  </g>
+  <text id="chk-item-1-text" x="140" y="296" font-family="sans-serif" font-size="24" fill="#303a36">the 60-second checklist outputs</text>
+
+  
+  <rect id="chk-item-2" x="76" y="326" width="528" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+  <g transform="translate(90, 339)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="10,12 18,18 10,24"/>
+    <line x1="20" y1="24" x2="26" y2="24"/>
+  </g>
+  <text id="chk-item-2-text" x="140" y="366" font-family="monospace" font-size="24" fill="#303a36">sysctl -a</text>
+
+  
+  <rect id="chk-item-3" x="76" y="396" width="528" height="62" rx="8" fill="#f8faf8" stroke="#207448" stroke-width="1.2"/>
+  <g transform="translate(90, 409)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="20" height="20" rx="3"/>
+    <line x1="14" y1="4" x2="14" y2="8"/>
+    <line x1="22" y1="4" x2="22" y2="8"/>
+    <line x1="14" y1="28" x2="14" y2="32"/>
+    <line x1="22" y1="28" x2="22" y2="32"/>
+    <line x1="4" y1="14" x2="8" y2="14"/>
+    <line x1="4" y1="22" x2="8" y2="22"/>
+    <line x1="28" y1="14" x2="32" y2="14"/>
+    <line x1="28" y1="22" x2="32" y2="22"/>
+  </g>
+  <text id="chk-item-3-text" x="140" y="436" font-family="monospace" font-size="24" fill="#303a36">lscpu</text>
+
+  
+  <rect id="chk-item-4" x="76" y="466" width="528" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+  <g transform="translate(90, 479)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="10" width="24" height="16" rx="2"/>
+    <line x1="10" y1="26" x2="10" y2="30"/>
+    <line x1="16" y1="26" x2="16" y2="30"/>
+    <line x1="22" y1="26" x2="22" y2="30"/>
+  </g>
+  <text id="chk-item-4-text" x="140" y="506" font-family="sans-serif" font-size="24" fill="#303a36">lspci -vv link states</text>
+
+  
+  <rect id="chk-item-5" x="76" y="536" width="528" height="62" rx="8" fill="#f8faf8" stroke="#207448" stroke-width="1.2"/>
+  <g transform="translate(90, 549)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="24" height="24" rx="4"/>
+    <circle cx="18" cy="18" r="6"/>
+  </g>
+  <text id="chk-item-5-text" x="140" y="576" font-family="monospace" font-size="24" fill="#303a36">nvidia-smi -q</text>
+
+  
+  <rect id="chk-item-6" x="76" y="606" width="528" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+  <g transform="translate(90, 619)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="12" width="20" height="14" rx="2"/>
+    <circle cx="18" cy="19" r="3"/>
+    <line x1="18" y1="6" x2="18" y2="12"/>
+  </g>
+  <text id="chk-item-6-text" x="140" y="646" font-family="sans-serif" font-size="24" fill="#303a36">firmware versions</text>
+
+  
+  <rect id="chk-item-7" x="76" y="676" width="528" height="114" rx="8" fill="#f8faf8" stroke="#207448" stroke-width="1.2"/>
+  <g transform="translate(90, 712)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 30 L 14 18 L 22 24 L 30 10"/>
+  </g>
+  <text id="chk-item-7-text" x="132" y="716" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="132" dy="0">benchmark results: </tspan>
+    <tspan x="132" dy="24">nccl-tests, dcgmi diag, </tspan>
+    <tspan x="132" dy="24">a small reference training step</tspan>
+  </text>
+
+  
+  <line x1="90" y1="808" x2="90" y2="964" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <text id="arrow-label" x="120" y="850" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="120" dy="0">store it with the image version, </tspan>
+    <tspan x="120" dy="25">then diff after every incident </tspan>
+    <tspan x="120" dy="25">or change; take baselines </tspan>
+    <tspan x="120" dy="25">before and after every change</tspan>
+  </text>
+
+  
+  <rect id="note-box" x="60" y="974" width="560" height="114" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <g transform="translate(76, 1002)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="20" r="15"/>
+    <line x1="20" y1="14" x2="20" y2="21"/>
+    <circle cx="20" cy="27" r="1.5" fill="#207448"/>
+  </g>
+  <text id="note-text" x="120" y="1014" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="120" dy="0">If none exists, </tspan>
+    <tspan x="120" dy="24">summary-since-boot counters </tspan>
+    <tspan x="120" dy="24">are a coarse substitute</tspan>
+  </text>
+
+  
+  <rect id="right-panel" x="670" y="142" width="890" height="958" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(692, 156)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="10" width="44" height="42" rx="5"/>
+    <line x1="16" y1="22" x2="30" y2="22"/>
+    <line x1="16" y1="32" x2="26" y2="32"/>
+    <circle cx="34" cy="36" r="8"/>
+    <line x1="40" y1="42" x2="48" y2="50"/>
+  </g>
+
+  
+  <text id="right-title" x="768" y="196" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Static audit findings</text>
+
+  
+  <rect id="questions-box" x="692" y="226" width="846" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(712, 268)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="18" r="15"/>
+    <path d="M 13 13 C 13 8 23 8 23 15 C 23 20 18 20 18 24"/>
+    <circle cx="18" cy="28" r="1" fill="#207448"/>
+  </g>
+  <text id="questions-text" x="760" y="266" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="760" dy="0">Does each component make sense for the workload? </tspan>
+    <tspan x="760" dy="24">Is it configured for it? </tspan>
+    <tspan x="760" dy="24">Was it autoconfigured wrongly? </tspan>
+    <tspan x="760" dy="24">Has it degraded?</tspan>
+  </text>
+
+  
+  
+  
+  <rect id="card-1" x="692" y="376" width="414" height="136" rx="10" fill="#fff9f4" stroke="#db8129" stroke-width="2.5"/>
+  <g transform="translate(706, 420)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="40" height="28" rx="4"/>
+    <circle cx="16" cy="22" r="3"/>
+    <circle cx="26" cy="22" r="3"/>
+    <circle cx="36" cy="22" r="3"/>
+    <line x1="16" y1="36" x2="16" y2="44"/>
+    <line x1="36" y1="36" x2="36" y2="44"/>
+  </g>
+  <text id="card-1-text" x="768" y="422" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="768" dy="0">a 400 Gb NIC that </tspan>
+    <tspan x="768" dy="26">negotiated 100 Gb or </tspan>
+    <tspan x="768" dy="26">runs at PCIe x8</tspan>
+  </text>
+
+  
+  <rect id="card-2" x="1124" y="376" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(1140, 420)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="26" cy="12" rx="18" ry="6"/>
+    <path d="M 8 12 V 24 C 8 28 44 28 44 24 V 12"/>
+    <path d="M 8 24 V 36 C 8 40 44 40 44 36 V 24"/>
+    <line x1="18" y1="42" x2="34" y2="26"/>
+    <line x1="34" y1="42" x2="18" y2="26"/>
+  </g>
+  <text id="card-2-text" x="1204" y="450" font-family="sans-serif" font-size="24" fill="#303a36">a failed RAID member</text>
+
+  
+  
+  <rect id="card-3" x="692" y="520" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(706, 564)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="40" height="28" rx="4"/>
+    <line x1="14" y1="16" x2="22" y2="16"/>
+    <line x1="14" y1="24" x2="30" y2="24"/>
+    <line x1="34" y1="12" x2="42" y2="20"/>
+  </g>
+  <text id="card-3-text" x="768" y="560" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="768" dy="0">a GPU with a </tspan>
+    <tspan x="768" dy="24">downgraded PCIe </tspan>
+    <tspan x="768" dy="24">link: check </tspan>
+    <tspan x="768" dy="24" font-family="monospace">lspci -vv LnkSta</tspan>
+  </text>
+
+  
+  <rect id="card-4" x="1124" y="520" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(1140, 564)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 26 8 A 18 18 0 1 0 44 26"/>
+    <polyline points="44,14 44,26 32,26"/>
+  </g>
+  <text id="card-4-text" x="1204" y="582" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1204" dy="0">stale kernel or </tspan>
+    <tspan x="1204" dy="28">firmware</tspan>
+  </text>
+
+  
+  
+  <rect id="card-5" x="692" y="664" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(706, 708)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="14" cy="24" r="6"/>
+    <circle cx="38" cy="24" r="6"/>
+    <line x1="20" y1="24" x2="32" y2="24"/>
+    <polyline points="28,18 34,24 28,30"/>
+  </g>
+  <text id="card-5-text" x="768" y="738" font-family="sans-serif" font-size="24" fill="#303a36">IP forwarding enabled</text>
+
+  
+  <rect id="card-6" x="1124" y="664" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(1140, 708)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="26" cy="26" r="16"/>
+    <line x1="26" y1="26" x2="36" y2="16"/>
+  </g>
+  <text id="card-6-text" x="1204" y="710" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1204" dy="0">THP or governor </tspan>
+    <tspan x="1204" dy="26">settings that </tspan>
+    <tspan x="1204" dy="26">have drifted</tspan>
+  </text>
+
+  
+  
+  <rect id="card-7" x="692" y="808" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(706, 852)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="16" width="32" height="24" rx="4"/>
+    <path d="M 18 16 V 10 A 8 8 0 0 1 34 10 V 16"/>
+  </g>
+  <text id="card-7-text" x="768" y="882" font-family="sans-serif" font-size="24" fill="#303a36">a small ulimit -l</text>
+
+  
+  <rect id="card-8" x="1124" y="808" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(1140, 852)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="16" height="16" rx="2"/>
+    <rect x="28" y="26" width="16" height="16" rx="2"/>
+    <line x1="16" y1="24" x2="16" y2="34"/>
+    <line x1="16" y1="34" x2="28" y2="34"/>
+  </g>
+  <text id="card-8-text" x="1204" y="870" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1204" dy="0">a cgroup driver </tspan>
+    <tspan x="1204" dy="28">mismatch</tspan>
+  </text>
+
+  
+  
+  <rect id="card-9" x="692" y="952" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(700, 996)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 14 16 L 24 8 L 34 16 L 34 32 L 24 40 L 14 32 Z"/>
+    <line x1="24" y1="18" x2="24" y2="28"/>
+    <circle cx="24" cy="33" r="1.5" fill="#207448"/>
+  </g>
+  <text id="card-9-text" x="754" y="992" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="754" dy="0">debug logging left </tspan>
+    <tspan x="754" dy="24">on: <tspan font-family="monospace">NCCL_DEBUG=INFO</tspan> </tspan>
+    <tspan x="754" dy="24">in production, </tspan>
+    <tspan x="754" dy="24" font-family="monospace">CUDA_LAUNCH_BLOCKING=1</tspan>
+  </text>
+
+  
+  <rect id="card-10" x="1124" y="952" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(1140, 996)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 12 L 18 12 L 22 18 L 44 18 L 44 40 L 6 40 Z"/>
+    <line x1="6" y1="34" x2="44" y2="34"/>
+  </g>
+  <text id="card-10-text" x="1204" y="1014" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1204" dy="0">a filesystem </tspan>
+    <tspan x="1204" dy="28">nearly full</tspan>
+  </text>
+
+  
+  <rect id="bottom-bar" x="40" y="1118" width="1520" height="64" rx="8" fill="#207448"/>
+  <text id="bottom-bar-text" x="800" y="1158" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Configuration drift is the most common cause of identical nodes behaving differently</text>
+</svg>

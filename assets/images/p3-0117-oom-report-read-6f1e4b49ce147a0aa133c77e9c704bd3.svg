@@ -1,0 +1,221 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Reading an OOM report: which part points at which consumer</title>
+  <desc>Visual explanation of how different sections of a Linux OOM report point to specific memory consumers</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Reading an OOM report:</tspan>
+    <tspan x="800" dy="52">which part points at which consumer</tspan>
+  </text>
+
+  
+  
+  <g id="card-1">
+    <rect x="40" y="165" width="620" height="130" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="78" cy="230" r="24" fill="#207448"/>
+    <text x="78" y="238" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <path d="M 132 212 L 146 212 L 138 228 L 152 228 L 130 252 L 135 234 L 124 234 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <text x="175" y="206" font-family="monospace, monospace" font-size="24" fill="#303a36">
+      <tspan x="175" dy="0" font-weight="bold">invoked oom-killer line:</tspan>
+      <tspan x="175" dy="32" font-family="system-ui, -apple-system, sans-serif">who requested memory,</tspan>
+      <tspan x="175" dy="30" font-family="monospace, monospace">with gfp_mask and order</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-2">
+    <rect x="40" y="312" width="620" height="130" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="78" cy="377" r="24" fill="#207448"/>
+    <text x="78" y="385" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <rect x="118" y="362" width="44" height="26" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="124" y="367" width="7" height="14" fill="#207448"/>
+    <rect x="136" y="367" width="7" height="14" fill="#207448"/>
+    <rect x="148" y="367" width="7" height="14" fill="#207448"/>
+    <line x1="123" y1="392" x2="123" y2="397" stroke="#207448" stroke-width="2"/>
+    <line x1="131" y1="392" x2="131" y2="397" stroke="#207448" stroke-width="2"/>
+    <line x1="139" y1="392" x2="139" y2="397" stroke="#207448" stroke-width="2"/>
+    <line x1="147" y1="392" x2="147" y2="397" stroke="#207448" stroke-width="2"/>
+    <line x1="155" y1="392" x2="155" y2="397" stroke="#207448" stroke-width="2"/>
+    <text x="175" y="352" font-family="monospace, monospace" font-size="24" fill="#303a36">
+      <tspan x="175" dy="0" font-family="system-ui, -apple-system, sans-serif" font-weight="bold">Mem-Info summary:</tspan>
+      <tspan x="175" dy="32">active_anon, inactive_file,</tspan>
+      <tspan x="175" dy="30">slab_reclaimable, free, shmem</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-3">
+    <rect x="40" y="460" width="620" height="130" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="78" cy="525" r="24" fill="#207448"/>
+    <text x="78" y="533" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <rect x="120" y="508" width="40" height="10" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="120" y="523" width="40" height="10" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="120" y="538" width="40" height="10" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="175" y="518" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="175" dy="0" font-weight="bold">Per-zone free counts</tspan>
+      <tspan x="175" dy="35" font-family="monospace, monospace">(Node 0 DMA32 free ...)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-4">
+    <rect x="40" y="607" width="620" height="130" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="78" cy="672" r="24" fill="#207448"/>
+    <text x="78" y="680" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    <rect x="118" y="654" width="44" height="34" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="118" y1="665" x2="162" y2="665" stroke="#207448" stroke-width="2"/>
+    <line x1="133" y1="654" x2="133" y2="688" stroke="#207448" stroke-width="2"/>
+    <line x1="148" y1="654" x2="148" y2="688" stroke="#207448" stroke-width="2"/>
+    <text x="175" y="647" font-family="monospace, monospace" font-size="24" fill="#303a36">
+      <tspan x="175" dy="0" font-family="system-ui, -apple-system, sans-serif" font-weight="bold">Task table:</tspan>
+      <tspan x="175" dy="32">pid, uid, total_vm, rss,</tspan>
+      <tspan x="175" dy="30">oom_score_adj, name</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-5">
+    <rect x="40" y="755" width="620" height="130" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="78" cy="820" r="24" fill="#207448"/>
+    <text x="78" y="828" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    
+    <rect x="118" y="802" width="44" height="34" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="118" y1="812" x2="162" y2="812" stroke="#207448" stroke-width="2"/>
+    <line x1="133" y1="820" x2="147" y2="830" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="147" y1="820" x2="133" y2="830" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="175" y="795" font-family="monospace, monospace" font-size="24" fill="#303a36">
+      <tspan x="175" dy="0" font-family="system-ui, -apple-system, sans-serif" font-weight="bold">Killed process line:</tspan>
+      <tspan x="175" dy="31">Out of memory: Killed process 1234</tspan>
+      <tspan x="175" dy="29">(python) total-vm:... anon-rss:...</tspan>
+    </text>
+  </g>
+
+  
+  <g id="decision-container">
+    <rect x="700" y="165" width="860" height="720" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <text x="730" y="215" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Which grew?</text>
+    
+    <circle cx="1510" cy="205" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 1505 200 Q 1510 192 1515 200 T 1510 210" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="1510" cy="215" r="2" fill="#207448"/>
+
+    
+    <g id="branch-a">
+      
+      <rect x="720" y="255" width="290" height="185" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="740" y="335" font-family="monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="740" dy="0">shmem or tmpfs</tspan>
+        <tspan x="740" dy="34" font-family="system-ui, -apple-system, sans-serif">is huge</tspan>
+      </text>
+
+      
+      <line x1="1010" y1="347" x2="1058" y2="347" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+      
+      <rect x="1060" y="255" width="480" height="185" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <ellipse cx="1500" cy="285" rx="18" ry="7" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 1482 285 v 20 c 0 4 8 7 18 7 s 18 -3 18 -7 v -20" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 1482 295 c 0 4 8 7 18 7 s 18 -3 18 -7" fill="none" stroke="#207448" stroke-width="2"/>
+      <text x="1080" y="295" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1080" dy="0" font-weight="bold">An in-memory filesystem</tspan>
+        <tspan x="1080" dy="32">is the consumer: <tspan font-family="monospace, monospace">/dev/shm</tspan>,</tspan>
+        <tspan x="1080" dy="32"><tspan font-family="monospace, monospace">/tmp</tspan> on tmpfs, or an emptyDir</tspan>
+        <tspan x="1080" dy="32">with the Memory medium</tspan>
+      </text>
+    </g>
+
+    
+    <g id="branch-b">
+      
+      <rect x="720" y="465" width="290" height="175" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="740" y="540" font-family="monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="740" dy="0">slab_unreclaimable</tspan>
+        <tspan x="740" dy="34" font-family="system-ui, -apple-system, sans-serif">is huge</tspan>
+      </text>
+
+      
+      <line x1="1010" y1="552" x2="1058" y2="552" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+      
+      <rect x="1060" y="465" width="480" height="175" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <circle cx="1500" cy="505" r="10" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 1500 488 v 6 M 1500 516 v 6 M 1483 505 h 6 M 1511 505 h 6 M 1488 493 l 4 4 M 1508 513 l 4 4 M 1488 517 l 4 -4 M 1508 497 l 4 -4" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <text x="1080" y="540" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="1080" dy="0">Suspect a kernel</tspan>
+        <tspan x="1080" dy="34">or driver leak</tspan>
+      </text>
+    </g>
+
+    
+    <g id="branch-c">
+      
+      <rect x="720" y="665" width="290" height="195" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="740" y="750" font-family="monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="740" dy="0">anon_rss of one</tspan>
+        <tspan x="740" dy="34" font-family="system-ui, -apple-system, sans-serif">process dominates</tspan>
+      </text>
+
+      
+      <line x1="1010" y1="762" x2="1058" y2="762" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+      
+      <rect x="1060" y="665" width="480" height="195" rx="8" fill="#fff6ed" stroke="#db8129" stroke-width="3"/>
+      
+      <rect x="1478" y="695" width="44" height="34" rx="3" fill="none" stroke="#db8129" stroke-width="3"/>
+      <line x1="1478" y1="705" x2="1522" y2="705" stroke="#db8129" stroke-width="2"/>
+      <circle cx="1486" cy="700" r="2" fill="#db8129"/>
+      <circle cx="1492" cy="700" r="2" fill="#db8129"/>
+      <circle cx="1498" cy="700" r="2" fill="#db8129"/>
+      <text x="1080" y="750" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+        <tspan x="1080" dy="0">The application</tspan>
+        <tspan x="1080" dy="38">is the consumer</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="scale-strip">
+    <rect x="40" y="910" width="1520" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 68 980 a 22 22 0 0 1 40 0" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="88" y1="980" x2="100" y2="967" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="88" cy="980" r="3" fill="#207448"/>
+    <text x="130" y="955" font-family="monospace, monospace" font-size="24" fill="#303a36">
+      <tspan x="130" dy="0">oom_score_adj from -1000 (immune) through -900 (OOMScoreAdjust for sshd and kubelet)</tspan>
+      <tspan x="130" dy="33">and 0 to +500 (batch workers) to +1000 (first choice);</tspan>
+      <tspan x="130" dy="33">oom_score 0 to 1000 tracks share of RAM and swap used</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1070" width="1520" height="80" rx="8" fill="#207448"/>
+    
+    <path d="M 85 1098 a 10 10 0 0 1 18 0 c 0 5 -3 7 -5 10 h -8 c -2 -3 -5 -5 -5 -10 z" fill="none" stroke="#ffffff" stroke-width="3"/>
+    <line x1="88" y1="1112" x2="96" y2="1112" stroke="#ffffff" stroke-width="3"/>
+    <line x1="90" y1="1116" x2="94" y2="1116" stroke="#ffffff" stroke-width="3"/>
+    <text x="800" y="1120" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+      Before you raise a memory limit, find which of the three grew
+    </text>
+  </g>
+</svg>

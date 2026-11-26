@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Syslog severity levels</title>
+  <desc>Visual explanation of syslog severity levels from 0 (emerg) to 7 (debug) with urgency directions and journal priority side note.</desc>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="95" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Syslog severity levels</text>
+
+  
+  <line x1="140" y1="920" x2="140" y2="185" stroke="#207448" stroke-width="4"/>
+  <polygon points="140,165 131,185 149,185" fill="#207448"/>
+  <text x="85" y="550" transform="rotate(-90 85 550)" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">more urgent</text>
+
+  
+
+  
+  <g id="row-0">
+    <rect x="200" y="160" width="800" height="85" rx="12" fill="#fdf2e9" stroke="#db8129" stroke-width="2.5"/>
+    <rect x="215" y="177" width="50" height="50" rx="10" fill="#db8129"/>
+    <text x="240" y="213" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">0</text>
+    
+    <g transform="translate(284, 178)">
+      <path d="M 6 38 L 42 38" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 12 38 C 12 22, 36 22, 36 38 Z" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" fill="none"/>
+      <line x1="24" y1="12" x2="24" y2="18" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="8" y1="18" x2="13" y2="22" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="40" y1="18" x2="35" y2="22" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="355" y="213" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">emerg</text>
+    <text x="500" y="213" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">system unusable</text>
+  </g>
+
+  
+  <g id="row-1">
+    <rect x="200" y="261" width="800" height="85" rx="12" fill="#fdf5ed" stroke="#e59648" stroke-width="2"/>
+    <rect x="215" y="278" width="50" height="50" rx="10" fill="#e59648"/>
+    <text x="240" y="314" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(284, 279)">
+      <path d="M 12 34 C 12 22, 36 22, 36 34 L 40 38 L 8 38 Z" stroke="#e59648" stroke-width="3.5" stroke-linejoin="round" fill="none"/>
+      <circle cx="24" cy="42" r="3" fill="#e59648"/>
+      <path d="M 22 22 C 22 18, 26 18, 26 22" stroke="#e59648" stroke-width="3" fill="none"/>
+    </g>
+    <text x="355" y="314" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">alert</text>
+    <text x="500" y="314" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">act immediately</text>
+  </g>
+
+  
+  <g id="row-2">
+    <rect x="200" y="362" width="800" height="85" rx="12" fill="#fbf6ee" stroke="#d3aa54" stroke-width="2"/>
+    <rect x="215" y="379" width="50" height="50" rx="10" fill="#d3aa54"/>
+    <text x="240" y="415" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(284, 380)">
+      <path d="M 10 16 L 24 12 L 38 16 C 38 30, 24 40, 24 40 C 24 40, 10 30, 10 16 Z" stroke="#d3aa54" stroke-width="3.5" stroke-linejoin="round" fill="none"/>
+      <line x1="24" y1="19" x2="24" y2="27" stroke="#d3aa54" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="24" cy="32" r="2" fill="#d3aa54"/>
+    </g>
+    <text x="355" y="415" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">crit</text>
+    <text x="500" y="415" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">critical condition</text>
+  </g>
+
+  
+  <g id="row-3">
+    <rect x="200" y="463" width="800" height="85" rx="12" fill="#f7f8ee" stroke="#b5b863" stroke-width="2"/>
+    <rect x="215" y="480" width="50" height="50" rx="10" fill="#b5b863"/>
+    <text x="240" y="516" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(284, 481)">
+      <polygon points="14,12 34,12 42,20 42,32 34,40 14,40 6,32 6,20" stroke="#b5b863" stroke-width="3.5" stroke-linejoin="round" fill="none"/>
+      <line x1="18" y1="20" x2="30" y2="32" stroke="#b5b863" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="30" y1="20" x2="18" y2="32" stroke="#b5b863" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="355" y="516" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">err</text>
+    <text x="500" y="516" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">error</text>
+  </g>
+
+  
+  <g id="row-4">
+    <rect x="200" y="564" width="800" height="85" rx="12" fill="#f1f7ee" stroke="#8fc076" stroke-width="2"/>
+    <rect x="215" y="581" width="50" height="50" rx="10" fill="#8fc076"/>
+    <text x="240" y="617" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(284, 582)">
+      <polygon points="24,12 42,40 6,40" stroke="#8fc076" stroke-width="3.5" stroke-linejoin="round" fill="none"/>
+      <line x1="24" y1="22" x2="24" y2="30" stroke="#8fc076" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="24" cy="35" r="2" fill="#8fc076"/>
+    </g>
+    <text x="355" y="617" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">warning</text>
+    <text x="500" y="617" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">warning</text>
+  </g>
+
+  
+  <g id="row-5">
+    <rect x="200" y="665" width="800" height="85" rx="12" fill="#ebf6ee" stroke="#66c188" stroke-width="2"/>
+    <rect x="215" y="682" width="50" height="50" rx="10" fill="#66c188"/>
+    <text x="240" y="718" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g transform="translate(284, 683)">
+      <line x1="12" y1="12" x2="12" y2="40" stroke="#66c188" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 12 14 L 38 22 L 12 30 Z" stroke="#66c188" stroke-width="3.5" stroke-linejoin="round" fill="none"/>
+    </g>
+    <text x="355" y="718" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">notice</text>
+    <text x="500" y="718" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">normal but significant</text>
+  </g>
+
+  
+  <g id="row-6">
+    <rect x="200" y="766" width="800" height="85" rx="12" fill="#e8f3ec" stroke="#3fb476" stroke-width="2"/>
+    <rect x="215" y="783" width="50" height="50" rx="10" fill="#3fb476"/>
+    <text x="240" y="819" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">6</text>
+    
+    <g transform="translate(284, 784)">
+      <circle cx="24" cy="26" r="14" stroke="#3fb476" stroke-width="3.5" fill="none"/>
+      <circle cx="24" cy="19" r="2" fill="#3fb476"/>
+      <line x1="24" y1="24" x2="24" y2="32" stroke="#3fb476" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="355" y="819" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">info</text>
+    <text x="500" y="819" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">informational</text>
+  </g>
+
+  
+  <g id="row-7">
+    <rect x="200" y="867" width="800" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="215" y="884" width="50" height="50" rx="10" fill="#207448"/>
+    <text x="240" y="920" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">7</text>
+    
+    <g transform="translate(284, 885)">
+      <path d="M 18 18 L 10 26 L 18 34" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M 30 18 L 38 26 L 30 34" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <line x1="26" y1="16" x2="22" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="355" y="920" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">debug</text>
+    <text x="500" y="920" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">debug detail</text>
+  </g>
+
+  
+  <line x1="1040" y1="180" x2="1040" y2="915" stroke="#207448" stroke-width="4"/>
+  <polygon points="1040,935 1031,915 1049,915" fill="#207448"/>
+  <text x="1095" y="550" transform="rotate(90 1095 550)" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">less urgent</text>
+
+  
+  <g id="side-note-panel">
+    <rect x="1140" y="160" width="420" height="792" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(1165, 185)">
+      <rect x="0" y="0" width="36" height="46" rx="4" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <line x1="8" y1="12" x2="28" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="8" y1="22" x2="28" y2="22" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="8" y1="32" x2="20" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="1215" y="220" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Side note</text>
+    <line x1="1165" y1="255" x2="1535" y2="255" stroke="#c8ded0" stroke-width="2"/>
+
+    
+    <rect x="1165" y="285" width="370" height="185" rx="12" fill="#ffffff" stroke="#c8ded0" stroke-width="1.5"/>
+    <text x="1190" y="350" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1190" dy="0">in the journal</tspan>
+      <tspan x="1190" dy="38">severity is called</tspan>
+      <tspan x="1190" dy="38" font-weight="bold" fill="#207448">priority</tspan>
+    </text>
+
+    
+    <rect x="1165" y="500" width="370" height="185" rx="12" fill="#ffffff" stroke="#c8ded0" stroke-width="1.5"/>
+    <rect x="1245" y="565" width="190" height="54" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1190" y="601" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">field <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#207448">PRIORITY=</tspan></text>
+
+    
+    <rect x="1165" y="715" width="370" height="185" rx="12" fill="#ffffff" stroke="#c8ded0" stroke-width="1.5"/>
+    <rect x="1245" y="780" width="250" height="54" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1190" y="816" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">filter <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#207448">journalctl -p</tspan></text>
+  </g>
+</svg>

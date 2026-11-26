@@ -1,0 +1,318 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The twelve lab steps, from a healthy trace to the faults</title>
+  <desc>A visual staircase of twelve lab steps in three groups, from healthy trace baseline to fault injection and wider packet analysis tools.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">The twelve lab steps, from a healthy trace to the faults</text>
+
+  
+  <g id="pre-step">
+    <rect x="40" y="76" width="1520" height="84" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="58" y="93" width="50" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <path d="M 68 110 L 78 118 L 68 126 M 82 126 L 96 126" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="124" y="111" font-size="24" fill="#303a36">
+      <tspan font-family="monospace">python3 code/part02/packet_capture_bpf_lab.py</tspan><tspan font-family="sans-serif"> checks the byte-offset filters,</tspan>
+      <tspan x="124" dy="32" font-family="sans-serif">the 8.13 Mpps rate at 100 Gb/s, ring storage with </tspan><tspan font-family="monospace">-s 96</tspan><tspan font-family="sans-serif">, and the two-endpoint comparison</tspan>
+    </text>
+  </g>
+
+  
+  <g id="group-1">
+    <rect x="40" y="178" width="488" height="924" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="40" y="178" width="488" height="58" rx="10" fill="#207448" />
+    <text x="284" y="217" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Read a healthy trace</text>
+
+    
+    <g id="step-1">
+      <rect x="56" y="252" width="456" height="388" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="92" cy="292" r="24" fill="#207448" />
+      <text x="92" y="300" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+      
+      <g transform="translate(434, 268)">
+        <rect x="0" y="0" width="60" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+        <path d="M 12 16 L 48 16 M 48 32 L 12 32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+        <path d="M 40 10 L 48 16 L 40 22 M 20 26 L 12 32 L 20 38" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+      
+      <text x="130" y="300" font-family="sans-serif" fill="#303a36">
+        <tspan font-size="30" font-weight="bold">1 Handshake and teardown:</tspan>
+        <tspan x="72" dy="54" font-size="24">curl to local nginx, label SYN,</tspan>
+        <tspan x="72" dy="36" font-size="24">SYN-ACK, ACK, FIN, export with</tspan>
+        <tspan x="72" dy="36" font-size="24" font-family="monospace">tshark -z follow</tspan>
+      </text>
+      
+      <g transform="translate(72, 452)">
+        <rect x="0" y="0" width="424" height="168" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,4" />
+        <line x1="80" y1="20" x2="80" y2="148" stroke="#207448" stroke-width="2" />
+        <line x1="344" y1="20" x2="344" y2="148" stroke="#207448" stroke-width="2" />
+        <line x1="80" y1="40" x2="344" y2="60" stroke="#207448" stroke-width="2.5" />
+        <polygon points="344,60 330,53 333,63" fill="#207448" />
+        <line x1="344" y1="70" x2="80" y2="90" stroke="#207448" stroke-width="2.5" />
+        <polygon points="80,90 94,83 91,93" fill="#207448" />
+        <line x1="80" y1="100" x2="344" y2="120" stroke="#207448" stroke-width="2.5" />
+        <polygon points="344,120 330,113 333,123" fill="#207448" />
+      </g>
+    </g>
+
+    
+    <g id="step-2">
+      <rect x="56" y="656" width="456" height="428" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="92" cy="696" r="24" fill="#207448" />
+      <text x="92" y="704" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      
+      <g transform="translate(434, 672)">
+        <polygon points="6,6 54,6 36,28 36,46 24,42 24,28" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+        <line x1="16" y1="16" x2="44" y2="16" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+      </g>
+      
+      <text x="130" y="704" font-family="sans-serif" fill="#303a36">
+        <tspan font-size="30" font-weight="bold">2 Filters:</tspan>
+        <tspan x="72" dy="50" font-size="24">five capture filters for SYN only,</tspan>
+        <tspan x="72" dy="36" font-size="24">RST, a port range, DSCP EF and</tspan>
+        <tspan x="72" dy="36" font-size="24">VLAN, verified with </tspan><tspan font-size="24" font-family="monospace">tcpdump -d</tspan>
+        <tspan x="72" dy="36" font-size="24">and hit counts, then the same</tspan>
+        <tspan x="72" dy="36" font-size="24">logic as display filters</tspan>
+      </text>
+      
+      <g transform="translate(72, 922)">
+        <rect x="0" y="0" width="424" height="142" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,4" />
+        <rect x="20" y="16" width="70" height="44" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+        <text x="55" y="45" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">SYN</text>
+        <rect x="100" y="16" width="70" height="44" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+        <text x="135" y="45" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">RST</text>
+        <rect x="180" y="16" width="70" height="44" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+        <text x="215" y="45" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Port</text>
+        <rect x="260" y="16" width="70" height="44" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+        <text x="295" y="45" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">DSCP</text>
+        <rect x="340" y="16" width="66" height="44" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+        <text x="373" y="45" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">VLAN</text>
+        
+        <line x1="20" y1="84" x2="406" y2="84" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+        <circle cx="55" cy="84" r="10" fill="#207448" />
+        <circle cx="135" cy="84" r="10" fill="#207448" />
+        <circle cx="215" cy="84" r="10" fill="#207448" />
+        <circle cx="295" cy="84" r="10" fill="#207448" />
+        <circle cx="373" cy="84" r="10" fill="#207448" />
+        <text x="213" y="122" font-family="monospace" font-size="24" fill="#207448" text-anchor="middle">BPF hit count: 100% match</text>
+      </g>
+    </g>
+  </g>
+
+  
+  <g id="group-2">
+    <rect x="556" y="178" width="488" height="924" rx="12" fill="#fdf5ec" stroke="#db8129" stroke-width="2.5" />
+    <rect x="556" y="178" width="488" height="58" rx="10" fill="#db8129" />
+    <text x="800" y="217" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Inject a fault and compare</text>
+
+    
+    <g id="step-3">
+      <rect x="572" y="248" width="456" height="156" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+      <circle cx="604" cy="278" r="22" fill="#db8129" />
+      <text x="604" y="286" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+      
+      <g transform="translate(972, 258)">
+        <path d="M 6 36 A 18 18 0 1 1 42 36" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+        <polyline points="34,36 42,36 42,26" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+        <line x1="18" y1="18" x2="30" y2="30" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+        <line x1="30" y1="18" x2="18" y2="30" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      </g>
+      <text x="636" y="284" font-family="sans-serif" fill="#303a36">
+        <tspan font-size="30" font-weight="bold">3 Retransmissions</tspan>
+        <tspan x="636" dy="32" font-size="30" font-weight="bold">and loss:</tspan>
+        <tspan x="588" dy="42" font-size="24" font-family="monospace">tc qdisc add dev veth1 root netem</tspan>
+        <tspan x="588" dy="32" font-size="24" font-family="monospace">loss 2%</tspan><tspan font-size="24">, compare with 0% loss</tspan>
+      </text>
+    </g>
+
+    
+    <g id="step-4">
+      <rect x="572" y="416" width="456" height="156" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+      <circle cx="604" cy="446" r="22" fill="#db8129" />
+      <text x="604" y="454" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+      
+      <g transform="translate(972, 426)">
+        <rect x="4" y="8" width="42" height="34" rx="4" fill="none" stroke="#db8129" stroke-width="3.5" />
+        <line x1="14" y1="8" x2="14" y2="42" stroke="#db8129" stroke-width="2" />
+        <line x1="36" y1="8" x2="36" y2="42" stroke="#db8129" stroke-width="2" />
+        <circle cx="25" cy="25" r="5" fill="#db8129" />
+      </g>
+      <text x="636" y="454" font-family="sans-serif" fill="#303a36">
+        <tspan font-size="30" font-weight="bold">4 MTU black hole:</tspan>
+        <tspan x="588" dy="40" font-size="24">smaller MTU on a router namespace,</tspan>
+        <tspan x="588" dy="32" font-size="24">drop ICMP type 3 code 4,</tspan>
+        <tspan x="588" dy="32" font-size="24">then fix with MSS clamping</tspan>
+      </text>
+    </g>
+
+    
+    <g id="step-5">
+      <rect x="572" y="584" width="456" height="150" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+      <circle cx="604" cy="614" r="22" fill="#db8129" />
+      <text x="604" y="622" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+      
+      <g transform="translate(972, 594)">
+        <circle cx="25" cy="25" r="20" fill="none" stroke="#db8129" stroke-width="3.5" />
+        <polyline points="25,12 25,25 35,25" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+        <line x1="10" y1="36" x2="40" y2="36" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      </g>
+      <text x="636" y="622" font-family="sans-serif" fill="#303a36">
+        <tspan font-size="30" font-weight="bold">5 Zero window:</tspan>
+        <tspan x="588" dy="48" font-size="24">a server that sleeps before it reads</tspan>
+      </text>
+    </g>
+
+    
+    <g id="step-6">
+      <rect x="572" y="746" width="456" height="170" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+      <circle cx="604" cy="776" r="22" fill="#db8129" />
+      <text x="604" y="784" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+      
+      <g transform="translate(972, 756)">
+        <rect x="8" y="18" width="34" height="26" rx="4" fill="none" stroke="#db8129" stroke-width="3.5" />
+        <path d="M 16 18 L 16 12 A 9 9 0 0 1 34 12 L 34 18" fill="none" stroke="#db8129" stroke-width="3.5" />
+        <circle cx="25" cy="30" r="3" fill="#db8129" />
+      </g>
+      <text x="636" y="784" font-family="sans-serif" fill="#303a36">
+        <tspan font-size="30" font-weight="bold">6 TLS:</tspan>
+        <tspan x="588" dy="40" font-size="24" font-family="monospace">SSLKEYLOGFILE=/tmp/keys.log</tspan>
+        <tspan x="588" dy="32" font-size="24" font-family="monospace">curl https://localhost</tspan><tspan font-size="24">, </tspan>
+        <tspan x="588" dy="32" font-size="24">read SNI and ALPN</tspan>
+      </text>
+    </g>
+
+    
+    <g id="step-7">
+      <rect x="572" y="928" width="456" height="154" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+      <circle cx="604" cy="958" r="22" fill="#db8129" />
+      <text x="604" y="966" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+      
+      <g transform="translate(972, 938)">
+        <rect x="6" y="10" width="38" height="28" rx="4" fill="none" stroke="#db8129" stroke-width="3.5" />
+        <circle cx="18" cy="24" r="5" fill="#db8129" />
+        <circle cx="32" cy="24" r="5" fill="none" stroke="#db8129" stroke-width="2.5" />
+        <line x1="18" y1="10" x2="18" y2="4" stroke="#db8129" stroke-width="2.5" />
+        <line x1="32" y1="10" x2="32" y2="4" stroke="#db8129" stroke-width="2.5" />
+      </g>
+      <text x="636" y="966" font-family="sans-serif" fill="#303a36">
+        <tspan font-size="30" font-weight="bold">7 Offload artefacts:</tspan>
+        <tspan x="588" dy="46" font-size="24">TSO and checksum offload</tspan>
+        <tspan x="588" dy="34" font-size="24">on then off</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="group-3">
+    <rect x="1072" y="178" width="488" height="924" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="1072" y="178" width="488" height="58" rx="10" fill="#207448" />
+    <text x="1316" y="217" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Wider tools</text>
+
+    
+    <g id="step-8">
+      <rect x="1088" y="248" width="456" height="154" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="1120" cy="278" r="22" fill="#207448" />
+      <text x="1120" y="286" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">8</text>
+      
+      <g transform="translate(1488, 258)">
+        <ellipse cx="25" cy="12" rx="18" ry="6" fill="none" stroke="#207448" stroke-width="3" />
+        <ellipse cx="25" cy="36" rx="18" ry="6" fill="none" stroke="#207448" stroke-width="3" />
+        <line x1="7" y1="12" x2="7" y2="36" stroke="#207448" stroke-width="3" />
+        <line x1="43" y1="12" x2="43" y2="36" stroke="#207448" stroke-width="3" />
+      </g>
+      <text x="1152" y="284" font-family="sans-serif" fill="#303a36">
+        <tspan font-size="30" font-weight="bold">8 Overlay:</tspan>
+        <tspan x="1104" dy="44" font-size="24">VXLAN link as in chapter 2.17,</tspan>
+        <tspan x="1104" dy="32" font-size="24">Decode As</tspan>
+      </text>
+    </g>
+
+    
+    <g id="step-9">
+      <rect x="1088" y="414" width="456" height="160" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="1120" cy="444" r="22" fill="#207448" />
+      <text x="1120" y="452" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">9</text>
+      
+      <g transform="translate(1488, 424)">
+        <circle cx="25" cy="25" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+        <circle cx="25" cy="11" r="4" fill="#207448" />
+        <circle cx="37" cy="20" r="4" fill="#207448" />
+        <circle cx="33" cy="34" r="4" fill="#207448" />
+        <circle cx="17" cy="34" r="4" fill="#207448" />
+        <circle cx="13" cy="20" r="4" fill="#207448" />
+      </g>
+      <text x="1152" y="442" font-family="sans-serif" fill="#303a36">
+        <tspan font-size="30" font-weight="bold">9 Ring buffer</tspan>
+        <tspan x="1152" dy="32" font-size="30" font-weight="bold">and trigger:</tspan>
+        <tspan x="1104" dy="42" font-size="24" font-family="monospace">tcpdump -C 10 -W 5</tspan>
+        <tspan x="1104" dy="32" font-size="24">plus a stop script</tspan>
+      </text>
+    </g>
+
+    
+    <g id="step-10">
+      <rect x="1088" y="586" width="456" height="158" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="1120" cy="616" r="22" fill="#207448" />
+      <text x="1120" y="624" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">10</text>
+      
+      <g transform="translate(1488, 596)">
+        <polygon points="25,6 44,17 44,39 25,48 6,39 6,17" fill="none" stroke="#207448" stroke-width="3" />
+        <circle cx="25" cy="27" r="6" fill="#207448" />
+        <line x1="25" y1="12" x2="25" y2="21" stroke="#207448" stroke-width="2.5" />
+      </g>
+      <text x="1152" y="622" font-family="sans-serif" fill="#303a36">
+        <tspan font-size="30" font-weight="bold">10 BPF tools:</tspan>
+        <tspan x="1104" dy="42" font-size="24" font-family="monospace">tcplife, tcpconnect, tcpretrans,</tspan>
+        <tspan x="1104" dy="32" font-size="24" font-family="monospace">tcpdrop</tspan><tspan font-size="24">, three bpftrace one-liners</tspan>
+      </text>
+    </g>
+
+    
+    <g id="step-11">
+      <rect x="1088" y="756" width="456" height="168" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="1120" cy="786" r="22" fill="#207448" />
+      <text x="1120" y="794" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">11</text>
+      
+      <g transform="translate(1488, 766)">
+        <rect x="6" y="14" width="38" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+        <line x1="16" y1="20" x2="16" y2="36" stroke="#207448" stroke-width="2" />
+        <line x1="25" y1="20" x2="25" y2="36" stroke="#207448" stroke-width="2" />
+        <line x1="34" y1="20" x2="34" y2="36" stroke="#207448" stroke-width="2" />
+        <path d="M 12 14 L 18 6 L 32 6 L 38 14" fill="none" stroke="#207448" stroke-width="2.5" />
+      </g>
+      <text x="1152" y="792" font-family="sans-serif" fill="#303a36">
+        <tspan font-size="30" font-weight="bold">11 Container capture:</tspan>
+        <tspan x="1104" dy="40" font-size="24" font-family="monospace">nsenter</tspan><tspan font-size="24">, then </tspan><tspan font-size="24" font-family="monospace">docker run</tspan>
+        <tspan x="1104" dy="32" font-size="24" font-family="monospace">--network container:NAME</tspan>
+        <tspan x="1104" dy="32" font-size="24" font-family="monospace">nicolaka/netshoot tcpdump</tspan>
+      </text>
+    </g>
+
+    
+    <g id="step-12">
+      <rect x="1088" y="936" width="456" height="152" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="1120" cy="966" r="22" fill="#207448" />
+      <text x="1120" y="974" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">12</text>
+      
+      <g transform="translate(1488, 946)">
+        <path d="M 32 8 L 18 36 L 24 39 L 38 11 Z" fill="none" stroke="#207448" stroke-width="3" />
+        <path d="M 14 36 L 28 42 L 20 48 L 8 42 Z" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+        <line x1="12" y1="44" x2="16" y2="46" stroke="#207448" stroke-width="2" />
+      </g>
+      <text x="1152" y="964" font-family="sans-serif" fill="#303a36">
+        <tspan font-size="30" font-weight="bold">12 Clean up and delete</tspan>
+        <tspan x="1152" dy="32" font-size="30" font-weight="bold">captures,</tspan>
+        <tspan x="1104" dy="44" font-size="24">key log and ring-buffer directory</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1122" width="1520" height="58" rx="10" fill="#207448" />
+    <text x="800" y="1159" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">The healthy trace from step 1 is the reference that makes the faulty traces stand out</text>
+  </g>
+</svg>

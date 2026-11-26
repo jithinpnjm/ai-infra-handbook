@@ -1,0 +1,269 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>The request pipeline</title>
+  <desc>Visual infographic explaining the Kubernetes request processing pipeline from client to storage and response.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 z" fill="#207448"/>
+    </marker>
+    
+    <marker id="arrow-dashed" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The request pipeline</text>
+
+  
+  
+  
+  <g transform="translate(565, 85)">
+    <rect width="470" height="95" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" stroke-dasharray="6,4"/>
+    
+    <g transform="translate(24, 20)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="6" y="4" width="36" height="46" rx="4"/>
+      <circle cx="12" cy="14" r="2" fill="#207448"/>
+      <circle cx="12" cy="27" r="2" fill="#207448"/>
+      <circle cx="12" cy="40" r="2" fill="#207448"/>
+      <line x1="20" y1="14" x2="36" y2="14"/>
+      <line x1="20" y1="27" x2="34" y2="27"/>
+      <line x1="20" y1="40" x2="30" y2="40"/>
+    </g>
+    <text x="96" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Audit events at each stage</text>
+  </g>
+
+  
+  
+  
+
+  
+  <g transform="translate(50, 230)">
+    <rect width="470" height="250" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="44" cy="44" r="22" fill="#207448"/>
+    <text x="44" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <g transform="translate(86, 16)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="4" y="6" width="46" height="30" rx="4"/>
+      <line x1="27" y1="36" x2="27" y2="46"/>
+      <line x1="16" y1="46" x2="38" y2="46"/>
+      <rect x="22" y="17" width="10" height="8" rx="2"/>
+      <path d="M24 17 V13 A3 3 0 0 1 30 13 V17"/>
+    </g>
+    
+    <line x1="24" y1="80" x2="446" y2="80" stroke="#c8dcd0" stroke-width="1.5"/>
+    
+    <text x="32" y="150" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Client (TLS)</text>
+  </g>
+
+  
+  <g transform="translate(565, 230)">
+    <rect width="470" height="250" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="44" cy="44" r="22" fill="#207448"/>
+    <text x="44" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <g transform="translate(86, 16)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="8" y="4" width="38" height="46" rx="4"/>
+      <circle cx="27" cy="18" r="6"/>
+      <line x1="16" y1="32" x2="38" y2="32"/>
+      <line x1="16" y1="40" x2="30" y2="40"/>
+      <line x1="22" y1="4" x2="32" y2="4"/>
+    </g>
+    
+    <line x1="24" y1="80" x2="446" y2="80" stroke="#c8dcd0" stroke-width="1.5"/>
+    
+    <text x="32" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Authentication</text>
+    <text x="32" y="156" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">x509 client cert, bearer token</text>
+    <text x="32" y="188" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(SA JWT, OIDC, static),</text>
+    <text x="32" y="220" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">webhook, front-proxy</text>
+  </g>
+
+  
+  <g transform="translate(1080, 230)">
+    <rect width="470" height="250" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="44" cy="44" r="22" fill="#207448"/>
+    <text x="44" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <g transform="translate(86, 16)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M27 6 L44 12 V25 C44 37 27 47 27 47 C27 47 10 37 10 25 V12 Z"/>
+      <path d="M19 25 L24 30 L35 18"/>
+    </g>
+    
+    <line x1="24" y1="80" x2="446" y2="80" stroke="#c8dcd0" stroke-width="1.5"/>
+    
+    <text x="32" y="122" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Authorisation</text>
+    <text x="32" y="168" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">RBAC, Node authz,</text>
+    <text x="32" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">ABAC, webhook</text>
+  </g>
+
+  
+  
+  
+
+  
+  <g transform="translate(50, 550)">
+    <rect width="470" height="250" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="44" cy="44" r="22" fill="#207448"/>
+    <text x="44" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    
+    <g transform="translate(86, 16)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M10 6 H32 L44 18 V48 H10 Z"/>
+      <path d="M32 6 V18 H44"/>
+      <line x1="18" y1="28" x2="36" y2="28"/>
+      <line x1="18" y1="38" x2="28" y2="38"/>
+    </g>
+    
+    <line x1="24" y1="80" x2="446" y2="80" stroke="#c8dcd0" stroke-width="1.5"/>
+    
+    <text x="32" y="132" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Object schema validation</text>
+    <text x="32" y="172" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">&amp; defaulting</text>
+  </g>
+
+  
+  <g transform="translate(565, 550)">
+    <rect width="470" height="250" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="44" cy="44" r="22" fill="#207448"/>
+    <text x="44" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <g transform="translate(86, 16)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M12 42 L34 16 L40 22 L18 48 L8 50 Z"/>
+      <line x1="12" y1="42" x2="18" y2="48"/>
+      <line x1="28" y1="22" x2="34" y2="28"/>
+    </g>
+    
+    <line x1="24" y1="80" x2="446" y2="80" stroke="#c8dcd0" stroke-width="1.5"/>
+    
+    <text x="32" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Mutating admission</text>
+    <text x="32" y="156" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">built-in plugins +</text>
+    <text x="32" y="188" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">MutatingAdmissionWebhooks +</text>
+    <text x="32" y="220" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">CEL policies</text>
+  </g>
+
+  
+  <g transform="translate(1080, 550)">
+    <rect width="470" height="250" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="44" cy="44" r="22" fill="#207448"/>
+    <text x="44" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <g transform="translate(86, 16)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="27" y1="8" x2="27" y2="46"/>
+      <line x1="16" y1="46" x2="38" y2="46"/>
+      <line x1="10" y1="18" x2="44" y2="18"/>
+      <path d="M10 18 L6 30 H16 Z"/>
+      <path d="M44 18 L40 30 H50 Z"/>
+    </g>
+    
+    <line x1="24" y1="80" x2="446" y2="80" stroke="#c8dcd0" stroke-width="1.5"/>
+    
+    <text x="32" y="124" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">API Priority &amp; Fairness</text>
+    <text x="32" y="172" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(queue / reject)</text>
+  </g>
+
+  
+  
+  
+
+  
+  <g transform="translate(50, 870)">
+    <rect width="470" height="250" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="44" cy="44" r="22" fill="#207448"/>
+    <text x="44" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+    
+    <g transform="translate(86, 16)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="8" y="12" width="38" height="38" rx="4"/>
+      <path d="M20 12 V8 H34 V12"/>
+      <path d="M18 30 L24 36 L36 22"/>
+    </g>
+    
+    <line x1="24" y1="80" x2="446" y2="80" stroke="#c8dcd0" stroke-width="1.5"/>
+    
+    <text x="32" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Validating admission</text>
+    <text x="32" y="156" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">built-in +</text>
+    <text x="32" y="188" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">ValidatingAdmissionWebhooks +</text>
+    <text x="32" y="220" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">ValidatingAdmissionPolicy (CEL)</text>
+  </g>
+
+  
+  <g transform="translate(565, 870)">
+    <rect width="470" height="250" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
+    
+    <circle cx="44" cy="44" r="22" fill="#db8129"/>
+    <text x="44" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">8</text>
+    
+    <g transform="translate(86, 16)" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <ellipse cx="27" cy="14" rx="20" ry="7"/>
+      <path d="M7 14 V26 C7 30 16 33 27 33 C38 33 47 30 47 26 V14"/>
+      <path d="M7 26 V38 C7 42 16 45 27 45 C38 45 47 42 47 38 V26"/>
+    </g>
+    
+    <line x1="24" y1="80" x2="446" y2="80" stroke="#db8129" stroke-width="1.5" stroke-opacity="0.5"/>
+    
+    <text x="32" y="122" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Storage layer</text>
+    <text x="32" y="168" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">codec → etcd Txn</text>
+    <text x="32" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(compare resourceVersion)</text>
+  </g>
+
+  
+  <g transform="translate(1080, 870)">
+    <rect width="470" height="250" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="44" cy="44" r="22" fill="#207448"/>
+    <text x="44" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">9</text>
+    
+    <g transform="translate(86, 16)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="16" cy="34" r="6"/>
+      <path d="M26 23 A15 15 0 0 1 26 45"/>
+      <path d="M35 15 A26 26 0 0 1 35 53"/>
+      <path d="M44 7 A38 38 0 0 1 44 61"/>
+    </g>
+    
+    <line x1="24" y1="80" x2="446" y2="80" stroke="#c8dcd0" stroke-width="1.5"/>
+    
+    <text x="32" y="122" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Response</text>
+    <text x="32" y="168" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(and watch fan-out</text>
+    <text x="32" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">to watchers)</text>
+  </g>
+
+  
+  
+  
+
+   A1 (horizontal right) -->
+  <line x1="520" y1="355" x2="565" y2="355" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+   A2 (horizontal right) -->
+  <line x1="1035" y1="355" x2="1080" y2="355" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+   APF (vertical down) -->
+  <line x1="1315" y1="480" x2="1315" y2="550" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+   M (horizontal left) -->
+  <line x1="1080" y1="675" x2="1035" y2="675" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+   S (horizontal left) -->
+  <line x1="565" y1="675" x2="520" y2="675" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+   V (vertical down) -->
+  <line x1="285" y1="800" x2="285" y2="870" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+   ST (horizontal right) -->
+  <line x1="520" y1="995" x2="565" y2="995" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+   R (horizontal right) -->
+  <line x1="1035" y1="995" x2="1080" y2="995" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <line x1="800" y1="230" x2="800" y2="180" stroke="#207448" stroke-width="3.5" stroke-dasharray="6,4" marker-end="url(#arrow-dashed)"/>
+
+</svg>

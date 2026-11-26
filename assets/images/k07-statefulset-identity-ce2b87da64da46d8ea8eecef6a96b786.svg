@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1080" viewBox="0 0 1600 1080">
+  <title>Deployment replicas are interchangeable, StatefulSet replicas keep a name and a disk</title>
+  <desc>Visual comparison between Kubernetes Deployment and StatefulSet showing interchangeable pods behind a Service versus ordered pods with stable DNS names and persistent disks.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  <text x="800" y="54" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Deployment replicas are interchangeable,</tspan>
+    <tspan x="800" dy="56">StatefulSet replicas keep a name and a disk</tspan>
+  </text>
+
+  <line x1="800" y1="140" x2="800" y2="950" stroke="#7a8c82" stroke-width="2" stroke-dasharray="8 6" />
+
+  <rect x="50" y="140" width="720" height="810" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <text x="80" y="192" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Deployment</text>
+
+  <g id="deployment-service">
+    <rect x="270" y="230" width="280" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(295, 247)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="13" />
+      <path d="M 28 6 L 28 15 M 28 41 L 28 50 M 6 28 L 15 28 M 41 28 L 50 28 M 12 12 L 19 19 M 37 37 L 44 44 M 12 44 L 19 37 M 37 19 L 44 12" />
+    </g>
+    <text x="380" y="286" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Service</text>
+  </g>
+
+  <path d="M 360 320 C 360 375 177.5 375 177.5 428" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <line x1="410" y1="320" x2="410" y2="428" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <path d="M 460 320 C 460 375 642.5 375 642.5 428" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <g id="pod-web-a">
+    <rect x="75" y="430" width="205" height="240" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(150, 452)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="54" height="44" rx="6" />
+      <line x1="0" y1="14" x2="54" y2="14" />
+      <circle cx="10" cy="7" r="2.5" fill="#207448" />
+      <circle cx="18" cy="7" r="2.5" fill="#207448" />
+      <circle cx="26" cy="7" r="2.5" fill="#207448" />
+    </g>
+    <text x="177.5" y="542" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">web-7d9f-a</text>
+    <g transform="translate(177.5, 608)" stroke="#84928b" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="0" cy="-14" rx="20" ry="7" />
+      <path d="M -20 -14 v 24 c 0 4 9 7 20 7 s 20 -3 20 -7 v -24" />
+      <path d="M -20 -2 c 0 4 9 7 20 7 s 20 -3 20 -7" />
+      <line x1="-24" y1="20" x2="24" y2="-20" stroke="#84928b" stroke-width="3.5" />
+    </g>
+  </g>
+
+  <g id="pod-web-b">
+    <rect x="307.5" y="430" width="205" height="240" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(382.5, 452)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="54" height="44" rx="6" />
+      <line x1="0" y1="14" x2="54" y2="14" />
+      <circle cx="10" cy="7" r="2.5" fill="#207448" />
+      <circle cx="18" cy="7" r="2.5" fill="#207448" />
+      <circle cx="26" cy="7" r="2.5" fill="#207448" />
+    </g>
+    <text x="410" y="542" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">web-7d9f-b</text>
+    <g transform="translate(410, 608)" stroke="#84928b" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="0" cy="-14" rx="20" ry="7" />
+      <path d="M -20 -14 v 24 c 0 4 9 7 20 7 s 20 -3 20 -7 v -24" />
+      <path d="M -20 -2 c 0 4 9 7 20 7 s 20 -3 20 -7" />
+      <line x1="-24" y1="20" x2="24" y2="-20" stroke="#84928b" stroke-width="3.5" />
+    </g>
+  </g>
+
+  <g id="pod-web-c">
+    <rect x="540" y="430" width="205" height="240" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(615, 452)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="54" height="44" rx="6" />
+      <line x1="0" y1="14" x2="54" y2="14" />
+      <circle cx="10" cy="7" r="2.5" fill="#207448" />
+      <circle cx="18" cy="7" r="2.5" fill="#207448" />
+      <circle cx="26" cy="7" r="2.5" fill="#207448" />
+    </g>
+    <text x="642.5" y="542" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">web-7d9f-c</text>
+    <g transform="translate(642.5, 608)" stroke="#84928b" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="0" cy="-14" rx="20" ry="7" />
+      <path d="M -20 -14 v 24 c 0 4 9 7 20 7 s 20 -3 20 -7 v -24" />
+      <path d="M -20 -2 c 0 4 9 7 20 7 s 20 -3 20 -7" />
+      <line x1="-24" y1="20" x2="24" y2="-20" stroke="#84928b" stroke-width="3.5" />
+    </g>
+  </g>
+
+  <g id="deployment-group-label" aria-label="any replica can serve any request, a replacement is just another copy">
+    <rect x="75" y="720" width="670" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="410" y="770" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="410" dy="0">any replica can serve any request,</tspan>
+      <tspan x="410" dy="38">a replacement is just another copy</tspan>
+    </text>
+  </g>
+
+  <rect x="830" y="140" width="720" height="810" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <text x="860" y="192" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">StatefulSet</text>
+
+  <g id="statefulset-service">
+    <rect x="1050" y="230" width="280" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(1075, 247)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="13" />
+      <path d="M 28 6 L 28 15 M 28 41 L 28 50 M 6 28 L 15 28 M 41 28 L 50 28 M 12 12 L 19 19 M 37 37 L 44 44 M 12 44 L 19 37 M 37 19 L 44 12" />
+    </g>
+    <text x="1160" y="286" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">qdrant</text>
+  </g>
+
+  <g id="pod-qdrant-0">
+    <rect x="855" y="370" width="205" height="125" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(930.5, 385)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="54" height="44" rx="6" />
+      <line x1="0" y1="14" x2="54" y2="14" />
+      <circle cx="10" cy="7" r="2.5" fill="#207448" />
+      <circle cx="18" cy="7" r="2.5" fill="#207448" />
+      <circle cx="26" cy="7" r="2.5" fill="#207448" />
+    </g>
+    <text x="957.5" y="466" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">qdrant-0</text>
+  </g>
+
+  <g id="pod-qdrant-1">
+    <rect x="1087.5" y="370" width="205" height="125" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(1163, 385)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="54" height="44" rx="6" />
+      <line x1="0" y1="14" x2="54" y2="14" />
+      <circle cx="10" cy="7" r="2.5" fill="#207448" />
+      <circle cx="18" cy="7" r="2.5" fill="#207448" />
+      <circle cx="26" cy="7" r="2.5" fill="#207448" />
+    </g>
+    <text x="1190" y="466" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">qdrant-1</text>
+  </g>
+
+  <g id="pod-qdrant-2">
+    <rect x="1320" y="370" width="205" height="125" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(1395.5, 385)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="54" height="44" rx="6" />
+      <line x1="0" y1="14" x2="54" y2="14" />
+      <circle cx="10" cy="7" r="2.5" fill="#207448" />
+      <circle cx="18" cy="7" r="2.5" fill="#207448" />
+      <circle cx="26" cy="7" r="2.5" fill="#207448" />
+    </g>
+    <text x="1422.5" y="466" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">qdrant-2</text>
+  </g>
+
+  <line x1="957.5" y1="495" x2="957.5" y2="538" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <line x1="1190" y1="495" x2="1190" y2="538" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <line x1="1422.5" y1="495" x2="1422.5" y2="538" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <g id="storage-qdrant-0" aria-label="storage-qdrant-0">
+    <rect x="855" y="540" width="205" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(957.5, 565)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="0" cy="-10" rx="22" ry="7" fill="#e8f1ea" />
+      <path d="M -22 -10 v 18 c 0 4 10 7 22 7 s 22 -3 22 -7 v -18" />
+    </g>
+    <text x="957.5" y="618" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="957.5" dy="0">storage-</tspan>
+      <tspan x="957.5" dy="28">qdrant-0</tspan>
+    </text>
+  </g>
+
+  <g id="storage-qdrant-1" aria-label="storage-qdrant-1">
+    <rect x="1087.5" y="540" width="205" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(1190, 565)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="0" cy="-10" rx="22" ry="7" fill="#e8f1ea" />
+      <path d="M -22 -10 v 18 c 0 4 10 7 22 7 s 22 -3 22 -7 v -18" />
+    </g>
+    <text x="1190" y="618" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1190" dy="0">storage-</tspan>
+      <tspan x="1190" dy="28">qdrant-1</tspan>
+    </text>
+  </g>
+
+  <g id="storage-qdrant-2" aria-label="storage-qdrant-2">
+    <rect x="1320" y="540" width="205" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(1422.5, 565)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="0" cy="-10" rx="22" ry="7" fill="#e8f1ea" />
+      <path d="M -22 -10 v 18 c 0 4 10 7 22 7 s 22 -3 22 -7 v -18" />
+    </g>
+    <text x="1422.5" y="618" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1422.5" dy="0">storage-</tspan>
+      <tspan x="1422.5" dy="28">qdrant-2</tspan>
+    </text>
+  </g>
+
+  <g id="statefulset-dns">
+    <rect x="855" y="695" width="670" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="1190" y="734" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">qdrant-0.qdrant.data.svc.cluster.local</text>
+    <text x="1190" y="768" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">the name stays with the replica</text>
+  </g>
+
+  <g id="statefulset-orange-note" aria-label="a replacement with an empty disk would be treated as a new member with no history">
+    <rect x="855" y="810" width="670" height="115" rx="12" fill="#fff8f2" stroke="#db8129" stroke-width="3" />
+    <text x="1190" y="856" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="1190" dy="0">a replacement with an empty disk would be</tspan>
+      <tspan x="1190" dy="36">treated as a new member with no history</tspan>
+    </text>
+  </g>
+
+  <g id="takeaway-bar">
+    <rect x="50" y="980" width="1500" height="75" rx="12" fill="#207448" />
+    <text x="800" y="1026" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">a StatefulSet pairs a stable name with a stable disk, which is what lets a database trust the replica</text>
+  </g>
+</svg>

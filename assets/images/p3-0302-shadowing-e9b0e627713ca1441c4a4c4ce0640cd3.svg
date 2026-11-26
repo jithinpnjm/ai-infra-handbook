@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Shadowing: your json.py wins because the script's folder is first on sys.path</title>
+  <desc>Visual infographic explaining Python sys.path search order, module shadowing, symptoms, fixes, and environment-driven import risks.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+    <filter id="card-shadow" x="-3%" y="-2%" width="106%" height="106%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#143622" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="50" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#207448">Shadowing: your json.py wins because the script's folder is first on sys.path</text>
+
+  
+
+  
+  <g transform="translate(50, 102)">
+    <rect width="230" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#card-shadow)" />
+    
+    <path d="M 22 23 L 34 33 L 22 43 M 38 43 L 52 43" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="64" y="43" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">import json</text>
+  </g>
+
+  
+  <path d="M 280 135 L 360 135" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <text x="375" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">first match wins; the real json is never reached</text>
+
+  
+  <g transform="translate(50, 185)">
+    
+    <g transform="translate(0, 0)">
+      <rect width="840" height="175" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="4" filter="url(#card-shadow)" />
+      
+      <path d="M 24 38 L 24 94 L 84 94 L 84 48 L 54 48 L 44 38 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" />
+      <circle cx="54" cy="70" r="10" fill="#db8129" />
+
+      
+      <circle cx="118" cy="48" r="22" fill="#db8129" />
+      <text x="118" y="56" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+      
+      <rect x="610" y="24" width="206" height="42" rx="8" fill="#db8129" />
+      <text x="713" y="53" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">your file is found first</text>
+
+      
+      <text x="156" y="54" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">home directory of the script</text>
+      <text x="24" y="116" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(or empty string for the REPL, -c and -m):</text>
+      <text x="24" y="152" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#9a3412">contains json.py, random.py, requests.py or test.py</text>
+    </g>
+
+    
+    <g transform="translate(0, 195)">
+      <rect width="840" height="82" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <circle cx="54" cy="41" r="12" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 54 21 L 54 27 M 54 55 L 54 61 M 34 41 L 40 41 M 68 41 L 74 41" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      
+      <circle cx="118" cy="41" r="20" fill="#207448" />
+      <text x="118" y="49" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      <text x="156" y="49" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#303a36">PYTHONPATH directories</text>
+    </g>
+
+    
+    <g transform="translate(0, 297)">
+      <rect width="840" height="92" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <rect x="36" y="24" width="36" height="46" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="44" y1="36" x2="64" y2="36" stroke="#207448" stroke-width="2.5" />
+      <line x1="44" y1="46" x2="64" y2="46" stroke="#207448" stroke-width="2.5" />
+      <line x1="44" y1="56" x2="56" y2="56" stroke="#207448" stroke-width="2.5" />
+      
+      <circle cx="118" cy="46" r="20" fill="#207448" />
+      <text x="118" y="54" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+      <text x="156" y="54" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">standard-library directories, including python312.zip</text>
+    </g>
+
+    
+    <g transform="translate(0, 409)">
+      <rect width="840" height="82" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <path d="M 54 22 L 72 32 L 72 52 L 54 62 L 36 52 L 36 32 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <line x1="54" y1="22" x2="54" y2="42" stroke="#207448" stroke-width="2.5" />
+      <line x1="36" y1="32" x2="54" y2="42" stroke="#207448" stroke-width="2.5" />
+      <line x1="72" y1="32" x2="54" y2="42" stroke="#207448" stroke-width="2.5" />
+      
+      <circle cx="118" cy="41" r="20" fill="#207448" />
+      <text x="118" y="49" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+      <text x="156" y="49" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#303a36">site-packages</text>
+    </g>
+
+    
+    <g transform="translate(0, 511)">
+      <rect width="840" height="82" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <rect x="38" y="22" width="32" height="42" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="45" y1="32" x2="63" y2="32" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+      <line x1="45" y1="42" x2="63" y2="42" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+      <line x1="45" y1="52" x2="55" y2="52" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+      
+      <circle cx="118" cy="41" r="20" fill="#207448" />
+      <text x="118" y="49" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+      <text x="156" y="49" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">directories listed in .pth files</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(50, 804)">
+    <rect width="840" height="154" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+    
+    <circle cx="48" cy="46" r="20" fill="none" stroke="#207448" stroke-width="3" />
+    <polygon points="48,32 54,46 48,42 42,46" fill="#207448" />
+    <polygon points="48,60 54,46 48,42 42,46" fill="#303a36" />
+    
+    <text x="82" y="46" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">path entries come from the environment, so a script</text>
+    <text x="82" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">that imports a library in your terminal can fail under cron:</text>
+    <text x="82" y="114" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">only where Python looked changed</text>
+  </g>
+
+  
+  <g transform="translate(50, 978)">
+    <rect width="840" height="96" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="3" />
+    
+    <path d="M 46 22 L 72 32 L 72 54 C 72 68 46 76 46 76 C 46 76 20 68 20 54 L 20 32 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round" />
+    <line x1="46" y1="36" x2="46" y2="52" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <circle cx="46" cy="62" r="3" fill="#db8129" />
+    
+    <text x="88" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">the same risk applies to untrusted download folders,</text>
+    <text x="88" y="76" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#9a3412">because Python runs whatever it imports</text>
+  </g>
+
+  
+
+  
+  <g transform="translate(920, 102)">
+    <rect width="630" height="344" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#card-shadow)" />
+
+    
+    <path d="M 0 14 Q 0 0 14 0 L 616 0 Q 630 0 630 14 L 630 64 L 0 64 Z" fill="#e8f1ea" />
+    
+    <circle cx="42" cy="32" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 32 32 L 38 32 L 42 22 L 46 42 L 50 32 L 56 32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="72" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Symptoms</text>
+
+    
+    <g transform="translate(26, 88)">
+      <circle cx="16" cy="20" r="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <text x="16" y="28" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#207448" text-anchor="middle">!</text>
+      <text x="44" y="26" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">baffling AttributeError: module x has no attribute ...</text>
+    </g>
+
+    
+    <g transform="translate(26, 192)">
+      <circle cx="16" cy="20" r="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <text x="16" y="28" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#207448" text-anchor="middle">!</text>
+      <text x="44" y="26" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">circular import errors because the traceback</text>
+      <text x="44" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">names a module you never wrote</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(920, 480)">
+    <rect width="630" height="594" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#card-shadow)" />
+
+    
+    <path d="M 0 14 Q 0 0 14 0 L 616 0 Q 630 0 630 14 L 630 64 L 0 64 Z" fill="#e8f1ea" />
+    
+    <path d="M 48 20 C 43 20 38 23 35 27 C 32 30 31 35 32 39 L 24 47 C 22 49 22 52 24 54 C 26 56 29 56 31 54 L 39 46 C 43 47 48 46 51 43 C 55 40 58 35 58 30 L 49 35 L 43 29 L 48 20 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <text x="72" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Fixes</text>
+
+    
+    <g transform="translate(26, 86)">
+      <circle cx="16" cy="18" r="10" fill="#207448" />
+      <path d="M 11 18 L 15 22 L 22 14" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+      <text x="38" y="26" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">name your files carefully</text>
+    </g>
+
+    
+    <g transform="translate(26, 160)">
+      <circle cx="16" cy="18" r="10" fill="#207448" />
+      <path d="M 11 18 L 15 22 L 22 14" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+      <text x="38" y="26" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">never run Python from a folder</text>
+      <text x="38" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">containing such files</text>
+    </g>
+
+    
+    <g transform="translate(26, 266)">
+      <circle cx="16" cy="18" r="10" fill="#207448" />
+      <path d="M 11 18 L 15 22 L 22 14" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+      <text x="38" y="26" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">python -I isolated mode</text>
+    </g>
+
+    
+    <g transform="translate(26, 340)">
+      <circle cx="16" cy="18" r="10" fill="#207448" />
+      <path d="M 11 18 L 15 22 L 22 14" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+      <text x="38" y="26" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">check</text>
+      <text x="38" y="60" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">python -c "import json, sys; print(json.__file__)"</text>
+    </g>
+
+    
+    <g transform="translate(26, 470)">
+      <circle cx="16" cy="18" r="10" fill="#207448" />
+      <path d="M 11 18 L 15 22 L 22 14" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+      <text x="38" y="26" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">remove __pycache__</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(50, 1098)">
+    <rect width="1500" height="60" rx="10" fill="#207448" />
+    <text x="750" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">The environment quietly decides what your code imports</text>
+  </g>
+</svg>

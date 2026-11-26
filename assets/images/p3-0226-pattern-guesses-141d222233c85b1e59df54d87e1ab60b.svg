@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Symptom to first guess, and the second source that confirms it</title>
+  <desc>A three column table mapping pattern in the capture to first guess and confirming sources</desc>
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  
+  <text x="800" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">Symptom to first guess,</tspan>
+    <tspan x="800" dy="54">and the second source that confirms it</tspan>
+  </text>
+  
+  <g id="table-headers">
+    <rect x="40" y="130" width="460" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(98, 140)">
+      <rect x="0" y="2" width="28" height="38" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="6" y1="12" x2="22" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="6" y1="20" x2="22" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="6" y1="28" x2="16" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="28" cy="28" r="9" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+      <line x1="35" y1="35" x2="43" y2="43" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="158" y="173" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Pattern in the capture</text>
+    <rect x="510" y="130" width="520" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(670, 140)">
+      <path d="M 12 24 C 7 20, 6 14, 10 8 C 14 2, 26 2, 30 8 C 34 14, 33 20, 28 24 L 27 31 L 13 31 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="15" y1="37" x2="25" y2="37" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="20" y1="10" x2="20" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="730" y="173" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">First guess</text>
+    <rect x="1040" y="130" width="520" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(1190, 140)">
+      <path d="M 6 8 L 22 3 L 38 8 C 38 24, 22 36, 22 41 C 22 36, 6 24, 6 8 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <polyline points="14,20 20,26 31,14" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="1248" y="173" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Confirm with</text>
+  </g>
+  
+  
+  <g id="row-1">
+    <rect x="40" y="202" width="460" height="80" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="510" y="202" width="520" height="80" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="1040" y="202" width="520" height="80" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <text x="60" y="236" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">SYN at the server,</tspan>
+      <tspan x="60" dy="25">no SYN-ACK back</tspan>
+    </text>
+    <text x="530" y="236" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="530" dy="0">server firewall or a</tspan>
+      <tspan x="530" dy="25">full listen queue</tspan>
+    </text>
+    <text x="1060" y="236" font-size="24" fill="#303a36">
+      <tspan x="1060" dy="0" font-family="system-ui, -apple-system, sans-serif">firewall counters,</tspan>
+      <tspan x="1060" dy="25" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">nstat ListenOverflows, solisten</tspan>
+    </text>
+  </g>
+  
+  <g id="row-2">
+    <rect x="40" y="288" width="460" height="80" rx="6" fill="#edf4ef" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="510" y="288" width="520" height="80" rx="6" fill="#edf4ef" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="1040" y="288" width="520" height="80" rx="6" fill="#edf4ef" stroke="#c2d8c7" stroke-width="1.5"/>
+    <text x="60" y="322" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">SYN-ACK at the server</tspan>
+      <tspan x="60" dy="25">but not at the client</tspan>
+    </text>
+    <text x="530" y="322" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="530" dy="0">return path, asymmetric</tspan>
+      <tspan x="530" dy="25">route or NAT</tspan>
+    </text>
+    <text x="1060" y="323" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">conntrack, route check</text>
+  </g>
+  
+  <g id="row-3">
+    <rect x="40" y="374" width="460" height="80" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="510" y="374" width="520" height="80" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="1040" y="374" width="520" height="80" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <text x="60" y="408" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">Data with repeated</tspan>
+      <tspan x="60" dy="25">retransmissions and no ICMP</tspan>
+    </text>
+    <text x="530" y="408" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="530" dy="0">MTU black hole or a</tspan>
+      <tspan x="530" dy="25">stateful device that drops</tspan>
+    </text>
+    <text x="1060" y="409" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">path MTU, firewall counters</text>
+  </g>
+  
+  <g id="row-4">
+    <rect x="40" y="460" width="460" height="58" rx="6" fill="#edf4ef" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="510" y="460" width="520" height="58" rx="6" fill="#edf4ef" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="1040" y="460" width="520" height="58" rx="6" fill="#edf4ef" stroke="#c2d8c7" stroke-width="1.5"/>
+    <text x="60" y="495" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Duplicate ACKs and SACK</text>
+    <text x="530" y="495" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">loss on the path</text>
+    <text x="1060" y="495" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">ss -ti, tcpretrans</text>
+  </g>
+  
+  <g id="row-5">
+    <rect x="40" y="524" width="460" height="80" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="510" y="524" width="520" height="80" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="1040" y="524" width="520" height="80" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <text x="60" y="559" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">RST from a different TTL</text>
+    <text x="530" y="559" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">a middlebox</text>
+    <text x="1060" y="558" font-size="24" fill="#303a36">
+      <tspan x="1060" dy="0" font-family="system-ui, -apple-system, sans-serif">compare TTL against</tspan>
+      <tspan x="1060" dy="25" font-family="system-ui, -apple-system, sans-serif">normal peer packets</tspan>
+    </text>
+  </g>
+  
+  <g id="row-6">
+    <rect x="40" y="610" width="460" height="58" rx="6" fill="#edf4ef" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="510" y="610" width="520" height="58" rx="6" fill="#edf4ef" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="1040" y="610" width="520" height="58" rx="6" fill="#edf4ef" stroke="#c2d8c7" stroke-width="1.5"/>
+    <text x="60" y="645" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Long idle then reset</text>
+    <text x="530" y="645" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">a timeout</text>
+    <text x="1060" y="645" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">conntrack and NAT timers</text>
+  </g>
+  
+  <g id="row-7">
+    <rect x="40" y="674" width="460" height="58" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="510" y="674" width="520" height="58" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="1040" y="674" width="520" height="58" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <text x="60" y="709" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Gaps of exactly 200 ms or 1 s</text>
+    <text x="530" y="709" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">RTO or delayed ACK</text>
+    <text x="1060" y="709" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">tcpstates, ss -ti</text>
+  </g>
+  
+  <g id="row-8">
+    <rect x="40" y="738" width="460" height="58" rx="6" fill="#edf4ef" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="510" y="738" width="520" height="58" rx="6" fill="#edf4ef" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="1040" y="738" width="520" height="58" rx="6" fill="#edf4ef" stroke="#c2d8c7" stroke-width="1.5"/>
+    <text x="60" y="773" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">DNS answers after 5 s</text>
+    <text x="530" y="773" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">resolver timeout</text>
+    <text x="1060" y="773" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">repeat the query</text>
+  </g>
+  
+  <g id="row-9">
+    <rect x="40" y="802" width="460" height="106" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="510" y="802" width="520" height="106" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="1040" y="802" width="520" height="106" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <text x="60" y="837" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">ClientHello then nothing</text>
+    <text x="530" y="836" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="530" dy="0">TLS interception or an MTU</tspan>
+      <tspan x="530" dy="25">problem; post-quantum key shares</tspan>
+      <tspan x="530" dy="25">make ClientHellos large</tspan>
+    </text>
+    <text x="1060" y="837" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">check path MTU</text>
+  </g>
+  
+  <g id="row-10">
+    <rect x="40" y="914" width="460" height="80" rx="6" fill="#edf4ef" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="510" y="914" width="520" height="80" rx="6" fill="#edf4ef" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="1040" y="914" width="520" height="80" rx="6" fill="#edf4ef" stroke="#c2d8c7" stroke-width="1.5"/>
+    <text x="60" y="948" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">Pause frames at multi-kHz</tspan>
+      <tspan x="60" dy="25">rates on one priority</tspan>
+    </text>
+    <text x="530" y="949" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">a PFC storm</text>
+    <text x="1060" y="949" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">switch counters per priority</text>
+  </g>
+  
+  <g id="row-11">
+    <rect x="40" y="1000" width="460" height="80" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="510" y="1000" width="520" height="80" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <rect x="1040" y="1000" width="520" height="80" rx="6" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+    <text x="60" y="1034" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">ECN-marked packets arrive</tspan>
+      <tspan x="60" dy="25">but no CNP comes back</tspan>
+    </text>
+    <text x="530" y="1035" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">NIC DCQCN probably misconfigured</text>
+    <text x="1060" y="1035" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">NIC settings</text>
+  </g>
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1092" width="1520" height="80" rx="8" fill="#fef5ed" stroke="#db8129" stroke-width="2.5"/>
+    <rect x="40" y="1092" width="12" height="80" rx="4" fill="#db8129"/>
+    <g transform="translate(64, 1114)">
+      <circle cx="18" cy="18" r="16" fill="#db8129"/>
+      <polyline points="10,18 16,24 26,12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="118" y="1126" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="118" dy="0">A guess that a second source agrees with is a conclusion;</tspan>
+      <tspan x="118" dy="25">one nothing else supports is only a hypothesis</tspan>
+    </text>
+  </g>
+</svg>

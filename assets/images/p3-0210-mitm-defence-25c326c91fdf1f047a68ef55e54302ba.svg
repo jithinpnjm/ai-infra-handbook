@@ -1,0 +1,225 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Man in the middle: how traffic gets redirected and how the peer's key gets authenticated</title>
+  <desc>Visual infographic explaining man-in-the-middle attacks, traffic redirection methods, peer key authentication approaches, and metadata exposure.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-rev" viewBox="0 0 10 10" refX="3" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 8 1.5 L 0 5 L 8 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">Man in the middle: how traffic gets redirected</text>
+  <text x="800" y="106" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">and how the peer's key gets authenticated</text>
+
+  
+  <g id="four-problems">
+    
+    <rect x="40" y="130" width="365" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="222" y="158" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">prove data</text>
+    <text x="222" y="186" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">was not altered</text>
+
+    
+    <rect x="425" y="130" width="365" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="607" y="158" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">stop others</text>
+    <text x="607" y="186" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">reading it</text>
+
+    
+    <rect x="810" y="130" width="365" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="992" y="158" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">prove who</text>
+    <text x="992" y="186" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">you are talking to</text>
+
+    
+    <rect x="1195" y="130" width="365" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1377" y="158" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">protect privacy</text>
+    <text x="1377" y="186" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">from traffic analysis</text>
+  </g>
+
+  
+  
+  <rect x="40" y="220" width="1000" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  
+  <rect x="65" y="238" width="290" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="210" y="279" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">DNS spoofing</text>
+
+  <rect x="395" y="238" width="290" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="540" y="279" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">ARP spoofing</text>
+
+  <rect x="725" y="238" width="290" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="870" y="279" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">rogue Wi-Fi</text>
+
+  
+  <rect x="230" y="316" width="290" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="375" y="357" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">BGP hijack</text>
+
+  <rect x="560" y="316" width="290" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="705" y="357" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">compromised proxy</text>
+
+  
+  <line x1="540" y1="395" x2="540" y2="425" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  <g id="client-node">
+    <rect x="50" y="430" width="160" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="108" y="445" width="44" height="28" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 98 481 L 162 481" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="130" y="525" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">client</text>
+  </g>
+
+  
+  <g id="attacker-node">
+    <rect x="440" y="430" width="200" height="115" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <path d="M 515 450 C 515 442, 565 442, 565 450 L 575 465 L 505 465 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 520 472 L 536 472 M 544 472 L 560 472" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <path d="M 522 482 Q 540 492 558 482" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="540" y="525" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">attacker</text>
+  </g>
+
+  
+  <g id="server-node">
+    <rect x="870" y="430" width="160" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="928" y="445" width="44" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="934" y1="457" x2="966" y2="457" stroke="#207448" stroke-width="3" />
+    <line x1="934" y1="469" x2="966" y2="469" stroke="#207448" stroke-width="3" />
+    <circle cx="962" cy="451" r="2" fill="#207448" />
+    <circle cx="962" cy="463" r="2" fill="#207448" />
+    <circle cx="962" cy="475" r="2" fill="#207448" />
+    <text x="950" y="525" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">server</text>
+  </g>
+
+  
+  <line x1="218" y1="488" x2="432" y2="488" stroke="#207448" stroke-width="3" marker-start="url(#arrow-rev)" marker-end="url(#arrow)" />
+  <text x="325" y="445" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">session 1</text>
+  <text x="325" y="475" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">with the client</text>
+
+  
+  <line x1="648" y1="488" x2="862" y2="488" stroke="#207448" stroke-width="3" marker-start="url(#arrow-rev)" marker-end="url(#arrow)" />
+  <text x="755" y="445" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">session 2</text>
+  <text x="755" y="475" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">with the server</text>
+
+  
+  <line x1="540" y1="545" x2="540" y2="565" stroke="#207448" stroke-width="2" />
+  <rect x="235" y="565" width="610" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="540" y="598" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">can read everything in between</text>
+  <text x="540" y="628" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">if the client cannot tell the</text>
+  <text x="540" y="658" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">server's key is not the real one</text>
+
+  
+  <rect x="50" y="695" width="980" height="74" rx="8" fill="#fdf3e9" stroke="#db8129" stroke-width="3" />
+  <text x="540" y="726" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129" text-anchor="middle">Encryption alone is not enough:</text>
+  <text x="540" y="756" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129" text-anchor="middle">you must authenticate the peer's key</text>
+
+  
+  
+  <g id="card-pki">
+    <rect x="50" y="790" width="313" height="315" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="186" y="808" width="40" height="26" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 206 834 L 206 846 M 176 846 L 236 846 M 176 846 L 176 856 M 236 846 L 236 856" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="176" cy="860" r="5" fill="#207448" />
+    <circle cx="236" cy="860" r="5" fill="#207448" />
+    
+    <text x="206" y="900" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Hierarchical PKI</text>
+    
+    <text x="206" y="960" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">certificates and</text>
+    <text x="206" y="995" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">the CA system</text>
+    <text x="206" y="1030" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(section 4)</text>
+  </g>
+
+  
+  <g id="card-wot">
+    <rect x="383" y="790" width="313" height="315" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="519" cy="824" r="10" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="560" cy="855" r="10" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="490" cy="855" r="10" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="527" y1="830" x2="552" y2="849" stroke="#207448" stroke-width="3" />
+    <line x1="511" y1="830" x2="498" y2="849" stroke="#207448" stroke-width="3" />
+    <line x1="500" y1="855" x2="550" y2="855" stroke="#207448" stroke-width="3" />
+    
+    <text x="539" y="900" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Web of trust</text>
+    
+    <text x="539" y="960" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">PGP, users vouch</text>
+    <text x="539" y="995" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">for each other's</text>
+    <text x="539" y="1030" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">keys directly</text>
+  </g>
+
+  
+  <g id="card-pinned">
+    <rect x="717" y="790" width="313" height="315" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="860" cy="830" r="12" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 868 839 L 890 861 L 883 868 M 880 851 L 888 859" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    
+    <text x="873" y="888" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Pinned or</text>
+    <text x="873" y="924" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">pre-shared keys</text>
+    
+    <text x="873" y="980" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">SSH known_hosts,</text>
+    <text x="873" y="1020" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">WireGuard keys</text>
+  </g>
+
+  
+  <g id="side-panel">
+    <rect x="1080" y="220" width="480" height="885" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <path d="M 1292 250 C 1308 238, 1332 238, 1348 250 C 1332 262, 1308 262, 1292 250 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <circle cx="1320" cy="250" r="5" fill="#207448" />
+
+    
+    <text x="1320" y="295" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">Metadata still leaks</text>
+    <line x1="1110" y1="315" x2="1530" y2="315" stroke="#207448" stroke-width="1.5" stroke-opacity="0.5" />
+
+    
+    <rect x="1104" y="335" width="432" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.2" />
+    <text x="1320" y="366" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">who talks to whom,</text>
+    <text x="1320" y="396" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">when and how much</text>
+    <text x="1320" y="426" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(traffic analysis)</text>
+
+    
+    <rect x="1104" y="449" width="432" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.2" />
+    <text x="1320" y="482" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">destination names</text>
+    <text x="1320" y="514" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">through SNI and DNS</text>
+
+    
+    <rect x="1104" y="543" width="432" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.2" />
+    <text x="1320" y="576" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">mitigations: encrypted</text>
+    <text x="1320" y="608" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">SNI and ECH, DoT and DoH</text>
+
+    
+    <rect x="1104" y="637" width="432" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.2" />
+    <text x="1320" y="670" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">Wi-Fi MAC-address</text>
+    <text x="1320" y="702" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">randomisation</text>
+
+    
+    <rect x="1104" y="731" width="432" height="150" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.2" />
+    <text x="1320" y="764" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">onion routing:</text>
+    <text x="1320" y="796" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">entry node knows the source</text>
+    <text x="1320" y="828" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">but not the destination,</text>
+    <text x="1320" y="860" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">exit node the reverse</text>
+
+    
+    <rect x="1104" y="895" width="432" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.2" />
+    <text x="1320" y="930" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">in a data centre,</text>
+    <text x="1320" y="962" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">treat metadata exposure</text>
+    <text x="1320" y="994" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">in multi-tenant networks</text>
+    <text x="1320" y="1026" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">and logs as the</text>
+    <text x="1320" y="1058" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">practical concern</text>
+  </g>
+
+  
+  <rect x="40" y="1130" width="1520" height="50" rx="8" fill="#207448" />
+  <text x="800" y="1164" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Transport security exists for networks where an attacker controls the path</text>
+</svg>

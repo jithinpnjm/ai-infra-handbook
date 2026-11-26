@@ -1,0 +1,268 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>A one-hour console round: six phases and what to say in each</title>
+  <desc>Horizontal timeline infographic showing the six consecutive phases of a one-hour console troubleshooting round and the three beats for every command.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="14" markerHeight="10" refX="12" refY="5" orient="auto">
+      <path d="M 0 1 L 12 5 L 0 9 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">A one-hour console round:</tspan>
+    <tspan x="800" dy="58">six phases and what to say in each</tspan>
+  </text>
+
+  
+
+  
+  <g id="block-1">
+    <rect x="40" y="150" width="222" height="535" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="151" cy="192" r="24" fill="#207448"/>
+    <text x="151" y="201" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <text x="151" y="246" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">0 to 5</text>
+    
+    <g transform="translate(151, 292)">
+      <path d="M -22 -16 h 44 a 6 6 0 0 1 6 6 v 20 a 6 6 0 0 1 -6 6 h -18 l -10 10 v -10 h -16 a 6 6 0 0 1 -6 -6 v -20 a 6 6 0 0 1 6 -6 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M -3 -8 a 4 4 0 0 1 7 2 c 0 3 -5 4 -5 7" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="0" cy="7" r="1.8" fill="#207448"/>
+    </g>
+    
+    <text x="151" y="362" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="151" dy="0">Problem</tspan>
+      <tspan x="151" dy="36">statement,</tspan>
+      <tspan x="151" dy="36">ask what</tspan>
+      <tspan x="151" dy="36">changed</tspan>
+    </text>
+    
+    <rect x="54" y="515" width="194" height="152" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <text x="151" y="565" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="151" dy="0">I will ask</tspan>
+      <tspan x="151" dy="34">before I</tspan>
+      <tspan x="151" dy="34">look.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="block-2">
+    <rect x="266" y="150" width="222" height="535" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="377" cy="192" r="24" fill="#207448"/>
+    <text x="377" y="201" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <text x="377" y="246" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">5 to 10</text>
+    
+    <g transform="translate(377, 292)">
+      <rect x="-18" y="-22" width="36" height="46" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M -8 -22 v -4 h 16 v 4" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M -11 -8 l 4 4 l 8 -8" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="5" y1="-6" x2="11" y2="-6" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M -11 8 l 4 4 l 8 -8" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="5" y1="10" x2="11" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="377" y="375" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="377" dy="0">The</tspan>
+      <tspan x="377" dy="38">60-second</tspan>
+      <tspan x="377" dy="38">checklist</tspan>
+    </text>
+    
+    <rect x="280" y="515" width="194" height="152" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <text x="377" y="565" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="377" dy="0">Ten checks,</tspan>
+      <tspan x="377" dy="34">one line</tspan>
+      <tspan x="377" dy="34">each.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="block-3">
+    <rect x="492" y="150" width="232" height="535" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="608" cy="192" r="24" fill="#207448"/>
+    <text x="608" y="201" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <text x="608" y="246" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">10 to 20</text>
+    
+    <g transform="translate(608, 292)">
+      <rect x="-18" y="-18" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <rect x="-8" y="-8" width="16" height="16" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <line x1="-10" y1="-25" x2="-10" y2="-18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="0" y1="-25" x2="0" y2="-18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="10" y1="-25" x2="10" y2="-18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-10" y1="18" x2="-10" y2="25" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="0" y1="18" x2="0" y2="25" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="10" y1="18" x2="10" y2="25" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-25" y1="-10" x2="-18" y2="-10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-25" y1="0" x2="-18" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-25" y1="10" x2="-18" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="18" y1="-10" x2="25" y2="-10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="18" y1="0" x2="25" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="18" y1="10" x2="25" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="608" y="375" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="608" dy="0">USE sweep,</tspan>
+      <tspan x="608" dy="38">name the</tspan>
+      <tspan x="608" dy="38">resource</tspan>
+    </text>
+    
+    <rect x="506" y="515" width="204" height="152" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <text x="608" y="552" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="608" dy="0">CPU</tspan>
+      <tspan x="608" dy="28">saturated,</tspan>
+      <tspan x="608" dy="28">disk and</tspan>
+      <tspan x="608" dy="28">memory</tspan>
+      <tspan x="608" dy="28">fine.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="block-4">
+    <rect x="728" y="150" width="356" height="535" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="906" cy="192" r="24" fill="#207448"/>
+    <text x="906" y="201" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <text x="906" y="246" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">20 to 40</text>
+    
+    <g transform="translate(906, 292)">
+      <circle cx="-6" cy="-6" r="16" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="6" y1="6" x2="20" y2="20" stroke="#207448" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M -12 -6 a 6 6 0 0 1 11 -3" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <polyline points="-1,-12 -1,-9 -4,-9" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    
+    <text x="906" y="390" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="906" dy="0">Hypothesis loop</tspan>
+      <tspan x="906" dy="40">and drill-down</tspan>
+    </text>
+    
+    <rect x="744" y="515" width="324" height="152" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <text x="906" y="580" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="906" dy="0">My prediction is X.</tspan>
+      <tspan x="906" dy="36">Testing.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="block-5">
+    <rect x="1088" y="150" width="234" height="535" rx="8" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    
+    <circle cx="1205" cy="192" r="24" fill="#207448"/>
+    <text x="1205" y="201" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <text x="1205" y="246" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">40 to 50</text>
+    
+    <g transform="translate(1205, 292)">
+      <path d="M -20 -20 h 40 v 16 c 0 18 -20 26 -20 26 c 0 0 -20 -8 -20 -26 z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M -8 1 l 6 6 l 12 -12" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    
+    <text x="1205" y="362" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1205" dy="0">Mitigation,</tspan>
+      <tspan x="1205" dy="36">then</tspan>
+      <tspan x="1205" dy="36">confirm</tspan>
+      <tspan x="1205" dy="36">it worked</tspan>
+    </text>
+    
+    <rect x="1102" y="515" width="206" height="152" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <text x="1205" y="552" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1205" dy="0">I will stop</tspan>
+      <tspan x="1205" dy="28">the</tspan>
+      <tspan x="1205" dy="28">bleeding,</tspan>
+      <tspan x="1205" dy="28">then find</tspan>
+      <tspan x="1205" dy="28">the cause.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="block-6">
+    <rect x="1326" y="150" width="234" height="535" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="1443" cy="192" r="24" fill="#207448"/>
+    <text x="1443" y="201" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    
+    <text x="1443" y="246" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">50 to 60</text>
+    
+    <g transform="translate(1443, 292)">
+      <path d="M -16 -22 h 22 l 10 10 v 34 h -32 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M 6 -22 v 10 h 10" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="-8" y1="-2" x2="10" y2="-2" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-8" y1="8" x2="10" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-8" y1="18" x2="4" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="1443" y="375" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1443" dy="0">Summary</tspan>
+      <tspan x="1443" dy="38">and</tspan>
+      <tspan x="1443" dy="38">follow-ups</tspan>
+    </text>
+    
+    <rect x="1340" y="515" width="206" height="152" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <text x="1443" y="560" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1443" dy="0">Cause,</tspan>
+      <tspan x="1443" dy="30">evidence,</tspan>
+      <tspan x="1443" dy="30">fix, what I</tspan>
+      <tspan x="1443" dy="30">would add.</tspan>
+    </text>
+  </g>
+
+  
+
+  <g id="panel-three-beats">
+    
+    <rect x="40" y="720" width="1520" height="225" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <text x="800" y="764" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Three beats for every command</text>
+
+    
+    <rect x="160" y="795" width="360" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(340, 832)">
+      <circle cx="0" cy="0" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="0" cy="0" r="4.5" fill="#207448"/>
+      <line x1="-18" y1="0" x2="-14" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="14" y1="0" x2="18" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="0" y1="-18" x2="0" y2="-14" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="0" y1="14" x2="0" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="340" y="888" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">Why you run it</text>
+
+    
+    <line x1="520" y1="855" x2="615" y2="855" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+    
+    <rect x="620" y="795" width="360" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(800, 832)">
+      <rect x="-18" y="-13" width="36" height="26" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+      <polyline points="-10,-5 -4,0 -10,5" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="0" y1="5" x2="8" y2="5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <text x="800" y="888" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">The run</text>
+
+    
+    <line x1="980" y1="855" x2="1075" y2="855" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+    
+    <rect x="1080" y="795" width="360" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(1260, 826)">
+      <path d="M -16 2 l 4 4 l 8 -8" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="6" y1="-3" x2="16" y2="7" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="16" y1="-3" x2="6" y2="7" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="1260" y="876" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1260" dy="0">What it rules</tspan>
+      <tspan x="1260" dy="28">in or out</tspan>
+    </text>
+  </g>
+
+  
+  <text x="800" y="985" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">This plan is an inference, not a Nebius format.</text>
+
+</svg>

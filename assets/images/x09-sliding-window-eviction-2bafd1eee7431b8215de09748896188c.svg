@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>A sliding window: new events enter on the right, old ones leave on the left</title>
+  <desc>Visual explanation of a sliding window algorithm: new events enter on the right via append, old events leave on the left via popleft, maintaining an error count in O(1) amortised time.</desc>
+
+  <defs>
+    <marker id="arrow-axis" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#303a36"/>
+    </marker>
+    <marker id="arrow-grey" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#6e8278"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  <text x="800" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">A sliding window: new events enter on the right,</tspan>
+    <tspan x="800" dy="54">old ones leave on the left</tspan>
+  </text>
+
+  <rect x="50" y="140" width="1500" height="385" rx="16" fill="#ffffff" stroke="#ccd9d0" stroke-width="2"/>
+
+  <rect x="660" y="210" width="720" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="685" y="222" width="54" height="42" rx="6"/>
+    <line x1="685" y1="235" x2="739" y2="235"/>
+    <circle cx="697" cy="229" r="2" fill="#207448"/>
+    <circle cx="705" cy="229" r="2" fill="#207448"/>
+    <circle cx="713" cy="229" r="2" fill="#207448"/>
+  </g>
+  <text x="755" y="255" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">window</text>
+
+  <line x1="90" y1="275" x2="1490" y2="275" stroke="#303a36" stroke-width="4" marker-end="url(#arrow-axis)"/>
+
+  <line x1="140" y1="265" x2="140" y2="285" stroke="#6e8278" stroke-width="2.5"/>
+  <line x1="240" y1="265" x2="240" y2="285" stroke="#6e8278" stroke-width="2.5"/>
+  <line x1="340" y1="265" x2="340" y2="285" stroke="#6e8278" stroke-width="2.5"/>
+  <line x1="440" y1="265" x2="440" y2="285" stroke="#6e8278" stroke-width="2.5"/>
+  <line x1="540" y1="265" x2="540" y2="285" stroke="#6e8278" stroke-width="2.5"/>
+
+  <line x1="660" y1="265" x2="660" y2="285" stroke="#6e8278" stroke-width="2.5"/>
+  <line x1="780" y1="265" x2="780" y2="285" stroke="#6e8278" stroke-width="2.5"/>
+  <line x1="900" y1="265" x2="900" y2="285" stroke="#6e8278" stroke-width="2.5"/>
+  <line x1="1020" y1="265" x2="1020" y2="285" stroke="#6e8278" stroke-width="2.5"/>
+  <line x1="1140" y1="265" x2="1140" y2="285" stroke="#6e8278" stroke-width="2.5"/>
+  <line x1="1260" y1="265" x2="1260" y2="285" stroke="#6e8278" stroke-width="2.5"/>
+  <line x1="1380" y1="265" x2="1380" y2="285" stroke="#6e8278" stroke-width="2.5"/>
+
+  <text x="140" y="245" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#6e8278" text-anchor="middle">old</text>
+  <text x="340" y="245" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#6e8278" text-anchor="middle">timestamps in seconds</text>
+  <text x="1455" y="245" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">new</text>
+
+  <line x1="660" y1="190" x2="660" y2="430" stroke="#207448" stroke-width="3" stroke-dasharray="6 4"/>
+  <text x="660" y="180" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">now minus W</text>
+
+  <line x1="1380" y1="190" x2="1380" y2="430" stroke="#207448" stroke-width="3" stroke-dasharray="6 4"/>
+  <text x="1380" y="180" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">now</text>
+
+  <circle cx="740" cy="345" r="14" fill="#207448"/>
+  <circle cx="820" cy="345" r="14" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  <circle cx="900" cy="345" r="14" fill="#207448"/>
+  <circle cx="980" cy="345" r="14" fill="#207448"/>
+  <circle cx="1060" cy="345" r="14" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  <circle cx="1140" cy="345" r="14" fill="#207448"/>
+  <circle cx="1220" cy="345" r="14" fill="#207448"/>
+  <circle cx="1300" cy="345" r="14" fill="#207448"/>
+
+  <g opacity="0.6">
+    <circle cx="230" cy="345" r="14" fill="#9aa8a1"/>
+    <circle cx="290" cy="345" r="14" fill="#9aa8a1"/>
+    <circle cx="350" cy="345" r="14" fill="#9aa8a1"/>
+    <circle cx="410" cy="345" r="14" fill="#9aa8a1"/>
+  </g>
+  <text x="320" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#6e8278" text-anchor="middle">evicted</text>
+
+  <path d="M 660 345 Q 550 280 440 338" fill="none" stroke="#6e8278" stroke-width="3.5" stroke-dasharray="8 6" marker-end="url(#arrow-grey)"/>
+
+  <rect x="330" y="440" width="660" height="72" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <line x1="660" y1="430" x2="660" y2="440" stroke="#207448" stroke-width="2.5"/>
+  <text x="660" y="468" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="660" dy="0">an event exactly W seconds old is dropped,</tspan>
+    <tspan x="660" dy="28">so the window is half-open</tspan>
+  </text>
+
+  <rect x="50" y="545" width="1020" height="255" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="85" y="567" width="56" height="42" rx="6"/>
+    <line x1="104" y1="567" x2="104" y2="609"/>
+    <line x1="122" y1="567" x2="122" y2="609"/>
+    <path d="M 75 588 L 85 588"/>
+    <path d="M 141 588 L 151 588"/>
+  </g>
+  <text x="160" y="603" font-family="ui-monospace, monospace" font-size="34" font-weight="bold" fill="#207448">deque</text>
+
+  <rect x="85" y="645" width="240" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="205" y="710" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">popleft</text>
+
+  <rect x="355" y="645" width="340" height="110" rx="10" fill="#f5f8f5" stroke="#ccd9d0" stroke-width="2"/>
+  <text x="525" y="710" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">event</text>
+
+  <rect x="725" y="645" width="220" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="835" y="710" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">append</text>
+
+  <circle cx="1025" cy="700" r="14" fill="#207448"/>
+  <path d="M 1005 700 L 955 700" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  <rect x="1110" y="545" width="440" height="255" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1145" y="567" width="52" height="42" rx="6"/>
+    <circle cx="1171" cy="588" r="12"/>
+    <polyline points="1171,582 1171,588 1177,588"/>
+  </g>
+  <text x="1215" y="603" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">errors in window</text>
+
+  <rect x="1145" y="645" width="370" height="110" rx="12" fill="#fff5eb" stroke="#db8129" stroke-width="3"/>
+  <text x="1330" y="717" font-family="ui-monospace, monospace" font-size="48" font-weight="bold" fill="#db8129" text-anchor="middle">2</text>
+
+  <rect x="50" y="820" width="473" height="135" rx="12" fill="#e8f1ea" stroke="#ccd9d0" stroke-width="2"/>
+  <circle cx="105" cy="887" r="24" fill="#207448"/>
+  <text x="105" y="887" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+  <text x="150" y="872" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="150" dy="0">append the</tspan>
+    <tspan x="150" dy="34">new event</tspan>
+  </text>
+
+  <rect x="563" y="820" width="474" height="135" rx="12" fill="#e8f1ea" stroke="#ccd9d0" stroke-width="2"/>
+  <circle cx="618" cy="887" r="24" fill="#207448"/>
+  <text x="618" y="887" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+  <text x="662" y="872" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="662" dy="0">evict from the left</tspan>
+    <tspan x="662" dy="34">while too old</tspan>
+  </text>
+
+  <rect x="1077" y="820" width="473" height="135" rx="12" fill="#e8f1ea" stroke="#ccd9d0" stroke-width="2"/>
+  <circle cx="1132" cy="887" r="24" fill="#207448"/>
+  <text x="1132" y="887" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+  <text x="1176" y="872" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="1176" dy="0">divide errors by the</tspan>
+    <tspan x="1176" dy="34">length of the deque</tspan>
+  </text>
+
+  <rect x="50" y="980" width="1500" height="90" rx="12" fill="#207448"/>
+  <text x="800" y="1035" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">The window slides, so only the front is evicted and the work stays cheap.</text>
+</svg>

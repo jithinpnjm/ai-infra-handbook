@@ -1,0 +1,212 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Turning a host into a router: the failure at each step of the lab</title>
+  <desc>Visual explanation of turning a Linux host into a router, showing failure symptoms and fixes at each step, packet header changes during forwarding, troubleshooting checks, and persistence.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M 0 1.5 L 10 6 L 0 10.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Turning a host into a router: the failure at each step of the lab</text>
+
+  
+  
+  <rect x="40" y="85" width="340" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(56, 102)">
+    <rect x="0" y="0" width="44" height="28" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="22" y1="28" x2="22" y2="38" stroke="#207448" stroke-width="3.5"/>
+    <line x1="10" y1="38" x2="34" y2="38" stroke="#207448" stroke-width="3.5"/>
+    <polyline points="8,10 16,14 8,18" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="20" y1="18" x2="30" y2="18" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+  <text x="120" y="132" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">hA 10.1.0.2/24</text>
+
+  
+  <line x1="380" y1="122.5" x2="476" y2="122.5" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)"/>
+
+  
+  <rect x="480" y="85" width="640" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(498, 102)">
+    <circle cx="20" cy="20" r="18" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="7" y1="20" x2="33" y2="20" stroke="#207448" stroke-width="3"/>
+    <line x1="20" y1="7" x2="20" y2="33" stroke="#207448" stroke-width="3"/>
+    <polyline points="10,17 7,20 10,23" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <polyline points="30,17 33,20 30,23" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <polyline points="17,10 20,7 23,10" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <polyline points="17,30 20,33 23,30" fill="none" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <text x="555" y="132" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">r with 10.1.0.1/24 and 10.2.0.1/24</text>
+
+  
+  <line x1="1120" y1="122.5" x2="1216" y2="122.5" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)"/>
+
+  
+  <rect x="1220" y="85" width="340" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1236, 102)">
+    <rect x="0" y="0" width="44" height="28" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="22" y1="28" x2="22" y2="38" stroke="#207448" stroke-width="3.5"/>
+    <line x1="10" y1="38" x2="34" y2="38" stroke="#207448" stroke-width="3.5"/>
+    <polyline points="8,10 16,14 8,18" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="20" y1="18" x2="30" y2="18" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+  <text x="1300" y="132" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">hB 10.2.0.2/24</text>
+
+  
+  
+  <g transform="translate(40, 180)">
+    <rect width="930" height="112" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="36" cy="38" r="24" fill="#207448"/>
+    <text x="36" y="46" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <text x="75" y="32" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="75" dy="0">Attempt 1: ping from hA to 10.2.0.2:</tspan>
+      <tspan x="75" dy="28">Network is unreachable, hA has no route</tspan>
+    </text>
+    <rect x="75" y="68" width="830" height="34" rx="4" fill="#e8f1ea"/>
+    <text x="90" y="92" font-family="monospace" font-size="24" fill="#207448">ip -n hA route add default via 10.1.0.1</text>
+  </g>
+
+  
+  <g transform="translate(40, 304)">
+    <rect width="930" height="142" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="36" cy="40" r="24" fill="#207448"/>
+    <text x="36" y="48" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    <text x="75" y="32" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="75" dy="0">Attempt 2: ping again: still fails because r does not forward;</tspan>
+      <tspan x="75" dy="28">a Linux host is an end system by default and discards</tspan>
+      <tspan x="75" dy="28">a packet for an address that is not its own</tspan>
+    </text>
+    <rect x="75" y="98" width="830" height="34" rx="4" fill="#e8f1ea"/>
+    <text x="90" y="122" font-family="monospace" font-size="24" fill="#207448">sysctl -w net.ipv4.ip_forward=1 inside r</text>
+  </g>
+
+  
+  <g transform="translate(40, 458)">
+    <rect width="930" height="112" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="36" cy="38" r="24" fill="#207448"/>
+    <text x="36" y="46" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    <text x="75" y="32" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="75" dy="0">Attempt 3: still fails: hB has no route back,</tspan>
+      <tspan x="75" dy="28">and a route is only half of a conversation</tspan>
+    </text>
+    <rect x="75" y="68" width="830" height="34" rx="4" fill="#e8f1ea"/>
+    <text x="90" y="92" font-family="monospace" font-size="24" fill="#207448">ip -n hB route add default via 10.2.0.1</text>
+  </g>
+
+  
+  <g transform="translate(40, 582)">
+    <rect width="930" height="74" rx="8" fill="#fdf5ec" stroke="#db8129" stroke-width="3"/>
+    <circle cx="36" cy="37" r="24" fill="#db8129"/>
+    <text x="36" y="45" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    <text x="75" y="47" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Attempt 4: ping works</text>
+  </g>
+
+  
+  <g transform="translate(40, 668)">
+    <rect width="930" height="102" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="36" cy="51" r="24" fill="#207448"/>
+    <text x="36" y="59" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    <rect x="75" y="16" width="830" height="70" rx="4" fill="#e8f1ea"/>
+    <text x="90" y="44" font-family="monospace" font-size="24" fill="#207448">
+      <tspan x="90" dy="0">echo net.ipv4.ip_forward = 1 into</tspan>
+      <tspan x="90" dy="28">/etc/sysctl.d/90-forward.conf; sysctl --system</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1010, 180)">
+    <rect width="550" height="590" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(25, 20)">
+      <rect x="0" y="0" width="46" height="46" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="8" y1="14" x2="38" y2="14" stroke="#207448" stroke-width="3"/>
+      <line x1="8" y1="24" x2="30" y2="24" stroke="#207448" stroke-width="3"/>
+      <line x1="8" y1="34" x2="22" y2="34" stroke="#207448" stroke-width="3"/>
+    </g>
+
+    
+    <text x="85" y="40" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="85" dy="0">What forwarding changes</tspan>
+      <tspan x="85" dy="34">in the packet</tspan>
+    </text>
+
+    
+    <rect x="25" y="125" width="500" height="85" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="45" y="174" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">TTL 64 becomes 63;</text>
+
+    
+    <rect x="25" y="230" width="500" height="100" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="45" y="272" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="45" dy="0">a new frame header is built</tspan>
+      <tspan x="45" dy="30">with a new MAC;</tspan>
+    </text>
+
+    
+    <rect x="25" y="350" width="500" height="85" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="45" y="401" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">the IPs stay unchanged;</text>
+
+    
+    <rect x="25" y="455" width="500" height="105" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="45" y="498" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="45" dy="0">tcpdump -e shows the</tspan>
+      <tspan x="45" dy="32">MAC rewrite</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 790)">
+    <rect width="1520" height="315" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(25, 16)">
+      <path d="M 22 4 L 40 4 C 40 24 30 36 22 40 C 14 36 4 24 4 4 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <polyline points="13,20 19,26 31,14" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    
+    <text x="75" y="45" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">If forwarding is on and traffic still does not pass</text>
+
+    
+    
+    <rect x="25" y="70" width="720" height="105" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="45" y="112" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="45" dy="0" font-weight="bold">firewall FORWARD policy</tspan>
+      <tspan x="45" dy="32">(nftables forward hook, default DROP under Docker)</tspan>
+    </text>
+
+    
+    <rect x="775" y="70" width="720" height="105" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="795" y="112" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="795" dy="0">NAT: nft add rule ip nat postrouting</tspan>
+      <tspan x="795" dy="32">oifname eno1 masquerade</tspan>
+    </text>
+
+    
+    
+    <rect x="25" y="190" width="460" height="100" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="45" y="248" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">rp_filter</text>
+
+    
+    <rect x="510" y="190" width="460" height="100" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="530" y="248" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">ICMP redirect handling</text>
+
+    
+    <rect x="995" y="190" width="500" height="100" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1015" y="232" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1015" dy="0">IPv6: accept_ra=2 to keep</tspan>
+      <tspan x="1015" dy="30">SLAAC while forwarding</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="40" y="1125" width="1520" height="55" rx="8" fill="#207448"/>
+  <text x="800" y="1161" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Kubernetes nodes need ip_forward=1; per-core software forwarding is on the order of a few Mpps</text>
+</svg>

@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Molecule role lifecycle and the Testinfra assertions</title>
+  <desc>Visual infographic explaining the Molecule role lifecycle steps and Testinfra host verification assertions.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <polygon points="0 2, 12 7, 0 12" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="78" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Molecule role lifecycle and the Testinfra assertions</text>
+  <text x="40" y="122" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#52635b">
+    <tspan x="40" dy="0">Ansible: Up and Running, chapter 14, Quality Assurance with Molecule;</tspan>
+    <tspan x="40" dy="32">modelled in code/part03/python_testing_quality_ci.py</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="180" width="270" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="82" cy="225" r="22" fill="#207448"/>
+  <text x="82" y="233" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <rect x="180" y="205" width="48" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <line x1="204" y1="215" x2="204" y2="235" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="194" y1="225" x2="214" y2="225" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="175" y="315" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="175" dy="0">molecule</tspan>
+    <tspan x="175" dy="40">create</tspan>
+  </text>
+
+  
+  <line x1="310" y1="320" x2="340" y2="320" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)"/>
+
+  
+  <rect x="340" y="180" width="270" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="382" cy="225" r="22" fill="#207448"/>
+  <text x="382" y="233" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <circle cx="510" cy="225" r="14" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <line x1="510" y1="205" x2="510" y2="211" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="510" y1="239" x2="510" y2="245" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="490" y1="225" x2="496" y2="225" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="524" y1="225" x2="530" y2="225" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="475" y="315" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="475" dy="0">molecule</tspan>
+    <tspan x="475" dy="40">converge</tspan>
+  </text>
+
+  
+  <line x1="610" y1="320" x2="640" y2="320" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)"/>
+
+  
+  <rect x="640" y="180" width="320" height="280" rx="12" fill="#fff5ec" stroke="#db8129" stroke-width="3"/>
+  <circle cx="682" cy="225" r="22" fill="#db8129"/>
+  <text x="682" y="233" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <path d="M 810 215 A 16 16 0 1 1 800 238" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+  <polygon points="806,210 818,214 810,224" fill="#db8129"/>
+  <text x="800" y="295" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">molecule</tspan>
+    <tspan x="800" dy="36">idempotence</tspan>
+  </text>
+  <text x="800" y="385" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#db8129" text-anchor="middle">
+    <tspan x="800" dy="0">run the role again</tspan>
+    <tspan x="800" dy="32">and expect no changes</tspan>
+  </text>
+
+  
+  <line x1="960" y1="320" x2="990" y2="320" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)"/>
+
+  
+  <rect x="990" y="180" width="270" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="1032" cy="225" r="22" fill="#207448"/>
+  <text x="1032" y="233" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <path d="M 1150 205 L 1170 213 L 1170 230 C 1170 242 1150 250 1150 250 C 1150 250 1130 242 1130 230 L 1130 213 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <polyline points="1142,226 1148,232 1158,220" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1125" y="315" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1125" dy="0">molecule</tspan>
+    <tspan x="1125" dy="40">verify</tspan>
+  </text>
+
+  
+  <line x1="1260" y1="320" x2="1290" y2="320" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)"/>
+
+  
+  <rect x="1290" y="180" width="270" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="1332" cy="225" r="22" fill="#207448"/>
+  <text x="1332" y="233" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  
+  <path d="M 1435 214 L 1465 214 M 1440 214 L 1443 245 L 1457 245 L 1460 214 M 1445 214 L 1445 208 L 1455 208 L 1455 214" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1425" y="315" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1425" dy="0">molecule</tspan>
+    <tspan x="1425" dy="40">destroy</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="40" y="495" width="500" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="70" y="525" width="56" height="42" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <line x1="70" y1="540" x2="126" y2="540" stroke="#207448" stroke-width="2"/>
+  <circle cx="80" cy="533" r="2.5" fill="#207448"/>
+  <circle cx="88" cy="533" r="2.5" fill="#207448"/>
+  <polyline points="80,550 86,555 80,560" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="92" y1="560" x2="102" y2="560" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="70" y="630" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="70" dy="0">molecule init scenario -r ssh</tspan>
+    <tspan x="70" dy="42">--driver-name docker</tspan>
+  </text>
+
+  
+  <rect x="40" y="805" width="500" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="70" y="835" width="56" height="14" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+  <rect x="70" y="855" width="56" height="14" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+  <rect x="70" y="875" width="56" height="14" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+  <text x="70" y="960" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="70" dy="0">Docker, Podman, Vagrant</tspan>
+    <tspan x="70" dy="42">or VirtualBox, cloud drivers</tspan>
+  </text>
+
+  
+  <rect x="570" y="495" width="990" height="585" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 605 520 L 625 527 L 625 542 C 625 554 605 562 605 562 C 605 562 585 554 585 542 L 585 527 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <polyline points="597,540 603,546 613,534" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="645" y="548" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Testinfra verify</text>
+
+  
+  <rect x="595" y="575" width="940" height="115" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <text x="620" y="612" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="620" dy="0">hosts = testinfra.utils.ansible_runner.AnsibleRunner(</tspan>
+    <tspan x="620" dy="32">    os.environ[MOLECULE_INVENTORY_FILE]</tspan>
+    <tspan x="620" dy="32">).get_hosts(all)</tspan>
+  </text>
+
+  
+  <rect x="595" y="705" width="940" height="270" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  
+  <circle cx="625" cy="742" r="10" fill="#207448"/>
+  <polyline points="620,742 624,746 631,738" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="650" y="750" font-family="monospace" font-size="24" fill="#303a36">host.package(openssh-server).is_installed</text>
+
+  
+  <circle cx="625" cy="798" r="10" fill="#207448"/>
+  <polyline points="620,798 624,802 631,794" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="650" y="806" font-family="monospace" font-size="24" fill="#303a36">host.service(sshd).is_running</text>
+
+  
+  <circle cx="625" cy="860" r="10" fill="#207448"/>
+  <polyline points="620,860 624,864 631,856" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="650" y="860" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="650" dy="0">host.file(/etc/ssh/ssh_host_ed25519_key.pub)</tspan>
+    <tspan x="690" dy="30">.mode == 0o644</tspan>
+  </text>
+
+  
+  <circle cx="625" cy="942" r="10" fill="#207448"/>
+  <polyline points="620,942 624,946 631,938" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="650" y="950" font-family="monospace" font-size="24" fill="#303a36">host.user(sshd).exists</text>
+
+  
+  <rect x="595" y="990" width="940" height="70" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5"/>
+  <polygon points="625,1008 615,1026 623,1026 619,1042 633,1022 625,1022" fill="#207448"/>
+  <text x="650" y="1034" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">Goss: goss -g test_sshd.yml validate</text>
+
+  
+  <rect x="40" y="1105" width="1520" height="70" rx="10" fill="#207448"/>
+  <text x="800" y="1149" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Testinfra checks the real state of the host</text>
+</svg>

@@ -1,0 +1,239 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>The whole cluster from bare metal to job</title>
+  <desc>Flowchart illustrating cluster lifecycle from bare-metal planning and provisioning to acceptance testing and Day-2 operations.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-green-left" markerWidth="14" markerHeight="14" refX="1" refY="7" orient="auto">
+      <path d="M 11 2 L 1 7 L 11 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange-right" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+
+    
+    <filter id="card-shadow" x="-3%" y="-4%" width="106%" height="110%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#153624" flood-opacity="0.06" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The whole cluster from bare metal to job</text>
+
+  
+  
+  
+  <rect x="90" y="85" width="670" height="340" rx="16" fill="#ffffff" stroke="#bcd4c3" stroke-width="2" filter="url(#card-shadow)" />
+  <rect x="110" y="98" width="410" height="36" rx="8" fill="#e8f1ea" />
+  <text x="125" y="123" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">1. Plan (Out-of-Band &amp; Facility)</text>
+
+  
+  <g transform="translate(115, 145)">
+    <rect width="620" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(25, 29)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="48" height="18" rx="3" />
+      <rect x="2" y="28" width="48" height="18" rx="3" />
+      <circle cx="10" cy="13" r="2" fill="#207448" />
+      <circle cx="10" cy="37" r="2" fill="#207448" />
+      <line x1="20" y1="13" x2="42" y2="13" />
+      <line x1="20" y1="37" x2="42" y2="37" />
+      <rect x="36" y="20" width="16" height="14" rx="2" fill="#e8f1ea" />
+      <line x1="40" y1="17" x2="40" y2="20" />
+      <line x1="48" y1="17" x2="48" y2="20" />
+    </g>
+    <text x="96" y="48" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Hardware &amp; BMC Inventory</text>
+    <text x="96" y="88" font-family="monospace" font-size="24" fill="#303a36">nodes.csv, hardware.csv</text>
+  </g>
+
+  
+  <g transform="translate(115, 285)">
+    <rect width="620" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(25, 29)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 18 4 L 8 28 L 22 28 L 12 50" />
+      <path d="M 38 12 L 38 42" />
+      <path d="M 28 20 L 48 34" />
+      <path d="M 28 34 L 48 20" />
+      <circle cx="38" cy="27" r="3" fill="#207448" />
+    </g>
+    <text x="96" y="48" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Facility Power &amp; Cooling</text>
+    <text x="96" y="88" font-family="sans-serif" font-size="24" fill="#303a36">10.2 kW/node, CDU budget (6.30)</text>
+  </g>
+
+  
+  
+  
+  <rect x="840" y="85" width="670" height="665" rx="16" fill="#ffffff" stroke="#bcd4c3" stroke-width="2" filter="url(#card-shadow)" />
+  <rect x="860" y="98" width="460" height="36" rx="8" fill="#e8f1ea" />
+  <text x="875" y="123" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">2. Build (Provisioning to Scheduler)</text>
+
+  
+  <g transform="translate(865, 145)">
+    <rect width="620" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(25, 29)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="44" height="24" rx="4" />
+      <circle cx="12" cy="18" r="2.5" fill="#207448" />
+      <line x1="26" y1="30" x2="26" y2="44" />
+      <line x1="10" y1="44" x2="42" y2="44" />
+      <path d="M 34 18 L 40 18" />
+      <path d="M 26 12 L 26 24" />
+    </g>
+    <text x="96" y="48" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Provisioning Plane</text>
+    <text x="96" y="88" font-family="sans-serif" font-size="24" fill="#303a36">DHCP, iPXE, OS image (6.22, 6.23)</text>
+  </g>
+
+  
+  <g transform="translate(865, 285)">
+    <rect width="620" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(25, 29)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="4" width="40" height="48" rx="4" />
+      <circle cx="26" cy="18" r="7" />
+      <path d="M 14 36 C 14 30 38 30 38 36" />
+      <line x1="16" y1="42" x2="36" y2="42" />
+    </g>
+    <text x="96" y="48" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Identity &amp; Accounting</text>
+    <text x="96" y="88" font-family="sans-serif" font-size="24" fill="#303a36">LDAP/SSSD, sacctmgr QOS (6.24)</text>
+  </g>
+
+  
+  <g transform="translate(865, 425)">
+    <rect width="620" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(25, 34)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="26" cy="12" rx="20" ry="7" />
+      <path d="M 6 12 V 26 C 6 30 46 30 46 26 V 12" />
+      <path d="M 6 26 V 40 C 6 44 46 44 46 40 V 26" />
+      <circle cx="14" cy="48" r="2.5" fill="#207448" />
+      <circle cx="38" cy="48" r="2.5" fill="#207448" />
+      <path d="M 26 44 L 14 48 L 38 48" />
+    </g>
+    <text x="96" y="44" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Parallel Storage &amp; Fabrics</text>
+    <text x="96" y="78" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">IB compute/storage,</tspan>
+      <tspan x="96" dy="30">Lustre (6.19-6.21)</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(865, 575)">
+    <rect width="620" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(25, 34)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="26" cy="26" r="10" />
+      <path d="M 26 6 L 26 12 M 26 40 L 26 46 M 6 26 L 12 26 M 40 26 L 46 26" />
+      <path d="M 12 12 L 17 17 M 35 35 L 40 40 M 12 40 L 17 35 M 35 17 L 40 12" />
+    </g>
+    <text x="96" y="44" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Workload Orchestration</text>
+    <text x="96" y="78" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">slurm.conf, gres,</tspan>
+      <tspan x="96" dy="30">cgroup v2 (6.8-6.13)</tspan>
+    </text>
+  </g>
+
+  
+  
+  
+  <rect x="840" y="775" width="670" height="205" rx="16" fill="#ffffff" stroke="#bcd4c3" stroke-width="2" filter="url(#card-shadow)" />
+  <rect x="860" y="788" width="400" height="36" rx="8" fill="#e8f1ea" />
+  <text x="875" y="813" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">3. Prove (Acceptance &amp; Burn-In)</text>
+
+  
+  <g transform="translate(865, 835)">
+    <rect width="620" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(25, 34)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 26 6 L 44 14 V 28 C 44 38 26 46 26 46 C 26 46 8 38 8 28 V 14 Z" />
+      <path d="M 17 26 L 23 32 L 35 19" />
+    </g>
+    <text x="96" y="44" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Acceptance Gate</text>
+    <text x="96" y="78" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">NHC, HPL, IOR,</tspan>
+      <tspan x="96" dy="30">nccl-tests (6.14, 6.28)</tspan>
+    </text>
+  </g>
+
+  
+  
+  
+  <rect x="90" y="775" width="670" height="365" rx="16" fill="#ffffff" stroke="#bcd4c3" stroke-width="2" filter="url(#card-shadow)" />
+  <rect x="110" y="788" width="340" height="36" rx="8" fill="#e8f1ea" />
+  <text x="125" y="813" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">4. Run (Day-2 Operations)</text>
+
+  
+  <g transform="translate(115, 835)">
+    <rect width="620" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(25, 29)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="44" height="40" rx="4" />
+      <path d="M 10 28 L 18 28 L 23 16 L 29 38 L 34 28 L 42 28" />
+    </g>
+    <text x="96" y="48" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Telemetry &amp; Alerting</text>
+    <text x="96" y="88" font-family="sans-serif" font-size="24" fill="#303a36">Exporter, DCGM, SEL (6.26)</text>
+  </g>
+
+  
+  <g transform="translate(115, 975)">
+    <rect width="620" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(25, 34)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 26 8 A 18 18 0 1 1 10 32" />
+      <polyline points="26 2 26 8 32 8" />
+      <path d="M 22 22 L 32 32 M 34 26 L 38 30 M 26 34 L 30 38" />
+    </g>
+    <text x="96" y="44" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Upgrades, Backups &amp; Drains</text>
+    <text x="96" y="78" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">Restic, imageupdate,</tspan>
+      <tspan x="96" dy="30">HA (6.15, 6.27)</tspan>
+    </text>
+  </g>
+
+  
+  
+  
+
+   PROV (Horizontal across gap) -->
+  <path d="M 735 185 L 851 185" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+   PROV (Orthogonal step, non-crossing below INV) -->
+  <path d="M 735 342 H 795 V 220 H 851" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#arrow-green)" />
+
+   ID (Vertical Down) -->
+  <path d="M 1175 260 L 1175 271" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+   STO (Vertical Down) -->
+  <path d="M 1175 400 L 1175 411" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+   SCH (Vertical Down) -->
+  <path d="M 1175 550 L 1175 561" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+   TEST (Vertical Down Across Subgraphs) -->
+  <path d="M 1175 700 L 1175 821" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+   MON (Horizontal Across Gap, Right to Left) -->
+  <path d="M 865 892 L 749 892" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green-left)" />
+
+   OPS (Vertical Down) -->
+  <path d="M 425 950 L 425 961" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 115 1037 H 45 V 202 H 101" fill="none" stroke="#db8129" stroke-width="3.5" stroke-dasharray="10 7" stroke-linejoin="round" marker-end="url(#arrow-orange-right)" />
+
+  
+  <g transform="translate(68, 550)">
+    <rect width="665" height="84" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" stroke-dasharray="6 4" filter="url(#card-shadow)" />
+    <text x="24" y="34" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="24" dy="0">RMA replacement, new SU,</tspan>
+      <tspan x="24" dy="30">or user onboarding</tspan>
+    </text>
+  </g>
+
+</svg>

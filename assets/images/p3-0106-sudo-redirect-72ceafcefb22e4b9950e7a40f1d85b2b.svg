@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Why sudo echo x &gt; /root/file fails: your shell opens the file first</title>
+  <desc>Visual infographic comparing the failed sudo redirection timeline against the working sudo tee pipeline, explaining the environment trap and the core rule that redirection is handled by the unprivileged shell before sudo ever starts.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Why sudo echo x &gt; /root/file fails:</text>
+  <text x="800" y="110" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">your shell opens the file first</text>
+
+  
+  
+  
+  <rect x="50" y="140" width="725" height="640" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="65" y="155" width="695" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="412" y="193" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="30" font-weight="bold" fill="#303a36">sudo echo x &gt; /root/f (fails)</text>
+
+  
+  <rect x="65" y="230" width="695" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="108" cy="302" r="24" fill="#207448" />
+  <text x="108" y="310" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(144, 274)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="4" width="52" height="48" rx="6" />
+    <line x1="2" y1="16" x2="54" y2="16" stroke-width="3" />
+    <path d="M 12 28 L 22 35 L 12 42" />
+    <line x1="28" y1="42" x2="44" y2="42" />
+  </g>
+  
+  <text x="216" y="272" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="216" dy="0" font-weight="bold">Your shell (unprivileged, your UID)</tspan>
+    <tspan x="216" dy="32">parses the line and opens /root/f</tspan>
+    <tspan x="216" dy="32">for the &gt; redirection</tspan>
+  </text>
+
+  
+  <line x1="412" y1="375" x2="412" y2="418" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="65" y="420" width="695" height="135" rx="12" fill="#f0f4f1" stroke="#415148" stroke-width="3" />
+  
+  <circle cx="108" cy="487" r="24" fill="#415148" />
+  <text x="108" y="495" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(144, 459)" stroke="#415148" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="17,3 39,3 53,17 53,39 39,53 17,53 3,39 3,17" />
+    <line x1="15" y1="28" x2="41" y2="28" stroke-width="5" />
+  </g>
+  
+  <text x="216" y="475" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="216" dy="0" font-size="30" font-weight="bold">Permission denied:</tspan>
+    <tspan x="216" dy="38" font-size="26" font-weight="bold" fill="#415148">sudo never starts</tspan>
+  </text>
+
+  
+  <rect x="65" y="600" width="695" height="145" rx="12" fill="#eaedea" stroke="#88998e" stroke-width="2" stroke-dasharray="8,6" />
+  
+  <circle cx="108" cy="672" r="24" fill="#88998e" />
+  <text x="108" y="680" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(144, 644)" stroke="#88998e" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="22" width="40" height="30" rx="6" />
+    <path d="M 16 22 L 16 14 C 16 7 40 7 40 14 L 40 22" />
+    <circle cx="28" cy="35" r="3" fill="#88998e" />
+  </g>
+  
+  <text x="216" y="660" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="26" font-weight="bold" fill="#627068">
+    <tspan x="216" dy="0">sudo echo x</tspan>
+    <tspan x="216" dy="34" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="normal">(would have run as root)</tspan>
+  </text>
+  
+  <rect x="525" y="648" width="215" height="48" rx="8" fill="#d6ddd8" stroke="#88998e" stroke-width="2" />
+  <text x="632" y="680" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#4b5750">never reached</text>
+
+
+  
+  
+  
+  <rect x="825" y="140" width="725" height="640" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="840" y="155" width="695" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1187" y="193" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="30" font-weight="bold" fill="#303a36">echo x | sudo tee /root/f (works)</text>
+
+  
+  <rect x="840" y="230" width="695" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="883" cy="302" r="24" fill="#207448" />
+  <text x="883" y="310" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(919, 274)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 12 L 26 12 C 34 12 40 18 40 26 L 40 46" />
+    <path d="M 18 12 L 18 4 L 4 4 L 4 20 L 12 20" />
+    <line x1="30" y1="46" x2="50" y2="46" />
+    <path d="M 12 32 L 22 42 L 12 52" stroke-width="3" />
+  </g>
+  
+  <text x="991" y="284" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+    <tspan x="991" dy="0" font-weight="bold">Your shell runs echo x,</tspan>
+    <tspan x="991" dy="36" font-size="24">output goes into the pipe</tspan>
+  </text>
+
+  
+  <line x1="1187" y1="375" x2="1187" y2="418" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="840" y="420" width="695" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="883" cy="487" r="24" fill="#207448" />
+  <text x="883" y="495" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(919, 459)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 4 L 50 12 L 50 28 C 50 42 28 52 28 52 C 28 52 6 42 6 28 L 6 12 Z" />
+    <path d="M 20 26 L 26 32 L 38 18" stroke-width="4" />
+  </g>
+  
+  <text x="991" y="496" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">sudo starts tee as root</text>
+
+  
+  <line x1="1187" y1="555" x2="1187" y2="598" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="840" y="600" width="695" height="145" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+  
+  <circle cx="883" cy="672" r="24" fill="#db8129" />
+  <text x="883" y="680" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(919, 644)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="28" cy="12" rx="20" ry="8" />
+    <path d="M 8 12 L 8 40 C 8 45 16 49 28 49 C 40 49 48 45 48 40 L 48 12" />
+    <path d="M 8 26 C 8 31 16 35 28 35 C 40 35 48 31 48 26" />
+    <line x1="38" y1="36" x2="52" y2="50" stroke-width="4" />
+  </g>
+  
+  <text x="991" y="658" font-family="system-ui, -apple-system, sans-serif">
+    <tspan x="991" dy="0" font-size="28" font-weight="bold" fill="#db8129">tee, running as root,</tspan>
+    <tspan x="991" dy="38" font-size="26" font-weight="bold" fill="#303a36">opens /root/f and writes x</tspan>
+  </text>
+
+
+  
+  
+  
+  <rect x="50" y="805" width="1500" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(75, 822)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="18" r="14" />
+    <line x1="18" y1="4" x2="18" y2="8" />
+    <line x1="18" y1="28" x2="18" y2="32" />
+    <line x1="4" y1="18" x2="8" y2="18" />
+    <line x1="28" y1="18" x2="32" y2="18" />
+    <line x1="18" y1="13" x2="18" y2="19" stroke-width="3" />
+    <circle cx="18" cy="24" r="1.5" fill="#207448" />
+  </g>
+  <text x="125" y="850" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">The environment trap</text>
+
+  
+  <rect x="75" y="875" width="690" height="140" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(95, 917)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="4,6 48,6 30,28 30,48 22,44 22,28" />
+    <line x1="12" y1="16" x2="40" y2="16" stroke-width="3" />
+  </g>
+  <text x="165" y="914" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">
+    <tspan x="165" dy="0" font-weight="bold">export FOO=1; sudo env | grep FOO</tspan>
+    <tspan x="165" dy="36" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold">prints nothing</tspan>
+    <tspan x="165" dy="34" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#55665d">(env_reset and secure_path)</tspan>
+  </text>
+
+  
+  <rect x="835" y="875" width="690" height="140" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(855, 917)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="18" r="12" />
+    <line x1="27" y1="27" x2="48" y2="48" />
+    <line x1="40" y1="40" x2="48" y2="32" />
+    <line x1="44" y1="44" x2="52" y2="36" />
+  </g>
+  <text x="925" y="934" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="925" dy="0">sudo -E, env_keep, or</tspan>
+    <tspan x="925" dy="40" fill="#207448">sudo env FOO=1 cmd keeps it</tspan>
+  </text>
+
+
+  
+  
+  
+  <rect x="50" y="1060" width="1500" height="80" rx="12" fill="#207448" />
+  
+  <g transform="translate(75, 1072)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22" stroke-width="3" />
+    <path d="M 18 28 L 25 35 L 39 19" stroke-width="4" />
+  </g>
+  <text x="800" y="1111" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">The redirection is done by YOUR shell, before sudo starts</text>
+</svg>

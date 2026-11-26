@@ -1,0 +1,246 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Architecture</title>
+  <desc>Lustre architecture diagram showing Clients, Metadata servers and targets, and Data servers and targets.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1150" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Architecture</text>
+
+  
+  
+  
+  <g id="subgraph-clients">
+    <rect x="120" y="90" width="1360" height="175" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="150" y="128" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Clients</text>
+
+    
+    <g id="node-C1">
+      <rect x="160" y="145" width="640" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(182, 168)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="0" width="48" height="34" rx="4" />
+        <line x1="16" y1="44" x2="32" y2="44" />
+        <line x1="24" y1="34" x2="24" y2="44" />
+        <polyline points="10,12 18,17 10,22" />
+        <line x1="22" y1="22" x2="32" y2="22" />
+      </g>
+      <text x="252" y="202" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Client with <tspan font-family="monospace" font-size="26">lustre.ko + LNet</tspan></text>
+    </g>
+
+    
+    <g id="node-C2">
+      <rect x="960" y="145" width="480" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(995, 168)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="0" width="48" height="34" rx="4" />
+        <line x1="16" y1="44" x2="32" y2="44" />
+        <line x1="24" y1="34" x2="24" y2="44" />
+        <polyline points="10,12 18,17 10,22" />
+        <line x1="22" y1="22" x2="32" y2="22" />
+      </g>
+      <text x="1075" y="204" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Client</text>
+    </g>
+  </g>
+
+  
+  
+  
+  <g id="subgraph-metadata">
+    <rect x="120" y="415" width="1360" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="150" y="453" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Metadata</text>
+
+    
+    <g id="group-MDS1-MDT0">
+      
+      <rect x="150" y="480" width="220" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <g transform="translate(168, 518)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="4" width="48" height="38" rx="4" />
+        <line x1="0" y1="23" x2="48" y2="23" />
+        <circle cx="12" cy="14" r="2.5" fill="#207448" />
+        <line x1="22" y1="14" x2="38" y2="14" />
+        <circle cx="12" cy="33" r="2.5" fill="#207448" />
+        <line x1="22" y1="33" x2="38" y2="33" />
+      </g>
+      <text x="238" y="553" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">MDS 1</text>
+
+      
+      <line x1="370" y1="542" x2="405" y2="542" stroke="#207448" stroke-width="4" />
+
+      
+      <rect x="405" y="480" width="170" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <g transform="translate(423, 518)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="22" cy="10" rx="20" ry="7" />
+        <path d="M2,10 v22 c0,3.9 9,7 20,7 c11,0 20,-3.1 20,-7 v-22" />
+        <path d="M2,21 c0,3.9 9,7 20,7 c11,0 20,-3.1 20,-7" />
+      </g>
+      <text x="478" y="553" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">MDT0</text>
+    </g>
+
+    
+    <g id="node-MGS">
+      <rect x="610" y="480" width="380" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(632, 518)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="8" />
+        <path d="M24,4 L24,10 M24,38 L24,44 M4,24 L10,24 M38,24 L44,24 M10,10 L14,14 M34,34 L38,38 M10,38 L14,34 M34,10 L38,14" />
+        <circle cx="24" cy="24" r="17" />
+      </g>
+      <text x="696" y="553" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">MGS: configuration</text>
+    </g>
+
+    
+    <g id="group-MDS2-MDT1">
+      
+      <rect x="1025" y="480" width="220" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <g transform="translate(1043, 518)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="4" width="48" height="38" rx="4" />
+        <line x1="0" y1="23" x2="48" y2="23" />
+        <circle cx="12" cy="14" r="2.5" fill="#207448" />
+        <line x1="22" y1="14" x2="38" y2="14" />
+        <circle cx="12" cy="33" r="2.5" fill="#207448" />
+        <line x1="22" y1="33" x2="38" y2="33" />
+      </g>
+      <text x="1113" y="553" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">MDS 2</text>
+
+      
+      <line x1="1245" y1="542" x2="1280" y2="542" stroke="#207448" stroke-width="4" />
+
+      
+      <rect x="1280" y="480" width="170" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <g transform="translate(1298, 518)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="22" cy="10" rx="20" ry="7" />
+        <path d="M2,10 v22 c0,3.9 9,7 20,7 c11,0 20,-3.1 20,-7 v-22" />
+        <path d="M2,21 c0,3.9 9,7 20,7 c11,0 20,-3.1 20,-7" />
+      </g>
+      <text x="1353" y="553" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">MDT1</text>
+    </g>
+  </g>
+
+  
+  
+  
+  <g id="subgraph-data">
+    <rect x="120" y="760" width="1360" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="150" y="798" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Data</text>
+
+    
+    <g id="group-OSS1-OSTs">
+      
+      <rect x="250" y="825" width="370" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <g transform="translate(275, 848)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="4" width="48" height="36" rx="4" />
+        <line x1="0" y1="22" x2="48" y2="22" />
+        <circle cx="12" cy="13" r="2.5" fill="#207448" />
+        <line x1="22" y1="13" x2="38" y2="13" />
+        <circle cx="12" cy="31" r="2.5" fill="#207448" />
+        <line x1="22" y1="31" x2="38" y2="31" />
+      </g>
+      <text x="355" y="881" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">OSS 1</text>
+
+      
+      <path d="M 435,915 L 435,950 M 265,950 L 605,950 M 265,950 L 265,980 M 605,950 L 605,980" stroke="#207448" stroke-width="3.5" fill="none" />
+
+      
+      <rect x="175" y="980" width="180" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <g transform="translate(193, 1002)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="22" cy="10" rx="20" ry="7" />
+        <path d="M2,10 v22 c0,3.9 9,7 20,7 c11,0 20,-3.1 20,-7 v-22" />
+        <path d="M2,21 c0,3.9 9,7 20,7 c11,0 20,-3.1 20,-7" />
+      </g>
+      <text x="248" y="1036" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">OST0</text>
+
+      
+      <rect x="515" y="980" width="180" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <g transform="translate(533, 1002)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="22" cy="10" rx="20" ry="7" />
+        <path d="M2,10 v22 c0,3.9 9,7 20,7 c11,0 20,-3.1 20,-7 v-22" />
+        <path d="M2,21 c0,3.9 9,7 20,7 c11,0 20,-3.1 20,-7" />
+      </g>
+      <text x="588" y="1036" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">OST1</text>
+    </g>
+
+    
+    <g id="group-OSS2-OSTs">
+      
+      <rect x="970" y="825" width="370" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <g transform="translate(995, 848)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="4" width="48" height="36" rx="4" />
+        <line x1="0" y1="22" x2="48" y2="22" />
+        <circle cx="12" cy="13" r="2.5" fill="#207448" />
+        <line x1="22" y1="13" x2="38" y2="13" />
+        <circle cx="12" cy="31" r="2.5" fill="#207448" />
+        <line x1="22" y1="31" x2="38" y2="31" />
+      </g>
+      <text x="1075" y="881" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">OSS 2</text>
+
+      
+      <path d="M 1155,915 L 1155,950 M 985,950 L 1325,950 M 985,950 L 985,980 M 1325,950 L 1325,980" stroke="#207448" stroke-width="3.5" fill="none" />
+
+      
+      <rect x="895" y="980" width="180" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <g transform="translate(913, 1002)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="22" cy="10" rx="20" ry="7" />
+        <path d="M2,10 v22 c0,3.9 9,7 20,7 c11,0 20,-3.1 20,-7 v-22" />
+        <path d="M2,21 c0,3.9 9,7 20,7 c11,0 20,-3.1 20,-7" />
+      </g>
+      <text x="968" y="1036" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">OST2</text>
+
+      
+      <rect x="1235" y="980" width="180" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <g transform="translate(1253, 1002)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="22" cy="10" rx="20" ry="7" />
+        <path d="M2,10 v22 c0,3.9 9,7 20,7 c11,0 20,-3.1 20,-7 v-22" />
+        <path d="M2,21 c0,3.9 9,7 20,7 c11,0 20,-3.1 20,-7" />
+      </g>
+      <text x="1308" y="1036" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">OST3</text>
+    </g>
+  </g>
+
+  
+  
+  
+
+  
+  <line x1="800" y1="265" x2="800" y2="470" stroke="#207448" stroke-width="3.5" stroke-dasharray="8 6" marker-end="url(#arrow-green)" />
+  <text x="818" y="375" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">mount: find config</text>
+
+   MDS1 -->
+  <line x1="260" y1="240" x2="260" y2="470" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  
+  <circle cx="260" cy="355" r="24" fill="#207448" />
+  <text y="364" font-family="sans-serif" font-size="26">
+    <tspan x="260" text-anchor="middle" font-weight="bold" fill="#ffffff">1</tspan>
+    <tspan x="296" font-weight="bold" fill="#207448">open/lookup/layout</tspan>
+  </text>
+
+   MDS2 -->
+  <line x1="1135" y1="240" x2="1135" y2="470" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  
+  <path d="M 160,192 L 65,192 L 65,700 L 435,700 L 435,815" stroke="#db8129" stroke-width="4.5" fill="none" marker-end="url(#arrow-orange)" />
+  <path d="M 435,700 L 1155,700 L 1155,815" stroke="#db8129" stroke-width="4.5" fill="none" marker-end="url(#arrow-orange)" />
+
+  
+  <circle cx="560" cy="668" r="24" fill="#db8129" />
+  <text y="677" font-family="sans-serif" font-size="28">
+    <tspan x="560" text-anchor="middle" font-weight="bold" fill="#ffffff">2</tspan>
+    <tspan x="596" font-weight="bold" fill="#db8129">read/write stripes in parallel</tspan>
+  </text>
+
+  
+  
+  <path d="M 1440,192 L 1535,192 L 1535,870 L 1350,870" stroke="#207448" stroke-width="4.5" fill="none" marker-end="url(#arrow-green)" />
+</svg>

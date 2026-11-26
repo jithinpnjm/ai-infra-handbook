@@ -1,0 +1,192 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>From requests per second to a GPU count, line by line</title>
+  <desc>Worked example calculating GPU memory and count from request rate and model parameters.</desc>
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  
+  <text x="40" y="55" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">From requests per second to a GPU count, line by line</text>
+  
+  <g id="assumptions">
+    <rect x="40" y="80" width="1520" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="60" y="112" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">Ladder with the worked example assumptions (not Nebius figures): peak 1,000 requests per second,</tspan>
+      <tspan x="60" dy="30">average prompt 1,500 tokens, average output 300, TTFT 0.5 s, 0.03 s per output token,</tspan>
+      <tspan x="60" dy="30">8B model with 32 layers, 8 KV heads, head size 128, 16-bit values, 80 GB H100, 90 percent usable.</tspan>
+    </text>
+  </g>
+  
+  
+  <g id="step-1">
+    <rect x="40" y="216" width="740" height="104" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="82" cy="268" r="24" fill="#207448"/>
+    <text x="82" y="276" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="124" y="244" width="44" height="48" rx="6"/>
+            <polyline points="134,260 142,268 134,276"/>
+            <line x1="146" y1="276" x2="158" y2="276"/>
+        </g>
+    <text x="190" y="262" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">prompt tokens per second <tspan x="190" dy="34" font-family="monospace" font-size="24" font-weight="normal">1,000 x 1,500 = 1,500,000</tspan></text>
+  </g>
+  
+  <g id="step-2">
+    <rect x="40" y="360" width="740" height="104" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="82" cy="412" r="24" fill="#207448"/>
+    <text x="82" y="420" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M124,390 h44 a4,4 0 0 1 4,4 v24 a4,4 0 0 1 -4,4 h-24 l-10,8 v-8 h-6 a4,4 0 0 1 -4,-4 v-24 a4,4 0 0 1 4,-4 z"/>
+            <line x1="134" y1="402" x2="158" y2="402"/>
+            <line x1="134" y1="410" x2="150" y2="410"/>
+        </g>
+    <text x="190" y="406" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">output tokens per second <tspan x="190" dy="34" font-family="monospace" font-size="24" font-weight="normal">1,000 x 300 = 300,000</tspan></text>
+  </g>
+  
+  <g id="step-3">
+    <rect x="40" y="504" width="740" height="104" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="82" cy="556" r="24" fill="#207448"/>
+    <text x="82" y="564" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="146" cy="556" r="22"/>
+            <polyline points="146,542 146,556 158,556"/>
+            <circle cx="146" cy="556" r="2" fill="#207448"/>
+        </g>
+    <text x="190" y="550" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">seconds per request <tspan x="190" dy="34" font-family="monospace" font-size="24" font-weight="normal">0.5 + 300 x 0.03 = 9.5</tspan></text>
+  </g>
+  
+  <g id="step-4">
+    <rect x="40" y="648" width="740" height="104" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="82" cy="700" r="24" fill="#207448"/>
+    <text x="82" y="708" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M124,682 h30 l8,0"/>
+            <polyline points="154,676 162,682 154,688"/>
+            <path d="M132,696 h30 l8,0"/>
+            <polyline points="162,690 170,696 162,702"/>
+            <path d="M124,710 h30 l8,0"/>
+            <polyline points="154,704 162,710 154,716"/>
+        </g>
+    <text x="190" y="694" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">requests in flight <tspan x="190" dy="34" font-family="monospace" font-size="24" font-weight="normal">by Little's law 1,000 x 9.5 = 9,500</tspan></text>
+  </g>
+  
+  <g id="step-5">
+    <rect x="40" y="792" width="740" height="104" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="82" cy="844" r="24" fill="#207448"/>
+    <text x="82" y="852" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="124" y="822" width="44" height="44" rx="6"/>
+            <line x1="146" y1="822" x2="146" y2="866"/>
+            <line x1="124" y1="844" x2="168" y2="844"/>
+            <circle cx="135" cy="833" r="3" fill="#207448"/>
+            <circle cx="157" cy="833" r="3" fill="#207448"/>
+            <circle cx="135" cy="855" r="3" fill="#207448"/>
+            <circle cx="157" cy="855" r="3" fill="#207448"/>
+        </g>
+    <text x="190" y="838" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">KV bytes per token <tspan x="190" dy="34" font-family="monospace" font-size="24" font-weight="normal">2 x 32 x 8 x 128 x 2 = 131,072</tspan></text>
+  </g>
+  
+  <g id="step-6">
+    <rect x="40" y="936" width="740" height="104" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="82" cy="988" r="24" fill="#207448"/>
+    <text x="82" y="996" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="124" y="974" width="44" height="28" rx="4"/>
+            <line x1="134" y1="974" x2="134" y2="984"/>
+            <line x1="146" y1="974" x2="146" y2="984"/>
+            <line x1="158" y1="974" x2="158" y2="984"/>
+            <line x1="132" y1="1002" x2="132" y2="1008"/>
+            <line x1="140" y1="1002" x2="140" y2="1008"/>
+            <line x1="152" y1="1002" x2="152" y2="1008"/>
+            <line x1="160" y1="1002" x2="160" y2="1008"/>
+        </g>
+    <text x="190" y="982" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">KV per request at 1,800 tokens <tspan x="190" dy="34" font-family="monospace" font-size="24" font-weight="normal">131,072 x 1,800 = 0.236 GB</tspan></text>
+  </g>
+  
+  <g id="step-7">
+    <rect x="820" y="216" width="740" height="104" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="862" cy="268" r="24" fill="#207448"/>
+    <text x="862" y="276" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="904" y="248" width="44" height="12" rx="3"/>
+            <circle cx="912" cy="254" r="1.5" fill="#207448"/>
+            <rect x="904" y="262" width="44" height="12" rx="3"/>
+            <circle cx="912" cy="268" r="1.5" fill="#207448"/>
+            <rect x="904" y="276" width="44" height="12" rx="3"/>
+            <circle cx="912" cy="282" r="1.5" fill="#207448"/>
+        </g>
+    <text x="970" y="262" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">KV for all in flight <tspan x="970" dy="34" font-family="monospace" font-size="24" font-weight="normal">9,500 x 0.236 = 2,241 GB</tspan></text>
+  </g>
+  
+  <g id="step-8">
+    <rect x="820" y="360" width="740" height="104" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="862" cy="412" r="24" fill="#207448"/>
+    <text x="862" y="420" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">8</text>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="912" cy="396" r="6"/>
+            <circle cx="912" cy="420" r="6"/>
+            <circle cx="940" cy="396" r="6"/>
+            <circle cx="940" cy="420" r="6"/>
+            <line x1="918" y1="396" x2="934" y2="396"/>
+            <line x1="918" y1="420" x2="934" y2="420"/>
+            <line x1="917" y1="401" x2="935" y2="415"/>
+            <line x1="917" y1="415" x2="935" y2="401"/>
+        </g>
+    <text x="970" y="406" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">weights <tspan x="970" dy="34" font-family="monospace" font-size="24" font-weight="normal">8 B x 2 bytes = 16 GB</tspan></text>
+  </g>
+  
+  <g id="step-9">
+    <rect x="820" y="504" width="740" height="104" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="862" cy="556" r="24" fill="#207448"/>
+    <text x="862" y="564" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">9</text>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="906" y="532" width="40" height="40" rx="6"/>
+            <path d="M906,548 h40"/>
+            <line x1="918" y1="558" x2="934" y2="558"/>
+            <line x1="922" y1="564" x2="930" y2="564"/>
+        </g>
+    <text x="970" y="550" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">KV room per GPU <tspan x="970" dy="34" font-family="monospace" font-size="24" font-weight="normal">80 x 0.9 - 16 = 56 GB</tspan></text>
+  </g>
+  
+  <g id="step-10">
+    <rect x="820" y="648" width="740" height="104" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="862" cy="700" r="24" fill="#207448"/>
+    <text x="862" y="708" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">10</text>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="904" y="674" width="44" height="44" rx="6"/>
+            <rect x="910" y="680" width="12" height="12" rx="2" fill="#207448"/>
+            <rect x="930" y="680" width="12" height="12" rx="2" fill="#207448"/>
+            <rect x="910" y="700" width="12" height="12" rx="2" fill="#207448"/>
+            <rect x="930" y="700" width="12" height="12" rx="2"/>
+        </g>
+    <text x="970" y="694" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">requests per GPU by memory <tspan x="970" dy="34" font-family="monospace" font-size="24" font-weight="normal">56 / 0.236 = 237</tspan></text>
+  </g>
+  
+  <g id="step-11">
+    <rect x="820" y="792" width="740" height="248" rx="12" fill="#fdf6ee" stroke="#db8129" stroke-width="4"/>
+    <circle cx="870" cy="842" r="24" fill="#db8129"/>
+    <text x="870" y="850" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">11</text>
+    <g fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="918" y="822" width="40" height="40" rx="8"/>
+            <rect x="928" y="832" width="20" height="20" rx="3" fill="#fdf6ee"/>
+            <line x1="926" y1="816" x2="926" y2="822"/>
+            <line x1="938" y1="816" x2="938" y2="822"/>
+            <line x1="950" y1="816" x2="950" y2="822"/>
+            <line x1="926" y1="862" x2="926" y2="868"/>
+            <line x1="938" y1="862" x2="938" y2="868"/>
+            <line x1="950" y1="862" x2="950" y2="868"/>
+            <line x1="912" y1="830" x2="918" y2="830"/>
+            <line x1="912" y1="842" x2="918" y2="842"/>
+            <line x1="912" y1="854" x2="918" y2="854"/>
+            <line x1="958" y1="830" x2="964" y2="830"/>
+            <line x1="958" y1="842" x2="964" y2="842"/>
+            <line x1="958" y1="854" x2="964" y2="854"/>
+        </g>
+    <text x="870" y="932" font-family="sans-serif" font-size="36" font-weight="bold" fill="#db8129">GPUs by memory <tspan x="870" dy="54" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">9,500 / 237 = 40</tspan></text>
+  </g>
+  
+  <g id="footer-takeaway">
+    <rect x="40" y="1080" width="1520" height="80" rx="12" fill="#207448"/>
+    <text x="60" y="1114" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      <tspan x="60" dy="0">memory alone says about 40 GPUs at peak; a compute check and headroom come on top;</tspan>
+      <tspan x="60" dy="32">start from tokens and memory, not requests; say the inputs are assumptions you will change</tspan>
+    </text>
+  </g>
+</svg>

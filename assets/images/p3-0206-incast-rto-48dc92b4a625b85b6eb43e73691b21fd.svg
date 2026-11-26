@@ -1,0 +1,243 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Incast: how one lost packet stalls a whole all-reduce</title>
+  <desc>Visual infographic explaining network incast during distributed training all-reduce collectives, the resulting TCP timeout, GPU idle stall, and network mitigations.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 2 2 L 14 8 L 2 14 z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 2 2 L 14 8 L 2 14 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" y="78">Incast: how one lost packet</tspan>
+    <tspan x="800" y="132">stalls a whole all-reduce</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="50" y="160" width="460" height="745" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  
+  <rect x="70" y="185" width="130" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="82" y="200" width="22" height="30" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="86" y1="220" x2="100" y2="220" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="114" y="226" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">rank 1</text>
+
+  
+  <rect x="70" y="260" width="130" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="82" y="275" width="22" height="30" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="86" y1="295" x2="100" y2="295" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="114" y="301" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">rank 2</text>
+
+  
+  <rect x="70" y="335" width="130" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="82" y="350" width="22" height="30" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="86" y1="370" x2="100" y2="370" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="114" y="376" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">rank 3</text>
+
+  
+  <circle cx="135" cy="412" r="4" fill="#207448" />
+  <circle cx="135" cy="424" r="4" fill="#207448" />
+  <circle cx="135" cy="436" r="4" fill="#207448" />
+
+  
+  <rect x="250" y="185" width="240" height="260" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="265" y="198" width="20" height="14" rx="2" fill="none" stroke="#207448" stroke-width="2" />
+  <rect x="295" y="198" width="20" height="14" rx="2" fill="none" stroke="#207448" stroke-width="2" />
+  <rect x="325" y="198" width="20" height="14" rx="2" fill="none" stroke="#207448" stroke-width="2" />
+
+  
+  <path d="M 200 215 L 250 215" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+  <path d="M 200 290 L 250 240" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+  <path d="M 200 365 L 250 260" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="270" y="235" width="200" height="60" rx="6" fill="#fcf6ec" stroke="#db8129" stroke-width="3" />
+  
+  <rect x="276" y="242" width="32" height="46" rx="3" fill="#db8129" />
+  <rect x="313" y="242" width="32" height="46" rx="3" fill="#db8129" />
+  <rect x="350" y="242" width="32" height="46" rx="3" fill="#db8129" />
+  <rect x="387" y="242" width="32" height="46" rx="3" fill="#db8129" />
+  <rect x="424" y="242" width="32" height="46" rx="3" fill="#db8129" />
+
+  
+  <path d="M 370 295 L 370 345" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)" />
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+    <tspan x="370" y="380">shallow switch buffer</tspan>
+    <tspan x="370" y="410">overflows</tspan>
+  </text>
+
+  
+  <path d="M 370 445 L 370 475" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="250" y="480" width="240" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="265" y="495" width="34" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="282" cy="512" r="6" fill="#207448" />
+  <text x="315" y="523" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">receiver</text>
+
+  
+  <rect x="70" y="565" width="420" height="320" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <path d="M 255 585 L 305 585 L 290 625 L 290 645 L 270 645 L 270 625 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+  <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="280" y="682">collectives send synchronized</tspan>
+    <tspan x="280" y="722">bursts from many senders</tspan>
+    <tspan x="280" y="762">to one receiver: a hundred</tspan>
+    <tspan x="280" y="802">people squeezing through</tspan>
+    <tspan x="280" y="842">one door at the</tspan>
+    <tspan x="280" y="872">same instant</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="540" y="160" width="480" height="745" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="560" y="180" width="440" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="595" cy="215" r="22" fill="#207448" />
+  <text x="595" y="223" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <rect x="925" y="195" width="44" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="935" y1="205" x2="959" y2="225" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+  <line x1="959" y1="205" x2="935" y2="225" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+  
+  <text x="590" y="275" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">one dropped packet</text>
+
+  
+  <path d="M 780 300 L 780 330" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="560" y="335" width="440" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="595" cy="370" r="22" fill="#207448" />
+  <text x="595" y="378" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <circle cx="945" cy="370" r="20" fill="none" stroke="#207448" stroke-width="4" />
+  <polyline points="945,358 945,370 955,370" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  
+  <text x="590" y="425" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">a 200 ms RTO</text>
+  <text x="590" y="456" font-family="monospace" font-size="24" fill="#303a36">(TCP_RTO_MIN)</text>
+
+  
+  <path d="M 780 470 L 780 500" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="560" y="505" width="440" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="595" cy="540" r="22" fill="#207448" />
+  <text x="595" y="548" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <rect x="925" y="520" width="44" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="940" y1="530" x2="940" y2="550" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <line x1="954" y1="530" x2="954" y2="550" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="590" y="595">hundreds of milliseconds of</tspan>
+    <tspan x="590" y="630">GPU idle time per step</tspan>
+  </text>
+
+  
+  <path d="M 780 650 L 780 680" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="560" y="685" width="440" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="595" cy="720" r="22" fill="#207448" />
+  <text x="595" y="728" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <circle cx="925" cy="720" r="10" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="950" cy="720" r="10" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="975" cy="720" r="10" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="910" y1="740" x2="990" y2="740" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="590" y="770">every GPU in the job waits</tspan>
+    <tspan x="590" y="802">for the slowest one, so one</tspan>
+    <tspan x="590" y="834">unlucky packet stalls the</tspan>
+    <tspan x="590" y="866">whole group</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="1050" y="160" width="500" height="745" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="1075" y="180" width="450" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="1475" cy="220" r="20" fill="none" stroke="#207448" stroke-width="4" />
+  <polyline points="1465,220 1473,228 1487,212" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="1105" y="246" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">DCTCP with ECN</text>
+
+  
+  <rect x="1075" y="305" width="450" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="1450" y="325" width="50" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <polyline points="1460,337 1468,343 1460,349" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <line x1="1472" y1="349" x2="1485" y2="349" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1105" y="360" font-weight="bold">a lower tcp_rto_min</tspan>
+    <tspan x="1105" y="395">set with</tspan>
+    <tspan x="1105" y="432" font-family="monospace">ip route ... rto_min</tspan>
+  </text>
+
+  
+  <rect x="1075" y="475" width="450" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="1450" y="505" width="50" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="1462" y1="505" x2="1462" y2="545" stroke="#207448" stroke-width="3" stroke-dasharray="4 2" />
+  <line x1="1475" y1="505" x2="1475" y2="545" stroke="#207448" stroke-width="3" stroke-dasharray="4 2" />
+  <line x1="1488" y1="505" x2="1488" y2="545" stroke="#207448" stroke-width="3" stroke-dasharray="4 2" />
+  <text x="1105" y="540" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">larger switch buffers</text>
+
+  
+  <rect x="1075" y="600" width="450" height="290" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="1450" y="625" width="50" height="50" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 1462 660 L 1475 640 L 1488 660" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1105" y="660">keep the collective path</tspan>
+    <tspan x="1105" y="700">off TCP altogether:</tspan>
+    <tspan x="1105" y="750">RDMA with PFC, ECN</tspan>
+    <tspan x="1105" y="790">and adaptive routing</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="50" y="930" width="1500" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="95" cy="990" r="22" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="95" y1="980" x2="95" y2="996" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <circle cx="95" cy="1004" r="2.5" fill="#207448" />
+  
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" y="976">One RTO of 200 ms or more is thousands of times a typical datacenter RTT (same DC 100 microseconds);</tspan>
+    <tspan x="135" y="1018">capture the TCPTimeouts counter and retransmit rates during any training job that uses socket transports</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="50" y="1075" width="1500" height="85" rx="12" fill="#207448" />
+  <text x="800" y="1128" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    Incast and tail latency come from many-to-one bursts and synchronized barrier waits
+  </text>
+</svg>

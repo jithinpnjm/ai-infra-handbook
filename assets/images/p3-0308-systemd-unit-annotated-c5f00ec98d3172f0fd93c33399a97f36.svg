@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The node agent systemd unit, line by line</title>
+  <desc>Visual breakdown of a production node agent systemd service unit file with resource controls, security hardening, Kubernetes comparison, and failure domain considerations.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The node agent systemd unit, line by line</text>
+
+  
+  <g id="annotated-unit-file">
+    <rect x="40" y="95" width="1000" height="835" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="40" y="95" width="1000" height="52" rx="12" fill="#e8f1ea"/>
+    <rect x="40" y="135" width="1000" height="12" fill="#e8f1ea"/>
+    
+    
+    <text x="65" y="132" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Annotated unit file, grouped</text>
+
+    
+    <g transform="translate(60, 160)">
+      <rect x="0" y="0" width="960" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(16, 15)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="20" cy="20" r="16"/>
+        <line x1="4" y1="20" x2="36" y2="20"/>
+        <ellipse cx="20" cy="20" rx="8" ry="16"/>
+      </g>
+      <text x="72" y="30" font-family="monospace, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="72" dy="0">[Unit] After=network-online.target and</tspan>
+        <tspan x="72" dy="28">Wants=network-online.target: start once the network is up</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(60, 238)">
+      <rect x="0" y="0" width="960" height="66" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(16, 13)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="20" cy="12" r="8"/>
+        <path d="M6 34 c0-8 6-12 14-12 s14 4 14 12"/>
+      </g>
+      <text x="72" y="41" font-family="monospace, sans-serif" font-size="24" fill="#303a36">[Service] User=nodeagent: dedicated unprivileged user</text>
+    </g>
+
+    
+    <g transform="translate(60, 312)">
+      <rect x="0" y="0" width="960" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(16, 15)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="6" width="32" height="26" rx="4"/>
+        <polyline points="10,14 16,19 10,24"/>
+        <line x1="20" y1="24" x2="28" y2="24"/>
+      </g>
+      <text x="72" y="30" font-family="monospace, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="72" dy="0">ExecStart=/opt/nodeagent/venv/bin/nodeagent</tspan>
+        <tspan x="72" dy="28">--config /etc/nodeagent.toml</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(60, 390)">
+      <rect x="0" y="0" width="960" height="66" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(16, 13)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M32 18 A14 14 0 1 0 34 26"/>
+        <polyline points="32,10 32,18 24,18"/>
+      </g>
+      <text x="72" y="41" font-family="monospace, sans-serif" font-size="24" fill="#303a36">Restart=on-failure, RestartSec=5: restart on non-zero exit</text>
+    </g>
+
+    
+    <g transform="translate(60, 464)">
+      <rect x="0" y="0" width="960" height="66" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(16, 13)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="20" cy="20" r="15"/>
+        <polyline points="20,10 20,20 27,24"/>
+      </g>
+      <text x="72" y="41" font-family="monospace, sans-serif" font-size="24" fill="#303a36">TimeoutStopSec=30: the SIGTERM grace period</text>
+    </g>
+
+    
+    <g transform="translate(60, 538)">
+      <rect x="0" y="0" width="960" height="74" rx="8" fill="#fff5ec" stroke="#db8129" stroke-width="2.5"/>
+      
+      <g transform="translate(16, 17)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="22" height="22" rx="2"/>
+        <line x1="15" y1="2" x2="15" y2="9"/>
+        <line x1="25" y1="2" x2="25" y2="9"/>
+        <line x1="15" y1="31" x2="15" y2="38"/>
+        <line x1="25" y1="31" x2="25" y2="38"/>
+        <line x1="2" y1="15" x2="9" y2="15"/>
+        <line x1="2" y1="25" x2="9" y2="25"/>
+        <line x1="31" y1="15" x2="38" y2="15"/>
+        <line x1="31" y1="25" x2="38" y2="25"/>
+      </g>
+      <text x="72" y="31" font-family="monospace, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="72" dy="0" fill="#db8129" font-weight="bold">MemoryMax=300M and CPUQuota=20%:</tspan>
+        <tspan x="72" dy="28">the agent never competes with a training job for memory or CPU</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(60, 620)">
+      <rect x="0" y="0" width="960" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(16, 28)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 5 L34 10 L34 22 C34 31 20 37 20 37 C20 37 6 31 6 22 L6 10 Z"/>
+      </g>
+      <text x="72" y="29" font-family="monospace, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="72" dy="0">NoNewPrivileges=yes, ProtectSystem=strict,</tspan>
+        <tspan x="72" dy="28">ReadWritePaths=/var/lib/nodeagent:</tspan>
+        <tspan x="72" dy="28">only its state directory is writable</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(60, 724)">
+      <rect x="0" y="0" width="960" height="66" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(16, 13)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 6 H32 V34 H8 Z"/>
+        <line x1="14" y1="14" x2="26" y2="14"/>
+        <line x1="14" y1="20" x2="22" y2="20"/>
+        <line x1="14" y1="26" x2="18" y2="26"/>
+      </g>
+      <text x="72" y="41" font-family="monospace, sans-serif" font-size="24" fill="#303a36">Environment=PYTHONUNBUFFERED=1: logs appear immediately</text>
+    </g>
+
+    
+    <g transform="translate(60, 798)">
+      <rect x="0" y="0" width="960" height="58" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(16, 9)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="20" cy="20" r="14"/>
+        <circle cx="20" cy="20" r="7"/>
+        <circle cx="20" cy="20" r="1.5" fill="#207448"/>
+      </g>
+      <text x="72" y="37" font-family="monospace, sans-serif" font-size="24" fill="#303a36">[Install] WantedBy=multi-user.target</text>
+    </g>
+  </g>
+
+  
+  <g id="kubernetes-side-panel" transform="translate(1070, 95)">
+    <rect x="0" y="0" width="490" height="520" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(24, 24)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,4 50,16 50,42 28,54 6,42 6,16"/>
+      <circle cx="28" cy="29" r="8"/>
+      <line x1="28" y1="21" x2="28" y2="4"/>
+      <line x1="35" y1="33" x2="50" y2="42"/>
+      <line x1="21" y1="33" x2="6" y2="42"/>
+    </g>
+
+    <text x="96" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Kubernetes instead:</text>
+
+    <text x="24" y="125" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">DaemonSet (one copy on every</tspan>
+      <tspan x="24" dy="36">node); hostPID or hostNetwork only</tspan>
+      <tspan x="24" dy="36">when truly needed; tolerations</tspan>
+      <tspan x="24" dy="36">for every node including tainted</tspan>
+      <tspan x="24" dy="36">GPU nodes; mount /sys and /dev</tspan>
+      <tspan x="24" dy="36">read-only where possible;</tspan>
+      <tspan x="24" dy="36">Downward API for the node name</tspan>
+    </text>
+  </g>
+
+  
+  <g id="resource-controls-panel" transform="translate(1070, 635)">
+    <rect x="0" y="0" width="490" height="295" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(24, 24)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="16" x2="48" y2="16"/>
+      <line x1="8" y1="32" x2="48" y2="32"/>
+      <line x1="8" y1="48" x2="48" y2="48"/>
+      <circle cx="20" cy="16" r="5" fill="#e8f1ea"/>
+      <circle cx="36" cy="32" r="5" fill="#e8f1ea"/>
+      <circle cx="26" cy="48" r="5" fill="#e8f1ea"/>
+    </g>
+
+    <text x="24" y="140" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      <tspan x="24" dy="0">CPUQuota, MemoryMax and</tspan>
+      <tspan x="24" dy="38">Nice; pin or limit threads</tspan>
+    </text>
+  </g>
+
+  
+  <g id="security-strip" transform="translate(40, 950)">
+    <rect x="0" y="0" width="1520" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(24, 50)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 6 L50 14 L50 32 C50 46 28 56 28 56 C28 56 6 46 6 32 L6 14 Z"/>
+      <polyline points="18,30 25,37 38,22"/>
+    </g>
+
+    <text x="96" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">dedicated unprivileged user, only needed capabilities, narrow sudo rule or small helper for privileged actions,</tspan>
+      <tspan x="96" dy="34">per-node credentials such as mTLS or short-lived tokens, validate every command received: an agent that runs</tspan>
+      <tspan x="96" dy="34">arbitrary remote commands is a route to fleet-wide compromise</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar" transform="translate(40, 1125)">
+    <rect x="0" y="0" width="1520" height="55" rx="10" fill="#207448"/>
+    
+    <g transform="translate(20, 12)" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16" cy="16" r="13"/>
+      <line x1="16" y1="3" x2="16" y2="16"/>
+      <line x1="16" y1="16" x2="25" y2="21"/>
+    </g>
+    <text x="64" y="37" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">If it goes wrong on every host, who notices and how?</text>
+  </g>
+</svg>

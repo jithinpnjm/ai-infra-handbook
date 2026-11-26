@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Magic variables you never define yourself</title>
+  <desc>Visual guide explaining Ansible magic variables, runtime dictionaries, filesystem paths, name clashes, and inventory lookup examples.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <g transform="translate(50, 24)">
+    <rect x="0" y="4" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 12 18 L 36 18 M 12 28 L 36 28 M 12 38 L 26 38" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="66" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Magic variables you never define yourself</text>
+  </g>
+
+  
+  <g transform="translate(50, 100)">
+    
+    <rect x="0" y="0" width="1500" height="622" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <path d="M 0 12 Q 0 0 12 0 L 1488 0 Q 1500 0 1500 12 L 1500 44 L 0 44 Z" fill="#207448"/>
+    <text x="24" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Variable</text>
+    <text x="634" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Meaning</text>
+
+    
+    <line x1="610" y1="0" x2="610" y2="622" stroke="#c8dcd0" stroke-width="1.5"/>
+
+    
+    <rect x="0" y="44" width="610" height="56" fill="#ffffff"/>
+    <rect x="610" y="44" width="890" height="56" fill="#ffffff"/>
+    <text x="24" y="68" font-family="'SFMono-Regular', Consolas, Menlo, monospace" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">inventory_hostname,</tspan>
+      <tspan x="24" dy="24">inventory_hostname_short</tspan>
+    </text>
+    <text x="634" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">the host's name in inventory</text>
+    <line x1="0" y1="100" x2="1500" y2="100" stroke="#e0ece2" stroke-width="1"/>
+
+    
+    <rect x="0" y="100" width="610" height="56" fill="#f8faf8"/>
+    <rect x="610" y="100" width="890" height="56" fill="#f8faf8"/>
+    <text x="24" y="124" font-family="'SFMono-Regular', Consolas, Menlo, monospace" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">ansible_host, ansible_user</tspan>
+      <tspan x="24" dy="24">and others</tspan>
+    </text>
+    <text x="634" y="136" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">connection variables</text>
+    <line x1="0" y1="156" x2="1500" y2="156" stroke="#e0ece2" stroke-width="1"/>
+
+    
+    <rect x="0" y="156" width="610" height="38" fill="#ffffff"/>
+    <rect x="610" y="156" width="890" height="38" fill="#ffffff"/>
+    <text x="24" y="183" font-family="'SFMono-Regular', Consolas, Menlo, monospace" font-size="24" fill="#303a36">groups</text>
+    <text x="634" y="183" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">dict of group name to host list: groups[gpu]</text>
+    <line x1="0" y1="194" x2="1500" y2="194" stroke="#e0ece2" stroke-width="1"/>
+
+    
+    <rect x="0" y="194" width="610" height="38" fill="#f8faf8"/>
+    <rect x="610" y="194" width="890" height="38" fill="#f8faf8"/>
+    <text x="24" y="221" font-family="'SFMono-Regular', Consolas, Menlo, monospace" font-size="24" fill="#303a36">group_names</text>
+    <text x="634" y="221" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">groups the current host belongs to</text>
+    <line x1="0" y1="232" x2="1500" y2="232" stroke="#e0ece2" stroke-width="1"/>
+
+    
+    <rect x="0" y="232" width="610" height="112" fill="#fefaf5"/>
+    <rect x="610" y="232" width="890" height="112" fill="#fefaf5"/>
+    <rect x="18" y="268" width="130" height="40" rx="6" fill="#faeee0" stroke="#db8129" stroke-width="2"/>
+    <text x="28" y="296" font-family="'SFMono-Regular', Consolas, Menlo, monospace" font-size="24" font-weight="bold" fill="#db8129">hostvars</text>
+    <text x="634" y="258" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="634" dy="0">dict of host to all of that host's variables and facts:</tspan>
+      <tspan x="634" dy="26" font-family="'SFMono-Regular', Consolas, Menlo, monospace">hostvars[slurmctl01][ansible_default_ipv4][address];</tspan>
+      <tspan x="634" dy="26">fact values only for hosts whose facts were gathered</tspan>
+      <tspan x="634" dy="26">earlier in the run</tspan>
+    </text>
+    <line x1="0" y1="344" x2="1500" y2="344" stroke="#db8129" stroke-width="1.5"/>
+
+    
+    <rect x="0" y="344" width="610" height="56" fill="#ffffff"/>
+    <rect x="610" y="344" width="890" height="56" fill="#ffffff"/>
+    <text x="24" y="368" font-family="'SFMono-Regular', Consolas, Menlo, monospace" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">play_hosts, ansible_play_hosts,</tspan>
+      <tspan x="24" dy="24">ansible_play_batch</tspan>
+    </text>
+    <text x="634" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">hosts in the current play, current serial batch</text>
+    <line x1="0" y1="400" x2="1500" y2="400" stroke="#e0ece2" stroke-width="1"/>
+
+    
+    <rect x="0" y="400" width="610" height="74" fill="#f8faf8"/>
+    <rect x="610" y="400" width="890" height="74" fill="#f8faf8"/>
+    <text x="24" y="423" font-family="'SFMono-Regular', Consolas, Menlo, monospace" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">ansible_play_name, ansible_check_mode,</tspan>
+      <tspan x="24" dy="23">ansible_diff_mode, ansible_run_tags,</tspan>
+      <tspan x="24" dy="23">ansible_limit</tspan>
+    </text>
+    <text x="634" y="445" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">run metadata</text>
+    <line x1="0" y1="474" x2="1500" y2="474" stroke="#e0ece2" stroke-width="1"/>
+
+    
+    <rect x="0" y="474" width="610" height="56" fill="#ffffff"/>
+    <rect x="610" y="474" width="890" height="56" fill="#ffffff"/>
+    <text x="24" y="498" font-family="'SFMono-Regular', Consolas, Menlo, monospace" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">playbook_dir, role_path,</tspan>
+      <tspan x="24" dy="24">inventory_dir</tspan>
+    </text>
+    <text x="634" y="510" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">paths</text>
+    <line x1="0" y1="530" x2="1500" y2="530" stroke="#e0ece2" stroke-width="1"/>
+
+    
+    <rect x="0" y="530" width="610" height="38" fill="#f8faf8"/>
+    <rect x="610" y="530" width="890" height="38" fill="#f8faf8"/>
+    <text x="24" y="557" font-family="'SFMono-Regular', Consolas, Menlo, monospace" font-size="24" fill="#303a36">omit</text>
+    <text x="634" y="557" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">special placeholder to drop a parameter</text>
+    <line x1="0" y1="568" x2="1500" y2="568" stroke="#e0ece2" stroke-width="1"/>
+
+    
+    <rect x="0" y="568" width="610" height="54" rx="0" fill="#ffffff"/>
+    <rect x="610" y="568" width="890" height="54" rx="0" fill="#ffffff"/>
+    <text x="24" y="591" font-family="'SFMono-Regular', Consolas, Menlo, monospace" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">ansible_version,</tspan>
+      <tspan x="24" dy="24">ansible_python</tspan>
+    </text>
+    <text x="634" y="603" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">controller details</text>
+  </g>
+
+  
+  <g transform="translate(50, 762)">
+    <rect x="0" y="0" width="1500" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(24, 18)">
+      <ellipse cx="24" cy="12" rx="20" ry="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 4 12 v 28 c 0 4.4 9 8 20 8 s 20 -3.6 20 -8 v -28" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 4 26 c 0 4.4 9 8 20 8 s 20 -3.6 20 -8" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="96" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">hostvars is a runtime dictionary that exists while the run is happening;</tspan>
+      <tspan x="96" dy="30">host_vars/ is a directory on disk with files you edit by hand</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(50, 892)">
+    <rect x="0" y="0" width="1500" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(24, 52)">
+      <rect x="2" y="4" width="46" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="2" y1="16" x2="48" y2="16" stroke="#207448" stroke-width="4"/>
+      <circle cx="10" cy="10" r="2.5" fill="#207448"/>
+      <circle cx="18" cy="10" r="2.5" fill="#207448"/>
+      <path d="M 12 30 l 6 -5 l -6 -5" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="22" y1="35" x2="32" y2="35" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="96" y="36" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">HAProxy (a load balancer that spreads traffic across servers) backend:</tspan>
+      <tspan x="96" dy="32" font-family="'SFMono-Regular', Consolas, Menlo, monospace">for host in groups.web: server {{ host }} {{ hostvars[host].ansible_default_ipv4.address }}:80;</tspan>
+      <tspan x="96" dy="32">read it like a seating chart: for each web server name, look up its address in hostvars;</tspan>
+      <tspan x="96" dy="32">Ansible: Up and Running chapter 5; modelled in code/part04/ansible_variables_facts.py</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(50, 1092)">
+    <rect x="0" y="0" width="1500" height="60" rx="10" fill="#207448"/>
+    
+    <g transform="translate(24, 8)">
+      <path d="M 22 4 L 40 10 L 40 24 C 40 34 22 42 22 42 C 22 42 4 34 4 24 L 4 10 Z" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round"/>
+      <line x1="22" y1="14" x2="22" y2="25" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="22" cy="32" r="2.5" fill="#ffffff"/>
+    </g>
+    <text x="750" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">hostvars is not host_vars</text>
+  </g>
+</svg>

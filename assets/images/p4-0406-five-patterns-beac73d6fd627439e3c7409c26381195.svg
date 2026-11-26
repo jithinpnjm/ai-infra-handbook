@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Five idioms from webservers-tls.yml</title>
+  <desc>Visual explanation of five idioms from webservers-tls.yml in Ansible</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">Five idioms from webservers-tls.yml</text>
+
+  
+  <g>
+    <rect x="40" y="120" width="740" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="700" y="142" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="700" y1="156" x2="756" y2="156" stroke="#207448" stroke-width="2" />
+    <polyline points="708,166 716,172 708,178" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="722" y1="178" x2="734" y2="178" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+    <text x="65" y="168" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">1 Executable playbook:</text>
+    <text x="65" y="212" font-size="24" fill="#303a36">
+      <tspan font-family="ui-monospace, monospace">#!/usr/bin/env ansible-playbook</tspan>
+    </text>
+    <text x="65" y="246" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">as line 1 (a shebang tells the operating system</text>
+    <text x="65" y="280" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">which program reads the file) then </tspan>
+      <tspan font-family="ui-monospace, monospace">chmod +x,</tspan>
+    </text>
+    <text x="65" y="314" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">run </tspan>
+      <tspan font-family="ui-monospace, monospace">./webservers-tls.yml; cowsay</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> draws</tspan>
+    </text>
+    <text x="65" y="348" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">ASCII art headers: </tspan>
+      <tspan font-family="ui-monospace, monospace">cow_selection = random</tspan>
+    </text>
+    <text x="65" y="382" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">or </tspan>
+      <tspan font-family="ui-monospace, monospace">nocows = 1</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> in </tspan>
+      <tspan font-family="ui-monospace, monospace">ansible.cfg</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="120" width="740" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 1480 144 L 1500 144 L 1508 152 L 1536 152 A 4 4 0 0 1 1540 156 L 1540 184 A 4 4 0 0 1 1536 188 L 1480 188 A 4 4 0 0 1 1476 184 L 1476 148 A 4 4 0 0 1 1480 144 Z" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 1496 170 L 1516 170" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <path d="M 1508 164 L 1516 170 L 1508 176" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+    <text x="845" y="168" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">2 Play vars and the file module:</text>
+    <text x="845" y="212" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">file path={{ tls_dir }} state=directory</text>
+    <text x="845" y="246" font-size="24" fill="#303a36">
+      <tspan font-family="ui-monospace, monospace">mode=0750;</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> enable the site with </tspan>
+      <tspan font-family="ui-monospace, monospace">file</tspan>
+    </text>
+    <text x="845" y="280" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">src={{ conf_file }}</text>
+    <text x="845" y="314" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">dest=/etc/nginx/sites-enabled/default</text>
+    <text x="845" y="348" font-size="24" fill="#303a36">
+      <tspan font-family="ui-monospace, monospace">state=link;</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> state absent removes</tspan>
+    </text>
+    <text x="845" y="382" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">a symlink or file</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="520" width="740" height="400" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="700" y="540" width="38" height="48" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="708" y1="552" x2="730" y2="552" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="708" y1="562" x2="730" y2="562" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <path d="M 744 550 A 12 12 0 1 1 744 574" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <polyline points="740,574 746,580 752,572" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+    <text x="65" y="568" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">3 Upload in a loop:</text>
+    <text x="65" y="610" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">openssl req -x509 -nodes -days 3650</text>
+    <text x="65" y="644" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">-newkey rsa:2048 -subj /CN=localhost</text>
+    <text x="65" y="678" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">-keyout files/nginx.key -out files/nginx.crt</text>
+    <text x="65" y="712" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">on the control node; one task </tspan>
+      <tspan font-family="ui-monospace, monospace">copy</tspan>
+    </text>
+    <text x="65" y="746" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">src={{ item }} dest={{ tls_dir }} mode=0600</text>
+    <text x="65" y="780" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">with loop </tspan>
+      <tspan font-family="ui-monospace, monospace">[key_file, cert_file];</tspan>
+    </text>
+    <text x="65" y="814" font-size="24" fill="#303a36">
+      <tspan font-family="ui-monospace, monospace">copy</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> searches </tspan>
+      <tspan font-family="ui-monospace, monospace">files/</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> next to the playbook,</tspan>
+    </text>
+    <text x="65" y="848" font-size="24" fill="#303a36">
+      <tspan font-family="ui-monospace, monospace">template</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> searches </tspan>
+      <tspan font-family="ui-monospace, monospace">templates/</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="520" width="740" height="400" rx="12" fill="#fef6ed" stroke="#db8129" stroke-width="3" />
+    
+    <rect x="1480" y="540" width="56" height="50" rx="8" fill="none" stroke="#db8129" stroke-width="4" />
+    <path d="M 1496 565 A 12 12 0 1 1 1520 565" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    <polyline points="1516,559 1522,565 1528,559" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="1508" cy="565" r="3" fill="#db8129" />
+
+    <text x="845" y="568" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">4 Handler deduplication:</text>
+    <text x="845" y="610" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">four tasks notify </tspan>
+      <tspan font-family="ui-monospace, monospace">Restart nginx</tspan>
+    </text>
+    <text x="845" y="644" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(Copy TLS files, Manage nginx config template,</text>
+    <text x="845" y="678" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Enable configuration, Install home page);</text>
+    <text x="845" y="712" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">even if all four report changed the handler</text>
+    <text x="845" y="746" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">runs once at the end of the tasks phase and</text>
+    <text x="845" y="780" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">before </tspan>
+      <tspan font-family="ui-monospace, monospace">post_tasks</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif">; second run all four </tspan>
+      <tspan font-family="ui-monospace, monospace">ok</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif">, handler</tspan>
+    </text>
+    <text x="845" y="814" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">runs zero times</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="945" width="1520" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="1480" y="968" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="1480" y1="982" x2="1536" y2="982" stroke="#207448" stroke-width="2" />
+    <polyline points="1494,996 1504,1004 1522,990" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+    <text x="65" y="1004" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">5 Embedded HTTP smoke test: <tspan font-weight="normal" font-size="26" fill="#303a36">see the next figure</tspan></text>
+  </g>
+
+  
+  <rect x="40" y="1060" width="1520" height="56" rx="8" fill="#207448" />
+  <text x="800" y="1098" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Four restart requests become one restart</text>
+
+  
+  <text x="800" y="1155" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">Ansible: Up and Running chapter 3, Examples 3-1 to 3-10; tested in code/part04/ansible_playbook_execution_lab.py</text>
+</svg>

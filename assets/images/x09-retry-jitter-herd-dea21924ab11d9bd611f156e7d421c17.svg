@@ -1,0 +1,256 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Without jitter, clients retry in lockstep; with full jitter, the retries spread out</title>
+  <desc>Visual comparison showing how synchronized retries without jitter create recurring herd spikes against a dependency, while full jitter spreads retries smoothly across the wait window.</desc>
+
+  <defs>
+    
+    <g id="stick-client">
+      <circle cx="0" cy="-14" r="5" fill="none" stroke="#207448" stroke-width="2.5" />
+      <line x1="0" y1="-9" x2="0" y2="4" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+      <line x1="-8" y1="-4" x2="8" y2="-4" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+      <line x1="0" y1="4" x2="-6" y2="15" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+      <line x1="0" y1="4" x2="6" y2="15" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    </g>
+    
+    <marker id="axis-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#303a36" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Without jitter, clients retry in lockstep;</tspan>
+    <tspan x="800" dy="58">with full jitter, the retries spread out</tspan>
+  </text>
+
+  
+  <g id="left-panel">
+    
+    <rect x="50" y="170" width="730" height="490" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(80, 195)">
+      
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <circle cx="28" cy="28" r="18" fill="none" stroke="#207448" stroke-width="3" />
+      <polyline points="28,16 28,28 38,28" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="155" y="235" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">no jitter</text>
+
+    
+    <g transform="translate(140, 290)">
+      <use href="#stick-client" x="0" y="0" />
+      <use href="#stick-client" x="50" y="0" />
+      <use href="#stick-client" x="100" y="0" />
+      <use href="#stick-client" x="150" y="0" />
+      <use href="#stick-client" x="200" y="0" />
+      <use href="#stick-client" x="250" y="0" />
+      <use href="#stick-client" x="300" y="0" />
+      <use href="#stick-client" x="350" y="0" />
+      <use href="#stick-client" x="400" y="0" />
+      <use href="#stick-client" x="450" y="0" />
+    </g>
+
+    
+    <rect x="185" y="325" width="460" height="68" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <text x="415" y="353" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="415" dy="0">the dependency sees</tspan>
+      <tspan x="415" dy="28">the same spike again</tspan>
+    </text>
+
+    
+    <text x="415" y="425" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">herd</text>
+
+    
+    
+    <path d="M 235 590 L 250 440 L 255 435 L 260 440 L 275 590 Z" fill="#fff7ed" stroke="#db8129" stroke-width="3.5" />
+    
+    <path d="M 395 590 L 410 440 L 415 435 L 420 440 L 435 590 Z" fill="#fff7ed" stroke="#db8129" stroke-width="3.5" />
+    
+    <path d="M 555 590 L 570 440 L 575 435 L 580 440 L 595 590 Z" fill="#fff7ed" stroke="#db8129" stroke-width="3.5" />
+
+    
+    <line x1="110" y1="590" x2="710" y2="590" stroke="#303a36" stroke-width="3" marker-end="url(#axis-arrow)" />
+    
+    <line x1="130" y1="580" x2="130" y2="600" stroke="#303a36" stroke-width="3" />
+    <line x1="255" y1="582" x2="255" y2="598" stroke="#303a36" stroke-width="2.5" />
+    <line x1="415" y1="582" x2="415" y2="598" stroke="#303a36" stroke-width="2.5" />
+    <line x1="575" y1="582" x2="575" y2="598" stroke="#303a36" stroke-width="2.5" />
+    <line x1="660" y1="580" x2="660" y2="600" stroke="#303a36" stroke-width="3" />
+
+    
+    <text x="130" y="630" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">0</text>
+    <text x="660" y="630" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">capped wait</text>
+  </g>
+
+  
+  <g id="right-panel">
+    
+    <rect x="820" y="170" width="730" height="490" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(850, 195)">
+      
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <circle cx="18" cy="18" r="4" fill="#207448" />
+      <circle cx="38" cy="22" r="4" fill="#207448" />
+      <circle cx="24" cy="38" r="4" fill="#207448" />
+      <circle cx="40" cy="38" r="4" fill="#207448" />
+    </g>
+    <text x="925" y="235" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">full jitter</text>
+
+    
+    <g transform="translate(910, 290)">
+      <use href="#stick-client" x="0" y="0" />
+      <use href="#stick-client" x="50" y="0" />
+      <use href="#stick-client" x="100" y="0" />
+      <use href="#stick-client" x="150" y="0" />
+      <use href="#stick-client" x="200" y="0" />
+      <use href="#stick-client" x="250" y="0" />
+      <use href="#stick-client" x="300" y="0" />
+      <use href="#stick-client" x="350" y="0" />
+      <use href="#stick-client" x="400" y="0" />
+      <use href="#stick-client" x="450" y="0" />
+    </g>
+
+    
+    <rect x="860" y="325" width="650" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+    
+    <rect x="945" y="340" width="480" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1185" y="366" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1185" dy="0">retries spread across</tspan>
+      <tspan x="1185" dy="26">the wait window</tspan>
+    </text>
+
+    
+    <g fill="#207448">
+      <circle cx="895" cy="510" r="6" />
+      <circle cx="920" cy="460" r="6" />
+      <circle cx="945" cy="540" r="6" />
+      <circle cx="975" cy="485" r="6" />
+      <circle cx="1005" cy="445" r="6" />
+      <circle cx="1025" cy="530" r="6" />
+      <circle cx="1055" cy="470" r="6" />
+      <circle cx="1080" cy="515" r="6" />
+      <circle cx="1110" cy="450" r="6" />
+      <circle cx="1140" cy="535" r="6" />
+      <circle cx="1170" cy="480" r="6" />
+      <circle cx="1205" cy="440" r="6" />
+      <circle cx="1230" cy="520" r="6" />
+      <circle cx="1260" cy="465" r="6" />
+      <circle cx="1295" cy="540" r="6" />
+      <circle cx="1325" cy="490" r="6" />
+      <circle cx="1355" cy="455" r="6" />
+      <circle cx="1385" cy="510" r="6" />
+      <circle cx="1420" cy="475" r="6" />
+      <circle cx="1455" cy="530" r="6" />
+      <circle cx="1480" cy="460" r="6" />
+    </g>
+
+    
+    <line x1="880" y1="590" x2="1480" y2="590" stroke="#303a36" stroke-width="3" marker-end="url(#axis-arrow)" />
+    
+    <line x1="900" y1="580" x2="900" y2="600" stroke="#303a36" stroke-width="3" />
+    <line x1="1035" y1="582" x2="1035" y2="598" stroke="#303a36" stroke-width="2.5" />
+    <line x1="1185" y1="582" x2="1185" y2="598" stroke="#303a36" stroke-width="2.5" />
+    <line x1="1335" y1="582" x2="1335" y2="598" stroke="#303a36" stroke-width="2.5" />
+    <line x1="1430" y1="580" x2="1430" y2="600" stroke="#303a36" stroke-width="3" />
+
+    
+    <text x="900" y="630" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">0</text>
+    <text x="1430" y="630" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">capped wait</text>
+  </g>
+
+  
+  <g id="formula-strip">
+    <rect x="50" y="685" width="1500" height="95" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="80" y="743" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">delay = random between 0 and min(cap, base times 2 to the attempt)</text>
+
+    
+    <g transform="translate(1120, 710)">
+      <rect x="0" y="0" width="170" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="85" y="31" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">base 0.1</text>
+    </g>
+
+    <g transform="translate(1320, 710)">
+      <rect x="0" y="0" width="160" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="80" y="31" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">cap 5.0</text>
+    </g>
+  </g>
+
+  
+  <g id="three-steps">
+    
+    <g transform="translate(50, 805)">
+      <rect x="0" y="0" width="480" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <circle cx="45" cy="75" r="24" fill="#207448" />
+      <text x="45" y="84" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+      
+      <g transform="translate(85, 47)">
+        <rect x="0" y="0" width="56" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+        <polyline points="10,46 22,44 34,36 46,14" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+      
+      <text x="160" y="65" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="160" dy="0">exponential growth</tspan>
+        <tspan x="160" dy="32">of the ceiling</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(560, 805)">
+      <rect x="0" y="0" width="480" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <circle cx="45" cy="75" r="24" fill="#207448" />
+      <text x="45" y="84" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+      
+      <g transform="translate(85, 47)">
+        <rect x="0" y="0" width="56" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+        <circle cx="16" cy="28" r="4" fill="#207448" />
+        <circle cx="28" cy="18" r="4" fill="#207448" />
+        <circle cx="40" cy="28" r="4" fill="#207448" />
+        <circle cx="28" cy="38" r="4" fill="#207448" />
+      </g>
+      
+      <text x="160" y="65" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="160" dy="0">randomness spreads</tspan>
+        <tspan x="160" dy="32">the herd</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(1070, 805)">
+      <rect x="0" y="0" width="480" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <circle cx="45" cy="75" r="24" fill="#207448" />
+      <text x="45" y="84" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+      
+      <g transform="translate(85, 47)">
+        <rect x="0" y="0" width="56" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+        <circle cx="24" cy="28" r="14" fill="none" stroke="#207448" stroke-width="3" />
+        <polyline points="24,19 24,28 30,28" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+        <line x1="44" y1="12" x2="44" y2="44" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      </g>
+      
+      <text x="160" y="65" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="160" dy="0">a deadline bounds</tspan>
+        <tspan x="160" dy="32">the total time</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="takeaway-bar" transform="translate(50, 980)">
+    <rect x="0" y="0" width="1500" height="110" rx="14" fill="#207448" />
+    <text x="750" y="47" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">
+      <tspan x="750" dy="0">Randomised waits turn one spike of retries into a smooth load,</tspan>
+      <tspan x="750" dy="34">and a deadline keeps the total time bounded.</tspan>
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,255 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Per-connection balancing pins multiplexed streams: three fixes, and the QUIC variation</title>
+  <desc>Visual infographic explaining why L4 balancing pins multiplexed gRPC streams to a single backend, three architectural fixes (L7 proxy, client-side balancing, MAX_CONNECTION_AGE), and connection migration under HTTP/3 QUIC.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="60" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    <tspan x="40" dy="0">Per-connection balancing pins multiplexed streams:</tspan>
+    <tspan x="40" dy="52">three fixes, and the QUIC variation</tspan>
+  </text>
+
+  
+  <g id="left-column">
+    <rect x="40" y="145" width="490" height="790" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(65, 165)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="15" width="22" height="40" rx="3"/>
+      <line x1="22" y1="25" x2="54" y2="5"/>
+      <circle cx="11" cy="28" r="3" fill="#207448"/>
+      <line x1="0" y1="55" x2="55" y2="55"/>
+    </g>
+
+    
+    <text x="65" y="255" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">L4 balancing: all streams from</tspan>
+      <tspan x="65" dy="32">one client connection go to</tspan>
+      <tspan x="65" dy="32">one backend (connection pinning),</tspan>
+      <tspan x="65" dy="32">like a toll booth assigning one</tspan>
+      <tspan x="65" dy="32">whole convoy to a single exit</tspan>
+    </text>
+
+    
+    
+    <rect x="65" y="475" width="85" height="140" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(85, 520)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="45" height="32" rx="3"/>
+      <line x1="12" y1="32" x2="6" y2="44"/>
+      <line x1="33" y1="32" x2="39" y2="44"/>
+      <line x1="0" y1="44" x2="45" y2="44"/>
+    </g>
+
+    
+    <rect x="150" y="530" width="50" height="30" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <line x1="150" y1="545" x2="192" y2="545" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+    
+    <rect x="202" y="475" width="85" height="140" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(222, 520)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="45" height="14" rx="2"/>
+      <rect x="0" y="18" width="45" height="14" rx="2"/>
+      <circle cx="10" cy="7" r="2" fill="#207448"/>
+      <circle cx="10" cy="25" r="2" fill="#207448"/>
+    </g>
+
+    
+    <path d="M 287 500 C 315 500, 315 435, 338 435" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)"/>
+    <path d="M 287 525 C 310 525, 315 445, 338 445" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)"/>
+    <path d="M 287 555 C 310 555, 315 455, 338 455" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)"/>
+    <path d="M 287 585 C 315 585, 315 465, 338 465" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+    
+    <rect x="348" y="420" width="162" height="58" rx="8" fill="#db8129" stroke="#db8129" stroke-width="2"/>
+    <text x="429" y="457" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">backend 1</text>
+
+    
+    <rect x="348" y="495" width="162" height="42" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.6"/>
+    <rect x="348" y="550" width="162" height="42" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.6"/>
+    <rect x="348" y="605" width="162" height="42" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.6"/>
+
+    
+    <rect x="65" y="730" width="445" height="175" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="85" y="776" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">L4 gives counts [100, 0, 0, 0],</tspan>
+      <tspan x="85" dy="34">L7 gives [25, 25, 25, 25]</tspan>
+    </text>
+    
+    <g transform="translate(85, 830)">
+      
+      <rect x="0" y="0" width="405" height="18" rx="4" fill="#e8f1ea"/>
+      <rect x="0" y="0" width="405" height="18" rx="4" fill="#207448"/>
+      
+      <rect x="0" y="28" width="96" height="18" rx="4" fill="#207448"/>
+      <rect x="103" y="28" width="96" height="18" rx="4" fill="#207448"/>
+      <rect x="206" y="28" width="96" height="18" rx="4" fill="#207448"/>
+      <rect x="309" y="28" width="96" height="18" rx="4" fill="#207448"/>
+    </g>
+  </g>
+
+  
+  <g id="middle-column">
+    
+    <rect x="550" y="145" width="490" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="585" cy="180" r="20" fill="#207448"/>
+    <text x="585" y="188" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="618" y="189" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Fix 1</text>
+    
+    <g transform="translate(975, 160)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="20" cy="20" r="8"/>
+      <path d="M20 4 V9 M20 31 V36 M4 20 H9 M31 20 H36 M9 9 L12 12 M28 28 L31 31 M9 31 L12 28 M28 12 L31 9"/>
+    </g>
+    <text x="575" y="230" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="575" dy="0">L7 proxy that balances per</tspan>
+      <tspan x="575" dy="32">request or per stream:</tspan>
+      <tspan x="575" dy="32" font-family="monospace">nginx grpc_pass, Envoy,</tspan>
+      <tspan x="575" dy="32" font-family="monospace">HAProxy with proto h2,</tspan>
+      <tspan x="575" dy="32" font-family="monospace">ALB for gRPC</tspan>
+    </text>
+
+    
+    <rect x="550" y="415" width="490" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="585" cy="450" r="20" fill="#207448"/>
+    <text x="585" y="458" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="618" y="459" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Fix 2</text>
+    
+    <g transform="translate(975, 430)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="40" height="34" rx="3"/>
+      <line x1="0" y1="10" x2="40" y2="10"/>
+      <circle cx="6" cy="5" r="1.5" fill="#207448"/>
+      <circle cx="12" cy="5" r="1.5" fill="#207448"/>
+      <circle cx="18" cy="5" r="1.5" fill="#207448"/>
+    </g>
+    <text x="575" y="505" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="575" dy="0">client-side balancing:</tspan>
+      <tspan x="575" dy="36" font-family="monospace">round_robin<tspan font-family="sans-serif"> across</tspan></tspan>
+      <tspan x="575" dy="36">resolved addresses, or xDS</tspan>
+    </text>
+
+    
+    <rect x="550" y="685" width="490" height="250" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="585" cy="720" r="20" fill="#207448"/>
+    <text x="585" y="728" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="618" y="729" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Fix 3</text>
+    
+    <g transform="translate(975, 700)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="20" cy="20" r="16"/>
+      <polyline points="20 10, 20 20, 28 20"/>
+    </g>
+    <text x="575" y="775" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="575" dy="0">cap the connection age with</tspan>
+      <tspan x="575" dy="36" font-family="monospace">MAX_CONNECTION_AGE<tspan font-family="sans-serif"> so</tspan></tspan>
+      <tspan x="575" dy="36">clients reconnect and rebalance</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-column">
+    <rect x="1060" y="145" width="500" height="790" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(1085, 165)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M0 15 L28 0 L56 15 V35 C56 52 28 65 28 65 C28 65 0 52 0 35 Z"/>
+      <path d="M28 16 V46"/>
+      <path d="M16 28 H40"/>
+    </g>
+
+    
+    <text x="1085" y="260" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1085" dy="0" font-weight="bold" fill="#207448">HTTP/3 and QUIC over UDP:</tspan>
+      <tspan x="1085" dy="32">an L4 balancer must hash on</tspan>
+      <tspan x="1085" dy="32">QUIC connection IDs rather than</tspan>
+      <tspan x="1085" dy="32">the 5-tuple, so a connection</tspan>
+      <tspan x="1085" dy="32">survives a change of client</tspan>
+      <tspan x="1085" dy="32">IP or port, such as a phone</tspan>
+      <tspan x="1085" dy="32">moving from Wi-Fi to mobile data</tspan>
+    </text>
+
+    
+    <g transform="translate(1090, 520)">
+      
+      <rect x="0" y="40" width="75" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+      <rect x="6" y="12" width="63" height="96" rx="4" fill="#e8f1ea"/>
+      <circle cx="37" cy="120" r="5" fill="#207448"/>
+
+      
+      <g transform="translate(110, 20)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+        <path d="M0 25 A 24 24 0 0 1 36 25"/>
+        <path d="M6 31 A 16 16 0 0 1 30 31"/>
+        <circle cx="18" cy="37" r="2" fill="#207448"/>
+      </g>
+
+      
+      <g transform="translate(110, 140)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" y1="40" x2="28" y2="40"/>
+        <line x1="18" y1="40" x2="18" y2="10"/>
+        <line x1="10" y1="20" x2="26" y2="20"/>
+        <line x1="12" y1="30" x2="24" y2="30"/>
+        <circle cx="18" cy="6" r="3" fill="#207448"/>
+      </g>
+
+      
+      <path d="M 75 75 C 95 75, 95 45, 108 45" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <path d="M 75 135 C 95 135, 95 165, 108 165" fill="none" stroke="#207448" stroke-width="2.5"/>
+
+      
+      <rect x="200" y="55" width="105" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(230, 80)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <rect x="0" y="0" width="45" height="15" rx="2"/>
+        <rect x="0" y="22" width="45" height="15" rx="2"/>
+        <circle cx="10" cy="7" r="2" fill="#207448"/>
+        <circle cx="10" cy="29" r="2" fill="#207448"/>
+      </g>
+
+      
+      <path d="M 150 45 C 180 45, 175 80, 192 80" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)"/>
+      <path d="M 150 165 C 180 165, 175 130, 192 130" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+      
+      <line x1="305" y1="105" x2="335" y2="105" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+      
+      <rect x="345" y="70" width="85" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <line x1="355" y1="90" x2="415" y2="90" stroke="#207448" stroke-width="2"/>
+      <line x1="355" y1="105" x2="415" y2="105" stroke="#207448" stroke-width="2"/>
+      <line x1="355" y1="120" x2="390" y2="120" stroke="#207448" stroke-width="2"/>
+    </g>
+  </g>
+
+  
+  <g id="footer-panel">
+    <rect x="40" y="955" width="1520" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(65, 995)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" fill="none">
+      <line x1="0" y1="10" x2="44" y2="10"/>
+      <circle cx="14" cy="10" r="5" fill="#e8f1ea"/>
+      <line x1="0" y1="28" x2="44" y2="28"/>
+      <circle cx="30" cy="28" r="5" fill="#e8f1ea"/>
+      <line x1="0" y1="46" x2="44" y2="46"/>
+      <circle cx="20" cy="46" r="5" fill="#e8f1ea"/>
+    </g>
+
+    <text x="135" y="998" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0">WebSockets and SSE are long-lived: configure idle timeouts and heartbeats, disable response buffering.</tspan>
+      <tspan x="135" dy="34">Rate limiting and fairness belong at the gateway: per-client token-bucket limits, concurrency limits</tspan>
+      <tspan x="135" dy="34">per tenant, priority queues, 429 with Retry-After</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-takeaway-bar">
+    <rect x="40" y="1118" width="1520" height="62" rx="8" fill="#207448"/>
+    <text x="800" y="1157" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      Avoid pure L4 for multiplexed gRPC; the symptom is servers 1 and 2 overloaded while 3 to 10 sit idle
+    </text>
+  </g>
+</svg>

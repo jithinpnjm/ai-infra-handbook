@@ -1,0 +1,233 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Incident 7: how a rotated DNS token became an expired certificate</title>
+  <desc>Visual timeline showing how an uncoordinated DNS API token rotation caused cert-manager DNS-01 challenge renewal failures, leading to expired certificates, traffic collapse, missing alerts, and recovery procedures.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Incident 7: how a rotated DNS token became an expired certificate</text>
+  <text x="800" y="92" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Drill numbers are invented.</text>
+
+  
+  <text x="40" y="142" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Timeline in days</text>
+
+  
+  <g id="step-day-0">
+    <rect x="40" y="165" width="350" height="400" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="70" cy="195" r="20" fill="#207448" />
+    <text x="70" y="203" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    
+    <g transform="translate(315, 175)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 4 L 44 12 C 44 30 24 44 24 44 C 24 44 4 30 4 12 Z" />
+      <path d="M 14 22 L 21 29 L 34 16" />
+    </g>
+
+    <text x="60" y="260" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0" font-weight="bold">day 0:</tspan>
+      <tspan font-weight="normal"> certificate issued by</tspan>
+      <tspan x="60" dy="32">an ACME CA through</tspan>
+      <tspan x="60" dy="32"><tspan font-family="monospace">cert-manager</tspan>; default</tspan>
+      <tspan x="60" dy="32">duration 90 days</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="390" y1="365" x2="430" y2="365" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-day-59">
+    <rect x="430" y="165" width="350" height="400" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="460" cy="195" r="20" fill="#207448" />
+    <text x="460" y="203" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    
+    <g transform="translate(705, 175)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="20" width="36" height="26" rx="4" />
+      <path d="M 16 20 V 12 C 16 7 36 7 36 12 V 20" />
+      <circle cx="26" cy="31" r="3" fill="#207448" />
+      <line x1="26" y1="34" x2="26" y2="40" />
+    </g>
+
+    <text x="450" y="260" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="450" dy="0" font-weight="bold">day 59:</tspan>
+      <tspan font-weight="normal"> DNS provider API</tspan>
+      <tspan x="450" dy="32">token used by the solver is</tspan>
+      <tspan x="450" dy="32">rotated in the secrets</tspan>
+      <tspan x="450" dy="32">manager (31 days ago);</tspan>
+      <tspan x="450" dy="32">the cluster secret still</tspan>
+      <tspan x="450" dy="32">holds the old token</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="780" y1="365" x2="820" y2="365" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-day-60">
+    <rect x="820" y="165" width="350" height="400" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="850" cy="195" r="20" fill="#207448" />
+    <text x="850" y="203" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    
+    <g transform="translate(1095, 175)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 24 A 16 16 0 1 1 24 40" />
+      <polyline points="4,20 10,24 6,30" />
+      <line x1="24" y1="14" x2="24" y2="24" />
+      <circle cx="24" cy="31" r="2" fill="#207448" />
+    </g>
+
+    <text x="840" y="255" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="840" dy="0" font-weight="bold">about day 60:</tspan>
+      <tspan font-weight="normal"> renewal</tspan>
+      <tspan x="840" dy="30">starts two thirds of the</tspan>
+      <tspan x="840" dy="30">way through; the DNS-01</tspan>
+      <tspan x="840" dy="30">challenge fails with an</tspan>
+      <tspan x="840" dy="30">authentication error;</tspan>
+      <tspan x="840" dy="30" font-family="monospace">kubectl describe</tspan>
+      <tspan x="840" dy="30">certificate shows</tspan>
+      <tspan x="840" dy="30"><tspan font-family="monospace">Ready False</tspan>; failing</tspan>
+      <tspan x="840" dy="30">for 30 days</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1170" y1="365" x2="1210" y2="365" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-day-90">
+    <rect x="1210" y="165" width="350" height="400" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+    <circle cx="1240" cy="195" r="20" fill="#207448" />
+    <text x="1240" y="203" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    
+    <g transform="translate(1485, 175)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="20" width="36" height="26" rx="4" />
+      <path d="M 16 20 V 12 C 16 7 34 7 34 14" />
+      <line x1="20" y1="28" x2="32" y2="40" />
+      <line x1="32" y1="28" x2="20" y2="40" />
+    </g>
+
+    <text x="1230" y="255" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1230" dy="0" font-weight="bold">day 90:</tspan>
+      <tspan font-weight="normal" font-family="monospace"> notAfter Nov 9</tspan>
+      <tspan x="1230" dy="30" font-family="monospace">08:59:59 2026 GMT;</tspan>
+      <tspan x="1230" dy="30">at 09:00:00 request rate</tspan>
+      <tspan x="1230" dy="30">from strict clients falls to</tspan>
+      <tspan x="1230" dy="30">near zero; edge shows</tspan>
+      <tspan x="1230" dy="30">TLS handshake failures;</tspan>
+      <tspan x="1230" dy="30">backend error rate is 0</tspan>
+      <tspan x="1230" dy="30">because requests never</tspan>
+      <tspan x="1230" dy="30">arrive</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-missing-alert">
+    <rect x="40" y="605" width="1520" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(60, 624)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 8 C 18 8 14 16 14 26 C 14 34 10 38 10 38 L 46 38 C 46 38 42 34 42 26 C 42 16 38 8 28 8 Z" />
+      <path d="M 23 42 C 23 45 25 47 28 47 C 31 47 33 45 33 42" />
+      <line x1="8" y1="8" x2="48" y2="48" />
+    </g>
+
+    <text x="135" y="645" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">The missing alert</text>
+    <text x="135" y="680" font-family="sans-serif" font-size="24" fill="#303a36">no alert on days to expiry; cert-manager failures were not routed to anyone</text>
+  </g>
+
+  
+  <g id="box-fix-list">
+    <rect x="40" y="740" width="860" height="420" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(60, 755)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 38 10 C 33 6 27 6 23 10 C 20 13 20 17 22 21 L 10 33 C 8 35 8 39 10 41 C 12 43 16 43 18 41 L 30 29 C 34 31 38 31 41 28 C 45 24 45 18 41 14 L 35 20 L 31 16 Z" />
+    </g>
+
+    <text x="130" y="792" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Fix list in order</text>
+
+    
+    <circle cx="75" cy="835" r="16" fill="#207448" />
+    <text x="75" y="843" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <text x="110" y="843" font-family="sans-serif" font-size="24" fill="#303a36">update the token</text>
+
+    
+    <circle cx="75" cy="888" r="16" fill="#207448" />
+    <text x="75" y="896" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    <text x="110" y="896" font-family="sans-serif" font-size="24" fill="#303a36">force renewal with <tspan font-family="monospace">cmctl renew</tspan></text>
+
+    
+    <circle cx="75" cy="952" r="16" fill="#207448" />
+    <text x="75" y="960" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    <text x="110" y="946" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="110" dy="0">verify with <tspan font-family="monospace">openssl s_client</tspan> that the</tspan>
+      <tspan x="110" dy="30">new certificate is actually served</tspan>
+    </text>
+
+    
+    <circle cx="75" cy="1032" r="16" fill="#207448" />
+    <text x="75" y="1040" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    <text x="110" y="1026" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="110" dy="0">manual certificate loaded into the TLS Secret if renewal is</tspan>
+      <tspan x="110" dy="30">slow (ingress controller reloads Secret changes)</tspan>
+    </text>
+
+    
+    <circle cx="75" cy="1110" r="16" fill="#207448" />
+    <text x="75" y="1118" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    <text x="110" y="1118" font-family="sans-serif" font-size="24" fill="#303a36">add an expiry alert</text>
+  </g>
+
+  
+  <g id="box-second-deadline">
+    <rect x="940" y="740" width="620" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(960, 755)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="10" width="40" height="36" rx="4" />
+      <line x1="16" y1="6" x2="16" y2="12" />
+      <line x1="36" y1="6" x2="36" y2="12" />
+      <line x1="6" y1="20" x2="46" y2="20" />
+      <circle cx="26" cy="32" r="7" />
+      <polyline points="26,28 26,32 30,32" />
+    </g>
+
+    <text x="1030" y="792" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Second deadline</text>
+
+    <text x="960" y="830" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="960" dy="0">wildcard certificate for the console expires in</tspan>
+      <tspan x="960" dy="28">6 days and uses the same renewal path;</tspan>
+      <tspan x="960" dy="28">control plane certificates have over 200 days</tspan>
+      <tspan x="960" dy="28">left (<tspan font-family="monospace">kubeadm certs check-expiration</tspan>);</tspan>
+      <tspan x="960" dy="28">leaf certificates one year, CA ten years</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-risky">
+    <rect x="940" y="1010" width="620" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(960, 1022)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 26 6 L 48 44 L 4 44 Z" />
+      <line x1="26" y1="18" x2="26" y2="30" />
+      <circle cx="26" cy="37" r="2" fill="#207448" />
+    </g>
+
+    <text x="1030" y="1058" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Risky</text>
+
+    <text x="960" y="1100" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="960" dy="0">telling clients to skip verification; deleting the</tspan>
+      <tspan x="960" dy="30">Secret (not a recommended way to rotate)</tspan>
+    </text>
+  </g>
+</svg>

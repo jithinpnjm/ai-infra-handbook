@@ -1,0 +1,198 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Where written bytes really are: Python buffer, OS cache, disk</title>
+  <desc>Visual explanation of data durability and flow from Python buffer through OS cache to physical disk, covering open modes, buffering rules, large file handling, and byte decoding.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" fill="#303a36" font-size="48" font-weight="bold" font-family="system-ui, sans-serif" text-anchor="middle">Where written bytes really are: Python buffer, OS cache, disk</text>
+
+  
+
+  
+  <rect x="40" y="100" width="410" height="240" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="75" cy="140" r="20" fill="#207448" />
+  <text x="75" y="148" fill="#ffffff" font-size="24" font-weight="bold" font-family="system-ui, sans-serif" text-anchor="middle">1</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <rect x="220" y="120" width="50" height="40" rx="4" />
+    <line x1="210" y1="130" x2="220" y2="130" stroke-width="3" />
+    <line x1="210" y1="140" x2="220" y2="140" stroke-width="3" />
+    <line x1="210" y1="150" x2="220" y2="150" stroke-width="3" />
+    <line x1="270" y1="130" x2="280" y2="130" stroke-width="3" />
+    <line x1="270" y1="140" x2="280" y2="140" stroke-width="3" />
+    <line x1="270" y1="150" x2="280" y2="150" stroke-width="3" />
+  </g>
+  
+  <text x="60" y="195" fill="#303a36" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold">f.write(text)</tspan><tspan font-family="system-ui, sans-serif"> into the</tspan>
+    <tspan x="60" dy="28" font-family="system-ui, sans-serif">Python buffer</tspan>
+    <tspan x="60" dy="28" font-family="system-ui, sans-serif">(a staging area in memory</tspan>
+    <tspan x="60" dy="28" font-family="system-ui, sans-serif">so many small writes</tspan>
+    <tspan x="60" dy="28" font-family="system-ui, sans-serif">become a few large ones)</tspan>
+  </text>
+
+  
+  <line x1="450" y1="220" x2="495" y2="220" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="495" y="100" width="325" height="240" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="530" cy="140" r="20" fill="#207448" />
+  <text x="530" y="148" fill="#ffffff" font-size="24" font-weight="bold" font-family="system-ui, sans-serif" text-anchor="middle">2</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <circle cx="657" cy="140" r="16" />
+    <line x1="657" y1="116" x2="657" y2="124" />
+    <line x1="657" y1="156" x2="657" y2="164" />
+    <line x1="633" y1="140" x2="641" y2="140" />
+    <line x1="673" y1="140" x2="681" y2="140" />
+    <line x1="640" y1="123" x2="646" y2="129" />
+    <line x1="668" y1="151" x2="674" y2="157" />
+    <line x1="640" y1="157" x2="646" y2="151" />
+    <line x1="668" y1="129" x2="674" y2="123" />
+  </g>
+  
+  <text x="520" y="215" fill="#303a36" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold">f.flush()</tspan>
+    <tspan x="520" dy="35" font-family="system-ui, sans-serif">pushes it to the OS</tspan>
+  </text>
+
+  
+  <line x1="820" y1="220" x2="865" y2="220" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="865" y="100" width="450" height="240" rx="10" fill="#fff9f3" stroke="#db8129" stroke-width="3" />
+  
+  <circle cx="900" cy="140" r="20" fill="#db8129" />
+  <text x="900" y="148" fill="#ffffff" font-size="24" font-weight="bold" font-family="system-ui, sans-serif" text-anchor="middle">3</text>
+  
+  <g stroke="#db8129" stroke-width="4" fill="none">
+    <path d="M 1090 120 L 1115 130 L 1115 150 C 1115 165 1090 175 1090 175 C 1090 175 1065 165 1065 150 L 1065 130 Z" />
+    <path d="M 1082 147 L 1088 153 L 1100 139" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  
+  <text x="885" y="195" fill="#303a36" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#db8129">os.fsync(f.fileno())</tspan>
+    <tspan x="885" dy="28" font-family="system-ui, sans-serif">forces the data onto disk</tspan>
+    <tspan x="885" dy="28" font-family="system-ui, sans-serif">(durability, for example</tspan>
+    <tspan x="885" dy="28" font-family="system-ui, sans-serif">before you rename</tspan>
+    <tspan x="885" dy="28" font-family="system-ui, sans-serif">a checkpoint)</tspan>
+  </text>
+
+  
+  <line x1="1315" y1="220" x2="1355" y2="220" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="1355" y="100" width="205" height="240" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="1385" cy="140" r="20" fill="#207448" />
+  <text x="1385" y="148" fill="#ffffff" font-size="24" font-weight="bold" font-family="system-ui, sans-serif" text-anchor="middle">4</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <ellipse cx="1475" cy="130" rx="26" ry="9" />
+    <path d="M 1449 130 v 16 c 0 5 11.6 9 26 9 s 26 -4 26 -9 v -16" />
+    <path d="M 1449 146 v 16 c 0 5 11.6 9 26 9 s 26 -4 26 -9 v -16" />
+  </g>
+  
+  <text x="1457" y="225" fill="#207448" font-size="30" font-weight="bold" font-family="system-ui, sans-serif" text-anchor="middle">on disk</text>
+
+  
+  <rect x="40" y="360" width="1520" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="75" cy="395" r="16" fill="none" stroke="#207448" stroke-width="3" />
+  <text x="75" y="403" fill="#207448" font-size="24" font-weight="bold" font-family="system-ui, sans-serif" text-anchor="middle">!</text>
+  <text x="110" y="403" fill="#303a36" font-size="24" font-family="system-ui, sans-serif">a log file is empty because the process died before its buffer reached the disk</text>
+
+  
+
+  
+  <rect x="40" y="450" width="640" height="355" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <path d="M 40 458 Q 40 450 48 450 L 672 450 Q 680 450 680 458 L 680 535 L 40 535 Z" fill="#207448" />
+  <text x="60" y="485" fill="#ffffff" font-size="24" font-family="ui-monospace, monospace" font-weight="bold">
+    <tspan>open(path, r, encoding=utf-8,</tspan>
+    <tspan x="60" dy="32">errors=strict, newline=None)</tspan>
+  </text>
+
+  
+  <text x="60" y="575" fill="#303a36" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">r</tspan><tspan font-family="system-ui, sans-serif"> read text</tspan>
+  </text>
+  <line x1="40" y1="590" x2="680" y2="590" stroke="#e8f1ea" stroke-width="2" />
+
+  <text x="60" y="620" fill="#303a36" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">w</tspan><tspan font-family="system-ui, sans-serif"> truncate and write</tspan>
+  </text>
+  <line x1="40" y1="635" x2="680" y2="635" stroke="#e8f1ea" stroke-width="2" />
+
+  <text x="60" y="665" fill="#303a36" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">a</tspan><tspan font-family="system-ui, sans-serif"> append</tspan>
+  </text>
+  <line x1="40" y1="680" x2="680" y2="680" stroke="#e8f1ea" stroke-width="2" />
+
+  <text x="60" y="710" fill="#303a36" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">x</tspan><tspan font-family="system-ui, sans-serif"> exclusive create, fails if it exists</tspan>
+  </text>
+  <line x1="40" y1="725" x2="680" y2="725" stroke="#e8f1ea" stroke-width="2" />
+
+  <text x="60" y="755" fill="#303a36" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">+</tspan><tspan font-family="system-ui, sans-serif"> read and write</tspan>
+  </text>
+  <line x1="40" y1="770" x2="680" y2="770" stroke="#e8f1ea" stroke-width="2" />
+
+  <text x="60" y="795" fill="#303a36" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">b</tspan><tspan font-family="system-ui, sans-serif"> binary</tspan>
+  </text>
+
+  
+  <rect x="720" y="450" width="840" height="355" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="735" y="465" width="810" height="105" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="755" y="498" fill="#303a36" font-size="24" font-family="system-ui, sans-serif">
+    <tspan>text mode decodes and encodes with the encoding you pass</tspan>
+    <tspan x="755" dy="28">and translates newlines; always specify the encoding;</tspan>
+    <tspan x="755" dy="28">binary mode returns bytes and does no decoding</tspan>
+  </text>
+
+  
+  <rect x="735" y="582" width="810" height="95" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="755" y="620" fill="#303a36" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold">buffering=0</tspan><tspan font-family="system-ui, sans-serif"> makes a binary file unbuffered; line buffering</tspan>
+    <tspan x="755" dy="32" font-family="system-ui, sans-serif">from </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">buffering=1</tspan><tspan font-family="system-ui, sans-serif"> or the </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">-u</tspan><tspan font-family="system-ui, sans-serif"> flag</tspan>
+  </text>
+
+  
+  <rect x="735" y="690" width="810" height="100" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="755" y="730" fill="#303a36" font-size="24">
+    <tspan font-family="system-ui, sans-serif">always use </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">with</tspan><tspan font-family="system-ui, sans-serif">: it closes the file even when an exception</tspan>
+    <tspan x="755" dy="32" font-family="system-ui, sans-serif">occurs; never leave file handles to the garbage collector</tspan>
+  </text>
+
+  
+  <rect x="40" y="825" width="1520" height="130" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="65" y="862" fill="#303a36" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold">for line in f</tspan><tspan font-family="system-ui, sans-serif"> streams line by line; </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">read()</tspan><tspan font-family="system-ui, sans-serif"> loads the whole file, only for small files;</tspan>
+    <tspan x="65" dy="32" font-family="system-ui, sans-serif">chunked reads </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">iter(lambda: f.read(1&lt;&lt;20), b&quot;&quot;)</tspan><tspan font-family="system-ui, sans-serif">; </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)</tspan>
+    <tspan x="65" dy="32" font-family="system-ui, sans-serif">for random access without copying; </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">os.sendfile</tspan><tspan font-family="system-ui, sans-serif"> and </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">shutil.copyfileobj</tspan>
+  </text>
+
+  
+  <rect x="40" y="975" width="1520" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="65" y="1012" fill="#303a36" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold">errors=replace, backslashreplace or surrogateescape</tspan><tspan font-family="system-ui, sans-serif">; only </tspan>
+    <tspan x="65" dy="32" font-family="ui-monospace, monospace" font-weight="bold">surrogateescape</tspan><tspan font-family="system-ui, sans-serif"> round-trips arbitrary bytes</tspan>
+  </text>
+
+  
+  <rect x="40" y="1085" width="1520" height="75" rx="8" fill="#207448" />
+  <text x="800" y="1132" fill="#ffffff" font-size="30" font-weight="bold" font-family="system-ui, sans-serif" text-anchor="middle">Do not declare success before an fsync</text>
+</svg>

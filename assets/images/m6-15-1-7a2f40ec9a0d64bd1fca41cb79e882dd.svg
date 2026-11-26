@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>Controller high availability</title>
+  <desc>High availability architecture diagram showing the Slurm Controller HA Pair with primary and standby hosts sharing state save location, the Accounting HA Pair with primary and backup slurmdbd connecting to replicated MySQL, and the sequential upgrade dependency from slurmdbd to slurmctld to slurmd.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Controller high availability</text>
+
+  
+  <g id="ControlHA">
+    
+    <rect x="60" y="95" width="1480" height="430" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 60,111 A 16,16 0 0,1 76,95 L 1524,95 A 16,16 0 0,1 1540,111 L 1540,150 L 60,150 Z" fill="#e8f1ea"/>
+    <text x="800" y="133" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Controller HA Pair (SlurmctldTimeout=120s)</text>
+
+    
+    <g id="Ctl1">
+      <rect x="100" y="175" width="640" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(125, 200)">
+        <rect x="8" y="8" width="40" height="40" rx="6" fill="#207448" fill-opacity="0.12" stroke="#207448" stroke-width="3.5"/>
+        <rect x="18" y="18" width="20" height="20" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+        <line x1="16" y1="2" x2="16" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="28" y1="2" x2="28" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="40" y1="2" x2="40" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="16" y1="48" x2="16" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="28" y1="48" x2="28" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="40" y1="48" x2="40" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="2" y1="16" x2="8" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="2" y1="28" x2="8" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="2" y1="40" x2="8" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="48" y1="16" x2="54" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="48" y1="28" x2="54" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="48" y1="40" x2="54" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      </g>
+      <text x="210" y="238" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Primary: SlurmctldHost=ctl1</text>
+    </g>
+
+    
+    <g id="Ctl2">
+      <rect x="860" y="175" width="640" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(885, 200)">
+        <rect x="8" y="8" width="40" height="40" rx="6" fill="#207448" fill-opacity="0.12" stroke="#207448" stroke-width="3.5"/>
+        <rect x="18" y="18" width="20" height="20" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+        <line x1="16" y1="2" x2="16" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="28" y1="2" x2="28" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="40" y1="2" x2="40" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="16" y1="48" x2="16" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="28" y1="48" x2="28" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="40" y1="48" x2="40" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="2" y1="16" x2="8" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="2" y1="28" x2="8" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="2" y1="40" x2="8" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="48" y1="16" x2="54" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="48" y1="28" x2="54" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="48" y1="40" x2="54" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      </g>
+      <text x="970" y="238" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Standby: SlurmctldHost=ctl2</text>
+    </g>
+
+    
+    <g id="State">
+      <rect x="420" y="395" width="760" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(450, 422)">
+        <ellipse cx="28" cy="12" rx="24" ry="8" fill="#207448" fill-opacity="0.15" stroke="#207448" stroke-width="3.5"/>
+        <path d="M 4,12 L 4,28 C 4,36 52,36 52,28 L 52,12" fill="none" stroke="#207448" stroke-width="3.5"/>
+        <path d="M 4,28 L 4,44 C 4,52 52,52 52,44 L 52,28" fill="none" stroke="#207448" stroke-width="3.5"/>
+        <line x1="38" y1="44" x2="44" y2="44" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      </g>
+      <text x="535" y="440" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Shared StateSaveLocation</text>
+      <text x="535" y="478" font-family="sans-serif" font-size="24" fill="#303a36">(HA NFS / Replicated Block)</text>
+    </g>
+
+     State -->
+    <line x1="580" y1="280" x2="580" y2="395" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+    
+    <line x1="1020" y1="280" x2="1020" y2="318" stroke="#207448" stroke-width="3.5" stroke-dasharray="8,6"/>
+    <g id="LabelHeartbeat">
+      <rect x="855" y="318" width="330" height="38" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="1020" y="345" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Heartbeat &amp; Takeover</text>
+    </g>
+    <line x1="1020" y1="356" x2="1020" y2="395" stroke="#207448" stroke-width="3.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)"/>
+  </g>
+
+  
+  |"1. Upgrade slurmdbd -> 2. slurmctld -> 3. slurmd"| AcctHA -->
+  <line x1="800" y1="525" x2="800" y2="580" stroke="#db8129" stroke-width="4"/>
+  <g id="LabelUpgrade">
+    <rect x="420" y="580" width="760" height="55" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <text x="800" y="616" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#db8129">1. Upgrade slurmdbd -&gt; 2. slurmctld -&gt; 3. slurmd</text>
+  </g>
+  <line x1="800" y1="635" x2="800" y2="690" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <g id="AcctHA">
+    
+    <rect x="60" y="690" width="1480" height="425" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 60,706 A 16,16 0 0,1 76,690 L 1524,690 A 16,16 0 0,1 1540,706 L 1540,745 L 60,745 Z" fill="#e8f1ea"/>
+    <text x="800" y="728" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Accounting HA Pair</text>
+
+    
+    <g id="Dbd1">
+      <rect x="100" y="765" width="640" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(125, 790)">
+        <circle cx="28" cy="28" r="14" fill="#207448" fill-opacity="0.12" stroke="#207448" stroke-width="3.5"/>
+        <circle cx="28" cy="28" r="6" fill="#207448"/>
+        <line x1="28" y1="6" x2="28" y2="12" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="28" y1="44" x2="28" y2="50" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="6" y1="28" x2="12" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="44" y1="28" x2="50" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="12" y1="12" x2="17" y2="17" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="39" y1="39" x2="44" y2="44" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="12" y1="44" x2="17" y2="39" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="39" y1="17" x2="44" y2="12" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      </g>
+      <text x="210" y="828" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Primary: slurmdbd (db1)</text>
+    </g>
+
+    
+    <g id="Dbd2">
+      <rect x="860" y="765" width="640" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(885, 790)">
+        <circle cx="28" cy="28" r="14" fill="#207448" fill-opacity="0.12" stroke="#207448" stroke-width="3.5"/>
+        <circle cx="28" cy="28" r="6" fill="#207448"/>
+        <line x1="28" y1="6" x2="28" y2="12" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="28" y1="44" x2="28" y2="50" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="6" y1="28" x2="12" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="44" y1="28" x2="50" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="12" y1="12" x2="17" y2="17" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="39" y1="39" x2="44" y2="44" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="12" y1="44" x2="17" y2="39" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="39" y1="17" x2="44" y2="12" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      </g>
+      <text x="965" y="828" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Backup: DbdBackupHost (db2)</text>
+    </g>
+
+    
+    <g id="MySQL">
+      <rect x="420" y="985" width="760" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(450, 1012)">
+        <ellipse cx="28" cy="12" rx="24" ry="8" fill="#207448" fill-opacity="0.15" stroke="#207448" stroke-width="3.5"/>
+        <path d="M 4,12 L 4,28 C 4,36 52,36 52,28 L 52,12" fill="none" stroke="#207448" stroke-width="3.5"/>
+        <path d="M 4,28 L 4,44 C 4,52 52,52 52,44 L 52,28" fill="none" stroke="#207448" stroke-width="3.5"/>
+        <circle cx="40" cy="44" r="2.5" fill="#207448"/>
+      </g>
+      <text x="535" y="1050" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Galera / Replicated MySQL</text>
+    </g>
+
+     MySQL -->
+    <line x1="580" y1="870" x2="580" y2="985" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+    
+    <line x1="1020" y1="870" x2="1020" y2="985" stroke="#207448" stroke-width="3.5" stroke-dasharray="8,6" marker-end="url(#arrow-green)"/>
+  </g>
+</svg>

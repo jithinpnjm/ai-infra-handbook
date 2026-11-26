@@ -1,0 +1,244 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A reconstructed data plane, clearly labelled as inference</title>
+  <desc>Visual infographic explaining a reconstructed inference data plane architecture, showing request flow from OpenAI-compatible clients through a regional gateway and cache-aware router to engine replicas, drafter, KV cache tiers, control plane, and metrics storage.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 12 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">A reconstructed data plane,</tspan>
+    <tspan x="800" dy="56">clearly labelled as inference</tspan>
+  </text>
+
+  
+  
+  <path d="M 450 205 L 610 205" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1060 205 L 1130 205" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1200 270 L 1200 300 L 840 300 L 840 320" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 840 465 L 840 515" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 620 385 L 460 385" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="8,6" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 620 440 L 535 440 L 535 515 L 460 515" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 450 635 L 610 635" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="8,6" marker-end="url(#arrow)"/>
+  <rect x="475" y="598" width="140" height="30" fill="#f5f8f5" rx="4"/>
+  <text x="535" y="622" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">desired state</text>
+
+  
+  <path d="M 245 745 L 245 790" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 750 660 L 750 900" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 940 660 L 940 875 L 1350 875 L 1350 900" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1350 270 L 1350 515" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1060 592 L 1130 592" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1350 660 L 1350 710" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+
+  
+  <g id="node-C">
+    <rect x="40" y="145" width="410" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <path d="M 68 185 L 112 185 L 112 215 L 68 215 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M 60 223 L 120 223" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M 80 198 L 86 203 L 80 208" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <text x="135" y="193" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Clients</text>
+    <text x="135" y="235" font-family="sans-serif" font-size="24" fill="#303a36">(OpenAI-compatible)</text>
+  </g>
+
+  
+  <g id="node-E">
+    <rect x="620" y="145" width="440" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="668" cy="205" r="24" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <ellipse cx="668" cy="205" rx="12" ry="24" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="644" y1="205" x2="692" y2="205" stroke="#207448" stroke-width="2.5"/>
+    
+    <text x="715" y="193" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Regional data-plane</text>
+    <text x="715" y="235" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">URL</text>
+  </g>
+
+  
+  <g id="node-G">
+    <rect x="1140" y="140" width="420" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <path d="M 1185 175 L 1210 165 L 1235 175 L 1235 205 C 1235 225 1210 240 1210 240 C 1210 240 1185 225 1185 205 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="1210" y1="185" x2="1210" y2="215" stroke="#207448" stroke-width="3"/>
+    
+    <text x="1255" y="175" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Gateway:</text>
+    <text x="1255" y="212" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">auth, limits, tiers</text>
+    <text x="1255" y="248" font-family="sans-serif" font-size="24" fill="#303a36">(official: headers, 429)</text>
+  </g>
+
+  
+
+  
+  <g id="node-PD">
+    <rect x="40" y="325" width="410" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <rect x="65" y="360" width="22" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="95" y="360" width="22" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="87" y1="380" x2="95" y2="380" stroke="#207448" stroke-width="3"/>
+    
+    <text x="135" y="360" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Prefill and decode</text>
+    <text x="135" y="398" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">workers</text>
+    <text x="135" y="435" font-family="sans-serif" font-size="24" fill="#303a36">(vendor: one case study)</text>
+  </g>
+
+  
+  <g id="node-R">
+    <rect x="620" y="330" width="440" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="668" cy="397" r="24" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 668 379 L 668 387 M 668 407 L 668 415 M 650 397 L 658 397 M 678 397 L 686 397" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="715" y="368" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Router</text>
+    <text x="715" y="408" font-family="sans-serif" font-size="24" fill="#303a36">(vendor: cache-aware,</text>
+    <text x="715" y="443" font-family="sans-serif" font-size="24" fill="#303a36">falls back on load)</text>
+  </g>
+
+  
+
+  
+  <g id="node-P2">
+    <rect x="40" y="475" width="410" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <rect x="65" y="500" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="75" y1="492" x2="75" y2="500" stroke="#207448" stroke-width="3"/>
+    <line x1="95" y1="492" x2="95" y2="500" stroke="#207448" stroke-width="3"/>
+    <line x1="75" y1="540" x2="75" y2="548" stroke="#207448" stroke-width="3"/>
+    <line x1="95" y1="540" x2="95" y2="548" stroke="#207448" stroke-width="3"/>
+    
+    <text x="135" y="533" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Engine replica B</text>
+  </g>
+
+  
+  <g id="node-P1">
+    <rect x="620" y="525" width="440" height="135" rx="12" fill="#fff6ec" stroke="#db8129" stroke-width="4"/>
+    
+    <rect x="648" y="565" width="44" height="44" rx="6" fill="none" stroke="#db8129" stroke-width="3.5"/>
+    <rect x="659" y="576" width="22" height="22" fill="#db8129" fill-opacity="0.2" stroke="#db8129" stroke-width="2"/>
+    <line x1="660" y1="555" x2="660" y2="565" stroke="#db8129" stroke-width="3"/>
+    <line x1="680" y1="555" x2="680" y2="565" stroke="#db8129" stroke-width="3"/>
+    <line x1="660" y1="609" x2="660" y2="619" stroke="#db8129" stroke-width="3"/>
+    <line x1="680" y1="609" x2="680" y2="619" stroke="#db8129" stroke-width="3"/>
+    <line x1="638" y1="577" x2="648" y2="577" stroke="#db8129" stroke-width="3"/>
+    <line x1="638" y1="597" x2="648" y2="597" stroke="#db8129" stroke-width="3"/>
+    <line x1="692" y1="577" x2="702" y2="577" stroke="#db8129" stroke-width="3"/>
+    <line x1="692" y1="597" x2="702" y2="597" stroke="#db8129" stroke-width="3"/>
+    
+    <text x="715" y="575" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Engine replica A</text>
+    <text x="715" y="620" font-family="sans-serif" font-size="24" fill="#303a36">(vLLM or TensorRT-LLM)</text>
+  </g>
+
+  
+  <g id="node-M">
+    <rect x="1140" y="525" width="420" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <rect x="1165" y="565" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 1172 595 L 1180 580 L 1192 600 L 1202 575" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="1235" y="565" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Metrics:</text>
+    <text x="1235" y="605" font-family="sans-serif" font-size="24" fill="#303a36">dedicated only</text>
+    <text x="1235" y="640" font-family="sans-serif" font-size="24" fill="#303a36">(official)</text>
+  </g>
+
+  
+
+  
+  <g id="node-CP">
+    <rect x="40" y="600" width="410" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <line x1="68" y1="640" x2="68" y2="700" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="68" cy="655" r="5" fill="#207448"/>
+    <line x1="88" y1="640" x2="88" y2="700" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="88" cy="680" r="5" fill="#207448"/>
+    <line x1="108" y1="640" x2="108" y2="700" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="108" cy="665" r="5" fill="#207448"/>
+    
+    <text x="130" y="640" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Control plane</text>
+    <text x="130" y="680" font-family="monospace" font-size="24" fill="#303a36">/v0/dedicated_endpoints</text>
+    <text x="130" y="720" font-family="sans-serif" font-size="24" fill="#303a36">(official)</text>
+  </g>
+
+  
+  <g id="node-S">
+    <rect x="1140" y="720" width="420" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <path d="M 1175 790 C 1165 790 1160 780 1165 770 C 1165 760 1175 755 1185 755 C 1190 745 1205 745 1215 755 C 1225 755 1235 765 1230 778 C 1235 788 1225 790 1215 790 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    
+    <text x="1245" y="765" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Stored in eu-north</text>
+    <text x="1245" y="805" font-family="sans-serif" font-size="24" fill="#303a36">(official)</text>
+  </g>
+
+  
+
+  
+  <g id="node-POOL">
+    <rect x="40" y="800" width="410" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <rect x="68" y="835" width="44" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="78" cy="844" r="2.5" fill="#207448"/>
+    <circle cx="88" cy="844" r="2.5" fill="#207448"/>
+    <rect x="68" y="863" width="44" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="78" cy="872" r="2.5" fill="#207448"/>
+    <circle cx="88" cy="872" r="2.5" fill="#207448"/>
+    
+    <text x="135" y="845" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">On-demand GPU pool</text>
+    <text x="135" y="888" font-family="sans-serif" font-size="24" fill="#303a36">(official)</text>
+  </g>
+
+  
+  <g id="node-K">
+    <rect x="520" y="910" width="460" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <ellipse cx="565" cy="955" rx="20" ry="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 545 955 L 545 975 C 545 981 585 981 585 975 L 585 955" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 545 975 L 545 995 C 545 1001 585 1001 585 995 L 585 975" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 545 995 L 545 1015 C 545 1021 585 1021 585 1015 L 585 995" fill="none" stroke="#207448" stroke-width="3"/>
+    
+    <text x="610" y="955" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">KV tiers:</text>
+    <text x="610" y="990" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">HBM, host, external</text>
+    <text x="610" y="1030" font-family="sans-serif" font-size="24" fill="#303a36">(official: local and</text>
+    <text x="610" y="1062" font-family="sans-serif" font-size="24" fill="#303a36">external hits)</text>
+  </g>
+
+  
+  <g id="node-D">
+    <rect x="1080" y="910" width="480" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <path d="M 1130 945 L 1110 990 L 1128 990 L 1118 1045 L 1152 980 L 1134 980 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    
+    <text x="1175" y="960" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Drafter</text>
+    <text x="1175" y="1005" font-family="sans-serif" font-size="24" fill="#303a36">(official: spec decoding,</text>
+    <text x="1175" y="1045" font-family="sans-serif" font-size="24" fill="#303a36">Fast, custom)</text>
+  </g>
+
+</svg>

@@ -1,0 +1,238 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Dependency confusion: --index-url versus --extra-index-url</title>
+  <desc>Visual comparison between pip extra-index-url risks and safe index-url mirror patterns, alongside package integrity and provenance tools.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Dependency confusion: --index-url versus --extra-index-url</text>
+
+  
+  <rect x="40" y="110" width="740" height="560" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="2"/>
+
+  
+  <g transform="translate(65, 128)">
+    
+    <path d="M 12 40 L 28 14 L 44 40 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="28" y1="24" x2="28" y2="30" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="35" r="2.5" fill="#db8129"/>
+  </g>
+  <text x="125" y="160" font-family="ui-monospace, monospace" font-size="32" font-weight="bold" fill="#303a36">--extra-index-url</text>
+
+  
+  <rect x="65" y="185" width="690" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(85, 222)">
+    
+    <ellipse cx="24" cy="14" rx="18" ry="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 6 14 v 18 c 0 4 8 7 18 7 s 18 -3 18 -7 v -18" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="36" cy="36" r="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <line x1="43" y1="43" x2="52" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="155" y="222" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="155" dy="0">pip asks the public index</tspan>
+    <tspan x="155" dy="30">and the private index</tspan>
+    <tspan x="155" dy="30">(https://pypi.example.com/simple)</tspan>
+    <tspan x="155" dy="30">for 'internal-lib'</tspan>
+  </text>
+
+  
+  <rect x="65" y="335" width="690" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(85, 352)">
+    
+    <path d="M 8 18 L 28 8 L 48 18 L 28 28 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M 8 18 v 20 L 28 48 v -20" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M 48 18 v 20 L 28 48" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M 38 32 l 8 -8 l 8 8" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="155" y="372" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="155" dy="0">a public package with the same name</tspan>
+    <tspan x="155" dy="32">and a higher version can win</tspan>
+  </text>
+
+  
+  <rect x="65" y="440" width="690" height="85" rx="12" fill="#fff5ea" stroke="#db8129" stroke-width="3"/>
+  <g transform="translate(85, 455)">
+    
+    <path d="M 28 8 L 48 16 v 16 c 0 14 -20 22 -20 22 S 8 46 8 32 v -16 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="28" y1="20" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="41" r="2.5" fill="#db8129"/>
+  </g>
+  <text x="155" y="493" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">dependency confusion</text>
+
+  
+  <rect x="65" y="540" width="690" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(85, 557)">
+    
+    <path d="M 10 14 h 20 l 22 22 l -18 18 l -24 -24 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="20" cy="24" r="4" fill="#207448"/>
+    <path d="M 32 36 l 8 8" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="155" y="577" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="155" dy="0">typosquatting, where a misspelled name</tspan>
+    <tspan x="155" dy="32">catches careless installs</tspan>
+  </text>
+
+
+  
+  <rect x="820" y="110" width="740" height="560" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(845, 128)">
+    
+    <path d="M 28 8 L 48 16 v 16 c 0 14 -20 22 -20 22 S 8 46 8 32 v -16 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 18 30 l 8 8 l 14 -14" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="905" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">--index-url alone, or a private mirror</text>
+
+  
+  <rect x="845" y="185" width="690" height="70" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(865, 195)">
+    
+    <ellipse cx="24" cy="14" rx="16" ry="6" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 8 14 v 22 c 0 3.5 7 6 16 6 s 16 -2.5 16 -6 v -22" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="24" cy="25" r="4" fill="#207448"/>
+  </g>
+  <text x="935" y="228" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">one index only</text>
+
+  
+  <rect x="845" y="270" width="690" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(865, 285)">
+    
+    <rect x="8" y="10" width="36" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="8" y1="22" x2="44" y2="22" stroke="#207448" stroke-width="3"/>
+    <line x1="8" y1="32" x2="44" y2="32" stroke="#207448" stroke-width="3"/>
+    <circle cx="38" cy="16" r="2" fill="#207448"/>
+    <circle cx="38" cy="27" r="2" fill="#207448"/>
+  </g>
+  <text x="935" y="307" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="935" dy="0">install from a vetted mirror such as</tspan>
+    <tspan x="935" dy="32">Artifactory, Nexus or devpi</tspan>
+  </text>
+
+  
+  <rect x="845" y="370" width="690" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(865, 381)">
+    
+    <path d="M 12 26 A 14 14 0 0 1 36 14 l 4 -4" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <polyline points="40,2 40,10 32,10" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 40 28 A 14 14 0 0 1 16 40 l -4 4" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <polyline points="12,52 12,44 20,44" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="935" y="416" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">mirror the public packages you depend on</text>
+
+  
+  <rect x="845" y="460" width="690" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(865, 480)">
+    
+    <circle cx="20" cy="20" r="12" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="28" y1="28" x2="44" y2="44" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="38" y1="38" x2="44" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="42" y1="42" x2="48" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="935" y="497" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="935" dy="0">authenticate with tokens, using keyring helpers,</tspan>
+    <tspan x="935" dy="32">rather than passwords in files</tspan>
+  </text>
+
+  
+  <rect x="845" y="570" width="690" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(865, 585)">
+    
+    <line x1="8" y1="16" x2="44" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="20" cy="16" r="5" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <line x1="8" y1="34" x2="44" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="34" cy="34" r="5" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="935" y="605" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="935" dy="0">point clients at it through pip.conf,</tspan>
+    <tspan x="935" dy="32">PIP_INDEX_URL or the uv index settings</tspan>
+  </text>
+
+
+  
+  <rect x="40" y="690" width="1520" height="395" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(65, 705)">
+    
+    <circle cx="26" cy="24" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 20 24 l 5 5 l 10 -10" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 16 38 L 12 50 L 22 46 L 26 52" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+  <text x="125" y="738" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Integrity and provenance</text>
+
+  
+  <rect x="65" y="760" width="715" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(85, 778)">
+    
+    <rect x="8" y="16" width="34" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 17 16 v -6 a 8 8 0 0 1 16 0 v 6" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="25" cy="29" r="3" fill="#207448"/>
+  </g>
+  <text x="150" y="797" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="150" dy="0">pip install --require-hashes</tspan>
+    <tspan x="150" dy="32">-r requirements.txt</tspan>
+  </text>
+
+  
+  <rect x="820" y="760" width="715" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(840, 778)">
+    
+    <circle cx="25" cy="25" r="10" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 25 8 v 6 M 25 36 v 6 M 8 25 h 6 M 36 25 h 6 M 13 13 l 4 4 M 33 33 l 4 4 M 13 37 l 4 -4 M 33 17 l 4 -4" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="905" y="813" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">pip-compile --generate-hashes</text>
+
+  
+  <rect x="65" y="865" width="715" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(85, 885)">
+    
+    <path d="M 12 32 a 12 12 0 0 1 22 -6 a 10 10 0 0 1 16 8 h -38 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="26" cy="40" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 31 40 h 12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="150" y="904" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="150" dy="0">PyPI trusted publishing uses OIDC from</tspan>
+    <tspan x="150" dy="32">GitHub Actions, so no long-lived tokens</tspan>
+  </text>
+
+  
+  <rect x="820" y="865" width="715" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(840, 885)">
+    
+    <rect x="10" y="8" width="32" height="40" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="26" cy="24" r="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="16" y1="38" x2="36" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="905" y="920" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Sigstore attestations</text>
+
+  
+  <rect x="65" y="975" width="715" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(85, 992)">
+    
+    <circle cx="22" cy="22" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="32" y1="32" x2="46" y2="46" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="22" cy="22" r="4" fill="#207448"/>
+  </g>
+  <text x="150" y="1013" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="150" dy="0">pip-audit or safety</tspan>
+    <tspan x="150" dy="32">for known vulnerabilities</tspan>
+  </text>
+
+  
+  <rect x="820" y="975" width="715" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(840, 992)">
+    
+    <rect x="10" y="10" width="30" height="38" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="18" y1="20" x2="32" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="18" y1="28" x2="32" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="18" y1="36" x2="26" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="905" y="1029" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">SBOM with cyclonedx-py or syft</text>
+
+
+  
+  <rect x="40" y="1110" width="1520" height="65" rx="12" fill="#207448"/>
+  <text x="800" y="1151" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">Unpinned transitive dependencies can change between a CI run and a production rollout</text>
+</svg>

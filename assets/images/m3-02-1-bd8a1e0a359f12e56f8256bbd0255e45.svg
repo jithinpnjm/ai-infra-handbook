@@ -1,0 +1,240 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Four Import Models, PEP 420 Namespace Packages, and Resolution Flow</title>
+  <desc>Flowchart diagram showing Python module and package import resolution algorithm across candidate directories on sys.path or parent.__path__.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <filter id="shadow" x="-3%" y="-6%" width="106%" height="116%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#143020" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="54" text-anchor="middle" fill="#207448" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold">Four Import Models &amp; PEP 420 Namespace Packages</text>
+  <text x="800" y="104" text-anchor="middle" fill="#207448" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold">(__path__) and the 4-Step Resolution</text>
+
+  
+
+  
+  <g id="node-start" filter="url(#shadow)">
+    <rect x="115" y="135" width="1410" height="80" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(145, 149)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="14"/>
+      <line x1="30" y1="30" x2="44" y2="44"/>
+      <line x1="14" y1="20" x2="26" y2="20"/>
+      <line x1="20" y1="14" x2="20" y2="26"/>
+    </g>
+    <text x="215" y="184" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold">Import 'name': scan candidate directories on sys.path <tspan font-family="ui-monospace, monospace" font-size="26" font-weight="normal">(or parent.__path__)</tspan></text>
+  </g>
+
+  
+  <g id="node-loop" filter="url(#shadow)">
+    <rect x="115" y="255" width="670" height="72" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(140, 267)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 38 18 A 15 15 0 1 0 42 28"/>
+      <polyline points="32 12 40 18 34 26"/>
+    </g>
+    <text x="210" y="301" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold">Next candidate directory d</text>
+  </g>
+
+  
+  <g id="node-step1" filter="url(#shadow)">
+    <rect x="115" y="367" width="670" height="80" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(140, 381)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 16 L 26 6 L 44 16 L 26 26 Z"/>
+      <path d="M 8 16 L 8 36 L 26 46 L 26 26"/>
+      <path d="M 44 16 L 44 36 L 26 46"/>
+    </g>
+    <text x="210" y="403" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold">
+      <tspan x="210" dy="0">1. Does <tspan font-family="ui-monospace, monospace">d/name/__init__.py</tspan></tspan>
+      <tspan x="210" dy="34">exist?</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-retreg" filter="url(#shadow)">
+    <rect x="835" y="367" width="690" height="80" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(860, 381)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="34" height="32" rx="4"/>
+      <polyline points="16 26 23 33 34 20"/>
+    </g>
+    <text x="925" y="403" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="925" dy="0" font-size="30" font-weight="bold">Return Regular Package immediately</tspan>
+      <tspan x="925" dy="32" font-size="24" font-family="ui-monospace, monospace">(runs __init__.py)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-step2" filter="url(#shadow)">
+    <rect x="115" y="487" width="670" height="80" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(140, 501)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 12 8 L 32 8 L 42 18 L 42 44 L 12 44 Z"/>
+      <polyline points="32 8 32 18 42 18"/>
+      <line x1="20" y1="26" x2="34" y2="26"/>
+      <line x1="20" y1="34" x2="30" y2="34"/>
+    </g>
+    <text x="210" y="523" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold">
+      <tspan x="210" dy="0">2. Does <tspan font-family="ui-monospace, monospace">d/name.{py,pyc,so,...}</tspan></tspan>
+      <tspan x="210" dy="34">exist?</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-retmod" filter="url(#shadow)">
+    <rect x="835" y="487" width="690" height="80" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(860, 501)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 12 L 28 12 L 38 22 L 38 42 L 10 42 Z"/>
+      <polyline points="28 12 28 22 38 22"/>
+      <polyline points="18 32 23 37 32 27"/>
+    </g>
+    <text x="925" y="537" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold">Return Simple Module immediately</text>
+  </g>
+
+  
+  <g id="node-step3" filter="url(#shadow)">
+    <rect x="115" y="607" width="670" height="80" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(140, 621)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 14 L 20 14 L 26 20 L 44 20 L 44 42 L 8 42 Z"/>
+      <line x1="16" y1="31" x2="36" y2="31"/>
+    </g>
+    <text x="210" y="643" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="210" dy="0" font-size="30" font-weight="bold">3. Is d/name a directory</tspan>
+      <tspan x="210" dy="32" font-size="24" font-family="ui-monospace, monospace">(no __init__.py)?</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-record" filter="url(#shadow)">
+    <rect x="835" y="607" width="690" height="80" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(860, 621)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="30" height="34" rx="3"/>
+      <line x1="16" y1="20" x2="30" y2="20"/>
+      <line x1="16" y1="28" x2="30" y2="28"/>
+      <polyline points="28 34 33 39 42 27"/>
+    </g>
+    <text x="925" y="643" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="925" dy="0" font-size="30" font-weight="bold">Record d/name in candidate list</tspan>
+      <tspan x="925" dy="32" font-size="24" font-weight="bold">and KEEP SCANNING next d</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-next" filter="url(#shadow)">
+    <rect x="115" y="727" width="670" height="72" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(140, 737)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="12 14 26 26 12 38"/>
+      <polygon points="26 14 40 26 26 38"/>
+    </g>
+    <text x="210" y="773" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold">4. Continue to next candidate d</text>
+  </g>
+
+  
+  <g id="node-more" filter="url(#shadow)">
+    <rect x="115" y="839" width="670" height="72" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(140, 849)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="26" cy="26" r="16"/>
+      <path d="M 22 20 A 4 4 0 0 1 29 23 C 29 27 26 28 26 31"/>
+      <circle cx="26" cy="36" r="1.5" fill="#207448"/>
+    </g>
+    <text x="210" y="885" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold">More candidate directories?</text>
+  </g>
+
+  
+  <g id="node-checkns" filter="url(#shadow)">
+    <rect x="115" y="955" width="670" height="80" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(140, 969)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 14 L 18 14 L 23 19 L 40 19 L 40 38 L 8 38 Z"/>
+      <circle cx="34" cy="32" r="8"/>
+      <line x1="40" y1="38" x2="46" y2="44"/>
+    </g>
+    <text x="210" y="991" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="210" dy="0" font-size="30" font-weight="bold">Any d/name directories</tspan>
+      <tspan x="210" dy="32" font-size="26" font-weight="bold">recorded in Step 3?</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-retns" filter="url(#shadow)">
+    <rect x="835" y="937" width="690" height="116" rx="14" fill="#fcf4eb" stroke="#db8129" stroke-width="3.5"/>
+    <g transform="translate(860, 969)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 14 L 16 14 L 21 19 L 36 19 L 36 34 L 6 34 Z"/>
+      <path d="M 14 24 L 24 24 L 29 29 L 44 29 L 44 44 L 14 44 Z"/>
+    </g>
+    <text x="925" y="973" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="925" dy="0" font-size="30" font-weight="bold" fill="#db8129">Create &amp; return Namespace Package</tspan>
+      <tspan x="925" dy="34" font-size="24" font-family="ui-monospace, monospace">(__path__ = _NamespacePath of recorded dirs,</tspan>
+      <tspan x="925" dy="30" font-size="24" font-family="ui-monospace, monospace">no __file__ attribute)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-err" filter="url(#shadow)">
+    <rect x="115" y="1081" width="670" height="74" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g transform="translate(140, 1092)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="26 8 46 42 6 42"/>
+      <line x1="26" y1="20" x2="26" y2="28"/>
+      <circle cx="26" cy="35" r="1.5" fill="#207448"/>
+    </g>
+    <text x="210" y="1128" fill="#303a36" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold">Raise ModuleNotFoundError</text>
+  </g>
+
+  
+
+  
+  <line x1="450" y1="215" x2="450" y2="255" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <line x1="450" y1="327" x2="450" y2="367" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <line x1="785" y1="407" x2="835" y2="407" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="810" y="395" text-anchor="middle" fill="#207448" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold">Yes</text>
+
+  
+  <line x1="450" y1="447" x2="450" y2="487" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="475" y="471" fill="#207448" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold">No</text>
+
+  
+  <line x1="785" y1="527" x2="835" y2="527" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="810" y="515" text-anchor="middle" fill="#207448" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold">Yes</text>
+
+  
+  <line x1="450" y1="567" x2="450" y2="607" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="475" y="591" fill="#207448" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold">No</text>
+
+  
+  <line x1="785" y1="647" x2="835" y2="647" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="810" y="635" text-anchor="middle" fill="#207448" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold">Yes</text>
+
+  
+  <line x1="450" y1="687" x2="450" y2="727" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="475" y="711" fill="#207448" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold">No</text>
+
+  
+  <line x1="450" y1="799" x2="450" y2="839" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1180 687 L 1180 875 L 785 875" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 115 875 L 55 875 L 55 291 L 115 291" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="85" y="865" text-anchor="middle" fill="#207448" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold">Yes</text>
+
+  
+  <line x1="450" y1="911" x2="450" y2="955" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="475" y="937" fill="#207448" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold">No</text>
+
+  
+  <line x1="785" y1="995" x2="835" y2="995" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="810" y="983" text-anchor="middle" fill="#207448" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold">Yes</text>
+
+  
+  <line x1="450" y1="1035" x2="450" y2="1081" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="475" y="1062" fill="#207448" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold">No</text>
+
+</svg>

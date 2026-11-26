@@ -1,0 +1,244 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1150" viewBox="0 0 1600 1150">
+  <title>Removing a label orphans a pod and triggers a replacement</title>
+  <desc>Visual explanation showing how removing a label isolates a misbehaving pod for debugging and causes Kubernetes to create a replacement pod to maintain full capacity.</desc>
+
+  <defs>
+    <marker id="green-arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Removing a label orphans a pod and triggers a replacement</text>
+
+  
+  <g id="panel-before">
+    <rect x="40" y="95" width="500" height="915" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="65" y="115" width="130" height="46" rx="8" fill="#207448"/>
+    <text x="130" y="148" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff">before</text>
+
+    
+    <rect x="65" y="185" width="450" height="800" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+    
+    <g transform="translate(85, 205)">
+      
+      <g stroke="#207448" stroke-width="4" fill="none">
+        <circle cx="28" cy="28" r="16"/>
+        <circle cx="28" cy="28" r="7"/>
+        <line x1="28" y1="4" x2="28" y2="52"/>
+        <line x1="4" y1="28" x2="52" y2="28"/>
+        <line x1="11" y1="11" x2="45" y2="45"/>
+        <line x1="11" y1="45" x2="45" y2="11"/>
+      </g>
+      <text x="70" y="38" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">ReplicaSet</text>
+      <rect x="250" y="10" width="160" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <text x="330" y="38" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">replicas 3</text>
+    </g>
+
+    
+    <path d="M 105 275 L 105 825" stroke="#207448" stroke-width="3" fill="none"/>
+    <line x1="105" y1="365" x2="140" y2="365" stroke="#207448" stroke-width="3"/>
+    <line x1="105" y1="545" x2="140" y2="545" stroke="#207448" stroke-width="3"/>
+    <line x1="105" y1="740" x2="140" y2="740" stroke="#207448" stroke-width="3"/>
+
+    
+    <g transform="translate(140, 290)">
+      <rect width="350" height="150" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+      
+      <g stroke="#207448" stroke-width="3" fill="none" transform="translate(25, 52)">
+        <rect width="48" height="38" rx="4"/>
+        <line x1="0" y1="12" x2="48" y2="12"/>
+        <circle cx="8" cy="6" r="2" fill="#207448"/>
+        <circle cx="15" cy="6" r="2" fill="#207448"/>
+      </g>
+      <text x="95" y="86" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">app=web</text>
+    </g>
+
+    
+    <g transform="translate(140, 470)">
+      <rect width="350" height="150" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+      
+      <g stroke="#207448" stroke-width="3" fill="none" transform="translate(25, 52)">
+        <rect width="48" height="38" rx="4"/>
+        <line x1="0" y1="12" x2="48" y2="12"/>
+        <circle cx="8" cy="6" r="2" fill="#207448"/>
+        <circle cx="15" cy="6" r="2" fill="#207448"/>
+      </g>
+      <text x="95" y="86" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">app=web</text>
+    </g>
+
+    
+    <g transform="translate(140, 650)">
+      <rect width="350" height="180" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+      
+      <g stroke="#207448" stroke-width="3" fill="none" transform="translate(25, 45)">
+        <rect width="48" height="38" rx="4"/>
+        <line x1="0" y1="12" x2="48" y2="12"/>
+        <circle cx="8" cy="6" r="2" fill="#207448"/>
+        <circle cx="15" cy="6" r="2" fill="#207448"/>
+      </g>
+      <text x="95" y="78" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">app=web</text>
+      
+      <rect x="95" y="105" width="220" height="46" rx="6" fill="#fce8e6" stroke="#c5221f" stroke-width="2"/>
+      <text x="205" y="137" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c5221f">misbehaving</text>
+    </g>
+  </g>
+
+  
+  <g id="transition">
+    
+    <circle cx="740" cy="350" r="24" fill="#207448"/>
+    <text x="740" y="359" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+    <text x="740" y="405" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">remove the label</text>
+
+    
+    <line x1="560" y1="445" x2="920" y2="445" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)"/>
+
+    
+    <rect x="565" y="475" width="350" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="740" y="514" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="740" dy="0">kubectl label pod</tspan>
+      <tspan x="740" dy="32">web-xxxx app-</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-after">
+    <rect x="940" y="95" width="620" height="915" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="965" y="115" width="115" height="46" rx="8" fill="#207448"/>
+    <text x="1022" y="148" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff">after</text>
+
+    
+    <rect x="965" y="185" width="570" height="480" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+    
+    <g transform="translate(985, 205)">
+      
+      <g stroke="#207448" stroke-width="4" fill="none">
+        <circle cx="28" cy="28" r="16"/>
+        <circle cx="28" cy="28" r="7"/>
+        <line x1="28" y1="4" x2="28" y2="52"/>
+        <line x1="4" y1="28" x2="52" y2="28"/>
+        <line x1="11" y1="11" x2="45" y2="45"/>
+        <line x1="11" y1="45" x2="45" y2="11"/>
+      </g>
+      <text x="70" y="38" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">ReplicaSet</text>
+      <rect x="360" y="10" width="160" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <text x="440" y="38" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">replicas 3</text>
+    </g>
+
+    
+    <path d="M 1005 275 L 1005 570" stroke="#207448" stroke-width="3" fill="none"/>
+    <line x1="1005" y1="315" x2="1035" y2="315" stroke="#207448" stroke-width="3"/>
+    <line x1="1005" y1="400" x2="1035" y2="400" stroke="#207448" stroke-width="3"/>
+    <line x1="1005" y1="550" x2="1035" y2="550" stroke="#207448" stroke-width="3"/>
+
+    
+    <g transform="translate(1035, 275)">
+      <rect width="480" height="75" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+      
+      <g stroke="#207448" stroke-width="3" fill="none" transform="translate(20, 18)">
+        <rect width="48" height="38" rx="4"/>
+        <line x1="0" y1="12" x2="48" y2="12"/>
+        <circle cx="8" cy="6" r="2" fill="#207448"/>
+        <circle cx="15" cy="6" r="2" fill="#207448"/>
+      </g>
+      <text x="90" y="48" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">app=web</text>
+    </g>
+
+    
+    <g transform="translate(1035, 360)">
+      <rect width="480" height="75" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+      
+      <g stroke="#207448" stroke-width="3" fill="none" transform="translate(20, 18)">
+        <rect width="48" height="38" rx="4"/>
+        <line x1="0" y1="12" x2="48" y2="12"/>
+        <circle cx="8" cy="6" r="2" fill="#207448"/>
+        <circle cx="15" cy="6" r="2" fill="#207448"/>
+      </g>
+      <text x="90" y="48" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">app=web</text>
+    </g>
+
+    
+    <g transform="translate(1035, 450)">
+      <rect width="480" height="195" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2.5"/>
+      
+      <g stroke="#207448" stroke-width="3" fill="none" transform="translate(20, 20)">
+        <rect width="48" height="38" rx="4"/>
+        <line x1="0" y1="12" x2="48" y2="12"/>
+        <circle cx="8" cy="6" r="2" fill="#207448"/>
+        <circle cx="15" cy="6" r="2" fill="#207448"/>
+      </g>
+      <text x="90" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">replacement created</text>
+      
+      
+      <g transform="translate(20, 95)">
+        <rect width="440" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+        <circle cx="38" cy="38" r="20" fill="#207448"/>
+        <text x="38" y="46" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+        <text x="75" y="46" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">controller creates a new pod</text>
+      </g>
+    </g>
+
+    
+    <g transform="translate(965, 685)">
+      <rect width="570" height="300" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+      
+      
+      <g transform="translate(20, 16)">
+        <circle cx="24" cy="24" r="24" fill="#207448"/>
+        <text x="24" y="33" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+        <text x="65" y="24" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+          <tspan x="65" dy="0">controller sees no match</tspan>
+          <tspan x="65" dy="28">and releases the pod</tspan>
+        </text>
+      </g>
+
+      
+      <g transform="translate(20, 88)">
+        
+        <g stroke="#db8129" stroke-width="3" fill="none" transform="translate(0, 8)">
+          <rect width="48" height="38" rx="4"/>
+          <line x1="0" y1="12" x2="48" y2="12"/>
+          <circle cx="8" cy="6" r="2" fill="#db8129"/>
+          <circle cx="15" cy="6" r="2" fill="#db8129"/>
+        </g>
+        
+        
+        <rect x="65" y="8" width="135" height="42" rx="6" fill="#fce8e6" stroke="#c5221f" stroke-width="2"/>
+        <text x="132" y="38" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c5221f">orphaned</text>
+        
+        
+        <rect x="215" y="8" width="180" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+        <text x="305" y="38" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">still running</text>
+
+        
+        <rect x="65" y="60" width="390" height="42" rx="6" fill="#f0f4f1" stroke="#303a36" stroke-width="2"/>
+        <text x="260" y="90" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">ready for kubectl exec</text>
+      </g>
+
+      
+      <g transform="translate(20, 205)">
+        <rect width="530" height="75" rx="8" fill="#fff8f0" stroke="#db8129" stroke-width="2"/>
+        <text x="265" y="34" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+          <tspan x="265" dy="0">it is isolated for debugging,</tspan>
+          <tspan x="265" dy="28">not deleted</tspan>
+        </text>
+      </g>
+    </g>
+  </g>
+
+  
+  <g transform="translate(40, 1035)">
+    <rect width="1520" height="75" rx="10" fill="#207448"/>
+    <text x="760" y="47" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">removing the label is a debugging trick that keeps the service at full capacity</text>
+  </g>
+</svg>

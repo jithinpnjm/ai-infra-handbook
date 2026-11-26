@@ -1,0 +1,227 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Control-flow symptom to fix ladder</title>
+  <desc>Three-column ladder mapping debugging symptoms to likely causes and fixes</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Control-flow symptom to fix ladder</text>
+
+  
+  <g id="headers">
+    
+    <rect x="55" y="95" width="430" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="85" cy="122.5" r="9" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="91.5" y1="129" x2="100" y2="137.5" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="270" y="133" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Symptom</text>
+
+    
+    <rect x="520" y="95" width="470" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="550" cy="122.5" r="6" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 550 111 L 550 114 M 550 131 L 550 134 M 538.5 122.5 L 541.5 122.5 M 558.5 122.5 L 561.5 122.5 M 542 114.5 L 544 116.5 M 556 128.5 L 558 130.5 M 542 130.5 L 544 128.5 M 556 116.5 L 558 114.5" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="755" y="133" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Likely cause</text>
+
+    
+    <rect x="1025" y="95" width="520" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <path d="M 1050 134 L 1061 123 C 1064 124 1067 123 1069 121 C 1071 119 1072 115 1070 112 L 1066 116 L 1062 116 L 1062 112 L 1066 108 C 1063 106 1059 107 1057 109 C 1055 111 1054 114 1055 117 Z" fill="none" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+    <text x="1285" y="133" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Fix</text>
+  </g>
+
+  
+  <g id="row1">
+    <rect x="55" y="175" width="430" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 209)">
+      <path d="M 12 36 C 12 18 36 18 36 36 L 42 43 L 6 43 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+      <path d="M 20 43 C 20 47 28 47 28 43" fill="none" stroke="#207448" stroke-width="3.5" />
+      <line x1="6" y1="12" x2="42" y2="48" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="145" y="231" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="145" dy="0">Handler</tspan>
+      <tspan x="145" dy="36">never ran</tspan>
+    </text>
+
+    <line x1="485" y1="237.5" x2="516" y2="237.5" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    <rect x="520" y="175" width="470" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="544" y="220" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="544" dy="0">task not changed,</tspan>
+      <tspan x="544" dy="28">earlier failure,</tspan>
+      <tspan x="544" dy="28">name typo</tspan>
+    </text>
+
+    <line x1="990" y1="237.5" x2="1021" y2="237.5" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    <rect x="1025" y="175" width="520" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1049" y="233" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1049" dy="0">-v, force_handlers,</tspan>
+      <tspan x="1049" dy="32">flush_handlers</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row2">
+    <rect x="55" y="316" width="430" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 350)">
+      <path d="M 10 24 A 15 15 0 0 1 37 17 L 38 10 M 37 17 L 45 18" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 38 24 A 15 15 0 0 1 11 31 L 10 38 M 11 31 L 3 30" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="145" y="372" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="145" dy="0">Handler ran</tspan>
+      <tspan x="145" dy="36">every time</tspan>
+    </text>
+
+    <line x1="485" y1="378.5" x2="516" y2="378.5" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    <rect x="520" y="316" width="470" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="544" y="386" font-family="sans-serif" font-size="24" fill="#303a36">task not idempotent</text>
+
+    <line x1="990" y1="378.5" x2="1021" y2="378.5" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    <rect x="1025" y="316" width="520" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1049" y="386" font-family="sans-serif" font-size="24" fill="#303a36">fix the source of changes</text>
+  </g>
+
+  
+  <g id="row3">
+    <rect x="55" y="457" width="430" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 491)">
+      <path d="M 8 10 L 22 24 L 8 38 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+      <path d="M 22 10 L 36 24 L 22 38 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+      <line x1="40" y1="10" x2="40" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="145" y="513" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="145" dy="0">Task skipped</tspan>
+      <tspan x="145" dy="36">unexpectedly</tspan>
+    </text>
+
+    <line x1="485" y1="519.5" x2="516" y2="519.5" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    <rect x="520" y="457" width="470" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="544" y="514" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="544" dy="0">when false,</tspan>
+      <tspan x="544" dy="32">string vs bool</tspan>
+    </text>
+
+    
+    <line x1="990" y1="519.5" x2="1021" y2="519.5" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+    <rect x="1025" y="457" width="520" height="125" rx="8" fill="#fff8f0" stroke="#db8129" stroke-width="3" />
+    <text x="1049" y="527" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">-vv shows false_condition</text>
+  </g>
+
+  
+  <g id="row4">
+    <rect x="55" y="598" width="430" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 632)">
+      <path d="M 6 12 L 24 6 L 42 12 C 42 30 24 42 24 42 C 24 42 6 30 6 12 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+      <path d="M 15 23 L 21 29 L 33 17" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="145" y="654" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="145" dy="0">rescue ran but</tspan>
+      <tspan x="145" dy="36">play is green</tspan>
+    </text>
+
+    <line x1="485" y1="660.5" x2="516" y2="660.5" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    <rect x="520" y="598" width="470" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="544" y="668" font-family="sans-serif" font-size="24" fill="#303a36">rescue handled it</text>
+
+    <line x1="990" y1="660.5" x2="1021" y2="660.5" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    <rect x="1025" y="598" width="520" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1049" y="655" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1049" dy="0">re-raise with fail,</tspan>
+      <tspan x="1049" dy="32">check rescued count</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row5">
+    <rect x="55" y="739" width="430" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 773)">
+      <rect x="6" y="8" width="30" height="9" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="6" y="21" width="30" height="9" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="6" y="34" width="30" height="9" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 40 13 C 47 13 47 38 40 38" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="145" y="795" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="145" dy="0">Loop result</tspan>
+      <tspan x="145" dy="36">weird</tspan>
+    </text>
+
+    <line x1="485" y1="801.5" x2="516" y2="801.5" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    <rect x="520" y="739" width="470" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="544" y="809" font-family="sans-serif" font-size="24" fill="#303a36">register gives results list</text>
+
+    <line x1="990" y1="801.5" x2="1021" y2="801.5" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    <rect x="1025" y="739" width="520" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1049" y="809" font-family="monospace" font-size="24" fill="#303a36">map</text>
+  </g>
+
+  
+  <g id="row6">
+    <rect x="55" y="880" width="430" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 914)">
+      <circle cx="24" cy="27" r="17" fill="none" stroke="#207448" stroke-width="3.5" />
+      <polyline points="24,17 24,27 32,27" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="20" y1="5" x2="28" y2="5" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="24" y1="5" x2="24" y2="10" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="145" y="936" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="145" dy="0">Retries did</tspan>
+      <tspan x="145" dy="36">not stop</tspan>
+    </text>
+
+    <line x1="485" y1="942.5" x2="516" y2="942.5" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    <rect x="520" y="880" width="470" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="544" y="950" font-family="sans-serif" font-size="24" fill="#303a36">until never true</text>
+
+    <line x1="990" y1="942.5" x2="1021" y2="942.5" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    <rect x="1025" y="880" width="520" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1049" y="950" font-family="monospace" font-size="24" fill="#303a36">print register with -v</text>
+  </g>
+
+  
+  <g id="row7">
+    <rect x="55" y="1021" width="430" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 1055)">
+      <path d="M 6 24 L 22 8 L 40 8 L 40 26 L 24 42 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+      <circle cx="32" cy="16" r="3" fill="#207448" />
+    </g>
+    <text x="145" y="1077" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="145" dy="0">Included tasks</tspan>
+      <tspan x="145" dy="36">not tagged</tspan>
+    </text>
+
+    <line x1="485" y1="1083.5" x2="516" y2="1083.5" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    <rect x="520" y="1021" width="470" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="544" y="1091" font-family="sans-serif" font-size="24" fill="#303a36">dynamic include</text>
+
+    <line x1="990" y1="1083.5" x2="1021" y2="1083.5" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    <rect x="1025" y="1021" width="520" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1049" y="1091" font-family="monospace" font-size="24" fill="#303a36">import_tasks or apply</text>
+  </g>
+</svg>

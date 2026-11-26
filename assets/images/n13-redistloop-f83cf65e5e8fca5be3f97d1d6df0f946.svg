@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Redistribution loop and the tag fix</title>
+  <desc>Visual infographic showing how mutual redistribution between two routing protocols causes routing loops, and how route tags break the loop.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Redistribution loop and the tag fix</text>
+
+  
+  <rect x="40" y="105" width="740" height="795" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="75" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Loop</text>
+
+  
+  <rect x="65" y="175" width="690" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="98" cy="202" r="24" fill="#207448"/>
+  <text x="98" y="210" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="136" y="210" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">A injects prefix N from X into Y</text>
+
+  
+  <rect x="65" y="255" width="165" height="430" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 4"/>
+  <g transform="translate(147, 305)">
+    <path d="M -24 6 C -28 6 -32 2 -32 -3 C -32 -8 -28 -12 -23 -12 C -21 -19 -14 -24 -6 -24 C 3 -24 10 -19 13 -12 C 18 -12 23 -8 23 -3 C 27 -3 30 1 30 5 C 30 10 26 14 21 14 L -21 14 C -26 14 -29 11 -29 6" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="147" y="365" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="147" dy="0">Protocol</tspan>
+    <tspan x="147" dy="36">X</tspan>
+  </text>
+
+  
+  <rect x="305" y="255" width="210" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(410, 292)">
+    <circle cx="0" cy="0" r="22" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M -14 0 L 14 0 M 8 -6 L 14 0 L 8 6 M -8 6 L -14 0 L -8 -6" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 0 -14 L 0 14 M -6 -8 L 0 -14 L 6 -8 M 6 8 L 0 14 L -6 8" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="410" y="348" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Router A</text>
+
+  
+  <rect x="590" y="255" width="165" height="430" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 4"/>
+  <g transform="translate(672, 305)">
+    <path d="M -24 6 C -28 6 -32 2 -32 -3 C -32 -8 -28 -12 -23 -12 C -21 -19 -14 -24 -6 -24 C 3 -24 10 -19 13 -12 C 18 -12 23 -8 23 -3 C 27 -3 30 1 30 5 C 30 10 26 14 21 14 L -21 14 C -26 14 -29 11 -29 6" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="672" y="365" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="672" dy="0">Protocol</tspan>
+    <tspan x="672" dy="36">Y</tspan>
+  </text>
+
+  
+  <rect x="305" y="575" width="210" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(410, 612)">
+    <circle cx="0" cy="0" r="22" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M -14 0 L 14 0 M 8 -6 L 14 0 L 8 6 M -8 6 L -14 0 L -8 -6" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 0 -14 L 0 14 M -6 -8 L 0 -14 L 6 -8 M 6 8 L 0 14 L -6 8" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="410" y="668" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Router B</text>
+
+  
+  <rect x="65" y="715" width="690" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="98" cy="750" r="24" fill="#207448"/>
+  <text x="98" y="758" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="136" y="743" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="136" dy="0">B hears N from Y</tspan>
+    <tspan x="136" dy="28">and injects it back into X</tspan>
+  </text>
+
+  
+  <rect x="150" y="440" width="520" height="56" rx="8" fill="#fff8f0" stroke="#db8129" stroke-width="3"/>
+  <circle cx="185" cy="468" r="24" fill="#db8129"/>
+  <text x="185" y="476" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <text x="224" y="476" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">N now looks like a new route</text>
+
+  
+  
+  <line x1="230" y1="310" x2="301" y2="310" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <line x1="515" y1="310" x2="586" y2="310" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="672" y1="440" x2="672" y2="565" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="590" y1="630" x2="519" y2="630" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <line x1="305" y1="630" x2="234" y2="630" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 147 570 C 147 500 230 400 301 340" fill="none" stroke="#db8129" stroke-width="4" stroke-dasharray="8 6" marker-end="url(#arrow-orange)"/>
+
+
+  
+  <rect x="820" y="105" width="740" height="795" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="855" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Tag fix</text>
+
+  
+  <rect x="845" y="255" width="145" height="430" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 4"/>
+  <g transform="translate(917, 305)">
+    <path d="M -24 6 C -28 6 -32 2 -32 -3 C -32 -8 -28 -12 -23 -12 C -21 -19 -14 -24 -6 -24 C 3 -24 10 -19 13 -12 C 18 -12 23 -8 23 -3 C 27 -3 30 1 30 5 C 30 10 26 14 21 14 L -21 14 C -26 14 -29 11 -29 6" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="917" y="375" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">OSPF</text>
+
+  
+  <rect x="1390" y="255" width="145" height="430" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 4"/>
+  <g transform="translate(1462, 305)">
+    <path d="M -24 6 C -28 6 -32 2 -32 -3 C -32 -8 -28 -12 -23 -12 C -21 -19 -14 -24 -6 -24 C 3 -24 10 -19 13 -12 C 18 -12 23 -8 23 -3 C 27 -3 30 1 30 5 C 30 10 26 14 21 14 L -21 14 C -26 14 -29 11 -29 6" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1462" y="375" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">BGP</text>
+
+  
+  <rect x="1035" y="255" width="310" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1190, 290)">
+    <path d="M -16 -12 L 2 -12 L 18 4 L 4 18 L -12 2 L -16 -12 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="-6" cy="-4" r="3" fill="#207448"/>
+  </g>
+  <text x="1190" y="348" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#207448">set tag 1001</text>
+
+  
+  <rect x="1010" y="565" width="360" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1190, 600)">
+    <path d="M -16 -14 L 16 -14 C 16 4 8 16 0 20 C -8 16 -16 4 -16 -14 Z" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M -7 -4 L 7 6 M -7 6 L 7 -4" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="1190" y="650" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1190" dy="0">route-map BGP-TO-OSPF</tspan>
+    <tspan x="1190" dy="30">deny 5, match tag 1001</tspan>
+  </text>
+
+  
+  
+  <line x1="990" y1="310" x2="1031" y2="310" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <line x1="1345" y1="310" x2="1386" y2="310" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="1462" y1="440" x2="1462" y2="565" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="1390" y1="630" x2="1374" y2="630" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="998" y1="605" x2="998" y2="655" stroke="#207448" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="998" cy="630" r="14" fill="#207448"/>
+  <path d="M 992 624 L 1004 636 M 992 636 L 1004 624" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+
+
+  
+  
+  <rect x="140" y="935" width="430" height="60" rx="30" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="355" y="973" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">keep redistribution one way</text>
+
+  
+  <rect x="610" y="935" width="570" height="60" rx="30" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="895" y="973" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">send defaults down and aggregates up</text>
+
+  
+  <rect x="1220" y="935" width="240" height="60" rx="30" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1340" y="973" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">route tags</text>
+</svg>

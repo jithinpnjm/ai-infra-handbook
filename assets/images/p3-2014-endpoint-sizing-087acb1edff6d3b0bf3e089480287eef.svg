@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Sizing a dedicated endpoint: memory first, then one extra replica</title>
+  <desc>Worked example for a 70 billion parameter model showing the six steps to size GPU requirements from model weights to data plane reservation.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 2 L 10 6 L 2 10 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="60" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">
+    <tspan x="60" dy="0">Sizing a dedicated endpoint:</tspan>
+    <tspan x="60" dy="56">memory first, then one extra replica</tspan>
+  </text>
+  <text x="60" y="156" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Worked example for a 70 billion parameter model</text>
+
+  
+  
+  <line x1="770" y1="325" x2="828" y2="325" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="1185" y1="465" x2="1185" y2="503" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="830" y1="655" x2="772" y2="655" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="415" y1="805" x2="415" y2="843" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="770" y1="995" x2="828" y2="995" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="step1">
+    <rect x="60" y="185" width="710" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <circle cx="104" cy="229" r="24" fill="#207448" />
+    <text x="104" y="229" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+    <text x="144" y="238" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Step 1</text>
+    
+    <g transform="translate(684, 201)">
+      <ellipse cx="28" cy="14" rx="20" ry="7" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 8 14 V 27 C 8 32, 48 32, 48 27 V 14" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 8 27 V 40 C 8 45, 48 45, 48 40 V 27" fill="none" stroke="#207448" stroke-width="3.5" />
+    </g>
+    <line x1="84" y1="265" x2="746" y2="265" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25" />
+    <text x="96" y="312" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+      <tspan x="96" dy="0">weights = parameters x bytes</tspan>
+      <tspan x="96" dy="38">per parameter: 70 x 2 bytes</tspan>
+      <tspan x="96" dy="38">at FP16 = 140 GB</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step2">
+    <rect x="830" y="185" width="710" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <circle cx="874" cy="229" r="24" fill="#207448" />
+    <text x="874" y="229" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+    <text x="914" y="238" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Step 2</text>
+    
+    <g transform="translate(1454, 201)">
+      <rect x="13" y="13" width="30" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+      <rect x="21" y="21" width="14" height="14" rx="2" fill="none" stroke="#207448" stroke-width="2" />
+      <line x1="20" y1="6" x2="20" y2="13" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="28" y1="6" x2="28" y2="13" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="36" y1="6" x2="36" y2="13" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="20" y1="43" x2="20" y2="50" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="28" y1="43" x2="28" y2="50" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="36" y1="43" x2="36" y2="50" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="6" y1="20" x2="13" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="6" y1="28" x2="13" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="6" y1="36" x2="13" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="43" y1="20" x2="50" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="43" y1="28" x2="50" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="43" y1="36" x2="50" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <line x1="854" y1="265" x2="1516" y2="265" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25" />
+    <text x="866" y="312" font-family="system-ui, -apple-system, sans-serif" font-size="24.5" fill="#303a36">
+      <tspan x="866" dy="0">one H100 SXM has 80 GB (NVL has 94 GB),</tspan>
+      <tspan x="866" dy="38">so 140 GB cannot fit on one GPU;</tspan>
+      <tspan x="866" dy="38">at least two GPUs for weights alone</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step3">
+    <rect x="830" y="505" width="710" height="300" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <circle cx="874" cy="549" r="24" fill="#207448" />
+    <text x="874" y="549" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+    <text x="914" y="558" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Step 3</text>
+    
+    <g transform="translate(1454, 521)">
+      <rect x="8" y="8" width="17" height="17" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="31" y="8" width="17" height="17" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="8" y="31" width="17" height="17" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="31" y="31" width="17" height="17" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="25" y1="16.5" x2="31" y2="16.5" stroke="#207448" stroke-width="2" />
+      <line x1="25" y1="39.5" x2="31" y2="39.5" stroke="#207448" stroke-width="2" />
+      <line x1="16.5" y1="25" x2="16.5" y2="31" stroke="#207448" stroke-width="2" />
+      <line x1="39.5" y1="25" x2="39.5" y2="31" stroke="#207448" stroke-width="2" />
+    </g>
+    <line x1="854" y1="585" x2="1516" y2="585" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25" />
+    <text x="866" y="628" font-family="system-ui, -apple-system, sans-serif" font-size="24.5" fill="#303a36">
+      <tspan x="866" dy="0">add KV cache and activation headroom:</tspan>
+      <tspan x="866" dy="36">the honest answer is four GPUs per replica,</tspan>
+      <tspan x="866" dy="36">or fewer if you quantise (fewer bits</tspan>
+      <tspan x="866" dy="36">per number, some accuracy cost)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step4">
+    <rect x="60" y="505" width="710" height="300" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <circle cx="104" cy="549" r="24" fill="#207448" />
+    <text x="104" y="549" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+    <text x="144" y="558" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Step 4</text>
+    
+    <g transform="translate(684, 521)">
+      <circle cx="14" cy="14" r="6" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="42" cy="14" r="6" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="14" cy="42" r="6" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="42" cy="42" r="6" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="20" y1="14" x2="36" y2="14" stroke="#207448" stroke-width="3" />
+      <line x1="20" y1="42" x2="36" y2="42" stroke="#207448" stroke-width="3" />
+      <line x1="14" y1="20" x2="14" y2="36" stroke="#207448" stroke-width="3" />
+      <line x1="42" y1="20" x2="42" y2="36" stroke="#207448" stroke-width="3" />
+    </g>
+    <line x1="84" y1="585" x2="746" y2="585" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25" />
+    <text x="96" y="622" font-family="system-ui, -apple-system, sans-serif" font-size="24.5" fill="#303a36">
+      <tspan x="96" dy="0">GPUs per replica is a memory question first</tspan>
+      <tspan x="96" dy="34">and a latency question second: tensor</tspan>
+      <tspan x="96" dy="34">parallelism cuts latency but costs</tspan>
+      <tspan x="96" dy="34">interconnect traffic and makes each replica</tspan>
+      <tspan x="96" dy="34">a bigger unit to lose and reload</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step5">
+    <rect x="60" y="845" width="710" height="300" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <circle cx="104" cy="889" r="24" fill="#207448" />
+    <text x="104" y="889" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+    <text x="144" y="898" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Step 5</text>
+    
+    <g transform="translate(684, 861)">
+      <line x1="8" y1="12" x2="48" y2="12" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="8" y1="44" x2="48" y2="44" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="28" y1="12" x2="28" y2="44" stroke="#207448" stroke-width="3" />
+      <circle cx="28" cy="22" r="5" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="28" cy="34" r="5" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+    <line x1="84" y1="925" x2="746" y2="925" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25" />
+    <text x="96" y="972" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+      <tspan x="96" dy="0">replica count: minimum is the SLA floor,</tspan>
+      <tspan x="96" dy="38">maximum is the cost ceiling and the</tspan>
+      <tspan x="96" dy="38">rollout budget</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step6">
+    <rect x="830" y="845" width="710" height="300" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+    <circle cx="874" cy="889" r="24" fill="#207448" />
+    <text x="874" y="889" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">6</text>
+    <text x="914" y="898" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Step 6</text>
+    
+    <g transform="translate(1454, 861)">
+      <rect x="10" y="8" width="36" height="40" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+      <line x1="10" y1="20" x2="46" y2="20" stroke="#207448" stroke-width="2.5" />
+      <line x1="10" y1="32" x2="46" y2="32" stroke="#207448" stroke-width="2.5" />
+      <circle cx="16" cy="14" r="2" fill="#207448" />
+      <circle cx="22" cy="14" r="2" fill="#207448" />
+      <circle cx="16" cy="26" r="2" fill="#207448" />
+      <circle cx="22" cy="26" r="2" fill="#207448" />
+      <circle cx="16" cy="38" r="2" fill="#207448" />
+      <circle cx="22" cy="38" r="2" fill="#207448" />
+    </g>
+    <line x1="854" y1="925" x2="1516" y2="925" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25" />
+    <text x="866" y="966" font-family="system-ui, -apple-system, sans-serif" font-size="24.5" fill="#303a36">
+      <tspan x="866" dy="0">GPUs the data plane must be able to</tspan>
+      <tspan x="866" dy="34">reserve = (maximum replicas + 1 surge replica)</tspan>
+      <tspan x="866" dy="34">x GPUs per replica; example 3 maximum</tspan>
+      <tspan x="866" dy="34">replicas at 4 GPUs each gives 16 GPUs,</tspan>
+      <tspan x="866" dy="34">not 12</tspan>
+    </text>
+  </g>
+</svg>

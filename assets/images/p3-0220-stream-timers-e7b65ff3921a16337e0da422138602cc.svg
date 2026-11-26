@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Every hop that can cut a long stream, and the setting for each</title>
+  <desc>Visual infographic mapping timeouts and buffer settings across Client, Cloud LB, Reverse Proxies (HAProxy, nginx, Envoy), and backend inference servers.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="50" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Every hop that can cut a long stream,</text>
+  <text x="50" y="118" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">and the setting for each</text>
+
+  
+  
+  <rect x="50" y="150" width="280" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <rect x="72" y="167" width="52" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+  <line x1="98" y1="203" x2="98" y2="215" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="84" y1="215" x2="112" y2="215" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M 84 180 L 91 185 L 84 190" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <line x1="95" y1="190" x2="105" y2="190" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  <text x="145" y="205" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Client</text>
+
+  
+  <line x1="330" y1="195" x2="408" y2="195" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="410" y="150" width="310" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <path d="M 442 202 A 13 13 0 0 1 452 180 A 18 18 0 0 1 482 180 A 13 13 0 0 1 494 202 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  <line x1="468" y1="202" x2="468" y2="216" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <path d="M 458 210 L 468 218 L 478 210" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="515" y="205" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Cloud LB</text>
+
+  
+  <line x1="720" y1="195" x2="758" y2="195" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="760" y="150" width="510" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <rect x="780" y="166" width="48" height="22" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="792" cy="177" r="2.5" fill="#207448" />
+  <circle cx="802" cy="177" r="2.5" fill="#207448" />
+  <rect x="780" y="194" width="48" height="22" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="792" cy="205" r="2.5" fill="#207448" />
+  <circle cx="802" cy="205" r="2.5" fill="#207448" />
+  <text x="845" y="186" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="845" dy="0">HAProxy or nginx</tspan>
+    <tspan x="845" dy="36">or Envoy</tspan>
+  </text>
+
+  
+  <line x1="1270" y1="195" x2="1328" y2="195" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="1330" y="150" width="220" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <rect x="1348" y="172" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+  <rect x="1356" y="180" width="20" height="20" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+  <line x1="1355" y1="166" x2="1355" y2="172" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  <line x1="1366" y1="166" x2="1366" y2="172" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  <line x1="1377" y1="166" x2="1377" y2="172" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  <line x1="1355" y1="208" x2="1355" y2="214" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  <line x1="1366" y1="208" x2="1366" y2="214" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  <line x1="1377" y1="208" x2="1377" y2="214" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  <text x="1400" y="186" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1400" dy="0">Triton</tspan>
+    <tspan x="1400" dy="36">or vLLM</tspan>
+  </text>
+
+  
+
+  
+  <rect x="50" y="265" width="445" height="190" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="75" y="308" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Cloud LB</text>
+  <text x="75" y="352" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0">idle timeout often 60 s</tspan>
+    <tspan x="75" dy="34">for HTTP LBs, some L4</tspan>
+    <tspan x="75" dy="34">services 350 s</tspan>
+  </text>
+
+  
+  <rect x="50" y="475" width="445" height="340" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="50" y="475" width="8" height="340" rx="4" fill="#207448" />
+  <text x="75" y="515" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Left callout</text>
+  <text x="75" y="555" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0">Each of client, server</tspan>
+    <tspan x="75" dy="32">and tunnel timeouts must</tspan>
+    <tspan x="75" dy="32">outlast the longest</tspan>
+    <tspan x="75" dy="32">generation; if one is</tspan>
+    <tspan x="75" dy="32">shorter, the proxy closes</tspan>
+    <tspan x="75" dy="32">the stream and the client</tspan>
+    <tspan x="75" dy="32">sees a reset with no</tspan>
+    <tspan x="75" dy="32">clear cause</tspan>
+  </text>
+
+  
+  <rect x="520" y="265" width="500" height="290" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="545" y="305" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">HAProxy</text>
+  <text x="545" y="342" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">timeout connect 3s</text>
+  <text x="545" y="376" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="545" dy="0" font-weight="bold">timeout client 300s</tspan>
+    <tspan x="545" dy="28" font-family="sans-serif" font-size="24" font-weight="normal">(long for streaming)</tspan>
+  </text>
+  <text x="545" y="440" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">timeout server 300s</text>
+  
+  <rect x="535" y="465" width="470" height="74" rx="8" fill="#db8129" />
+  <text x="548" y="495" font-family="monospace" font-size="24" font-weight="bold" fill="#ffffff">
+    <tspan x="548" dy="0">timeout tunnel 1h</tspan>
+    <tspan x="548" dy="30" font-family="sans-serif" font-size="24" font-weight="normal">(websocket and gRPC streams)</tspan>
+  </text>
+
+  
+  <rect x="520" y="575" width="500" height="240" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="545" y="615" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Envoy</text>
+  <rect x="535" y="635" width="470" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="550" y="668" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">stream_idle_timeout 600s</text>
+  <rect x="535" y="700" width="470" height="95" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="550" y="736" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="550" dy="0" font-weight="bold">route timeout 0s</tspan>
+    <tspan x="550" dy="34" font-family="sans-serif" font-size="24">(no route timeout)</tspan>
+  </text>
+
+  
+  <rect x="1045" y="265" width="505" height="550" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1070" y="305" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">nginx</text>
+  
+  <rect x="1060" y="325" width="475" height="85" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1075" y="358" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1075" dy="0" font-weight="bold">grpc_read_timeout 300s</tspan>
+    <tspan x="1075" dy="32" font-weight="bold">and grpc_send_timeout 300s</tspan>
+  </text>
+
+  <rect x="1060" y="425" width="475" height="115" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1075" y="458" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1075" dy="0" font-weight="bold">grpc_buffer_size 4k:</tspan>
+    <tspan x="1075" dy="32" font-family="sans-serif">tokens are small,</tspan>
+    <tspan x="1075" dy="32" font-family="sans-serif">buffering adds latency</tspan>
+  </text>
+
+  <rect x="1060" y="555" width="475" height="235" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1075" y="586" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">for SSE</text>
+  <text x="1075" y="622" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1075" dy="0">proxy_buffering off;</tspan>
+    <tspan x="1075" dy="32">proxy_cache off;</tspan>
+    <tspan x="1075" dy="32">proxy_read_timeout 600s;</tspan>
+    <tspan x="1075" dy="32">proxy_http_version 1.1;</tspan>
+    <tspan x="1075" dy="32">Connection empty</tspan>
+  </text>
+
+  
+  <rect x="50" y="840" width="1500" height="245" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="75" y="880" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Config facts</text>
+  <text x="75" y="924" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0" font-weight="bold">HAProxy backend be_infer: balance leastconn; option httpchk;</tspan>
+    <tspan x="75" dy="36">http-check send meth GET uri /v2/health/ready;</tspan>
+    <tspan x="75" dy="36">default-server check inter 2s fall 3 rise 2 slowstart 30s maxconn 64;</tspan>
+    <tspan x="75" dy="36">server triton1 10.1.0.11:8001 proto h2</tspan>
+  </text>
+
+  
+  <rect x="50" y="1105" width="1500" height="75" rx="8" fill="#207448" />
+  <text x="800" y="1136" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    <tspan x="800" dy="0">Read the cloud load balancer's idle timeout first,</tspan>
+    <tspan x="800" dy="30">because that single default decides whether your streams survive</tspan>
+  </text>
+</svg>

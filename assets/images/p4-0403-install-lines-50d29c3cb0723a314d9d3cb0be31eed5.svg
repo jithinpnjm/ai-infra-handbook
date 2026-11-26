@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>The control-node install, line by line</title>
+  <desc>Visual infographic explaining Ansible control-node installation commands, collections requirements, platform support, and pinning strategy.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">The control-node install, line by line</text>
+
+  
+  <rect x="40" y="85" width="1520" height="80" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(60, 97)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="16" r="10"/>
+    <circle cx="28" cy="40" r="10"/>
+    <line x1="28" y1="26" x2="28" y2="30"/>
+    <line x1="12" y1="28" x2="18" y2="28"/>
+    <line x1="38" y1="28" x2="44" y2="28"/>
+  </g>
+  <text x="135" y="120" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="135" dy="0">commit requirements.txt and requirements.yml with the repo</tspan>
+    <tspan x="135" dy="30">so every engineer and CI job uses the same toolchain</tspan>
+  </text>
+
+  
+  <rect x="40" y="180" width="970" height="778" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(60, 195)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="4" width="48" height="48" rx="8"/>
+    <polyline points="14,18 24,28 14,38"/>
+    <line x1="28" y1="38" x2="42" y2="38"/>
+  </g>
+  <text x="135" y="235" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Annotated command list</text>
+
+  
+  <rect x="65" y="265" width="920" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="85" y="295">
+    <tspan x="85" dy="0" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">python3 -m venv ~/venvs/ansible &amp;&amp;</tspan>
+    <tspan x="85" dy="28" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">source ~/venvs/ansible/bin/activate:</tspan>
+    <tspan x="85" dy="28" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">a private folder of Python packages so Ansible never fights</tspan>
+    <tspan x="85" dy="28" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">system Python, which the operating system depends on</tspan>
+  </text>
+
+  
+  <rect x="65" y="393" width="920" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="85" y="422">
+    <tspan x="85" dy="0" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">pip install --upgrade pip:</tspan>
+    <tspan x="85" dy="28" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">upgrade the installer</tspan>
+  </text>
+
+  
+  <rect x="65" y="469" width="920" height="96" rx="8" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+  <text x="85" y="498">
+    <tspan x="85" dy="0" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">pip install "ansible-core&gt;=2.16,&lt;2.19" ansible-lint yamllint:</tspan>
+    <tspan x="85" dy="28" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">the engine plus two checking tools, a version range</tspan>
+    <tspan x="85" dy="28" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">so you get fixes but not surprises</tspan>
+  </text>
+
+  
+  <rect x="65" y="573" width="920" height="92" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="85" y="602">
+    <tspan x="85" dy="0" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">pipx install --include-deps ansible:</tspan>
+    <tspan x="85" dy="28" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">keeps each command-line tool in its own sealed space,</tspan>
+    <tspan x="85" dy="28" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">popular on a personal laptop</tspan>
+  </text>
+
+  
+  <rect x="65" y="673" width="920" height="92" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="85" y="702">
+    <tspan x="85" dy="0" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">brew install ansible:</tspan>
+    <tspan x="85" dy="28" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">quick, but Homebrew may move to a new release without</tspan>
+    <tspan x="85" dy="28" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">warning, so harder to hold a team to one version</tspan>
+  </text>
+
+  
+  <rect x="65" y="773" width="920" height="92" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="85" y="802">
+    <tspan x="85" dy="0" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ansible --version:</tspan>
+    <tspan x="85" dy="28" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">the first command to run when something behaves oddly: shows</tspan>
+    <tspan x="85" dy="28" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">core version, config file, module search path and Python</tspan>
+  </text>
+
+  
+  <rect x="65" y="873" width="920" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="85" y="902">
+    <tspan x="85" dy="0" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ansible-galaxy collection install</tspan>
+    <tspan x="85" dy="28" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ansible.posix community.general</tspan>
+  </text>
+
+  
+  <rect x="1030" y="180" width="530" height="778" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1267, 195)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10,4 L36,4 L46,14 L46,52 L10,52 Z"/>
+    <polyline points="36,4 36,14 46,14"/>
+    <line x1="18" y1="24" x2="38" y2="24"/>
+    <line x1="18" y1="34" x2="38" y2="34"/>
+    <line x1="18" y1="44" x2="30" y2="44"/>
+  </g>
+  <text x="1295" y="278" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">collections/requirements.yml</text>
+
+  
+  <rect x="1055" y="320" width="480" height="160" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(1075, 372)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28,6 L50,18 L50,42 L28,54 L6,42 L6,18 Z"/>
+    <polyline points="6,18 28,30 50,18"/>
+    <line x1="28" y1="30" x2="28" y2="54"/>
+  </g>
+  <text x="1150" y="380">
+    <tspan x="1150" dy="0" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ansible.posix</tspan>
+    <tspan x="1150" dy="36" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">version &gt;=1.5.0,&lt;2.0.0</tspan>
+  </text>
+
+  
+  <rect x="1055" y="515" width="480" height="160" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(1075, 567)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28,6 L50,18 L50,42 L28,54 L6,42 L6,18 Z"/>
+    <polyline points="6,18 28,30 50,18"/>
+    <line x1="28" y1="30" x2="28" y2="54"/>
+  </g>
+  <text x="1150" y="575">
+    <tspan x="1150" dy="0" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">community.general</tspan>
+    <tspan x="1150" dy="36" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">version &gt;=8.0.0,&lt;10.0.0</tspan>
+  </text>
+
+  
+  <rect x="1055" y="710" width="480" height="160" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(1075, 762)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28,6 L50,18 L50,42 L28,54 L6,42 L6,18 Z"/>
+    <polyline points="6,18 28,30 50,18"/>
+    <line x1="28" y1="30" x2="28" y2="54"/>
+  </g>
+  <text x="1150" y="770">
+    <tspan x="1150" dy="0" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">kubernetes.core</tspan>
+    <tspan x="1150" dy="36" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">(no pin shown)</tspan>
+  </text>
+
+  
+  <rect x="40" y="972" width="1520" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(60, 1011)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="36" height="36" rx="4"/>
+    <line x1="18" y1="2" x2="18" y2="10"/>
+    <line x1="28" y1="2" x2="28" y2="10"/>
+    <line x1="38" y1="2" x2="38" y2="10"/>
+    <line x1="18" y1="46" x2="18" y2="54"/>
+    <line x1="28" y1="46" x2="28" y2="54"/>
+    <line x1="38" y1="46" x2="38" y2="54"/>
+    <line x1="2" y1="18" x2="10" y2="18"/>
+    <line x1="2" y1="28" x2="10" y2="28"/>
+    <line x1="2" y1="38" x2="10" y2="38"/>
+    <line x1="46" y1="18" x2="54" y2="18"/>
+    <line x1="46" y1="28" x2="54" y2="28"/>
+    <line x1="46" y1="38" x2="54" y2="38"/>
+  </g>
+  <text x="135" y="1012" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">
+    <tspan x="135" dy="0">control node: Linux, macOS or WSL on Windows; targets need SSH and a supported Python;</tspan>
+    <tspan x="135" dy="32">Windows targets use WinRM or SSH with PowerShell modules; extra Python packages</tspan>
+    <tspan x="135" dy="32">such as pip3 install pywinrm docker inside the virtualenv</tspan>
+  </text>
+
+  
+  <rect x="40" y="1122" width="1520" height="60" rx="8" fill="#207448"/>
+  <text x="800" y="1161" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Pin the exact version range you tested</text>
+</svg>

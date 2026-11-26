@@ -1,0 +1,208 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Protecting the control node: the most valuable target in the fleet</title>
+  <desc>Infographic explaining the eight security practices protecting the automation control node.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Protecting the control node:</text>
+  <text x="800" y="104" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">the most valuable target in the fleet</text>
+
+  
+  
+  <path d="M 800 410 L 800 448" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 800 820 L 800 782" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 510 615 L 568 615" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1090 615 L 1032 615" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+
+  
+  <path d="M 450 410 C 450 435, 630 425, 630 448" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1150 410 C 1150 435, 970 425, 970 448" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 450 820 C 450 795, 630 805, 630 782" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1150 820 C 1150 795, 970 805, 970 782" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="50" y="140" width="460" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round">
+    <path d="M 98 162 L 120 172 C 120 196, 98 212, 98 212 C 98 212, 76 196, 76 172 Z"/>
+    <path d="M 88 186 L 95 193 L 108 178" stroke-linecap="round"/>
+  </g>
+  <text x="74" y="250" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="74" dy="0">hardened host, MFA</tspan>
+    <tspan x="74" dy="32">(a second proof of identity</tspan>
+    <tspan x="74" dy="32">such as a phone code),</tspan>
+    <tspan x="74" dy="32">audit logging,</tspan>
+    <tspan x="74" dy="32">no shared accounts</tspan>
+  </text>
+
+  
+  <rect x="570" y="140" width="460" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+    <circle cx="788" cy="188" r="14"/>
+    <circle cx="788" cy="188" r="5" stroke-width="2.5"/>
+    <line x1="802" y1="188" x2="822" y2="188"/>
+    <line x1="814" y1="188" x2="814" y2="198"/>
+    <line x1="820" y1="188" x2="820" y2="196"/>
+  </g>
+  <text x="594" y="260" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="594" dy="0"><tspan font-family="ui-monospace, monospace">ed25519</tspan> SSH keys and</tspan>
+    <tspan x="594" dy="36">dedicated automation</tspan>
+    <tspan x="594" dy="36">accounts, <tspan font-family="ui-monospace, monospace">sudo</tspan> restricted</tspan>
+    <tspan x="594" dy="36">to what is needed</tspan>
+  </text>
+
+  
+  <rect x="1090" y="140" width="460" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+    <circle cx="1138" cy="176" r="10"/>
+    <path d="M 1122 206 C 1122 194, 1154 194, 1154 206"/>
+    <path d="M 1120 184 C 1114 182, 1112 176, 1116 170" stroke-width="3"/>
+    <path d="M 1156 184 C 1162 182, 1164 176, 1160 170" stroke-width="3"/>
+  </g>
+  <text x="1114" y="270" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1114" dy="0">team use: <tspan font-family="ui-monospace, monospace">AAP</tspan> or <tspan font-family="ui-monospace, monospace">AWX</tspan>,</tspan>
+    <tspan x="1114" dy="40">or CI runners with</tspan>
+    <tspan x="1114" dy="40">credential stores (4.15)</tspan>
+  </text>
+
+  
+  <rect x="50" y="450" width="460" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+    <rect x="74" y="472" width="38" height="46" rx="4"/>
+    <line x1="82" y1="484" x2="102" y2="484" stroke-width="2.5"/>
+    <line x1="82" y1="492" x2="98" y2="492" stroke-width="2.5"/>
+    <circle cx="102" cy="506" r="8" fill="#e8f1ea" stroke-width="2.5"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="142" y="494">keep host key checking</tspan>
+    <tspan x="142" y="528">enabled in production;</tspan>
+    <tspan x="74" y="565">distribute host keys with</tspan>
+    <tspan x="74" y="600"><tspan font-family="ui-monospace, monospace">ssh_known_hosts</tspan> or SSH</tspan>
+    <tspan x="74" y="635">certificates (a signed</tspan>
+    <tspan x="74" y="670">statement from a trusted</tspan>
+    <tspan x="74" y="705">authority that this host</tspan>
+    <tspan x="74" y="740">key belongs to this machine)</tspan>
+  </text>
+
+  
+  <rect x="570" y="450" width="460" height="330" rx="12" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="776" y="472" width="48" height="46" rx="8" fill="#e8f1ea"/>
+    <path d="M 788 488 L 796 495 L 788 502"/>
+    <line x1="802" y1="502" x2="814" y2="502"/>
+  </g>
+  <text x="800" y="555" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">control node:</text>
+  <text x="800" y="598" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">holds a key and</tspan>
+    <tspan x="800" dy="40">passwordless <tspan font-family="ui-monospace, monospace">sudo</tspan>,</tspan>
+    <tspan x="800" dy="40">so one login reaches</tspan>
+    <tspan x="800" dy="40">every host</tspan>
+  </text>
+
+  
+  <rect x="1090" y="450" width="460" height="330" rx="12" fill="#fdf6ed" stroke="#db8129" stroke-width="3"/>
+  
+  <g stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round">
+    <rect x="1116" y="472" width="44" height="46" rx="6"/>
+    <circle cx="1138" cy="495" r="10" stroke-width="3"/>
+    <line x1="1138" y1="485" x2="1138" y2="489" stroke-width="2.5"/>
+    <line x1="1148" y1="495" x2="1144" y2="495" stroke-width="2.5"/>
+    <circle cx="1138" cy="495" r="3" fill="#db8129"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1180" y="494" font-weight="bold">never commit secrets:</tspan>
+    <tspan x="1180" y="528"><tspan font-family="ui-monospace, monospace">Ansible Vault</tspan> or an</tspan>
+    <tspan x="1114" y="565">external secret manager</tspan>
+    <tspan x="1114" y="600">(4.12); <tspan font-family="ui-monospace, monospace">no_log: true</tspan> hides</tspan>
+    <tspan x="1114" y="635">arguments and results of</tspan>
+    <tspan x="1114" y="670">a task, and works only</tspan>
+    <tspan x="1114" y="705">on the tasks you mark</tspan>
+  </text>
+
+  
+  <rect x="50" y="820" width="460" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="74" y="842" width="38" height="48" rx="5"/>
+    <rect x="85" y="838" width="16" height="8" rx="2" fill="#e8f1ea" stroke-width="2.5"/>
+    <path d="M 82 858 L 86 862 L 94 854" stroke-width="2.5"/>
+    <line x1="98" y1="858" x2="104" y2="858" stroke-width="2.5"/>
+    <path d="M 82 874 L 86 878 L 94 870" stroke-width="2.5"/>
+    <line x1="98" y1="874" x2="104" y2="874" stroke-width="2.5"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="142" y="864">always use <tspan font-family="ui-monospace, monospace">FQCNs</tspan>;</tspan>
+    <tspan x="142" y="898">pin <tspan font-family="ui-monospace, monospace">ansible-core</tspan> and</tspan>
+    <tspan x="74" y="938">collection versions; lint</tspan>
+    <tspan x="74" y="978">with <tspan font-family="ui-monospace, monospace">ansible-lint</tspan> and</tspan>
+    <tspan x="74" y="1018"><tspan font-family="ui-monospace, monospace">yamllint</tspan></tspan>
+  </text>
+
+  
+  <rect x="570" y="820" width="460" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="611" y="842" width="14" height="12" stroke-width="3"/>
+    <line x1="608" y1="842" x2="628" y2="842" stroke-width="3"/>
+    <path d="M 611 854 L 596 882 C 594 886, 597 890, 602 890 L 634 890 C 639 890, 642 886, 640 882 L 625 854 Z"/>
+    <line x1="604" y1="878" x2="632" y2="878" stroke-width="2.5"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="652" y="864">before a change:</tspan>
+    <tspan x="652" y="898"><tspan font-family="ui-monospace, monospace">--check --diff</tspan>, test on a</tspan>
+    <tspan x="594" y="938">canary host with <tspan font-family="ui-monospace, monospace">--limit</tspan></tspan>
+    <tspan x="594" y="978">(a single machine that takes</tspan>
+    <tspan x="594" y="1018">the change first),</tspan>
+    <tspan x="594" y="1058">keep each change small</tspan>
+  </text>
+
+  
+  <rect x="1090" y="820" width="460" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+    <line x1="1124" y1="848" x2="1124" y2="888"/>
+    <circle cx="1124" cy="886" r="5" fill="#e8f1ea" stroke-width="3"/>
+    <circle cx="1124" cy="852" r="5" fill="#e8f1ea" stroke-width="3"/>
+    <path d="M 1124 876 C 1124 864, 1146 868, 1146 858"/>
+    <circle cx="1146" cy="854" r="5" fill="#e8f1ea" stroke-width="3"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1178" y="864">prefer modules over shell,</tspan>
+    <tspan x="1178" y="898">every task idempotent;</tspan>
+    <tspan x="1114" y="938">playbooks and inventories</tspan>
+    <tspan x="1114" y="975">in <tspan font-family="ui-monospace, monospace">Git</tspan> (4.1), run from <tspan font-family="ui-monospace, monospace">CI</tspan></tspan>
+    <tspan x="1114" y="1012">(4.2) for repeatability and</tspan>
+    <tspan x="1114" y="1049">history of who changed what</tspan>
+  </text>
+
+  
+  <rect x="50" y="1125" width="1500" height="55" rx="10" fill="#207448"/>
+  <text x="800" y="1161" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Cheap to adopt early, expensive to retrofit later</text>
+</svg>

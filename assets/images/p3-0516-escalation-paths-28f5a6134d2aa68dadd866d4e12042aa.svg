@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Grants that quietly equal cluster-admin</title>
+  <desc>Visual infographic detailing six Kubernetes RBAC permissions that quietly escalate to cluster-admin privileges, along with essential mitigation practices.</desc>
+
+  <defs>
+    <style>
+      .bg { fill: #f5f8f5; }
+      .title-text { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 48px; font-weight: bold; fill: #303a36; }
+      .hub-title { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 36px; font-weight: bold; fill: #ffffff; }
+      .node-text { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 24px; fill: #303a36; }
+      .node-mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 24px; font-weight: bold; fill: #207448; }
+      .node-mono-orange { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 24px; font-weight: bold; fill: #db8129; }
+      .mitigation-text { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 24px; fill: #303a36; }
+      .mitigation-mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 24px; font-weight: bold; fill: #207448; }
+    </style>
+
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" class="bg" />
+
+  
+  <text x="800" y="70" text-anchor="middle" class="title-text">Grants that quietly equal cluster-admin</text>
+
+  
+  <g id="hub">
+    <rect x="625" y="445" width="350" height="150" rx="20" fill="#207448" filter="drop-shadow(0px 8px 16px rgba(32, 116, 72, 0.2))" />
+    
+    <g transform="translate(772, 465)">
+      <path d="M 0 6 L 28 6 L 28 26 C 28 42 14 52 14 52 C 14 52 0 42 0 26 Z" fill="none" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" />
+      <path d="M 7 24 L 14 14 L 21 24 Z" fill="none" stroke="#ffffff" stroke-width="3" />
+    </g>
+    <text x="800" y="565" text-anchor="middle" class="hub-title">cluster-admin</text>
+  </g>
+
+  
+  
+  <path d="M 295 272 L 295 480 L 623 480" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  
+  <path d="M 522 520 L 623 520" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  
+  <path d="M 295 768 L 295 560 L 623 560" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1305 272 L 1305 480 L 977 480" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  
+  <path d="M 1078 520 L 977 520" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  
+  <path d="M 1305 768 L 1305 560 L 977 560" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+
+  
+  <g id="node-create-pods">
+    <rect x="70" y="112" width="450" height="160" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(90, 126)">
+      <rect x="0" y="0" width="44" height="44" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="12" y1="14" x2="32" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="12" y1="24" x2="26" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="22" cy="34" r="3" fill="#207448" />
+    </g>
+    
+    <text x="146" y="148" class="node-mono">create pods:<tspan font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="normal" fill="#303a36"> roughly equivalent to</tspan></text>
+    <text x="90" y="180" class="node-text">reading secrets and tokens in the</text>
+    <text x="90" y="212" class="node-text">namespace (mount another</text>
+    <text x="90" y="244" class="node-text">ServiceAccount token, or run</text>
+    <text x="90" y="276" class="node-text" dy="-8">privileged if PSA is absent)</text>
+  </g>
+
+  
+  <g id="node-pods-exec">
+    <rect x="70" y="440" width="450" height="160" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(90, 458)">
+      <rect x="0" y="0" width="46" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 10 14 L 18 21 L 10 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="22" y1="28" x2="34" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <text x="150" y="488" class="node-mono">pods/exec in prod:<tspan font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="normal" fill="#303a36"> shell inside</tspan></text>
+    <text x="90" y="528" class="node-text">a pod with its secrets and token</text>
+  </g>
+
+  
+  <g id="node-secrets">
+    <rect x="70" y="768" width="450" height="160" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(90, 784)">
+      <rect x="4" y="18" width="38" height="28" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 12 18 L 12 10 C 12 4 34 4 34 10 L 34 18" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="23" cy="30" r="3" fill="#207448" />
+      <line x1="23" y1="33" x2="23" y2="39" stroke="#207448" stroke-width="3" />
+    </g>
+    
+    <text x="146" y="812" class="node-mono">get, list, watch on secrets:</text>
+    <text x="90" y="856" class="node-text">listing reveals contents</text>
+  </g>
+
+  
+  <g id="node-nodes-proxy">
+    <rect x="1080" y="112" width="450" height="160" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(1100, 130)">
+      <rect x="0" y="0" width="44" height="26" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="22" y1="26" x2="22" y2="44" stroke="#207448" stroke-width="4" />
+      <circle cx="22" cy="44" r="5" fill="#207448" />
+    </g>
+    
+    <text x="1158" y="156" class="node-mono">nodes/proxy:<tspan font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="normal" fill="#303a36"> reaches the</tspan></text>
+    <text x="1100" y="200" class="node-text">kubelet on the node</text>
+  </g>
+
+  
+  <g id="node-impersonate">
+    <rect x="1080" y="440" width="450" height="160" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(1100, 458)">
+      <path d="M 4 10 C 14 6 32 6 42 10 C 44 26 36 38 23 44 C 10 38 2 26 4 10 Z" fill="none" stroke="#db8129" stroke-width="4" />
+      <circle cx="14" cy="20" r="4" fill="#db8129" />
+      <circle cx="32" cy="20" r="4" fill="#db8129" />
+    </g>
+    
+    <text x="1158" y="488" class="node-mono-orange">impersonate:<tspan font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="normal" fill="#303a36"> act as another</tspan></text>
+    <text x="1100" y="530" class="node-text">identity such as cluster-admin</text>
+  </g>
+
+  
+  <g id="node-escalate-bind">
+    <rect x="1080" y="768" width="450" height="160" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(1100, 784)">
+      <circle cx="16" cy="16" r="12" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 26 24 L 42 40 M 36 34 L 42 28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <text x="1158" y="812" class="node-mono">escalate and bind verbs</text>
+    <text x="1100" y="848" class="node-mono">on roles:<tspan font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="normal" fill="#303a36"> allow granting</tspan></text>
+    <text x="1100" y="888" class="node-text">permissions you do not hold</text>
+  </g>
+
+  
+  <g id="mitigations-container">
+    <rect x="50" y="970" width="1500" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(70, 990)">
+      <path d="M 0 4 L 32 4 L 32 24 C 32 40 16 50 16 50 C 16 50 0 40 0 24 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <polyline points="10,24 16,30 26,16" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    
+    
+    <rect x="120" y="986" width="250" height="168" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="136" y="1026" class="mitigation-text">tighten roles and</text>
+    <text x="136" y="1062" class="mitigation-text">remove wildcards</text>
+
+    
+    <rect x="390" y="986" width="280" height="168" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="406" y="1026" class="mitigation-text">Pod Security Admission</text>
+    <text x="406" y="1062" class="mitigation-text">or admission policy</text>
+    <text x="406" y="1098" class="mitigation-text">for what pods may</text>
+    <text x="406" y="1134" class="mitigation-text">look like</text>
+
+    
+    <rect x="690" y="986" width="280" height="168" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="706" y="1026" class="mitigation-text">no cluster-wide list</text>
+    <text x="706" y="1062" class="mitigation-text">or watch on secrets</text>
+    <text x="706" y="1098" class="mitigation-text">for monitoring or</text>
+    <text x="706" y="1134" class="mitigation-text">view roles</text>
+
+    
+    <rect x="990" y="986" width="250" height="168" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1006" y="1026" class="mitigation-text">never bind roles</text>
+    <text x="1006" y="1062" class="mitigation-text">to <tspan class="mitigation-mono">system:authenticated</tspan></text>
+
+    
+    <rect x="1260" y="986" width="270" height="168" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1276" y="1026" class="mitigation-text">sudo-style</text>
+    <text x="1276" y="1062" class="mitigation-text">impersonation with</text>
+    <text x="1276" y="1098" class="mitigation-mono">--as<tspan font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="normal" fill="#303a36"> for one command,</tspan></text>
+    <text x="1276" y="1134" class="mitigation-text">audited</text>
+  </g>
+</svg>

@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Link up is not link healthy: which counter points at which suspect</title>
+  <desc>Diagnostic mapping between network counters, commands, and physical or configuration suspects</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Link up is not link healthy: </tspan>
+    <tspan x="800" dy="54">which counter points at which suspect</tspan>
+  </text>
+
+  
+  <rect x="40" y="137" width="430" height="832" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="55" y="153" width="400" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="73" y="194" font-family="monospace" font-size="24" fill="#303a36"><tspan x="73" dy="0">ip -s link show eth0; </tspan><tspan x="73" dy="28">cat /sys/class/net/</tspan><tspan x="73" dy="28">eth0/carrier_changes</tspan></text>
+
+  
+  <rect x="55" y="289" width="400" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="73" y="330" font-family="monospace" font-size="24" fill="#303a36"><tspan x="73" dy="0">ethtool -S eth0 | </tspan><tspan x="73" dy="28">egrep crc|fcs|err|</tspan><tspan x="73" dy="28">drop|pause|pfc</tspan></text>
+
+  
+  <rect x="55" y="425" width="400" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="73" y="493" font-family="monospace" font-size="24" fill="#303a36">ethtool --show-fec eth0</text>
+
+  
+  <rect x="55" y="561" width="400" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="73" y="602" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="73" dy="0">ethtool -m eth0 </tspan>
+    <tspan x="73" dy="28">(DOM: temperature, </tspan>
+    <tspan x="73" dy="28">Tx/Rx optical power)</tspan>
+  </text>
+
+  
+  <rect x="55" y="697" width="400" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="73" y="765" font-family="monospace" font-size="24" fill="#303a36">dmesg -T | egrep -i link</text>
+
+  
+  <rect x="55" y="833" width="400" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="73" y="874" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="73" dy="0">lldpcli show neighbors </tspan>
+    <tspan x="73" dy="28">(which switch and port </tspan>
+    <tspan x="73" dy="28">is at the far end)</tspan>
+  </text>
+
+  
+  <rect x="500" y="140" width="450" height="146" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(518, 188)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 4 25 L 14 25 L 20 8 L 30 42 L 36 25 L 46 25" />
+  </g>
+  <text x="584" y="200" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="584" dy="0">rising </tspan>
+    <tspan x="584" dy="36">carrier_changes</tspan>
+  </text>
+  <line x1="950" y1="213" x2="1010" y2="213" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <rect x="1010" y="140" width="550" height="146" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1028, 188)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="12" y="10" width="26" height="20" rx="3" />
+    <path d="M 18 10 L 18 4 L 32 4 L 32 10" />
+    <line x1="25" y1="30" x2="25" y2="44" />
+    <line x1="18" y1="30" x2="18" y2="38" />
+    <line x1="32" y1="30" x2="32" y2="38" />
+  </g>
+  <text x="1094" y="186" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1094" dy="0">link flapping: cable, optic, </tspan>
+    <tspan x="1094" dy="30">transceiver seating, </tspan>
+    <tspan x="1094" dy="30">switch port, power</tspan>
+  </text>
+
+  
+  <rect x="500" y="310" width="450" height="146" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(518, 358)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 8 10 L 25 4 L 42 10 C 42 30 25 44 25 44 C 25 44 8 30 8 10 Z" />
+    <line x1="25" y1="14" x2="25" y2="26" />
+    <circle cx="25" cy="33" r="2.5" fill="#207448" />
+  </g>
+  <text x="584" y="358" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="584" dy="0">non-zero </tspan>
+    <tspan x="584" dy="34">rx_crc_errors or </tspan>
+    <tspan x="584" dy="34">uncorrected FEC</tspan>
+  </text>
+  <line x1="950" y1="383" x2="1010" y2="383" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <rect x="1010" y="310" width="550" height="146" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1028, 358)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 12 C 28 12 22 38 44 38" />
+    <circle cx="25" cy="25" r="7" stroke-dasharray="3,3" />
+  </g>
+  <text x="1094" y="356" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1094" dy="0">marginal signal: dirty or </tspan>
+    <tspan x="1094" dy="30">failing optic, bad DAC, </tspan>
+    <tspan x="1094" dy="30">bent fibre</tspan>
+  </text>
+
+  
+  <rect x="500" y="480" width="450" height="146" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(518, 528)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="14" width="38" height="26" rx="4" />
+    <line x1="16" y1="14" x2="16" y2="40" />
+    <line x1="26" y1="14" x2="26" y2="40" />
+    <line x1="36" y1="14" x2="36" y2="40" />
+  </g>
+  <text x="584" y="540" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="584" dy="0">rx_discards and </tspan>
+    <tspan x="584" dy="36">rx_out_of_buffer</tspan>
+  </text>
+  <line x1="950" y1="553" x2="1010" y2="553" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <rect x="1010" y="480" width="550" height="146" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1028, 528)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="12" y="12" width="26" height="26" rx="4" />
+    <rect x="19" y="19" width="12" height="12" rx="2" fill="#207448" />
+    <line x1="18" y1="6" x2="18" y2="12" /><line x1="25" y1="6" x2="25" y2="12" /><line x1="32" y1="6" x2="32" y2="12" />
+    <line x1="18" y1="38" x2="18" y2="44" /><line x1="25" y1="38" x2="25" y2="44" /><line x1="32" y1="38" x2="32" y2="44" />
+    <line x1="6" y1="18" x2="12" y2="18" /><line x1="6" y1="25" x2="12" y2="25" /><line x1="6" y1="32" x2="12" y2="32" />
+    <line x1="38" y1="18" x2="44" y2="18" /><line x1="38" y1="25" x2="44" y2="25" /><line x1="38" y1="32" x2="44" y2="32" />
+  </g>
+  <text x="1094" y="526" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1094" dy="0">host cannot drain traffic </tspan>
+    <tspan x="1094" dy="30">fast enough, or switch or </tspan>
+    <tspan x="1094" dy="30">NIC buffers overflow</tspan>
+  </text>
+
+  
+  <rect x="500" y="650" width="450" height="146" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(518, 698)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="25" cy="25" r="20" />
+    <line x1="20" y1="16" x2="20" y2="34" />
+    <line x1="30" y1="16" x2="30" y2="34" />
+  </g>
+  <text x="584" y="710" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="584" dy="0">rx_pause and </tspan>
+    <tspan x="584" dy="36">tx_pause</tspan>
+  </text>
+  <line x1="950" y1="723" x2="1010" y2="723" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <rect x="1010" y="650" width="550" height="146" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1028, 698)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="6" y1="25" x2="44" y2="25" />
+    <polygon points="12,17 22,25 12,33" fill="#207448" />
+    <polygon points="38,17 28,25 38,33" fill="#207448" />
+  </g>
+  <text x="1094" y="732" font-family="sans-serif" font-size="24" fill="#303a36">flow control is active</text>
+
+  
+  <rect x="500" y="820" width="450" height="146" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+  <g transform="translate(518, 868)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 8 36 A 20 20 0 1 1 42 36" />
+    <line x1="25" y1="25" x2="15" y2="17" />
+    <circle cx="25" cy="25" r="3.5" fill="#db8129" />
+  </g>
+  <text x="584" y="868" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+    <tspan x="584" dy="0">NIC at the wrong </tspan>
+    <tspan x="584" dy="34">speed, a 400G NIC </tspan>
+    <tspan x="584" dy="34">at 100G</tspan>
+  </text>
+  <line x1="950" y1="893" x2="1010" y2="893" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+  <rect x="1010" y="820" width="550" height="146" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+  <g transform="translate(1028, 868)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="14" width="34" height="22" rx="3" />
+    <circle cx="16" cy="25" r="2.5" fill="#db8129" />
+    <circle cx="25" cy="25" r="2.5" fill="#db8129" />
+    <circle cx="34" cy="25" r="2.5" fill="#db8129" />
+    <line x1="12" y1="8" x2="38" y2="8" stroke-dasharray="4,3" />
+  </g>
+  <text x="1094" y="882" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1094" dy="0">cable, optic, lane problem, </tspan>
+    <tspan x="1094" dy="32">or switch configuration</tspan>
+  </text>
+
+  
+  <rect x="40" y="1000" width="1520" height="102" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="1042" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">At 25G and above FEC corrects many errors before the CRC sees them; </tspan>
+    <tspan x="800" dy="34">a frame with a bad FCS is dropped silently and not retransmitted at this layer</tspan>
+  </text>
+
+  
+  <rect x="40" y="1115" width="1520" height="70" rx="10" fill="#207448" />
+  <text x="800" y="1160" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">A link can be up and still be losing bits</text>
+</svg>

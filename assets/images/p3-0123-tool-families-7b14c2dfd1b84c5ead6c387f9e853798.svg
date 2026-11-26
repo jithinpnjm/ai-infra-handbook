@@ -1,0 +1,255 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Four families of observability tools and what each answers</title>
+  <desc>Visual comparison of Counters, Profiling, Tracing, and Monitoring tool families, their key questions, examples, costs, underlying data sources, and essential crisis tooling.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Four families of observability tools and what each answers</text>
+
+  
+  <g id="col-counters">
+    <rect x="40" y="95" width="362" height="585" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="40" y="95" width="362" height="155" rx="12" fill="#e8f1ea"/>
+    <rect x="40" y="235" width="362" height="15" fill="#e8f1ea"/>
+
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 197 158 A 28 28 0 1 1 245 158"/>
+      <line x1="221" y1="146" x2="236" y2="131"/>
+      <circle cx="221" cy="146" r="4" fill="#207448"/>
+    </g>
+
+    
+    <text x="221" y="194" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Counters</text>
+    <text x="221" y="228" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(cumulative, read and diff)</text>
+
+    
+    <rect x="56" y="265" width="330" height="92" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="221" y="303" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36" font-style="italic">
+      <tspan x="221" dy="0">how much, how fast,</tspan>
+      <tspan x="221" dy="32">on average?</tspan>
+    </text>
+
+    
+    <rect x="56" y="370" width="330" height="158" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="72" y="404" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="72" dy="0">vmstat, mpstat,</tspan>
+      <tspan x="72" dy="30">iostat, sar,</tspan>
+      <tspan x="72" dy="30">ethtool -S,</tspan>
+      <tspan x="72" dy="30">nvidia-smi</tspan>
+    </text>
+
+    
+    <rect x="56" y="540" width="330" height="124" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="72" y="575" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="72" dy="0">cheap; rates and</tspan>
+      <tspan x="72" dy="30">averages; the</tspan>
+      <tspan x="72" dy="30">base of monitoring</tspan>
+    </text>
+  </g>
+
+  
+  <g id="col-profiling">
+    <rect x="426" y="95" width="362" height="585" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="426" y="95" width="362" height="155" rx="12" fill="#e8f1ea"/>
+    <rect x="426" y="235" width="362" height="15" fill="#e8f1ea"/>
+
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 593 162 C 585 152 589 138 597 132 C 601 142 609 144 611 136 C 617 142 625 150 621 162 C 619 168 613 170 607 170 C 601 170 595 168 593 162 Z"/>
+    </g>
+
+    
+    <text x="607" y="194" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Profiling</text>
+    <text x="607" y="228" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(sampling)</text>
+
+    
+    <rect x="442" y="265" width="330" height="92" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="607" y="303" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36" font-style="italic">
+      <tspan x="607" dy="0">where does CPU</tspan>
+      <tspan x="607" dy="32">time go?</tspan>
+    </text>
+
+    
+    <rect x="442" y="370" width="330" height="158" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="458" y="404" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="458" dy="0">perf record</tspan>
+      <tspan x="458" dy="30">-F 99 -a -g,</tspan>
+      <tspan x="458" dy="30">flame graphs,</tspan>
+      <tspan x="458" dy="30">py-spy</tspan>
+    </text>
+
+    
+    <rect x="442" y="540" width="330" height="124" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="458" y="590" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="458" dy="0">coarse by</tspan>
+      <tspan x="458" dy="30">sample rate</tspan>
+    </text>
+  </g>
+
+  
+  <g id="col-tracing">
+    <rect x="812" y="95" width="362" height="585" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="812" y="95" width="362" height="155" rx="12" fill="#e8f1ea"/>
+    <rect x="812" y="235" width="362" height="15" fill="#e8f1ea"/>
+
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="969" y1="148" x2="1017" y2="148"/>
+      <circle cx="975" cy="148" r="6" fill="#207448"/>
+      <circle cx="993" cy="148" r="6" fill="#207448"/>
+      <circle cx="1011" cy="148" r="6" fill="#207448"/>
+      <path d="M 975 138 V 130 M 993 158 V 166 M 1011 138 V 130"/>
+    </g>
+
+    
+    <text x="993" y="194" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Tracing</text>
+    <text x="993" y="228" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(event-based)</text>
+
+    
+    <rect x="828" y="265" width="330" height="92" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="993" y="303" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36" font-style="italic">
+      <tspan x="993" dy="0">what exactly happened,</tspan>
+      <tspan x="993" dy="32">event by event?</tspan>
+    </text>
+
+    
+    <rect x="828" y="370" width="330" height="158" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="844" y="404" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="844" dy="0">strace, tcpdump,</tspan>
+      <tspan x="844" dy="30">perf trace, ftrace,</tspan>
+      <tspan x="844" dy="30">BCC and bpftrace,</tspan>
+      <tspan x="844" dy="30">Nsight Systems</tspan>
+    </text>
+
+    
+    <rect x="828" y="540" width="330" height="124" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="844" y="562" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="844" dy="0">detail with overhead;</tspan>
+      <tspan x="844" dy="24">static (tracepoints,</tspan>
+      <tspan x="844" dy="24">USDT) and dynamic</tspan>
+      <tspan x="844" dy="24">(kprobes, uprobes,</tspan>
+      <tspan x="844" dy="24">BPF) instrumentation</tspan>
+    </text>
+  </g>
+
+  
+  <g id="col-monitoring">
+    <rect x="1198" y="95" width="362" height="585" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="1198" y="95" width="362" height="155" rx="12" fill="#e8f1ea"/>
+    <rect x="1198" y="235" width="362" height="15" fill="#e8f1ea"/>
+
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="1355" y="126" width="48" height="34" rx="4"/>
+      <path d="M 1361 143 L 1370 143 L 1374 135 L 1380 151 L 1384 143 L 1397 143"/>
+      <line x1="1379" y1="160" x2="1379" y2="168"/>
+      <line x1="1369" y1="168" x2="1389" y2="168"/>
+    </g>
+
+    
+    <text x="1379" y="210" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Monitoring</text>
+
+    
+    <rect x="1214" y="265" width="330" height="92" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="1379" y="303" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36" font-style="italic">
+      <tspan x="1379" dy="0">what happened over time,</tspan>
+      <tspan x="1379" dy="32">and should we alert?</tspan>
+    </text>
+
+    
+    <rect x="1214" y="370" width="330" height="158" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1230" y="404" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1230" dy="0">Prometheus and</tspan>
+      <tspan x="1230" dy="30">Grafana,</tspan>
+      <tspan x="1230" dy="30">DCGM exporter,</tspan>
+      <tspan x="1230" dy="30">cloud-vendor tools</tspan>
+    </text>
+
+    
+    <rect x="1214" y="540" width="330" height="124" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="1230" y="590" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1230" dy="0">history and</tspan>
+      <tspan x="1230" dy="30">alerting</tspan>
+    </text>
+  </g>
+
+  
+  <g id="sources-of-data">
+    <rect x="40" y="700" width="1520" height="258" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="40" y="700" width="1520" height="46" rx="12" fill="#e8f1ea"/>
+    <rect x="40" y="734" width="1520" height="12" fill="#e8f1ea"/>
+
+    
+    <text x="60" y="733" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Sources of data</text>
+
+    
+    <g>
+      
+      <rect x="56" y="756" width="354" height="80" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5"/>
+      <text x="72" y="789" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="72" dy="0">/proc for per-process</tspan>
+        <tspan x="72" dy="28">and system counters</tspan>
+      </text>
+
+      
+      <rect x="426" y="756" width="354" height="80" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5"/>
+      <text x="442" y="789" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="442" dy="0">/sys for device and</tspan>
+        <tspan x="442" dy="28">driver attributes</tspan>
+      </text>
+
+      
+      <rect x="796" y="756" width="354" height="80" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5"/>
+      <text x="973" y="803" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">delay accounting</text>
+
+      
+      <rect x="1166" y="756" width="378" height="80" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5"/>
+      <text x="1355" y="803" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">netlink</text>
+    </g>
+
+    
+    <g>
+      
+      <rect x="56" y="846" width="410" height="98" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5"/>
+      <text x="72" y="887" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="72" dy="0">tracepoints, kprobes,</tspan>
+        <tspan x="72" dy="30">uprobes, USDT</tspan>
+      </text>
+
+      
+      <rect x="482" y="846" width="550" height="98" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5"/>
+      <text x="498" y="877" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="498" dy="0">hardware performance counters</tspan>
+        <tspan x="498" dy="28">(instructions, cycles, cache and</tspan>
+        <tspan x="498" dy="28">TLB misses, memory bandwidth)</tspan>
+      </text>
+
+      
+      <rect x="1048" y="846" width="496" height="98" rx="8" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="1.5"/>
+      <text x="1064" y="877" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1064" dy="0">NVML and DCGM for GPUs;</tspan>
+        <tspan x="1064" dy="28">ibstat and perfquery</tspan>
+        <tspan x="1064" dy="28">for InfiniBand</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="bottom-crisis-card">
+    <rect x="40" y="973" width="1520" height="132" rx="12" fill="#fff8f0" stroke="#db8129" stroke-width="2.5"/>
+    <text x="64" y="1010" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">Install the crisis tools on every image before the crisis: sysstat, perf, bcc-tools, bpftrace,</tspan>
+      <tspan x="64" dy="34">iotop, numactl, pciutils, ethtool, rdma-core and the DCGM tools; static tools lscpu, lstopo,</tspan>
+      <tspan x="64" dy="34">lspci -vv, dmidecode, ip, ethtool, nvidia-smi -q</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1120" width="1520" height="56" rx="10" fill="#207448"/>
+    <text x="800" y="1156" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Start with cheap counters and turn on heavy tools only for a short window</text>
+  </g>
+</svg>

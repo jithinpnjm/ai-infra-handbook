@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>The answer card for why Nebius, why SRE, why inference</title>
+  <desc>Visual infographic dividing the answer framework into public facts and personal work experience across Nebius, SRE, and inference, with rules and follow-ups.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">The answer card for why Nebius,</text>
+  <text x="40" y="136" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">why SRE, why inference</text>
+
+  
+  <g>
+    
+    <rect x="40" y="162" width="900" height="46" rx="8" fill="#207448"/>
+    <text x="490" y="194" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">public fact (with the page you read it from)</text>
+
+    
+    <rect x="960" y="162" width="600" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1260" y="194" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">true fact about you (from your own work)</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="40" y="220" width="900" height="232" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(62, 234)">
+      <rect x="4" y="2" width="40" height="11" rx="2" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="12" cy="7.5" r="2" fill="#207448"/>
+      <line x1="20" y1="7.5" x2="36" y2="7.5" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <rect x="4" y="17" width="40" height="11" rx="2" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="12" cy="22.5" r="2" fill="#207448"/>
+      <line x1="20" y1="22.5" x2="36" y2="22.5" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <rect x="4" y="32" width="40" height="11" rx="2" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="12" cy="37.5" r="2" fill="#207448"/>
+      <line x1="20" y1="37.5" x2="36" y2="37.5" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="124" y="266" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Why Nebius</text>
+    
+    <text x="65" y="304" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">Token Factory offers serverless and dedicated endpoints</tspan>
+      <tspan x="65" dy="28">behind an OpenAI-compatible API, with a control plane kept</tspan>
+      <tspan x="65" dy="28">separate from a region-specific data plane; dedicated</tspan>
+      <tspan x="65" dy="28">endpoints let a customer choose GPU type, replicas and</tspan>
+      <tspan x="65" dy="28">region; a vendor-tagged case study describes lessons</tspan>
+      <tspan x="65" dy="28">such as stopping retry amplification</tspan>
+    </text>
+
+    
+    <rect x="960" y="220" width="600" height="232" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6,6"/>
+    <g transform="translate(985, 238)">
+      <circle cx="20" cy="14" r="10" fill="none" stroke="#207448" stroke-width="2.5" opacity="0.35"/>
+      <path d="M 6 36 C 6 26 14 24 20 24 C 26 24 34 26 34 36" fill="none" stroke="#207448" stroke-width="2.5" opacity="0.35"/>
+    </g>
+    <line x1="1040" y1="262" x2="1520" y2="262" stroke="#e8f1ea" stroke-width="3" stroke-dasharray="8,8"/>
+    <line x1="995" y1="305" x2="1520" y2="305" stroke="#e8f1ea" stroke-width="3" stroke-dasharray="8,8"/>
+    <line x1="995" y1="345" x2="1520" y2="345" stroke="#e8f1ea" stroke-width="3" stroke-dasharray="8,8"/>
+    <line x1="995" y1="385" x2="1520" y2="385" stroke="#e8f1ea" stroke-width="3" stroke-dasharray="8,8"/>
+    <line x1="995" y1="425" x2="1360" y2="425" stroke="#e8f1ea" stroke-width="3" stroke-dasharray="8,8"/>
+  </g>
+
+  
+  <g>
+    
+    <rect x="40" y="466" width="900" height="212" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(62, 478)">
+      <circle cx="24" cy="24" r="11" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 24 4 L 24 9 M 24 39 L 24 44 M 4 24 L 9 24 M 39 24 L 44 24 M 10 10 L 14 14 M 34 34 L 38 38 M 10 38 L 14 34 M 34 14 L 38 10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <text x="124" y="512" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Why SRE</text>
+
+    <text x="65" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">SRE means owning whether a service works for its users</tspan>
+      <tspan x="65" dy="28">and building the tools that keep it working; the posting</tspan>
+      <tspan x="65" dy="28">asks for incident detection, isolation and remediation</tspan>
+      <tspan x="65" dy="28">with automation and runbooks, and for post-mortems;</tspan>
+      <tspan x="65" dy="28">link one to something you have done</tspan>
+    </text>
+
+    
+    <rect x="960" y="466" width="600" height="212" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6,6"/>
+    <g transform="translate(985, 482)">
+      <circle cx="20" cy="14" r="10" fill="none" stroke="#207448" stroke-width="2.5" opacity="0.35"/>
+      <path d="M 6 36 C 6 26 14 24 20 24 C 26 24 34 26 34 36" fill="none" stroke="#207448" stroke-width="2.5" opacity="0.35"/>
+    </g>
+    <line x1="1040" y1="506" x2="1520" y2="506" stroke="#e8f1ea" stroke-width="3" stroke-dasharray="8,8"/>
+    <line x1="995" y1="548" x2="1520" y2="548" stroke="#e8f1ea" stroke-width="3" stroke-dasharray="8,8"/>
+    <line x1="995" y1="588" x2="1520" y2="588" stroke="#e8f1ea" stroke-width="3" stroke-dasharray="8,8"/>
+    <line x1="995" y1="628" x2="1520" y2="628" stroke="#e8f1ea" stroke-width="3" stroke-dasharray="8,8"/>
+  </g>
+
+  
+  <g>
+    
+    <rect x="40" y="692" width="900" height="212" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(62, 704)">
+      <rect x="8" y="8" width="32" height="32" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <rect x="17" y="17" width="14" height="14" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <line x1="16" y1="2" x2="16" y2="8" stroke="#207448" stroke-width="3"/>
+      <line x1="24" y1="2" x2="24" y2="8" stroke="#207448" stroke-width="3"/>
+      <line x1="32" y1="2" x2="32" y2="8" stroke="#207448" stroke-width="3"/>
+      <line x1="16" y1="40" x2="16" y2="46" stroke="#207448" stroke-width="3"/>
+      <line x1="24" y1="40" x2="24" y2="46" stroke="#207448" stroke-width="3"/>
+      <line x1="32" y1="40" x2="32" y2="46" stroke="#207448" stroke-width="3"/>
+      <line x1="2" y1="16" x2="8" y2="16" stroke="#207448" stroke-width="3"/>
+      <line x1="2" y1="24" x2="8" y2="24" stroke="#207448" stroke-width="3"/>
+      <line x1="2" y1="32" x2="8" y2="32" stroke="#207448" stroke-width="3"/>
+      <line x1="40" y1="16" x2="46" y2="16" stroke="#207448" stroke-width="3"/>
+      <line x1="40" y1="24" x2="46" y2="24" stroke="#207448" stroke-width="3"/>
+      <line x1="40" y1="32" x2="46" y2="32" stroke="#207448" stroke-width="3"/>
+    </g>
+
+    <text x="124" y="738" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Why inference</text>
+
+    <text x="65" y="776" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">inference means running a trained model to answer</tspan>
+      <tspan x="65" dy="28">requests; traffic is bursty; latency has two parts,</tspan>
+      <tspan x="65" dy="28">time to first token and the gap between tokens; the</tspan>
+      <tspan x="65" dy="28">scarce resource is GPU memory held by the KV cache; the</tspan>
+      <tspan x="65" dy="28">posting names autoscaling tuned for GPU efficiency</tspan>
+      <tspan x="65" dy="28">and request routing</tspan>
+    </text>
+
+    
+    <rect x="960" y="692" width="600" height="212" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6,6"/>
+    <g transform="translate(985, 708)">
+      <circle cx="20" cy="14" r="10" fill="none" stroke="#207448" stroke-width="2.5" opacity="0.35"/>
+      <path d="M 6 36 C 6 26 14 24 20 24 C 26 24 34 26 34 36" fill="none" stroke="#207448" stroke-width="2.5" opacity="0.35"/>
+    </g>
+    <line x1="1040" y1="732" x2="1520" y2="732" stroke="#e8f1ea" stroke-width="3" stroke-dasharray="8,8"/>
+    <line x1="995" y1="774" x2="1520" y2="774" stroke="#e8f1ea" stroke-width="3" stroke-dasharray="8,8"/>
+    <line x1="995" y1="814" x2="1520" y2="814" stroke="#e8f1ea" stroke-width="3" stroke-dasharray="8,8"/>
+    <line x1="995" y1="854" x2="1520" y2="854" stroke="#e8f1ea" stroke-width="3" stroke-dasharray="8,8"/>
+  </g>
+
+  
+  
+  <g>
+    <rect x="40" y="924" width="740" height="236" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    
+    
+    <g transform="translate(62, 938)">
+      <circle cx="24" cy="24" r="18" fill="none" stroke="#db8129" stroke-width="4"/>
+      <line x1="24" y1="24" x2="24" y2="12" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="24" y1="24" x2="33" y2="24" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+
+    <text x="124" y="972" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">Rules</text>
+
+    <text x="65" y="1010" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">a weak answer is generic praise you could</tspan>
+      <tspan x="65" dy="28">give any company; never invent either fact;</tspan>
+      <tspan x="65" dy="28">if you cannot fill the public half from a</tspan>
+      <tspan x="65" dy="28">page you have read, drop that part; keep the</tspan>
+      <tspan x="65" dy="28">whole answer under 90 seconds</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="924" width="740" height="236" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(842, 938)">
+      <path d="M 6 12 C 6 6 12 4 22 4 C 32 4 38 6 38 12 C 38 18 32 20 22 20 C 18 20 16 21 12 24 L 12 20 C 8 20 6 18 6 12 Z" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 28 20 C 36 20 42 22 42 27 C 42 32 37 34 30 34 C 27 34 25 35 23 37 L 23 34 C 20 34 18 32 18 27" fill="none" stroke="#207448" stroke-width="3.5"/>
+    </g>
+
+    <text x="904" y="972" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Follow-ups</text>
+
+    <text x="845" y="1014" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">what do you know about our product; what</tspan>
+      <tspan x="845" dy="32">worries you about this role: say the gap</tspan>
+      <tspan x="845" dy="32">honestly and how you are closing it</tspan>
+    </text>
+  </g>
+</svg>

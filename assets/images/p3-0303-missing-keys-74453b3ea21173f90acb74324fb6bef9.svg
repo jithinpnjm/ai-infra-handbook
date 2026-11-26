@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Three ways to handle a missing dict key, and the __missing__ hook</title>
+  <desc>Visual comparison of three missing dict key indexing approaches alongside the StrKeyDict0 __missing__ resolution flowchart, inheritance notes, and multiset/hash contract principles.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Three ways to handle a missing dict key,</text>
+  <text x="800" y="102" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">and the __missing__ hook</text>
+
+  
+  <rect x="40" y="130" width="730" height="520" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(60, 146)">
+    <rect x="0" y="0" width="46" height="46" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="12" y1="15" x2="34" y2="15" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="12" y1="24" x2="26" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="12" y1="33" x2="30" y2="33" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="120" y="165" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="120" dy="0">indexing word locations</tspan>
+    <tspan x="120" dy="34">(line_no, column_no)</tspan>
+  </text>
+
+  
+  <rect x="60" y="235" width="690" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(80, 268)">
+    <circle cx="22" cy="22" r="18" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="22" y1="10" x2="22" y2="22" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="22" y1="22" x2="30" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="145" y="267" font-family="monospace, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">index.get(word, []) then append</tspan>
+    <tspan x="145" dy="28">then index[word] = occurrences:</tspan>
+    <tspan x="145" dy="28">two hash lookups per word</tspan>
+  </text>
+
+  
+  <rect x="60" y="365" width="690" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(80, 400)">
+    <rect x="4" y="8" width="36" height="28" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="16" cy="22" r="5" fill="#207448"/>
+    <line x1="26" y1="22" x2="34" y2="22" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="145" y="412" font-family="monospace, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">index.setdefault(word, [])</tspan>
+    <tspan x="145" dy="32">.append(location): one lookup</tspan>
+  </text>
+
+  
+  <rect x="60" y="495" width="690" height="135" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+  <g transform="translate(80, 540)">
+    <polygon points="22,4 28,16 41,18 32,27 34,40 22,34 10,40 12,27 3,18 16,16" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+  <text x="145" y="538" font-family="monospace, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="145" dy="0">index = collections.defaultdict(list);</tspan>
+    <tspan x="145" dy="32">index[word].append(location): one lookup</tspan>
+  </text>
+
+  
+  <rect x="830" y="130" width="730" height="520" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(850, 146)">
+    <rect x="0" y="0" width="46" height="46" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="10,24 20,34 36,14" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="910" y="178" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">StrKeyDict0(dict) with d[2]</text>
+
+  
+  <rect x="850" y="200" width="690" height="65" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="885" cy="232" r="24" fill="#207448"/>
+  <text x="885" y="240" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="925" y="226" font-family="monospace, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="925" dy="0">dict.__getitem__ misses and</tspan>
+    <tspan x="925" dy="28">calls __missing__(self, key)</tspan>
+  </text>
+
+  
+  <rect x="1075" y="295" width="240" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1195" y="330" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">is key a str?</text>
+
+  
+  <rect x="850" y="380" width="340" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(865, 395)">
+    <polygon points="18,4 34,34 2,34" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="18" y1="16" x2="18" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="18" cy="29" r="1.5" fill="#207448"/>
+  </g>
+  <text x="915" y="414" font-family="monospace, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="915" dy="0">raise KeyError(key);</tspan>
+    <tspan x="915" dy="28">this guard stops</tspan>
+    <tspan x="915" dy="28">infinite recursion</tspan>
+    <tspan x="915" dy="28">when str(key)</tspan>
+    <tspan x="915" dy="28">is also absent</tspan>
+  </text>
+
+  
+  <rect x="1220" y="380" width="320" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1235, 395)">
+    <path d="M 28 8 L 12 8 L 12 24 L 28 24" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="20,16 28,24 20,32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1395" y="412" text-anchor="middle" font-family="monospace, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1395" dy="0">return</tspan>
+    <tspan x="1395" dy="28">self[str(key)]</tspan>
+  </text>
+
+  
+  <rect x="1220" y="485" width="320" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1235, 500)">
+    <circle cx="22" cy="22" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="14,22 20,28 30,16" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1395" y="532" text-anchor="middle" font-family="monospace, sans-serif" font-size="24" font-weight="bold" fill="#207448">d[2] == d["2"] == two</text>
+
+  
+  
+  <line x1="1195" y1="265" x2="1195" y2="295" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1075 320 L 1020 320 L 1020 380" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="1005" y="312" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">yes</text>
+
+  
+  <path d="M 1315 320 L 1380 320 L 1380 380" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="1395" y="312" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+  
+  <line x1="1380" y1="455" x2="1380" y2="485" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  
+  <rect x="40" y="675" width="730" height="190" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(65, 740)">
+    <circle cx="20" cy="20" r="18" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="20" y1="18" x2="20" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="20" cy="12" r="2.5" fill="#207448"/>
+  </g>
+  <text x="125" y="714" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="125" dy="0">the hook runs only for d[k], not for</tspan>
+    <tspan x="125" dy="29">d.get(k) or k in d, unless you override</tspan>
+    <tspan x="125" dy="29">those too; get and __contains__ =</tspan>
+    <tspan x="125" dy="29">key in self.keys() or str(key)</tspan>
+    <tspan x="125" dy="29">in self.keys()</tspan>
+  </text>
+
+  
+  <rect x="830" y="675" width="730" height="190" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(855, 740)">
+    <polygon points="20,4 36,14 20,24 4,14" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="4,21 20,31 36,21" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="4,28 20,38 36,28" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="915" y="714" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="915" dy="0">if you normalise keys in __setitem__,</tspan>
+    <tspan x="915" dy="29">subclass collections.UserDict rather than</tspan>
+    <tspan x="915" dy="29">dict: it stores the dict in self.data and</tspan>
+    <tspan x="915" dy="29">extends MutableMapping, so built-in C</tspan>
+    <tspan x="915" dy="29">methods cannot bypass your overrides</tspan>
+  </text>
+
+  
+  <rect x="40" y="885" width="1520" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(65, 912)">
+    <rect x="4" y="6" width="36" height="30" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="12" y1="14" x2="16" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="12" y1="21" x2="26" y2="21" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="12" y1="28" x2="32" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="125" y="926" font-family="monospace, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="125" dy="0">Counter is a multiset: ct = Counter("abracadabra"); ct.update("aaaaazzz");</tspan>
+    <tspan x="125" dy="32">ct.most_common(3); + adds, - subtracts, &amp; takes the minimum, | the maximum</tspan>
+  </text>
+
+  
+  <rect x="40" y="1000" width="1520" height="85" rx="12" fill="#207448"/>
+  <text x="800" y="1034" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+    <tspan x="800" dy="0">Hash contract: if a == b then hash(a) == hash(b);</tspan>
+    <tspan x="800" dy="32">1 == 1.0 == True so {1, 1.0, True} has one element</tspan>
+  </text>
+</svg>

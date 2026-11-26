@@ -1,0 +1,201 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1020" viewBox="0 0 1600 1020">
+  <title>After rotation the service keeps writing to the renamed file</title>
+  <desc>Rotation renames the file, but the open handle still points at it.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5" />
+
+  
+  <text x="800" y="62" font-size="48" font-weight="bold" font-family="sans-serif" fill="#207448" text-anchor="middle">
+    <tspan x="800" dy="0">Rotation renames the file,</tspan>
+    <tspan x="800" dy="56">but the open handle still points at it.</tspan>
+  </text>
+
+  
+  <g transform="translate(50, 150)">
+    <rect width="352" height="380" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="44" cy="44" r="24" fill="#207448" />
+    <text x="44" y="53" font-size="26" font-weight="bold" font-family="sans-serif" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="82" y="53" font-size="30" font-weight="bold" font-family="sans-serif" fill="#207448">Step 1</text>
+
+    
+    <g transform="translate(276, 16)">
+      <path d="M 8 4 L 32 4 L 44 16 L 44 50 L 8 50 Z M 32 4 L 32 16 L 44 16" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round" />
+      <line x1="16" y1="24" x2="36" y2="24" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="16" y1="32" x2="36" y2="32" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="16" y1="40" x2="28" y2="40" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+
+    
+    <rect x="26" y="96" width="300" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="176" y="131" font-size="24" font-weight="bold" font-family="sans-serif" fill="#303a36" text-anchor="middle">service writer</text>
+
+    
+    <line x1="176" y1="148" x2="176" y2="192" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="26" y="200" width="300" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="176" y="236" font-size="26" font-weight="bold" font-family="monospace" fill="#207448" text-anchor="middle">app.log</text>
+
+    
+    <text x="176" y="295" font-size="24" font-family="sans-serif" fill="#303a36" text-anchor="middle">
+      <tspan x="176" dy="0"><tspan font-family="monospace" font-weight="bold">app.log</tspan> is the</tspan>
+      <tspan x="176" dy="34">current log</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(432, 150)">
+    <rect width="352" height="380" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="44" cy="44" r="24" fill="#207448" />
+    <text x="44" y="53" font-size="26" font-weight="bold" font-family="sans-serif" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="82" y="53" font-size="30" font-weight="bold" font-family="sans-serif" fill="#207448">Step 2</text>
+
+    
+    <g transform="translate(276, 16)">
+      <rect x="4" y="12" width="20" height="34" rx="3" stroke="#207448" stroke-width="3" fill="none" />
+      <rect x="30" y="12" width="20" height="34" rx="3" stroke="#207448" stroke-width="3" fill="none" />
+      <path d="M 14 8 Q 27 -2 38 8" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" />
+      <path d="M 33 8 L 39 8 L 39 2" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    
+    <rect x="26" y="96" width="300" height="158" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="44" y="112" width="264" height="42" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="176" y="141" font-size="24" font-weight="bold" font-family="monospace" fill="#303a36" text-anchor="middle">app.log</text>
+
+    <line x1="176" y1="154" x2="176" y2="188" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    <rect x="44" y="196" width="264" height="42" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="176" y="225" font-size="24" font-weight="bold" font-family="monospace" fill="#303a36" text-anchor="middle">app.log.1</text>
+
+    
+    <text x="176" y="295" font-size="24" font-family="sans-serif" fill="#303a36" text-anchor="middle">
+      <tspan x="176" dy="0"><tspan font-family="monospace" font-weight="bold">logrotate</tspan> renames</tspan>
+      <tspan x="176" dy="34"><tspan font-family="monospace" font-weight="bold">app.log</tspan> to <tspan font-family="monospace" font-weight="bold">app.log.1</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(814, 150)">
+    <rect width="352" height="380" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="44" cy="44" r="24" fill="#207448" />
+    <text x="44" y="53" font-size="26" font-weight="bold" font-family="sans-serif" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="82" y="53" font-size="30" font-weight="bold" font-family="sans-serif" fill="#207448">Step 3</text>
+
+    
+    <g transform="translate(276, 16)">
+      <path d="M 8 4 L 32 4 L 44 16 L 44 50 L 8 50 Z M 32 4 L 32 16 L 44 16" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round" />
+      <line x1="26" y1="26" x2="26" y2="40" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="19" y1="33" x2="33" y2="33" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+
+    
+    <rect x="26" y="96" width="300" height="158" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="44" y="112" width="264" height="42" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="176" y="141" font-size="24" font-weight="bold" font-family="monospace" fill="#303a36" text-anchor="middle">logrotate</text>
+
+    <line x1="176" y1="154" x2="176" y2="188" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    <rect x="44" y="196" width="264" height="42" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="176" y="225" font-size="24" font-weight="bold" font-family="monospace" fill="#207448" text-anchor="middle">app.log</text>
+
+    
+    <text x="176" y="295" font-size="24" font-family="sans-serif" fill="#303a36" text-anchor="middle">
+      <tspan x="176" dy="0"><tspan font-family="monospace" font-weight="bold">logrotate</tspan> creates</tspan>
+      <tspan x="176" dy="34">a new empty <tspan font-family="monospace" font-weight="bold">app.log</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1196, 150)">
+    <rect width="352" height="380" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="44" cy="44" r="24" fill="#207448" />
+    <text x="44" y="53" font-size="26" font-weight="bold" font-family="sans-serif" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="82" y="53" font-size="30" font-weight="bold" font-family="sans-serif" fill="#207448">Step 4</text>
+
+    
+    <g transform="translate(276, 16)">
+      <circle cx="20" cy="24" r="14" stroke="#207448" stroke-width="3.5" fill="none" />
+      <path d="M 30 34 L 46 48 M 40 48 L 48 48 M 46 42 L 46 48" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="20" cy="24" r="4" fill="#207448" />
+    </g>
+
+    
+    <text x="176" y="112" font-size="24" font-family="sans-serif" fill="#303a36" text-anchor="middle">
+      <tspan x="176" dy="0">the service still</tspan>
+      <tspan x="176" dy="34">holds the handle,</tspan>
+      <tspan x="176" dy="34">so its next write</tspan>
+      <tspan x="176" dy="34">lands in <tspan font-family="monospace" font-weight="bold">app.log.1</tspan></tspan>
+      <tspan x="176" dy="34">and <tspan font-family="monospace" font-weight="bold">app.log</tspan> stays</tspan>
+      <tspan x="176" dy="34">empty.</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(100, 560)">
+    <rect width="680" height="130" rx="12" fill="#edf2ee" stroke="#b0bbb2" stroke-width="2.5" />
+
+    
+    <g transform="translate(36, 32)">
+      <path d="M 8 4 L 32 4 L 44 16 L 44 54 L 8 54 Z M 32 4 L 32 16 L 44 16" stroke="#708075" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+
+    <text x="110" y="58" font-size="30" font-weight="bold" font-family="monospace" fill="#708075">app.log</text>
+    <text x="110" y="98" font-size="24" font-family="sans-serif" fill="#708075">size of 0 lines, not growing</text>
+  </g>
+
+  
+  <g transform="translate(820, 560)">
+    <rect width="680" height="130" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+
+    
+    <g transform="translate(36, 32)">
+      <path d="M 8 4 L 32 4 L 44 16 L 44 54 L 8 54 Z M 32 4 L 32 16 L 44 16" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round" />
+      <line x1="16" y1="26" x2="36" y2="26" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="16" y1="36" x2="36" y2="36" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="16" y1="46" x2="28" y2="46" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    <text x="110" y="58" font-size="30" font-weight="bold" font-family="monospace" fill="#303a36">app.log.1</text>
+    <text x="110" y="98" font-size="24" font-family="sans-serif" fill="#303a36">growing count</text>
+  </g>
+
+  
+  <g transform="translate(100, 720)">
+    <rect width="1400" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="24" y="20" width="210" height="46" rx="8" fill="#207448" />
+    <text x="129" y="52" font-size="26" font-weight="bold" font-family="monospace" fill="#ffffff" text-anchor="middle">postrotate</text>
+    <text x="260" y="52" font-size="24" font-family="sans-serif" fill="#303a36">tell the service to reopen its log</text>
+
+    
+    <rect x="24" y="84" width="210" height="46" rx="8" fill="#207448" />
+    <text x="129" y="116" font-size="26" font-weight="bold" font-family="monospace" fill="#ffffff" text-anchor="middle">copytruncate</text>
+    <text x="260" y="116" font-size="24" font-family="sans-serif" fill="#303a36">copy then truncate in place, small risk of losing lines in the gap</text>
+  </g>
+
+  
+  <g transform="translate(100, 895)">
+    <rect width="1400" height="75" rx="10" fill="#207448" />
+    <text x="700" y="47" font-size="26" font-weight="bold" font-family="sans-serif" fill="#ffffff" text-anchor="middle">
+      When a log stops growing, check whether the writer reopens the file before blaming the schedule.
+    </text>
+  </g>
+</svg>

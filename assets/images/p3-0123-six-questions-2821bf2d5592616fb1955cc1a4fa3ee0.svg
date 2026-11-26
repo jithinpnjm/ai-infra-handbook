@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Six questions before you log in, plus the GPU extras</title>
+  <desc>A visual diagnostic guide showing six foundational performance troubleshooting questions, GPU-specific extra inquiries, recording requirements, and key takeaway.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="9" markerHeight="9" refX="5" refY="3" orient="auto">
+      <path d="M 0 0 L 6 3 L 0 6 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">Six questions before you log in, plus the GPU extras</text>
+
+  
+
+  
+  <rect x="40" y="110" width="460" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="76" cy="148" r="24" fill="#207448"/>
+  <text x="76" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+  
+  <g transform="translate(440, 148)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <path d="M -20 10 A 22 22 0 1 1 20 10"/>
+    <line x1="0" y1="0" x2="12" y2="-12"/>
+    <circle cx="0" cy="0" r="3" fill="#207448"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="64" y="202" font-weight="bold">What makes you think there is</tspan>
+    <tspan x="64" y="232" font-weight="bold">a performance problem? Which</tspan>
+    <tspan x="64" y="264">metric looks wrong, which</tspan>
+    <tspan x="64" y="294">complaint started the chase</tspan>
+  </text>
+
+  
+  <rect x="540" y="110" width="460" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="576" cy="148" r="24" fill="#207448"/>
+  <text x="576" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+  
+  <g transform="translate(940, 148)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <circle cx="0" cy="0" r="20"/>
+    <polyline points="0,-12 0,0 10,6"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="564" y="202" font-weight="bold">Has the system ever performed</tspan>
+    <tspan x="564" y="236">well? Regression, or never</tspan>
+    <tspan x="564" y="270">good</tspan>
+  </text>
+
+  
+  <rect x="40" y="370" width="460" height="220" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  <circle cx="76" cy="408" r="24" fill="#207448"/>
+  <text x="76" y="408" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+  
+  <g transform="translate(440, 408)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <line x1="-18" y1="-10" x2="18" y2="-10"/>
+    <circle cx="-4" cy="-10" r="4" fill="#207448"/>
+    <line x1="-18" y1="10" x2="18" y2="10"/>
+    <circle cx="8" cy="10" r="4" fill="#207448"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="64" y="462" font-weight="bold">What changed recently?</tspan>
+    <tspan x="64" y="494">Software, firmware, driver,</tspan>
+    <tspan x="64" y="526">kernel, hardware, load, data,</tspan>
+    <tspan x="64" y="558">configuration, neighbours</tspan>
+  </text>
+
+  
+  <rect x="540" y="370" width="460" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="576" cy="408" r="24" fill="#207448"/>
+  <text x="576" y="408" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+  
+  <g transform="translate(940, 408)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <circle cx="0" cy="3" r="18"/>
+    <line x1="0" y1="-15" x2="0" y2="-19"/>
+    <line x1="-5" y1="-19" x2="5" y2="-19"/>
+    <polyline points="0,3 8,-4"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="564" y="462" font-weight="bold">Can it be expressed as</tspan>
+    <tspan x="564" y="494" font-weight="bold">latency or runtime? Step time,</tspan>
+    <tspan x="564" y="526">tokens per second, time to</tspan>
+    <tspan x="564" y="558">first token, job duration</tspan>
+  </text>
+
+  
+  <rect x="40" y="630" width="460" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="76" cy="668" r="24" fill="#207448"/>
+  <text x="76" y="668" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+  
+  <g transform="translate(440, 668)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <circle cx="-12" cy="-8" r="7"/>
+    <circle cx="12" cy="-8" r="7"/>
+    <circle cx="0" cy="12" r="7"/>
+    <line x1="-6" y1="-5" x2="6" y2="-5"/>
+    <line x1="-9" y1="-1" x2="-2" y2="7"/>
+    <line x1="9" y1="-1" x2="2" y2="7"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="64" y="726" font-weight="bold">Does it affect other users,</tspan>
+    <tspan x="64" y="760">nodes and jobs, or only</tspan>
+    <tspan x="64" y="794">this one?</tspan>
+  </text>
+
+  
+  <rect x="540" y="630" width="460" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="576" cy="668" r="24" fill="#207448"/>
+  <text x="576" y="668" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">6</text>
+  
+  <g transform="translate(940, 668)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <rect x="-18" y="-18" width="36" height="10" rx="2"/>
+    <rect x="-18" y="-4" width="36" height="10" rx="2"/>
+    <rect x="-18" y="10" width="36" height="10" rx="2"/>
+    <circle cx="10" cy="-13" r="1.5" fill="#207448"/>
+    <circle cx="10" cy="1" r="1.5" fill="#207448"/>
+    <circle cx="10" cy="15" r="1.5" fill="#207448"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="564" y="722" font-weight="bold">What is the environment?</tspan>
+    <tspan x="564" y="754">Hardware, versions, topology,</tspan>
+    <tspan x="564" y="786">scheduler, container and</tspan>
+    <tspan x="564" y="818">library versions</tspan>
+  </text>
+
+  
+
+  <rect x="1040" y="110" width="520" height="740" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <text x="1064" y="158" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">For GPU work, also ask</text>
+
+  
+  <g transform="translate(1504, 150)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <rect x="-16" y="-16" width="32" height="32" rx="3"/>
+    <rect x="-8" y="-8" width="16" height="16" fill="#c0d8c8"/>
+    <line x1="-12" y1="-20" x2="-12" y2="-16"/>
+    <line x1="0" y1="-20" x2="0" y2="-16"/>
+    <line x1="12" y1="-20" x2="12" y2="-16"/>
+    <line x1="-12" y1="16" x2="-12" y2="20"/>
+    <line x1="0" y1="16" x2="0" y2="20"/>
+    <line x1="12" y1="16" x2="12" y2="20"/>
+    <line x1="-20" y1="-12" x2="-16" y2="-12"/>
+    <line x1="-20" y1="0" x2="-16" y2="0"/>
+    <line x1="-20" y1="12" x2="-16" y2="12"/>
+    <line x1="16" y1="-12" x2="20" y2="-12"/>
+    <line x1="16" y1="0" x2="20" y2="0"/>
+    <line x1="16" y1="12" x2="20" y2="12"/>
+  </g>
+
+  
+  
+  <circle cx="1076" cy="214" r="5" fill="#207448"/>
+  <text x="1096" y="222" font-family="sans-serif" font-size="24" fill="#303a36">Which model and batch size?</text>
+
+  
+  <circle cx="1076" cy="276" r="5" fill="#207448"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1096" y="284">Which parallelism strategy,</tspan>
+    <tspan x="1096" y="316">how many nodes and GPUs?</tspan>
+  </text>
+
+  
+  <circle cx="1076" cy="374" r="5" fill="#207448"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1096" y="382">What throughput do you expect,</tspan>
+    <tspan x="1096" y="414">and where did the expectation</tspan>
+    <tspan x="1096" y="446">come from: published results,</tspan>
+    <tspan x="1096" y="478">an earlier run, a theoretical</tspan>
+    <tspan x="1096" y="510">estimate?</tspan>
+  </text>
+
+  
+  <circle cx="1076" cy="568" r="5" fill="#207448"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1096" y="576">Is the slowdown constant</tspan>
+    <tspan x="1096" y="608">or periodic?</tspan>
+  </text>
+
+  
+  <circle cx="1076" cy="666" r="5" fill="#207448"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1096" y="674">Are all ranks slow,</tspan>
+    <tspan x="1096" y="706">or one straggler?</tspan>
+  </text>
+
+  
+  <circle cx="1076" cy="764" r="5" fill="#207448"/>
+  <text x="1096" y="772" font-family="sans-serif" font-size="24" fill="#303a36">Does it reproduce on one node?</text>
+
+  
+  
+  <line x1="800" y1="850" x2="800" y2="888" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)"/>
+
+  
+  <rect x="40" y="890" width="1520" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(80, 960)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <rect x="-18" y="-22" width="36" height="44" rx="4"/>
+    <path d="M -8 -22 L -8 -26 L 8 -26 L 8 -22"/>
+    <line x1="-10" y1="-8" x2="10" y2="-8"/>
+    <line x1="-10" y1="2" x2="10" y2="2"/>
+    <line x1="-10" y1="12" x2="4" y2="12"/>
+  </g>
+  <text font-family="sans-serif" text-anchor="middle">
+    <tspan x="820" y="946" font-size="26" font-weight="bold" fill="#207448">Write the answers down before you touch the system: they become the problem statement</tspan>
+    <tspan x="820" y="986" font-size="24" fill="#303a36">you test against and the record that shows whether the fix worked</tspan>
+  </text>
+
+  
+  <rect x="40" y="1070" width="1520" height="90" rx="8" fill="#207448"/>
+  <text x="800" y="1125" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff" text-anchor="middle">Often the answers alone reveal the cause</text>
+
+</svg>

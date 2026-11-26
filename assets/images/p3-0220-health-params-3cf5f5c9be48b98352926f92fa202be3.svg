@@ -1,0 +1,198 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Health checks: probe parameters, active versus passive, liveness versus readiness</title>
+  <desc>Health checks: probe parameters, active versus passive, liveness versus readiness</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">
+    <tspan x="800" dy="0">Health checks: probe parameters, </tspan>
+    <tspan x="800" dy="54">active versus passive, liveness versus readiness</tspan>
+  </text>
+
+  
+  <rect x="40" y="135" width="480" height="960" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="40" y="135" width="480" height="70" rx="16" fill="#e8f1ea" />
+  
+  <g transform="translate(64, 142)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="24" fill="#ffffff" />
+    <polyline points="28,14 28,28 38,28" />
+    <line x1="28" y1="4" x2="28" y2="8" />
+    <line x1="28" y1="48" x2="28" y2="52" />
+    <line x1="4" y1="28" x2="8" y2="28" />
+    <line x1="48" y1="28" x2="52" y2="28" />
+  </g>
+  
+  <line x1="88" y1="225" x2="88" y2="550" stroke="#207448" stroke-width="3" stroke-dasharray="4 4" opacity="0.4" />
+  
+  <rect x="60" y="215" width="440" height="75" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="88" cy="252" r="14" fill="#207448" />
+  <circle cx="88" cy="252" r="5" fill="#ffffff" />
+  <text x="120" y="261" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">interval: how often</text>
+  
+  <rect x="60" y="300" width="440" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="88" cy="347" r="14" fill="#207448" />
+  <circle cx="88" cy="347" r="5" fill="#ffffff" />
+  <text x="120" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="120" dy="0" font-weight="bold" fill="#207448">timeout: </tspan>
+    <tspan x="120" dy="32">how long to wait</tspan>
+  </text>
+  
+  <rect x="60" y="405" width="440" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="88" cy="452" r="14" fill="#207448" />
+  <line x1="83" y1="447" x2="93" y2="457" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+  <line x1="93" y1="447" x2="83" y2="457" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+  <text x="120" y="445" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="120" dy="0" font-weight="bold" fill="#207448">fall: failures needed </tspan>
+    <tspan x="120" dy="32">to mark down</tspan>
+  </text>
+  
+  <rect x="60" y="510" width="440" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="88" cy="557" r="14" fill="#207448" />
+  <polyline points="82,557 86,561 94,553" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="120" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="120" dy="0" font-weight="bold" fill="#207448">rise: successes needed </tspan>
+    <tspan x="120" dy="32">to mark up</tspan>
+  </text>
+  
+  <rect x="60" y="615" width="440" height="150" rx="12" fill="#fff9f3" stroke="#db8129" stroke-width="3" />
+  <g transform="translate(80, 630)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="4" width="36" height="42" rx="4" />
+    <line x1="12" y1="14" x2="32" y2="14" />
+    <line x1="12" y1="24" x2="18" y2="24" />
+    <line x1="26" y1="24" x2="32" y2="24" />
+    <line x1="12" y1="34" x2="18" y2="34" />
+    <line x1="26" y1="34" x2="32" y2="34" />
+  </g>
+  <text x="135" y="652" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0" font-weight="bold" fill="#db8129">Detection takes about </tspan>
+    <tspan x="135" dy="30" font-weight="bold" fill="#db8129">interval x fall: </tspan>
+    <tspan x="80" dy="48" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#303a36">inter 2s fall 3 = 6.0 s</tspan>
+  </text>
+  
+  <rect x="60" y="775" width="440" height="145" rx="12" fill="#ffffff" stroke="#c5d8cb" stroke-width="2" />
+  <rect x="60" y="775" width="10" height="145" rx="4" fill="#207448" />
+  <g transform="translate(85, 792)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 6 L 40 38 L 4 38 Z" />
+    <line x1="22" y1="18" x2="22" y2="26" />
+    <circle cx="22" cy="32" r="1.5" fill="#207448" />
+  </g>
+  <text x="140" y="825" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+    <tspan x="140" dy="0" font-weight="bold" fill="#207448">too aggressive: </tspan>
+    <tspan x="85" dy="55">a loaded backend flaps</tspan>
+  </text>
+  
+  <rect x="60" y="930" width="440" height="145" rx="12" fill="#ffffff" stroke="#c5d8cb" stroke-width="2" />
+  <rect x="60" y="930" width="10" height="145" rx="4" fill="#207448" />
+  <g transform="translate(85, 947)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="22" cy="22" r="18" />
+    <line x1="9" y1="22" x2="35" y2="22" />
+  </g>
+  <text x="140" y="977" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+    <tspan x="140" dy="0" font-weight="bold" fill="#207448">too lax: </tspan>
+    <tspan x="85" dy="45">dead nodes keep </tspan>
+    <tspan x="85" dy="34">receiving traffic</tspan>
+  </text>
+  
+  <rect x="560" y="135" width="480" height="385" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="560" y="135" width="480" height="120" rx="16" fill="#e8f1ea" />
+  <g transform="translate(585, 155)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="8" fill="#207448" />
+    <path d="M 12 12 A 22 22 0 0 1 44 12" />
+    <path d="M 4 4 A 34 34 0 0 1 52 4" />
+    <path d="M 28 36 L 28 52" />
+    <path d="M 18 52 L 38 52" />
+  </g>
+  <text x="660" y="172" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+    <tspan x="660" dy="0" font-size="30" font-weight="bold" fill="#207448">Active checks </tspan>
+    <tspan x="660" dy="36">(the balancer probes </tspan>
+    <tspan x="660" dy="32">on a schedule)</tspan>
+  </text>
+  <text x="590" y="295" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="590" dy="0">open a TCP connection, </tspan>
+    <tspan x="590" dy="38" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">GET /healthz expecting 200, </tspan>
+    <tspan x="590" dy="38">gRPC health protocol </tspan>
+    <tspan x="590" dy="38" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">grpc.health.v1, </tspan>
+    <tspan x="590" dy="38">or a custom script</tspan>
+  </text>
+  
+  <rect x="560" y="540" width="480" height="555" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="560" y="540" width="480" height="95" rx="16" fill="#e8f1ea" />
+  <g transform="translate(585, 555)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 28 C 16 12 40 12 50 28 C 40 44 16 44 6 28 Z" />
+    <circle cx="28" cy="28" r="8" fill="#207448" />
+    <circle cx="28" cy="28" r="3" fill="#ffffff" />
+  </g>
+  <text x="660" y="582" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+    <tspan x="660" dy="0" font-size="30" font-weight="bold" fill="#207448">Passive checks </tspan>
+    <tspan x="660" dy="36">(watch real traffic)</tspan>
+  </text>
+  <text x="590" y="675" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="590" dy="0">eject a backend after </tspan>
+    <tspan x="590" dy="36">N consecutive 5xx responses </tspan>
+    <tspan x="590" dy="36">or connection failures, </tspan>
+    <tspan x="590" dy="36">for a period; Envoy outlier </tspan>
+    <tspan x="590" dy="36">detection, HAProxy observe </tspan>
+    <tspan x="590" dy="36" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">layer7, nginx max_fails; </tspan>
+    <tspan x="590" dy="44">catches failures a probe </tspan>
+    <tspan x="590" dy="36">misses, and brownouts, </tspan>
+    <tspan x="590" dy="36">a backend answering slowly </tspan>
+    <tspan x="590" dy="36">or half the time</tspan>
+  </text>
+  
+  <rect x="1080" y="135" width="480" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="1080" y="135" width="480" height="75" rx="16" fill="#e8f1ea" />
+  <g transform="translate(1105, 145)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="6,28 18,28 24,12 32,44 38,22 44,32 50,28 56,28" />
+  </g>
+  <text x="1180" y="182" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+    <tspan x="1180" dy="0" font-size="30" font-weight="bold" fill="#207448">Liveness: </tspan>
+    <tspan x="1115" dy="68" font-size="28" font-weight="bold" fill="#303a36">is the process up?</tspan>
+  </text>
+  
+  <rect x="1080" y="335" width="480" height="330" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="1080" y="335" width="480" height="75" rx="16" fill="#e8f1ea" />
+  <g transform="translate(1105, 345)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 48 14 L 48 28 C 48 42 28 52 28 52 C 28 52 8 42 8 28 L 8 14 Z" />
+    <polyline points="18,28 24,34 38,20" />
+  </g>
+  <text x="1180" y="382" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="1180" dy="0" font-size="30" font-weight="bold" fill="#207448">Readiness: </tspan>
+    <tspan x="1115" dy="58" font-size="25" font-weight="bold" fill="#207448">can it serve right now: </tspan>
+    <tspan x="1115" dy="45">the model is loaded, </tspan>
+    <tspan x="1115" dy="40">the GPU is healthy, </tspan>
+    <tspan x="1115" dy="40">the queue is not full</tspan>
+  </text>
+  
+  <rect x="1080" y="685" width="480" height="410" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="1080" y="685" width="480" height="85" rx="16" fill="#e8f1ea" />
+  <g transform="translate(1105, 698)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="12" y="12" width="32" height="32" rx="4" fill="#ffffff" />
+    <circle cx="28" cy="28" r="7" />
+    <line x1="20" y1="4" x2="20" y2="12" />
+    <line x1="28" y1="4" x2="28" y2="12" />
+    <line x1="36" y1="4" x2="36" y2="12" />
+    <line x1="20" y1="44" x2="20" y2="52" />
+    <line x1="28" y1="44" x2="28" y2="52" />
+    <line x1="36" y1="44" x2="36" y2="52" />
+    <line x1="4" y1="20" x2="12" y2="20" />
+    <line x1="4" y1="28" x2="12" y2="28" />
+    <line x1="4" y1="36" x2="12" y2="36" />
+    <line x1="44" y1="20" x2="52" y2="20" />
+    <line x1="44" y1="28" x2="52" y2="28" />
+    <line x1="44" y1="36" x2="52" y2="36" />
+  </g>
+  <text x="1115" y="805" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1115" dy="0" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">Triton /v2/health/ready, </tspan>
+    <tspan x="1115" dy="40">vLLM /health, GPU health </tspan>
+    <tspan x="1115" dy="40">through DCGM Xid or ECC </tspan>
+    <tspan x="1115" dy="40">data; mark a replica </tspan>
+    <tspan x="1115" dy="40">not-ready during model </tspan>
+    <tspan x="1115" dy="40">load; slowstart for cold </tspan>
+    <tspan x="1115" dy="40">replicas</tspan>
+  </text>
+  
+  <rect x="40" y="1115" width="1520" height="60" rx="12" fill="#207448" />
+  <text x="800" y="1153" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">A failing backend that keeps its address keeps receiving traffic unless a check removes it</text>
+</svg>

@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading a zone file, record by record</title>
+  <desc>The zone file from the chapter as rows, each with a plain reading on the right.</desc>
+
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Reading a zone file, record by record</text>
+
+  
+
+  
+  <g id="row-origin">
+    <rect x="40" y="86" width="1060" height="76" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(56, 104)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="18"/>
+      <polygon points="20,8 25,18 20,15 15,18" fill="#207448"/>
+      <polygon points="20,32 25,22 20,25 15,22" fill="#207448"/>
+    </g>
+    <text x="110" y="132" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24px" fill="#207448">$ORIGIN dc1.example.com.</text>
+    <line x1="560" y1="98" x2="560" y2="150" stroke="#b8d5c2" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="580" y="117" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="580" dy="0">names without a dot</tspan>
+      <tspan x="580" dy="28">are relative to this</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-ttl">
+    <rect x="40" y="170" width="1060" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(56, 180)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="18"/>
+      <polyline points="20,10 20,20 27,25"/>
+    </g>
+    <text x="110" y="208" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24px" fill="#207448">$TTL 300</text>
+    <line x1="560" y1="178" x2="560" y2="222" stroke="#b8d5c2" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="580" y="208" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">default time to live</text>
+  </g>
+
+  
+  <g id="row-soa">
+    <rect x="40" y="238" width="1060" height="138" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(56, 252)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20,4 L36,10 L36,22 C36,31 20,38 20,38 C20,38 4,31 4,22 L4,10 Z"/>
+      <path d="M12,19 L18,25 L28,14"/>
+    </g>
+    <text x="110" y="265" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24px" fill="#207448">
+      <tspan x="110" dy="0">@ IN SOA ns1 hostmaster</tspan>
+      <tspan x="110" dy="28">(serial 2026102301, refresh 3600,</tspan>
+      <tspan x="110" dy="28">retry 600, expire 1209600,</tspan>
+      <tspan x="110" dy="28">negative TTL 300)</tspan>
+    </text>
+    <line x1="560" y1="248" x2="560" y2="366" stroke="#b8d5c2" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="580" y="265" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="580" dy="0">start of authority: one per zone;</tspan>
+      <tspan x="580" dy="28">serial YYYYMMDDnn;</tspan>
+      <tspan x="580" dy="28">negative TTL is how long</tspan>
+      <tspan x="580" dy="28">NXDOMAIN is cached</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-ns">
+    <rect x="40" y="384" width="1060" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(56, 404)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="32" height="11" rx="3"/>
+      <rect x="4" y="23" width="32" height="11" rx="3"/>
+      <line x1="9" y1="11.5" x2="11" y2="11.5"/>
+      <line x1="9" y1="28.5" x2="11" y2="28.5"/>
+    </g>
+    <text x="110" y="418" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24px" fill="#207448">
+      <tspan x="110" dy="0">IN NS ns1</tspan>
+      <tspan x="110" dy="28">IN NS ns2</tspan>
+    </text>
+    <line x1="560" y1="394" x2="560" y2="454" stroke="#b8d5c2" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="580" y="432" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">the zone's name servers</text>
+  </g>
+
+  
+  <g id="row-glue">
+    <rect x="40" y="472" width="1060" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(56, 492)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="10" cy="20" r="6"/>
+      <circle cx="30" cy="20" r="6"/>
+      <line x1="16" y1="20" x2="24" y2="20"/>
+      <path d="M20,10 L20,30"/>
+    </g>
+    <text x="110" y="506" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24px" fill="#207448">
+      <tspan x="110" dy="0">ns1 IN A 10.20.0.10</tspan>
+      <tspan x="110" dy="28">ns2 IN A 10.20.0.11</tspan>
+    </text>
+    <line x1="560" y1="482" x2="560" y2="542" stroke="#b8d5c2" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="580" y="520" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">their addresses, the glue</text>
+  </g>
+
+  
+  <g id="row-gpu01">
+    <rect x="40" y="560" width="1060" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(56, 570)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="32" height="22" rx="3"/>
+      <line x1="14" y1="34" x2="26" y2="34"/>
+      <line x1="20" y1="28" x2="20" y2="34"/>
+    </g>
+    <text x="110" y="598" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24px" fill="#207448">gpu01 IN A 10.20.0.45</text>
+    <line x1="560" y1="568" x2="560" y2="612" stroke="#b8d5c2" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="580" y="598" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">management address</text>
+  </g>
+
+  
+  <g id="row-gpu01-ib">
+    <rect x="40" y="628" width="1060" height="76" rx="8" fill="#fdf6ee" stroke="#db8129" stroke-width="2.5"/>
+    
+    <g transform="translate(56, 646)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="32" height="24" rx="4"/>
+      <circle cx="12" cy="20" r="3" fill="#db8129"/>
+      <circle cx="20" cy="20" r="3" fill="#db8129"/>
+      <circle cx="28" cy="20" r="3" fill="#db8129"/>
+      <line x1="12" y1="12" x2="12" y2="14"/>
+      <line x1="20" y1="12" x2="20" y2="14"/>
+      <line x1="28" y1="12" x2="28" y2="14"/>
+    </g>
+    <text x="110" y="674" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24px" font-weight="bold" fill="#db8129">gpu01-ib IN A 10.100.0.45</text>
+    <line x1="560" y1="638" x2="560" y2="694" stroke="#f0c294" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="580" y="659" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="580" dy="0">per-NIC name for the</tspan>
+      <tspan x="580" dy="28">fabric interface</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-gpu01-aaaa">
+    <rect x="40" y="712" width="1060" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(56, 722)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="18"/>
+      <line x1="2" y1="20" x2="38" y2="20"/>
+      <ellipse cx="20" cy="20" rx="9" ry="18"/>
+    </g>
+    <text x="110" y="750" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24px" fill="#207448">gpu01 IN AAAA 2001:db8:20::45</text>
+    <line x1="560" y1="720" x2="560" y2="764" stroke="#b8d5c2" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="580" y="750" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">IPv6 address</text>
+  </g>
+
+  
+  <g id="row-cname">
+    <rect x="40" y="780" width="1060" height="104" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(56, 812)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6,28 L6,16 C6,10 11,6 18,6 L32,6"/>
+      <polyline points="24,0 32,6 24,12"/>
+      <circle cx="6" cy="30" r="3" fill="#207448"/>
+    </g>
+    <text x="110" y="839" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24px" fill="#207448">login IN CNAME gpu-login01</text>
+    <line x1="560" y1="790" x2="560" y2="874" stroke="#b8d5c2" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="580" y="813" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="580" dy="0">alias: no other records may</tspan>
+      <tspan x="580" dy="28">coexist at the same name, and</tspan>
+      <tspan x="580" dy="28">not allowed at the zone apex</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-srv">
+    <rect x="40" y="892" width="1060" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(56, 912)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="7"/>
+      <path d="M20,4 L20,8 M20,32 L20,36 M4,20 L8,20 M32,20 L36,20 M8.7,8.7 L11.5,11.5 M28.5,28.5 L31.3,31.3 M8.7,31.3 L11.5,28.5 M28.5,11.5 L31.3,8.7"/>
+    </g>
+    <text x="110" y="926" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24px" fill="#207448">
+      <tspan x="110" dy="0">_slurmctld._tcp</tspan>
+      <tspan x="110" dy="28">IN SRV 0 0 6817 slurm-ctl</tspan>
+    </text>
+    <line x1="560" y1="902" x2="560" y2="962" stroke="#b8d5c2" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="580" y="926" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="580" dy="0">service location:</tspan>
+      <tspan x="580" dy="28">priority, weight, port, target</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-strip">
+    <rect x="1130" y="86" width="430" height="886" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1156, 108)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="20,4 36,12 20,20 4,12"/>
+      <path d="M4,18 L20,26 L36,18"/>
+      <path d="M4,24 L20,32 L36,24"/>
+    </g>
+    
+    <text x="1156" y="184" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="1156" dy="0" font-weight="bold" fill="#207448">other types:</tspan>
+      <tspan x="1156" dy="36">MX priority and host,</tspan>
+      <tspan x="1156" dy="36">TXT (SPF, DKIM, DMARC,</tspan>
+      <tspan x="1156" dy="36">domain verification,</tspan>
+      <tspan x="1156" dy="36">ACME challenges),</tspan>
+      <tspan x="1156" dy="36">PTR reverse mapping,</tspan>
+      <tspan x="1156" dy="36">CAA which CAs may issue</tspan>
+      <tspan x="1156" dy="36">certificates,</tspan>
+      <tspan x="1156" dy="36">SVCB and HTTPS ALPN</tspan>
+      <tspan x="1156" dy="36">and ports,</tspan>
+      <tspan x="1156" dy="36">DS DNSKEY RRSIG NSEC(3)</tspan>
+      <tspan x="1156" dy="36">DNSSEC material,</tspan>
+      <tspan x="1156" dy="36">ALIAS or ANAME</tspan>
+      <tspan x="1156" dy="36">provider-specific CNAME</tspan>
+      <tspan x="1156" dy="36">at the apex</tspan>
+    </text>
+  </g>
+
+  
+  <g id="footer">
+    <rect x="40" y="988" width="1520" height="82" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(60, 1007)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22,6 A16,16 0 1,1 6,22"/>
+      <polyline points="22,0 22,6 28,6"/>
+      <circle cx="22" cy="22" r="4" fill="#207448"/>
+    </g>
+    <text x="120" y="1022" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="120" dy="0">Round-robin DNS returns several A records in rotating order and clients usually try the first:</tspan>
+      <tspan x="120" dy="30">no health checks; prefer health-checked records, anycast or a load balancer</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1086" width="1520" height="54" rx="8" fill="#207448"/>
+    <text x="800" y="1122" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">A zone is a table of facts about names, and each record type is one kind of fact</text>
+  </g>
+</svg>

@@ -1,0 +1,285 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A diagnostic flow</title>
+  <desc>A decision tree for diagnosing TCP connectivity, throughput limits, latency spikes, and connection resets.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <g id="header">
+    <text x="60" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A diagnostic flow</text>
+  </g>
+
+  
+  <g id="connections" stroke-linecap="round" stroke-linejoin="round">
+    
+    <path d="M 330 115 L 380 115" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+    
+    <path d="M 505 80 L 505 52 Q 505 45 515 45 L 750 45" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <path d="M 505 150 L 505 185 Q 505 192 515 192 L 750 192" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <path d="M 630 115 L 670 115 Q 685 115 685 135 L 685 365 Q 685 385 670 385 L 340 385" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+    
+    <path d="M 205 425 L 205 600" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+    
+    <path d="M 340 365 L 750 365" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <path d="M 340 405 L 750 405" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <path d="M 350 670 L 610 670" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <path d="M 350 710 L 480 710 Q 495 710 495 730 L 495 810 Q 495 825 510 825 L 610 825" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <path d="M 240 760 L 240 965 Q 240 980 255 980 L 610 980" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <path d="M 170 760 L 170 1115 Q 170 1130 185 1130 L 610 1130" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  </g>
+
+  
+  
+  <g id="edge-refused">
+    <rect x="525" y="16" width="125" height="34" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="587" y="40" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">refused</text>
+  </g>
+
+  
+  <g id="edge-timeout">
+    <rect x="525" y="164" width="130" height="34" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="590" y="188" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">timeout</text>
+  </g>
+
+  
+  <g id="edge-connects">
+    <rect x="535" y="240" width="135" height="36" rx="6" fill="#f5f8f5" stroke="#db8129" stroke-width="2" />
+    <text x="602" y="266" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">connects</text>
+  </g>
+
+  
+  <g id="edge-yes">
+    <rect x="215" y="495" width="70" height="34" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="250" y="520" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+  </g>
+
+  
+  <g id="edge-latency">
+    <rect x="380" y="338" width="310" height="34" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="535" y="362" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">no, but latency spikes</text>
+  </g>
+
+  
+  <g id="edge-resets">
+    <rect x="480" y="415" width="110" height="34" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="535" y="439" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">resets</text>
+  </g>
+
+  
+  <g id="edge-cwnd">
+    <rect x="330" y="642" width="270" height="34" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="465" y="666" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">cwnd_limited / retrans</text>
+  </g>
+
+  
+  <g id="edge-rwnd">
+    <rect x="250" y="797" width="350" height="34" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="425" y="821" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">rwnd_limited / zero window</text>
+  </g>
+
+  
+  <g id="edge-sndbuf">
+    <rect x="255" y="952" width="220" height="34" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="365" y="976" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">sndbuf_limited</text>
+  </g>
+
+  
+  <g id="edge-app">
+    <rect x="185" y="1102" width="180" height="34" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="275" y="1126" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">app_limited</text>
+  </g>
+
+  
+
+  
+  <g id="node-Q">
+    <rect x="60" y="80" width="270" height="70" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 80 115 L 96 115 L 104 95 L 114 135 L 124 105 L 132 115 L 144 115" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="160" y="125" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">TCP symptom</text>
+  </g>
+
+  
+  <g id="node-A">
+    <rect x="380" y="80" width="250" height="70" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="415" cy="115" r="16" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 431 115 L 443 115" fill="none" stroke="#207448" stroke-width="4" />
+    <text x="455" y="125" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Can connect?</text>
+  </g>
+
+  
+  <g id="node-A1">
+    <rect x="750" y="15" width="800" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="785" cy="62" r="18" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="772" y1="49" x2="798" y2="75" stroke="#207448" stroke-width="4" />
+    <text x="820" y="47" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="820" dy="0">No listener / reject rule: </tspan>
+      <tspan font-family="monospace">ss -tlnp</tspan>
+      <tspan font-family="sans-serif"> on server; check bind</tspan>
+      <tspan x="820" dy="32">address (</tspan>
+      <tspan font-family="monospace">127.0.0.1</tspan>
+      <tspan font-family="sans-serif"> vs </tspan>
+      <tspan font-family="monospace">0.0.0.0</tspan>
+      <tspan font-family="sans-serif">)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-A2">
+    <rect x="750" y="135" width="800" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 770 148 L 788 142 L 806 148 L 806 168 C 806 182 788 192 788 192 C 788 192 770 182 770 168 Z" fill="none" stroke="#207448" stroke-width="3.5" />
+    <text x="820" y="167" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="820" dy="0">SYN dropped: </tspan>
+      <tspan font-family="monospace">tcpdump</tspan>
+      <tspan font-family="sans-serif"> both ends; routing,</tspan>
+      <tspan x="820" dy="32">SG/NSG/firewall, </tspan>
+      <tspan font-family="monospace">rp_filter</tspan>
+      <tspan font-family="sans-serif">, listen queue (</tspan>
+      <tspan font-family="monospace">nstat</tspan>
+      <tspan font-family="sans-serif">)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-B">
+    <rect x="70" y="345" width="270" height="80" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 85 395 A 22 22 0 1 1 125 395" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="105" y1="395" x2="118" y2="380" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="140" y="395" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="140" dy="0">Throughput</tspan>
+      <tspan x="140" dy="32">low?</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-C">
+    <rect x="750" y="275" width="800" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="785" cy="322" r="18" fill="none" stroke="#207448" stroke-width="4" />
+    <polyline points="785,312 785,322 795,322" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <text x="820" y="307" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="820" dy="0">Nagle+delayed ACK, RTO events, accept queue,</tspan>
+      <tspan x="820" dy="32">GC pauses, conntrack, bufferbloat (</tspan>
+      <tspan font-family="monospace">tcp_notsent_lowat</tspan>
+      <tspan font-family="sans-serif">)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-D">
+    <rect x="750" y="390" width="800" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <polygon points="785,398 805,434 765,434" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="785" y1="411" x2="785" y2="422" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="785" cy="428" r="1.5" fill="#207448" />
+    <text x="820" y="422" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="820" dy="0">Idle timeouts on LB/NAT/firewall; app crash;</tspan>
+      <tspan x="820" dy="32">keepalives; RST source IP/TTL in </tspan>
+      <tspan font-family="monospace">tcpdump</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-B1">
+    <rect x="60" y="600" width="290" height="160" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="78" y="618" width="46" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <polyline points="85,630 93,637 85,644" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="97" y1="644" x2="108" y2="644" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="135" y="648" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">ss -ti:</text>
+    <text x="78" y="700" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="78" dy="0">which</tspan>
+      <tspan x="78" dy="38">limit?</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-B2">
+    <rect x="610" y="620" width="940" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="625" y="648" width="45" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="635" y1="658" x2="660" y2="678" stroke="#207448" stroke-width="3" />
+    <line x1="660" y1="658" x2="635" y2="678" stroke="#207448" stroke-width="3" />
+    <text x="685" y="658" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="685" dy="0" font-weight="bold">Loss/congestion:</tspan>
+      <tspan font-weight="normal"> path counters, drops at NIC/switch,</tspan>
+      <tspan x="685" dy="34" font-weight="normal">CC algorithm, ECN</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-B3">
+    <rect x="610" y="765" width="940" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="625" y="793" width="45" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="625" y1="806" x2="670" y2="806" stroke="#207448" stroke-width="2" />
+    <line x1="640" y1="793" x2="640" y2="833" stroke="#207448" stroke-width="2" />
+    <text x="685" y="803" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="685" dy="0" font-weight="bold">Receiver app slow or buffer too small:</tspan>
+      <tspan font-weight="normal"> app profile, </tspan>
+      <tspan font-family="monospace">rmem</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-B4">
+    <rect x="610" y="915" width="940" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="625" y="943" width="45" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="633" y1="963" x2="662" y2="963" stroke="#207448" stroke-width="3" />
+    <circle cx="652" cy="963" r="5" fill="#207448" />
+    <text x="685" y="968" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="685" dy="0">Increase </tspan>
+      <tspan font-family="monospace">wmem</tspan>
+      <tspan font-family="sans-serif"> or fix app write pattern</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-B5">
+    <rect x="610" y="1065" width="940" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="625" y="1093" width="45" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="633" cy="1102" r="2" fill="#207448" />
+    <circle cx="640" cy="1102" r="2" fill="#207448" />
+    <circle cx="647" cy="1102" r="2" fill="#207448" />
+    <line x1="625" y1="1108" x2="670" y2="1108" stroke="#207448" stroke-width="2" />
+    <text x="685" y="1118" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="685" dy="0">Application not sending enough: look at the app</tspan>
+    </text>
+  </g>
+
+</svg>

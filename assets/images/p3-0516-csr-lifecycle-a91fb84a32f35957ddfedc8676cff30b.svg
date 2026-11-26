@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Client certificate through the CSR flow</title>
+  <desc>Visual infographic explaining the five-step Kubernetes client certificate flow via CertificateSigningRequest, limitations of client certificates, and the break-glass path.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Client certificate through the CSR flow</text>
+
+  
+  <rect x="40" y="105" width="1040" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="80" cy="180" r="24" fill="#207448"/>
+  <text x="80" y="188" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="138" cy="168" r="10"/>
+    <path d="M 145 175 L 164 194 M 156 186 L 162 186 M 160 190 L 166 190"/>
+  </g>
+  
+  <text x="190" y="148" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="190" dy="0">User creates a key and request locally: </tspan>
+    <tspan x="190" dy="36" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">openssl req -new -key john.key </tspan>
+    <tspan x="190" dy="36" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">-out john.csr -subj /CN=john</tspan>
+  </text>
+
+  
+  <line x1="560" y1="255" x2="560" y2="288" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="40" y="290" width="1040" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="80" cy="372" r="24" fill="#207448"/>
+  <text x="80" y="380" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 126 352 L 150 352 L 162 364 L 162 394 L 126 394 Z"/>
+    <path d="M 150 352 L 150 364 L 162 364"/>
+    <path d="M 144 386 L 144 372 M 138 378 L 144 372 L 150 378"/>
+  </g>
+  
+  <text x="190" y="328" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="190" dy="0">Portal submits a <tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">CertificateSigningRequest</tspan> named john with</tspan>
+    <tspan x="190" dy="34"><tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">spec.request</tspan> set to the base64 of <tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">john.csr</tspan> and usages client auth;</tspan>
+    <tspan x="190" dy="34">state pending, requestor recorded</tspan>
+  </text>
+
+  
+  <line x1="560" y1="455" x2="560" y2="488" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="40" y="490" width="1040" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="80" cy="565" r="24" fill="#207448"/>
+  <text x="80" y="573" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 126 544 L 144 538 L 162 544 C 162 566 144 578 144 584 C 144 578 126 566 126 544 Z"/>
+    <path d="M 135 562 L 141 568 L 153 554"/>
+  </g>
+  
+  <text x="190" y="535" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="190" dy="0">An approver checks who is asking and runs</tspan>
+    <tspan x="190" dy="36" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">kubectl certificate approve;</tspan>
+    <tspan x="190" dy="36">condition type <tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">Approved</tspan>, reason <tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">KubectlApprove</tspan></tspan>
+  </text>
+
+  
+  <line x1="560" y1="640" x2="560" y2="673" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="40" y="675" width="1040" height="180" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+  
+  <circle cx="80" cy="765" r="24" fill="#207448"/>
+  <text x="80" y="773" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="144" cy="755" r="14"/>
+    <path d="M 137 767 L 132 782 L 144 776 L 156 782 L 151 767"/>
+    <path d="M 139 755 L 143 759 L 150 751"/>
+  </g>
+  
+  <text x="190" y="715" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="190" dy="0"><tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">controller-manager</tspan> signs with the cluster CA</tspan>
+    <tspan x="190" dy="34" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">(--cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt and</tspan>
+    <tspan x="190" dy="34" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">--cluster-signing-key-file=/etc/kubernetes/pki/ca.key);</tspan>
+    <tspan x="190" dy="34">certificate appears in <tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">status.certificate</tspan></tspan>
+  </text>
+
+  
+  <line x1="560" y1="855" x2="560" y2="888" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="40" y="890" width="1040" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="80" cy="967" r="24" fill="#207448"/>
+  <text x="80" y="975" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 126 945 L 148 945 L 160 957 L 160 987 L 126 987 Z"/>
+    <path d="M 148 945 L 148 957 L 160 957"/>
+    <circle cx="143" cy="968" r="4"/>
+    <path d="M 136 981 C 136 975 150 975 150 981"/>
+  </g>
+  
+  <text x="190" y="938" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="190" dy="0">User builds a kubeconfig pairing <tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">john.key</tspan> with the</tspan>
+    <tspan x="190" dy="36">certificate in <tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">client-certificate-data</tspan>; identity</tspan>
+    <tspan x="190" dy="36">is CN <tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">john</tspan>, groups come from <tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">O</tspan></tspan>
+  </text>
+
+  
+  <rect x="1110" y="105" width="450" height="940" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <text x="1335" y="152" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="1335" dy="0">Why not the main</tspan>
+    <tspan x="1335" dy="38">login method</tspan>
+  </text>
+
+  
+  <rect x="1140" y="225" width="390" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1175" cy="312" r="15"/>
+    <line x1="1164" y1="301" x2="1186" y2="323"/>
+  </g>
+  <text x="1205" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1205" dy="0">cannot be revoked before</tspan>
+    <tspan x="1205" dy="34">expiry, no CRL or</tspan>
+    <tspan x="1205" dy="34">OCSP stapling</tspan>
+  </text>
+
+  
+  <rect x="1140" y="430" width="390" height="165" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1160" y="495" width="28" height="12" rx="2"/>
+    <rect x="1160" y="515" width="28" height="12" rx="2"/>
+    <line x1="1166" y1="501" x2="1168" y2="501"/>
+    <line x1="1166" y1="521" x2="1168" y2="521"/>
+  </g>
+  <text x="1205" y="495" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1205" dy="0">extra PKI and an issuing</tspan>
+    <tspan x="1205" dy="34">component to run</tspan>
+  </text>
+
+  
+  <rect x="1140" y="625" width="390" height="165" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1175" cy="707" r="14"/>
+    <polyline points="1175,699 1175,707 1181,711"/>
+  </g>
+  <text x="1205" y="692" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1205" dy="0">short lifetimes mean</tspan>
+    <tspan x="1205" dy="34">high churn</tspan>
+  </text>
+
+  
+  <rect x="1140" y="820" width="390" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1160" y="888" width="28" height="28" rx="4"/>
+    <line x1="1167" y1="895" x2="1181" y2="895"/>
+    <line x1="1167" y1="902" x2="1181" y2="902"/>
+    <line x1="1167" y1="909" x2="1175" y2="909"/>
+  </g>
+  <text x="1205" y="888" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1205" dy="0">each certificate works in</tspan>
+    <tspan x="1205" dy="34">one cluster only</tspan>
+  </text>
+
+  
+  <rect x="40" y="1085" width="1520" height="75" rx="12" fill="#207448"/>
+  <g stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="75" y="1102" width="40" height="40" rx="6"/>
+    <line x1="85" y1="1112" x2="105" y2="1132"/>
+    <line x1="105" y1="1112" x2="85" y2="1132"/>
+  </g>
+  <text x="800" y="1132" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+    keep <tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">admin.conf</tspan> (user <tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">kubernetes-admin</tspan>) as the break-glass path
+  </text>
+</svg>

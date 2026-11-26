@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1140" viewBox="0 0 1600 1140">
+  <title>The GCP inventory plugin config, line by line</title>
+  <desc>Visual breakdown of the GCP dynamic inventory plugin configuration line by line with annotations and AWS comparison</desc>
+
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="74" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The GCP inventory plugin config, line by line</text>
+
+  
+  <rect x="40" y="115" width="960" height="890" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="40" y="115" width="960" height="80" rx="12" fill="#d9e8dc"/>
+  <rect x="40" y="185" width="960" height="10" fill="#d9e8dc"/>
+
+  
+  <g transform="translate(60, 127)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 40 C6 40 2 36 2 30 C2 24 7 21 12 21 C13 14 19 8 28 8 C36 8 42 13 44 20 C48 20 54 24 54 30 C54 36 49 40 44 40 Z"/>
+    <rect x="18" y="24" width="8" height="8" rx="1" fill="#207448"/>
+    <rect x="30" y="24" width="8" height="8" rx="1" fill="#207448"/>
+  </g>
+
+  
+  <text x="135" y="150" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">Annotated config 'inventories/gcp/gcp.gcp_compute.yml'</text>
+  <text x="135" y="180" font-family="sans-serif" font-size="24" fill="#303a36">(the file name must end with the plugin's required suffix)</text>
+
+  
+  <g transform="translate(60, 208)">
+    <rect width="920" height="86" rx="8" fill="#ffffff" stroke="#c2d8c9" stroke-width="2"/>
+    
+    <g transform="translate(18, 18)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="25" cy="25" r="9"/>
+      <path d="M25 6 L25 12 M25 38 L25 44 M6 25 L12 25 M38 25 L44 25 M12 12 L16 16 M34 34 L38 38 M12 38 L16 34 M34 16 L38 12"/>
+    </g>
+    <text x="88" y="52" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">plugin: google.cloud.gcp_compute</text>
+  </g>
+
+  
+  <g transform="translate(60, 306)">
+    <rect width="920" height="86" rx="8" fill="#ffffff" stroke="#c2d8c9" stroke-width="2"/>
+    
+    <g transform="translate(18, 18)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="25" cy="25" r="19"/>
+      <ellipse cx="25" cy="25" rx="9" ry="19"/>
+      <path d="M6 25 L44 25"/>
+    </g>
+    <text x="88" y="36" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">projects: [my-ai-project],</text>
+    <text x="88" y="68" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">zones: [us-central1-a, us-central1-b]</text>
+  </g>
+
+  
+  <g transform="translate(60, 404)">
+    <rect width="920" height="86" rx="8" fill="#ffffff" stroke="#c2d8c9" stroke-width="2"/>
+    
+    <g transform="translate(18, 18)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="11" y="20" width="28" height="22" rx="3"/>
+      <path d="M17 20 L17 14 C17 9 21 6 25 6 C29 6 33 9 33 14 L33 20"/>
+      <circle cx="25" cy="30" r="3" fill="#207448"/>
+    </g>
+    <text x="88" y="36" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">auth_kind: application:</text>
+    <text x="88" y="68" font-family="sans-serif" font-size="24" fill="#303a36">use ADC or workload identity, not key files</text>
+  </g>
+
+  
+  <g transform="translate(60, 502)">
+    <rect width="920" height="86" rx="8" fill="#fffdfa" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(18, 18)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="6,8 44,8 28,26 28,42 22,38 22,26"/>
+    </g>
+    <text x="88" y="36" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">filters: labels.env = prod, status = RUNNING:</text>
+    <text x="88" y="68" font-family="sans-serif" font-size="24" fill="#303a36">narrows the query on the server side</text>
+  </g>
+
+  
+  <g transform="translate(60, 600)">
+    <rect width="920" height="86" rx="8" fill="#ffffff" stroke="#c2d8c9" stroke-width="2"/>
+    
+    <g transform="translate(18, 18)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 25 L25 8 L42 25 L25 42 Z"/>
+      <circle cx="25" cy="18" r="3" fill="#207448"/>
+    </g>
+    <text x="88" y="52" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">hostnames: [name]</text>
+  </g>
+
+  
+  <g transform="translate(60, 698)">
+    <rect width="920" height="86" rx="8" fill="#ffffff" stroke="#c2d8c9" stroke-width="2"/>
+    
+    <g transform="translate(18, 18)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="34" height="20" rx="3"/>
+      <path d="M15 30 L15 40 M35 30 L35 40 M8 40 L42 40"/>
+    </g>
+    <text x="88" y="36" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">compose: ansible_host: networkInterfaces[0].networkIP:</text>
+    <text x="88" y="68" font-family="sans-serif" font-size="24" fill="#303a36">sets ansible_host from the network interface</text>
+  </g>
+
+  
+  <g transform="translate(60, 796)">
+    <rect width="920" height="86" rx="8" fill="#ffffff" stroke="#c2d8c9" stroke-width="2"/>
+    
+    <g transform="translate(18, 18)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="16" height="14" rx="2"/>
+      <rect x="28" y="8" width="16" height="14" rx="2"/>
+      <rect x="17" y="28" width="16" height="14" rx="2"/>
+      <path d="M14 22 L14 25 L36 25 L36 22 M25 25 L25 28"/>
+    </g>
+    <text x="88" y="36" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">keyed_groups: key labels.role prefix role</text>
+    <text x="88" y="68" font-family="sans-serif" font-size="24" fill="#303a36">gives role_gpu, role_login; key zone prefix zone</text>
+  </g>
+
+  
+  <g transform="translate(60, 894)">
+    <rect width="920" height="86" rx="8" fill="#ffffff" stroke="#c2d8c9" stroke-width="2"/>
+    
+    <g transform="translate(18, 18)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="26" height="26" rx="3"/>
+      <path d="M6 18 L12 18 M6 32 L12 32 M38 18 L44 18 M38 32 L44 32 M18 6 L18 12 M32 6 L32 12 M18 38 L18 44 M32 38 L32 44"/>
+    </g>
+    <text x="88" y="36" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">groups: gpu_a3: &quot;machineType.endswith(a3-highgpu-8g)&quot;:</text>
+    <text x="88" y="68" font-family="sans-serif" font-size="24" fill="#303a36">a group from a Jinja condition</text>
+  </g>
+
+  
+  <rect x="1040" y="115" width="520" height="890" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="1040" y="115" width="520" height="80" rx="12" fill="#d9e8dc"/>
+  <rect x="1040" y="185" width="520" height="10" fill="#d9e8dc"/>
+
+  
+  <g transform="translate(1060, 127)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 38 C6 38 2 34 2 28 C2 23 6 19 11 19 C12 12 19 6 28 6 C37 6 43 12 45 18 C49 18 54 22 54 28 C54 34 49 38 43 38 Z"/>
+    <path d="M16 28 Q 28 36 40 28 M36 24 L40 28 L36 32"/>
+  </g>
+
+  
+  <text x="1130" y="166" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">AWS comparison</text>
+
+  
+  <g transform="translate(1060, 208)">
+    <rect width="480" height="76" rx="8" fill="#ffffff" stroke="#c2d8c9" stroke-width="2"/>
+    <text x="24" y="47" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">aws_ec2.yml:</text>
+  </g>
+
+  
+  <g transform="translate(1060, 304)">
+    <rect width="480" height="86" rx="8" fill="#ffffff" stroke="#c2d8c9" stroke-width="2"/>
+    <text x="24" y="52" font-family="monospace" font-size="24" fill="#303a36">plugin amazon.aws.aws_ec2,</text>
+  </g>
+
+  
+  <g transform="translate(1060, 410)">
+    <rect width="480" height="86" rx="8" fill="#ffffff" stroke="#c2d8c9" stroke-width="2"/>
+    <text x="24" y="52" font-family="monospace" font-size="24" fill="#303a36">regions [us-east-1],</text>
+  </g>
+
+  
+  <g transform="translate(1060, 516)">
+    <rect width="480" height="120" rx="8" fill="#ffffff" stroke="#c2d8c9" stroke-width="2"/>
+    <text x="24" y="46" font-family="monospace" font-size="24" fill="#303a36">filters instance-state-name</text>
+    <text x="24" y="86" font-family="monospace" font-size="24" fill="#303a36">running and tag:Env prod,</text>
+  </g>
+
+  
+  <g transform="translate(1060, 656)">
+    <rect width="480" height="150" rx="8" fill="#ffffff" stroke="#c2d8c9" stroke-width="2"/>
+    <text x="24" y="42" font-family="monospace" font-size="24" fill="#303a36">keyed_groups tags.Role</text>
+    <text x="24" y="78" font-family="monospace" font-size="24" fill="#303a36">prefix role and</text>
+    <text x="24" y="114" font-family="monospace" font-size="24" fill="#303a36">instance_type prefix type,</text>
+  </g>
+
+  
+  <g transform="translate(1060, 826)">
+    <rect width="480" height="120" rx="8" fill="#ffffff" stroke="#c2d8c9" stroke-width="2"/>
+    <text x="24" y="46" font-family="monospace" font-size="24" fill="#303a36">compose ansible_host:</text>
+    <text x="24" y="86" font-family="monospace" font-size="24" fill="#303a36">private_ip_address</text>
+  </g>
+
+  
+  <rect x="40" y="1030" width="1520" height="75" rx="12" fill="#207448"/>
+  <g transform="translate(64, 1042)" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M25 6 L44 14 L44 26 C44 38 25 45 25 45 C25 45 6 38 6 26 L6 14 Z"/>
+    <path d="M17 25 L23 31 L33 19"/>
+  </g>
+  <text x="130" y="1078" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">The plugin asks the cloud, so keep secrets out of the config</text>
+</svg>

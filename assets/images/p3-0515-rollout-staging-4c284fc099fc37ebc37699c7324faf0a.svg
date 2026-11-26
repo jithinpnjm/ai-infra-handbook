@@ -1,0 +1,202 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200" style="background-color: #f5f8f5; font-family: sans-serif;">
+  <title>Rolling out policy without an outage</title>
+  <desc>Visual infographic staircase of four policy rollout steps with safety checks, review questions, warning, and kuard test proof order.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <text x="40" y="65" font-size="48" font-weight="bold" fill="#207448">Rolling out policy without an outage</text>
+  <text x="40" y="102" font-size="24" font-weight="bold" fill="#303a36">Staircase of four steps with a safety check at each</text>
+
+  
+  <path d="M 40 330 L 350 330 L 350 230 L 810 230 L 810 175 L 1240 175 L 1240 125 L 1560 125 L 1560 550 L 40 550 Z" fill="#e8f1ea" opacity="0.4"/>
+
+  
+  <g id="step1">
+    <rect x="40" y="330" width="310" height="220" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="75" cy="365" r="22" fill="#207448"/>
+    <text x="75" y="373" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="110" y="373" font-size="30" font-weight="bold" fill="#207448">Step 1</text>
+    
+    <path d="M 305 350 L 325 358 L 325 374 C 325 386 316 396 305 400 C 294 396 285 386 285 374 L 285 358 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    
+    <text x="60" y="430" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">default-deny</tspan>
+      <tspan x="60" dy="34">ingress everywhere</tspan>
+      <tspan x="60" dy="34">(lowest risk)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="350" y1="440" x2="370" y2="440" stroke="#207448" stroke-width="2" marker-end="url(#arrow)"/>
+
+  
+  <g id="step2">
+    <rect x="370" y="230" width="440" height="320" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="405" cy="265" r="22" fill="#207448"/>
+    <text x="405" y="273" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="440" y="273" font-size="30" font-weight="bold" fill="#207448">Step 2</text>
+    
+    <rect x="755" y="250" width="30" height="22" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="770" y1="272" x2="770" y2="284" stroke="#207448" stroke-width="3"/>
+    <line x1="750" y1="284" x2="790" y2="284" stroke="#207448" stroke-width="3"/>
+
+    <text x="395" y="325" font-size="24" fill="#303a36">
+      <tspan x="395" dy="0">baseline allowances:</tspan>
+      <tspan x="395" dy="32">DNS egress to kube-dns and</tspan>
+      <tspan x="395" dy="32">169.254.20.10 NodeLocal</tspan>
+      <tspan x="395" dy="32">DNSCache on UDP and TCP 53,</tspan>
+      <tspan x="395" dy="32">probes, system components,</tspan>
+      <tspan x="395" dy="32">same-namespace</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="810" y1="390" x2="830" y2="390" stroke="#207448" stroke-width="2" marker-end="url(#arrow)"/>
+
+  
+  <g id="step3">
+    <rect x="830" y="175" width="410" height="375" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="865" cy="210" r="22" fill="#207448"/>
+    <text x="865" y="218" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="900" y="218" font-size="30" font-weight="bold" fill="#207448">Step 3</text>
+    
+    <path d="M 1180 220 C 1175 210 1185 200 1195 202 C 1200 195 1215 195 1220 202 C 1230 202 1235 212 1230 222 C 1235 230 1225 238 1215 236 L 1185 236 C 1175 236 1172 226 1180 220 Z" fill="none" stroke="#207448" stroke-width="3"/>
+
+    <text x="855" y="280" font-size="24" fill="#303a36">
+      <tspan x="855" dy="0">default-deny egress plus</tspan>
+      <tspan x="855" dy="38">explicit allowances for</tspan>
+      <tspan x="855" dy="38">DNS, API server, storage,</tspan>
+      <tspan x="855" dy="38">registries, monitoring</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1240" y1="330" x2="1260" y2="330" stroke="#207448" stroke-width="2" marker-end="url(#arrow)"/>
+
+  
+  <g id="step4">
+    <rect x="1260" y="125" width="300" height="425" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="1295" cy="160" r="22" fill="#207448"/>
+    <text x="1295" y="168" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="1330" y="168" font-size="30" font-weight="bold" fill="#207448">Step 4</text>
+    
+    <rect x="1505" y="145" width="34" height="26" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="1505" y1="154" x2="1539" y2="154" stroke="#207448" stroke-width="2"/>
+
+    <text x="1285" y="240" font-size="24" fill="#303a36">
+      <tspan x="1285" dy="0">per-app allow rules</tspan>
+      <tspan x="1285" dy="38">and controlled</tspan>
+      <tspan x="1285" dy="38">egress</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="195" y1="550" x2="195" y2="565" stroke="#207448" stroke-width="2" stroke-dasharray="4 4"/>
+  <line x1="590" y1="550" x2="590" y2="565" stroke="#207448" stroke-width="2" stroke-dasharray="4 4"/>
+  <line x1="1035" y1="550" x2="1035" y2="565" stroke="#207448" stroke-width="2" stroke-dasharray="4 4"/>
+  <line x1="1410" y1="550" x2="1410" y2="565" stroke="#207448" stroke-width="2" stroke-dasharray="4 4"/>
+
+  
+  <g id="safety-strip">
+    <rect x="40" y="565" width="1520" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 65 595 L 85 587 L 105 595 L 105 615 C 105 628 95 638 85 642 C 75 638 65 628 65 615 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 77 613 L 83 620 L 95 606" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    <text x="125" y="605" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" fill="#207448">Safety strip: </tspan>Calico staged policies, Cilium audit mode and Hubble
+      <tspan x="125" dy="32">show what would be blocked before enforcement</tspan>
+    </text>
+  </g>
+
+  
+  <g id="warning">
+    <rect x="40" y="665" width="1520" height="75" rx="8" fill="#fdf4eb" stroke="#db8129" stroke-width="2.5"/>
+    
+    <path d="M 65 722 L 85 684 L 105 722 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="85" y1="697" x2="85" y2="709" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="85" cy="716" r="2" fill="#db8129"/>
+
+    <text x="125" y="712" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" fill="#db8129">Warning: </tspan>DNS is the most common surprise after default deny; without it nothing resolves
+    </text>
+  </g>
+
+  
+  <g id="review-questions">
+    <rect x="40" y="755" width="730" height="405" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="65" y="775" width="34" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="75" y1="788" x2="91" y2="788" stroke="#207448" stroke-width="2.5"/>
+    <line x1="75" y1="796" x2="91" y2="796" stroke="#207448" stroke-width="2.5"/>
+    <line x1="75" y1="804" x2="85" y2="804" stroke="#207448" stroke-width="2.5"/>
+
+    <text x="115" y="795" font-size="28" font-weight="bold" fill="#207448">Review questions</text>
+    <text x="115" y="825" font-size="24" font-weight="bold" fill="#207448">for every pull request</text>
+
+    
+    <rect x="65" y="850" width="680" height="60" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="95" cy="880" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <path d="M 89 880 L 93 884 L 101 875" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="125" y="888" font-size="24" fill="#303a36">which pods does it select</text>
+
+    
+    <rect x="65" y="925" width="680" height="60" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="95" cy="955" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <path d="M 89 955 L 93 959 L 101 950" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="125" y="963" font-size="24" fill="#303a36">which new flow does it allow</text>
+
+    
+    <rect x="65" y="1000" width="680" height="95" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="95" cy="1047" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <path d="M 89 1047 L 93 1051 L 101 1042" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="125" y="1038" font-size="24" fill="#303a36">
+      <tspan x="125" dy="0">does it leave the default deny</tspan>
+      <tspan x="125" dy="32">in place</tspan>
+    </text>
+  </g>
+
+  
+  <g id="proof-order">
+    <rect x="800" y="755" width="760" height="405" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 830 775 L 844 775 L 844 790 L 858 812 C 862 818 858 824 850 824 L 824 824 C 816 824 812 818 816 812 L 830 790 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+
+    <text x="875" y="805" font-size="28" font-weight="bold" fill="#207448">Proof order from the kuard test</text>
+
+    
+    <rect x="825" y="845" width="710" height="65" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="855" cy="877" r="18" fill="#207448"/>
+    <text x="855" y="885" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="890" y="885" font-size="24" fill="#303a36">open test shows the baseline</text>
+
+    
+    <line x1="1180" y1="910" x2="1180" y2="925" stroke="#207448" stroke-width="2" marker-end="url(#arrow)"/>
+
+    
+    <rect x="825" y="925" width="710" height="95" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="855" cy="972" r="18" fill="#207448"/>
+    <text x="855" y="980" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="890" y="963" font-size="24" fill="#303a36">
+      <tspan x="890" dy="0">deny test shows a timeout</tspan>
+      <tspan x="890" dy="32">(packet dropped, not refused)</tspan>
+    </text>
+
+    
+    <line x1="1180" y1="1020" x2="1180" y2="1035" stroke="#207448" stroke-width="2" marker-end="url(#arrow)"/>
+
+    
+    <rect x="825" y="1035" width="710" height="95" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="855" cy="1082" r="18" fill="#207448"/>
+    <text x="855" y="1090" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="890" y="1073" font-size="24" fill="#303a36">
+      <tspan x="890" dy="0">allow test shows one rule opens</tspan>
+      <tspan x="890" dy="32">exactly one door</tspan>
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,200 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1180" viewBox="0 0 1600 1180">
+  <title>Why a job works in your shell and fails in cron: what cron leaves out</title>
+  <desc>Visual comparison between a login shell environment and what cron provides to a scheduled job</desc>
+
+  <defs>
+    <marker id="gap-arrow" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <polygon points="0 2, 12 7, 0 12" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="66" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Why a job works in your shell and fails in cron:</tspan>
+    <tspan x="800" dy="56">what cron leaves out</tspan>
+  </text>
+
+  
+  <rect x="40" y="155" width="540" height="425" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(64, 172)">
+    <rect x="0" y="0" width="44" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="0" y1="10" x2="44" y2="10" stroke="#207448" stroke-width="2"/>
+    <polyline points="8,18 14,23 8,28" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="18" y1="28" x2="28" y2="28" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+  <text x="122" y="200" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Your login shell</text>
+
+  
+  <rect x="64" y="225" width="492" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(78, 237)">
+    <path d="M4,2 L18,2 L26,10 L26,30 L4,30 Z" fill="none" stroke="#207448" stroke-width="2.5" stroke-linejoin="round"/>
+    <polyline points="18,2 18,10 26,10" fill="none" stroke="#207448" stroke-width="2" stroke-linejoin="round"/>
+    <line x1="9" y1="16" x2="21" y2="16" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+    <line x1="9" y1="22" x2="17" y2="22" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  <text x="122" y="262" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">login startup files run</text>
+
+  
+  <rect x="64" y="295" width="492" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(78, 307)">
+    <circle cx="6" cy="17" r="4" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="24" cy="8" r="4" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="24" cy="26" r="4" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <path d="M10,17 L16,17 M16,8 L20,8 M16,26 L20,26 M16,8 L16,26" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="122" y="332" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">a full PATH</text>
+
+  
+  <rect x="64" y="365" width="492" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(78, 377)">
+    <path d="M4,22 C4,14 12,10 24,10" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <polyline points="18,5 25,10 18,15" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M6,27 C9,24 13,24 16,27 C19,30 23,30 26,27" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+  <text x="122" y="402" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">aliases and ~ work</text>
+
+  
+  <rect x="64" y="435" width="492" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(78, 447)">
+    <rect x="2" y="4" width="26" height="20" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="9" y1="28" x2="21" y2="28" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="15" y1="24" x2="15" y2="28" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <text x="122" y="472" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">a terminal is attached</text>
+
+  
+  <rect x="64" y="505" width="492" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(78, 517)">
+    <line x1="4" y1="9" x2="26" y2="9" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="10" cy="9" r="3.5" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <line x1="4" y1="23" x2="26" y2="23" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="20" cy="23" r="3.5" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  </g>
+  <text x="122" y="542" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">your environment variables</text>
+
+  
+  <text x="780" y="325" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="780" dy="0">the biggest cause of jobs</tspan>
+    <tspan x="780" dy="32">that work in a terminal</tspan>
+    <tspan x="780" dy="32">and fail on schedule</tspan>
+  </text>
+  <line x1="580" y1="435" x2="975" y2="435" stroke="#207448" stroke-width="4" marker-end="url(#gap-arrow)"/>
+
+  
+  <rect x="980" y="155" width="580" height="425" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+
+  
+  <g transform="translate(1004, 172)">
+    <circle cx="18" cy="18" r="15" fill="none" stroke="#db8129" stroke-width="3"/>
+    <polyline points="18,9 18,18 24,18" fill="none" stroke="#db8129" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1052" y="200" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">What cron gives the job</text>
+
+  
+  <rect x="1004" y="225" width="532" height="96" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="1.5"/>
+  <g transform="translate(1018, 256)">
+    <rect x="3" y="11" width="22" height="17" rx="3" fill="none" stroke="#db8129" stroke-width="2.5"/>
+    <path d="M8,11 L8,7 C8,3.5 11,1 14,1 C17,1 20,3.5 20,7 L20,11" fill="none" stroke="#db8129" stroke-width="2.5"/>
+  </g>
+  <text x="1058" y="254" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">
+    <tspan x="1058" dy="0">only HOME, LOGNAME,</tspan>
+    <tspan x="1058" dy="28">SHELL=/bin/sh and</tspan>
+    <tspan x="1058" dy="28">PATH=/usr/bin:/bin</tspan>
+  </text>
+
+  
+  <rect x="1004" y="333" width="532" height="58" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <g transform="translate(1018, 345)">
+    <path d="M4,2 L18,2 L26,10 L26,30 L4,30 Z" fill="none" stroke="#db8129" stroke-width="2.5" stroke-linejoin="round"/>
+    <line x1="2" y1="32" x2="28" y2="2" stroke="#db8129" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+  <text x="1058" y="370" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">no login startup files</text>
+
+  
+  <rect x="1004" y="403" width="532" height="58" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <g transform="translate(1018, 415)">
+    <rect x="2" y="4" width="26" height="20" rx="3" fill="none" stroke="#db8129" stroke-width="2.5"/>
+    <line x1="9" y1="28" x2="21" y2="28" stroke="#db8129" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="15" y1="24" x2="15" y2="28" stroke="#db8129" stroke-width="2.5"/>
+    <line x1="2" y1="30" x2="28" y2="2" stroke="#db8129" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+  <text x="1058" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">no terminal</text>
+
+  
+  <rect x="1004" y="473" width="532" height="90" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <g transform="translate(1018, 501)">
+    <path d="M3,14 L14,4 L25,14 L25,27 L3,27 Z" fill="none" stroke="#db8129" stroke-width="2.5" stroke-linejoin="round"/>
+    <rect x="10" y="17" width="8" height="10" fill="none" stroke="#db8129" stroke-width="2"/>
+  </g>
+  <text x="1058" y="511" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">
+    <tspan x="1058" dy="0">working directory is</tspan>
+    <tspan x="1058" dy="28">the user's home</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="40" y="605" width="740" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="76" cy="642" r="24" fill="#207448"/>
+  <text x="76" y="651" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  <text x="118" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">Use absolute paths for commands and files</text>
+
+  
+  <rect x="820" y="605" width="740" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="856" cy="642" r="24" fill="#207448"/>
+  <text x="856" y="651" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  <text x="898" y="634" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">
+    <tspan x="898" dy="0">Set PATH= and SHELL=/bin/bash</tspan>
+    <tspan x="898" dy="28">at the top of the crontab</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="693" width="740" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="76" cy="730" r="24" fill="#207448"/>
+  <text x="76" y="739" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  <text x="118" y="722" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">
+    <tspan x="118" dy="0">Source what you need in the script,</tspan>
+    <tspan x="118" dy="28">such as . /etc/profile.d/...</tspan>
+  </text>
+
+  
+  <rect x="820" y="693" width="740" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="856" cy="730" r="24" fill="#207448"/>
+  <text x="856" y="739" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  <text x="898" y="738" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">Avoid ~ and aliases</text>
+
+  
+  <rect x="40" y="781" width="1520" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="76" cy="814" r="24" fill="#207448"/>
+  <text x="76" y="823" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+  <text x="118" y="822" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">Escape % as \% in the command field: date +\%F</text>
+
+  
+  <rect x="40" y="865" width="1520" height="84" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(62, 887)">
+    <rect x="2" y="5" width="32" height="22" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <polyline points="2,6 18,17 34,6" fill="none" stroke="#207448" stroke-width="2.5" stroke-linejoin="round"/>
+  </g>
+  <text x="115" y="901" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">Output goes to the owner by mail if a mailer exists, otherwise discarded; redirect with</tspan>
+    <tspan x="115" dy="28">&gt;&gt; /var/log/job.log 2&gt;&amp;1 or | logger -t myjob; MAILTO= changes it</tspan>
+  </text>
+
+  
+  <rect x="40" y="965" width="1520" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(62, 981)">
+    <polyline points="5,8 14,17 5,26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="17" y1="26" x2="30" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="115" y="1008" font-family="monospace, monospace" font-size="24" font-weight="bold" fill="#207448">env -i HOME=$HOME SHELL=/bin/sh PATH=/usr/bin:/bin sh -c &quot;command&quot;</text>
+
+  
+  <rect x="40" y="1055" width="1520" height="74" rx="8" fill="#207448"/>
+  <text x="800" y="1101" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Run the command exactly as cron does before you blame the schedule</text>
+</svg>

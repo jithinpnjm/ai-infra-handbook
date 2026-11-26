@@ -1,0 +1,254 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>When you cannot tell which layer fails: work up the stack</title>
+  <desc>A four-rung diagnostic ladder working up from DNS to HTTP, known-good comparison techniques, and transport error message chips.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="9" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 2 L 16 9 L 2 16 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="9" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 2 L 16 9 L 2 16 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="56" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="40" dy="0">When you cannot tell which layer fails:</tspan>
+    <tspan x="40" dy="56">work up the stack</tspan>
+  </text>
+
+  
+  
+  <line x1="50" y1="135" x2="50" y2="690" stroke="#c8d8ce" stroke-width="8" stroke-linecap="round" />
+  <line x1="760" y1="135" x2="760" y2="690" stroke="#c8d8ce" stroke-width="8" stroke-linecap="round" />
+
+  
+  <rect x="60" y="135" width="690" height="60" rx="8" fill="#fff5ea" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(85, 147)" stroke="#db8129" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="36" height="34" rx="4" />
+    <line x1="0" y1="10" x2="36" y2="10" />
+    <circle cx="7" cy="5" r="1.5" fill="#db8129" />
+    <circle cx="13" cy="5" r="1.5" fill="#db8129" />
+  </g>
+  <text x="135" y="176" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">Only then look at the application</text>
+
+  
+  <line x1="405" y1="220" x2="405" y2="201" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="60" y="220" width="690" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="100" cy="265" r="22" fill="#207448" />
+  <text x="100" y="273" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g transform="translate(136, 243)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="34" height="42" rx="3" />
+    <line x1="7" y1="11" x2="27" y2="11" />
+    <line x1="7" y1="20" x2="27" y2="20" />
+    <line x1="7" y1="29" x2="19" y2="29" />
+  </g>
+  <text x="195" y="255" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">HTTP: <tspan font-family="ui-monospace, monospace">curl -v</tspan></text>
+  <text x="195" y="291" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">what status and headers come back?</text>
+
+  
+  <line x1="405" y1="335" x2="405" y2="316" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="60" y="335" width="690" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="100" cy="395" r="22" fill="#207448" />
+  <text x="100" y="403" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(136, 373)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="2" y="15" width="34" height="26" rx="4" />
+    <path d="M 9 15 V 9 A 10 10 0 0 1 29 9 V 15" />
+    <circle cx="19" cy="26" r="3" fill="#207448" />
+  </g>
+  <text x="195" y="367" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="195" dy="0">TLS: <tspan font-family="ui-monospace, monospace">openssl s_client</tspan></tspan>
+    <tspan x="195" dy="36" font-family="ui-monospace, monospace">-servername</tspan>
+  </text>
+  <text x="195" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">does the handshake and chain verify?</text>
+
+  
+  <line x1="405" y1="480" x2="405" y2="461" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="60" y="480" width="690" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="100" cy="525" r="22" fill="#207448" />
+  <text x="100" y="533" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(136, 503)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="10" width="22" height="24" rx="3" />
+    <line x1="22" y1="16" x2="34" y2="16" />
+    <line x1="22" y1="28" x2="34" y2="28" />
+    <circle cx="37" cy="16" r="2" fill="#207448" />
+    <circle cx="37" cy="28" r="2" fill="#207448" />
+  </g>
+  <text x="195" y="515" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">TCP: <tspan font-family="ui-monospace, monospace">nc -zv</tspan> or <tspan font-family="ui-monospace, monospace">ss</tspan></text>
+  <text x="195" y="551" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">does the port answer?</text>
+
+  
+  <line x1="405" y1="595" x2="405" y2="576" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="60" y="595" width="690" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="100" cy="640" r="22" fill="#207448" />
+  <text x="100" y="648" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(136, 618)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="18" cy="18" r="16" />
+    <ellipse cx="18" cy="18" rx="8" ry="16" />
+    <line x1="2" y1="18" x2="34" y2="18" />
+  </g>
+  <text x="195" y="630" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">DNS: <tspan font-family="ui-monospace, monospace">dig</tspan></text>
+  <text x="195" y="666" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">does the name resolve?</text>
+
+
+  
+  <rect x="810" y="135" width="750" height="550" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="840" y="174" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Known-good comparisons</text>
+
+  
+  <circle cx="850" cy="207" r="5" fill="#207448" />
+  <text x="868" y="213" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">compare against a known-good client</text>
+
+  
+  <circle cx="850" cy="247" r="5" fill="#207448" />
+  <text x="868" y="253" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">capture with <tspan font-family="ui-monospace, monospace">tcpdump</tspan> and Wireshark</text>
+
+  
+  <circle cx="850" cy="287" r="5" fill="#207448" />
+  <text x="868" y="293" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="868" dy="0">the TLS 1.3 handshake is encrypted after</tspan>
+    <tspan x="868" dy="28">the ServerHello, so export <tspan font-family="ui-monospace, monospace">SSLKEYLOGFILE</tspan> to</tspan>
+    <tspan x="868" dy="28">decrypt it in Wireshark in labs</tspan>
+  </text>
+
+  
+  <circle cx="850" cy="384" r="5" fill="#207448" />
+  <text x="868" y="390" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="868" dy="0" font-family="ui-monospace, monospace">curl --resolve api.example.com:443:10.0.0.5</tspan>
+    <tspan x="868" dy="28">bypasses DNS to test a specific backend</tspan>
+    <tspan x="868" dy="28">with the correct SNI and Host</tspan>
+  </text>
+
+  
+  <circle cx="850" cy="481" r="5" fill="#207448" />
+  <text x="868" y="487" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="868" dy="0"><tspan font-family="ui-monospace, monospace">curl -k</tspan> works only while verification is</tspan>
+    <tspan x="868" dy="28">the problem; never leave <tspan font-family="ui-monospace, monospace">-k</tspan>, <tspan font-family="ui-monospace, monospace">verify=False</tspan></tspan>
+    <tspan x="868" dy="28">or <tspan font-family="ui-monospace, monospace">InsecureSkipVerify</tspan> in production</tspan>
+  </text>
+
+  
+  <circle cx="850" cy="578" r="5" fill="#207448" />
+  <text x="868" y="584" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="868" dy="0" font-family="ui-monospace, monospace">curl --cacert ca.pem --cert client.pem</tspan>
+    <tspan x="868" dy="28"><tspan font-family="ui-monospace, monospace">--key client.key</tspan> for mTLS</tspan>
+  </text>
+
+  
+  <circle cx="850" cy="650" r="5" fill="#207448" />
+  <text x="868" y="656" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace">curl -x http://proxy:3128</tspan> via a proxy
+  </text>
+
+
+  
+  
+  
+  <g transform="translate(40, 725)">
+    <rect width="365" height="115" rx="8" fill="#ffffff" stroke="#c8d8ce" stroke-width="1.5" />
+    <path d="M 0 8 Q 0 0 8 0 L 8 115 Q 0 115 0 107 Z" fill="#207448" />
+    <text x="24" y="37" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">expired or not yet</tspan>
+      <tspan x="24" dy="28">valid: check dates</tspan>
+      <tspan x="24" dy="28">and clock</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(425, 725)">
+    <rect width="365" height="115" rx="8" fill="#ffffff" stroke="#c8d8ce" stroke-width="1.5" />
+    <path d="M 0 8 Q 0 0 8 0 L 8 115 Q 0 115 0 107 Z" fill="#207448" />
+    <text x="24" y="37" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">unable to get local</tspan>
+      <tspan x="24" dy="28">issuer: missing</tspan>
+      <tspan x="24" dy="28">intermediate or CA</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(810, 725)">
+    <rect width="365" height="115" rx="8" fill="#ffffff" stroke="#c8d8ce" stroke-width="1.5" />
+    <path d="M 0 8 Q 0 0 8 0 L 8 115 Q 0 115 0 107 Z" fill="#207448" />
+    <text x="24" y="37" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">hostname mismatch:</tspan>
+      <tspan x="24" dy="28">SAN, SNI, IP versus</tspan>
+      <tspan x="24" dy="28">name</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1195, 725)">
+    <rect width="365" height="115" rx="8" fill="#ffffff" stroke="#c8d8ce" stroke-width="1.5" />
+    <path d="M 0 8 Q 0 0 8 0 L 8 115 Q 0 115 0 107 Z" fill="#207448" />
+    <text x="24" y="37" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">self-signed in</tspan>
+      <tspan x="24" dy="28">chain: private CA</tspan>
+      <tspan x="24" dy="28">not trusted</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(40, 865)">
+    <rect width="365" height="115" rx="8" fill="#ffffff" stroke="#c8d8ce" stroke-width="1.5" />
+    <path d="M 0 8 Q 0 0 8 0 L 8 115 Q 0 115 0 107 Z" fill="#207448" />
+    <text x="24" y="37" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">handshake failure:</tspan>
+      <tspan x="24" dy="28">version or cipher</tspan>
+      <tspan x="24" dy="28">mismatch</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(425, 865)">
+    <rect width="365" height="115" rx="8" fill="#ffffff" stroke="#c8d8ce" stroke-width="1.5" />
+    <path d="M 0 8 Q 0 0 8 0 L 8 115 Q 0 115 0 107 Z" fill="#207448" />
+    <text x="24" y="51" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">bad certificate:</tspan>
+      <tspan x="24" dy="28">mTLS client cert</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(810, 865)">
+    <rect width="365" height="115" rx="8" fill="#ffffff" stroke="#c8d8ce" stroke-width="1.5" />
+    <path d="M 0 8 Q 0 0 8 0 L 8 115 Q 0 115 0 107 Z" fill="#207448" />
+    <text x="24" y="51" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">works with <tspan font-family="ui-monospace, monospace">-k</tspan></tspan>
+      <tspan x="24" dy="28">only: verification</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1195, 865)">
+    <rect width="365" height="115" rx="8" fill="#ffffff" stroke="#c8d8ce" stroke-width="1.5" />
+    <path d="M 0 8 Q 0 0 8 0 L 8 115 Q 0 115 0 107 Z" fill="#207448" />
+    <text x="24" y="37" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">large upload fails:</tspan>
+      <tspan x="24" dy="28" font-family="ui-monospace, monospace">client_max_body_size,</tspan>
+      <tspan x="24" dy="28">MTU and MSS</tspan>
+    </text>
+  </g>
+
+
+  
+  <rect x="40" y="1030" width="1520" height="80" rx="8" fill="#207448" />
+  <text x="800" y="1080" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Work through the layers in order, rather than guessing at the application you run</text>
+
+</svg>

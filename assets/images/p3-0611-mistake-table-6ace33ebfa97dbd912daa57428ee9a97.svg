@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Submission mistakes that become support tickets</title>
+  <desc>Grouped list mistake and result: Logs, Launch, Resources, Steps and chains, Arrays, Storage.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Submission mistakes that become support tickets</text>
+
+  
+
+  
+  <g id="group-logs">
+    <rect x="50" y="120" width="725" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(74, 138)">
+      <rect x="6" y="2" width="44" height="52" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="16" y1="16" x2="40" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="16" y1="28" x2="40" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="16" y1="40" x2="30" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    
+    <text x="144" y="178" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Logs</text>
+
+    
+    <rect x="70" y="210" width="685" height="110" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+    <text x="90" y="252" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">directory in </tspan>
+      <tspan font-family="monospace">--output</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> does not exist:</tspan>
+      <tspan x="90" dy="34" font-family="system-ui, -apple-system, sans-serif">job fails without a log</tspan>
+    </text>
+
+    
+    <rect x="70" y="335" width="685" height="110" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+    <text x="90" y="377" font-size="24" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan>requeued job overwrites its own log or</tspan>
+      <tspan x="90" dy="34">restarts training from scratch</tspan>
+    </text>
+  </g>
+
+  
+  <g id="group-launch">
+    <rect x="825" y="120" width="725" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(849, 138)">
+      <path d="M 28 4 C 16 14 12 32 14 46 L 4 52 L 12 54 L 16 60 L 24 52 C 40 54 54 48 60 36 C 54 24 42 10 28 4 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <circle cx="34" cy="26" r="4" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+    
+    <text x="930" y="178" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Launch</text>
+
+    
+    <rect x="845" y="202" width="685" height="76" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+    <text x="865" y="234" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">forgetting </tspan>
+      <tspan font-family="monospace">srun:</tspan>
+      <tspan x="865" dy="30" font-family="system-ui, -apple-system, sans-serif">everything runs on </tspan>
+      <tspan font-family="monospace">node 0</tspan>
+    </text>
+
+    
+    <rect x="845" y="286" width="685" height="76" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+    <text x="865" y="318" font-size="24" fill="#303a36">
+      <tspan font-family="monospace">mpirun</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> or </tspan>
+      <tspan font-family="monospace">torchrun</tspan>
+      <tspan x="865" dy="30" font-family="system-ui, -apple-system, sans-serif">once per node incorrectly</tspan>
+    </text>
+
+    
+    <rect x="845" y="370" width="685" height="84" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+    <text x="865" y="402" font-size="24" fill="#303a36">
+      <tspan font-family="monospace">--gres=gpu:8</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> in a multi-node job applies</tspan>
+      <tspan x="865" dy="32" font-family="system-ui, -apple-system, sans-serif">per node, so two nodes get 16 GPUs</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="group-resources">
+    <rect x="50" y="500" width="725" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(74, 518)">
+      <rect x="10" y="10" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="2" y1="20" x2="10" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="2" y1="28" x2="10" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="2" y1="36" x2="10" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="46" y1="20" x2="54" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="46" y1="28" x2="54" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="46" y1="36" x2="54" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="20" y1="2" x2="20" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="2" x2="28" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="36" y1="2" x2="36" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="20" y1="46" x2="20" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="46" x2="28" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="36" y1="46" x2="36" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="144" y="558" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Resources</text>
+
+    
+    <rect x="70" y="586" width="685" height="120" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <text x="90" y="622" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">leaving </tspan>
+      <tspan font-family="monospace">--mem</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> or </tspan>
+      <tspan font-family="monospace">--cpus-per-task</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> unset</tspan>
+      <tspan x="90" dy="30" font-family="system-ui, -apple-system, sans-serif">on GPU jobs starves the data loaders</tspan>
+      <tspan x="90" dy="30" font-family="system-ui, -apple-system, sans-serif">and GPUs idle</tspan>
+    </text>
+
+    
+    <rect x="70" y="718" width="685" height="92" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+    <text x="90" y="754" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">default </tspan>
+      <tspan font-family="monospace">--export=ALL</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> carries a stale conda</tspan>
+      <tspan x="90" dy="32" font-family="system-ui, -apple-system, sans-serif">environment into the job</tspan>
+    </text>
+  </g>
+
+  
+  <g id="group-steps-and-chains">
+    <rect x="825" y="500" width="725" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(849, 518)">
+      <rect x="8" y="16" width="26" height="14" rx="7" transform="rotate(-45 21 23)" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="22" y="30" width="26" height="14" rx="7" transform="rotate(-45 35 37)" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+    
+    <text x="930" y="558" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Steps and chains</text>
+
+    
+    <rect x="845" y="586" width="685" height="96" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+    <text x="865" y="626" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">a second concurrent </tspan>
+      <tspan font-family="monospace">srun</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> blocks because</tspan>
+      <tspan x="865" dy="32" font-family="system-ui, -apple-system, sans-serif">steps do not share resources by default</tspan>
+    </text>
+
+    
+    <rect x="845" y="694" width="685" height="116" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+    <text x="865" y="728" font-size="24" fill="#303a36">
+      <tspan font-family="monospace">afterok</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> on a job that times out</tspan>
+      <tspan x="865" dy="28" font-family="system-ui, -apple-system, sans-serif">kills the chain silently and the</tspan>
+      <tspan x="865" dy="28" font-family="system-ui, -apple-system, sans-serif">downstream job sits pending</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="group-arrays">
+    <rect x="50" y="855" width="725" height="305" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(74, 873)">
+      <rect x="6" y="6" width="18" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <rect x="32" y="6" width="18" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <rect x="6" y="32" width="18" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <rect x="32" y="32" width="18" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+    </g>
+    
+    <text x="144" y="913" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Arrays</text>
+
+    
+    <rect x="70" y="943" width="685" height="92" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+    <text x="90" y="979" font-size="24" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan>massive arrays without a throttle</tspan>
+      <tspan x="90" dy="32">flood the system</tspan>
+    </text>
+
+    
+    <rect x="70" y="1047" width="685" height="92" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+    <text x="90" y="1083" font-size="24" fill="#303a36">
+      <tspan font-family="monospace">scancel 12345_7</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> ends one task,</tspan>
+      <tspan x="90" dy="32" font-family="monospace">scancel 12345</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> ends all</tspan>
+    </text>
+  </g>
+
+  
+  <g id="group-storage">
+    <rect x="825" y="855" width="725" height="305" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(849, 873)">
+      <ellipse cx="28" cy="14" rx="20" ry="7" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 8 14 L 8 42 C 8 46 17 50 28 50 C 39 50 48 46 48 42 L 48 14" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 8 28 C 8 32 17 36 28 36 C 39 36 48 32 48 28" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+    
+    <text x="930" y="913" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Storage</text>
+
+    
+    <rect x="845" y="943" width="685" height="126" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+    <text x="865" y="983" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">results written to a quota-limited </tspan>
+      <tspan font-family="monospace">$HOME</tspan>
+      <tspan x="865" dy="32" font-family="system-ui, -apple-system, sans-serif">can exhaust the quota and the next run</tspan>
+      <tspan x="865" dy="32" font-family="system-ui, -apple-system, sans-serif">cannot save</tspan>
+    </text>
+  </g>
+</svg>

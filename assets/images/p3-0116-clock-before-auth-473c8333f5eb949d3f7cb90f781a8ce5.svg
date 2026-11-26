@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 990" width="1600" height="990">
+  <title>Start order on a node: time first, then Munge, slurmd and kubelet</title>
+  <desc>Visual infographic explaining the boot and start order on a cluster node: chrony first, synchronization gate, munge, slurmd and kubelet, credentials, health checking, and node documentation.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 2 L 14 8 L 2 14 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="990" fill="#f5f8f5" />
+
+  
+  <text x="800" y="78" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" textLength="1480" lengthAdjust="spacingAndGlyphs">Start order on a node: time first, then Munge, slurmd and kubelet</text>
+
+  
+
+  
+  <g id="node-1">
+    <rect x="40" y="125" width="315" height="310" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="76" cy="161" r="24" fill="#207448" />
+    <text x="76" y="170" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(205, 137)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="22" />
+      <polyline points="24,10 24,24 33,24" />
+      <path d="M 6 6 L 2 2" />
+      <path d="M 42 6 L 46 2" />
+    </g>
+    
+    <text x="58" y="234" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">chrony starts;</text>
+    <text x="58" y="268" font-family="monospace" font-size="24" fill="#207448">makestep 1.0 3</text>
+    <text x="58" y="302" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">allows a step only</text>
+    <text x="58" y="336" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">in the first three</text>
+    <text x="58" y="370" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">updates</text>
+  </g>
+
+  
+  <line x1="355" y1="280" x2="388" y2="280" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-2">
+    <rect x="390" y="125" width="330" height="310" rx="12" fill="#fffaf2" stroke="#db8129" stroke-width="3.5" />
+    
+    <circle cx="426" cy="161" r="24" fill="#db8129" />
+    <text x="426" y="170" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(565, 137)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="10" width="10" height="34" />
+      <rect x="38" y="10" width="10" height="34" />
+      <path d="M 14 16 L 38 16" />
+      <path d="M 14 26 L 38 26" />
+      <path d="M 14 36 L 38 36" />
+      <line x1="14" y1="16" x2="38" y2="36" />
+    </g>
+    
+    <text x="408" y="234" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Wait for</text>
+    <text x="408" y="268" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">synchronisation:</text>
+    <text x="408" y="304" font-family="monospace" font-size="24" fill="#303a36">time-sync.target or</text>
+    <text x="408" y="340" font-family="monospace" font-size="24" fill="#303a36">chrony-wait.service</text>
+  </g>
+
+  
+  <line x1="720" y1="280" x2="753" y2="280" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-3">
+    <rect x="755" y="125" width="180" height="310" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="791" cy="161" r="24" fill="#207448" />
+    <text x="791" y="170" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(860, 137)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16" cy="18" r="12" />
+      <line x1="25" y1="27" x2="44" y2="44" />
+      <line x1="34" y1="36" x2="41" y2="29" />
+      <line x1="40" y1="42" x2="45" y2="37" />
+    </g>
+    
+    <text x="845" y="288" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">munge</text>
+  </g>
+
+  
+  <line x1="935" y1="280" x2="968" y2="280" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-4">
+    <rect x="970" y="125" width="265" height="310" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="1006" cy="161" r="24" fill="#207448" />
+    <text x="1006" y="170" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(1120, 137)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="44" height="16" rx="3" />
+      <rect x="4" y="26" width="44" height="16" rx="3" />
+      <line x1="12" y1="14" x2="16" y2="14" />
+      <line x1="12" y1="34" x2="16" y2="34" />
+      <circle cx="38" cy="14" r="2" fill="#207448" />
+      <circle cx="38" cy="34" r="2" fill="#207448" />
+    </g>
+    
+    <text x="1102" y="272" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">slurmd</text>
+    <text x="1102" y="312" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(and kubelet)</text>
+  </g>
+
+  
+  <line x1="1235" y1="280" x2="1268" y2="280" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-5">
+    <rect x="1270" y="125" width="290" height="310" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="1306" cy="161" r="24" fill="#207448" />
+    <text x="1306" y="170" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g transform="translate(1440, 137)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 4 L 44 11 C 44 28 24 42 24 42 C 24 42 4 28 4 11 Z" />
+      <polyline points="15,22 21,28 33,16" />
+    </g>
+    
+    <text x="1288" y="258" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">anything that</text>
+    <text x="1288" y="294" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">issues or checks</text>
+    <text x="1288" y="330" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">credentials</text>
+  </g>
+
+  
+  <g id="health-check-strip">
+    <rect x="40" y="465" width="1520" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="60" y="485" width="455" height="190" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5" />
+    <text x="80" y="528" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Health check: <tspan font-family="monospace" font-weight="normal" fill="#207448">chronyc tracking</tspan></text>
+    <text x="80" y="564" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">offset above a threshold such</text>
+    <text x="80" y="600" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">as 100 ms, or leap status not</text>
+    <text x="80" y="636" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">normal, fails the node</text>
+
+    
+    <rect x="535" y="485" width="440" height="190" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5" />
+    <text x="555" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Drain the node before</text>
+    <text x="555" y="590" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Slurm or Munge starts</text>
+    <text x="555" y="630" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#db8129">rejecting it</text>
+
+    
+    <rect x="995" y="485" width="545" height="190" rx="8" fill="#ffffff" stroke="#c2d8c7" stroke-width="1.5" />
+    <text x="1015" y="522" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Export the offset as a metric</text>
+    <text x="1015" y="554" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">with the <tspan font-family="monospace" fill="#207448">node_exporter timex</tspan></text>
+    <text x="1015" y="586" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">collector or <tspan font-family="monospace" fill="#207448">chrony_exporter</tspan></text>
+    <text x="1015" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">and alert across the fleet</text>
+    <text x="1015" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">on drift</text>
+  </g>
+
+  
+  <g id="documentation-strip">
+    <rect x="40" y="720" width="1520" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(65, 738)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 4 8 L 22 4 L 40 8 L 40 40 L 22 36 L 4 40 Z" />
+      <line x1="22" y1="4" x2="22" y2="36" />
+    </g>
+    
+    <text x="125" y="753" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Record in the node image documentation:</text>
+    <text x="125" y="785" font-family="monospace" font-size="24" fill="#207448">time zone, NTP source, kernel clocksource, leap-second policy</text>
+  </g>
+
+  
+  <g id="footnote">
+    <circle cx="340" cy="838" r="14" fill="none" stroke="#303a36" stroke-width="2" />
+    <text x="340" y="845" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#303a36">i</text>
+    <text x="366" y="846" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-style="italic" fill="#303a36">Do not mix servers that smear leap seconds with servers that step</text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="875" width="1520" height="75" rx="10" fill="#207448" />
+    <text x="800" y="922" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Clock discipline is cheaper to maintain than to debug</text>
+  </g>
+</svg>

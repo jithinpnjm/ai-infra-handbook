@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Upgrading GPU nodes one at a time without an outage</title>
+  <desc>Visual infographic explaining the step-by-step workflow for upgrading GPU nodes one by one in Kubernetes without causing service disruptions.</desc>
+
+  <defs>
+    <marker id="arrow-right" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 1 2 L 15 8 L 1 14 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-left" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 1 2 L 15 8 L 1 14 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-down" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 1 2 L 15 8 L 1 14 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-up" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 1 2 L 15 8 L 1 14 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Upgrading GPU nodes one at a time without an outage</text>
+
+  
+  <rect x="60" y="120" width="1480" height="875" rx="16" fill="none" stroke="#207448" stroke-width="2.5" stroke-dasharray="10 8"/>
+
+  
+  <rect x="90" y="140" width="380" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="280" y="172" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Loop repeated per node</text>
+
+  
+
+  
+  <rect x="90" y="210" width="400" height="340" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="150" cy="265" r="24" fill="#207448"/>
+  <text x="150" y="265" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  <text x="195" y="275" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Step 1</text>
+
+  
+  <g transform="translate(405, 237)">
+    <path d="M 28 4 L 50 14 L 50 36 C 50 50 28 60 28 60 C 28 60 6 50 6 36 L 6 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 20 32 L 26 38 L 38 24" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  
+  <text x="290" y="375" text-anchor="middle" font-family="sans-serif" font-size="26" fill="#303a36">
+    <tspan x="290" dy="0">PDB allows</tspan>
+    <tspan x="290" dy="40">one disruption</tspan>
+    <tspan x="290" dy="40">(maxUnavailable 1)</tspan>
+  </text>
+
+  
+  <line x1="490" y1="380" x2="528" y2="380" stroke="#207448" stroke-width="4" marker-end="url(#arrow-right)"/>
+
+  
+  <rect x="530" y="210" width="540" height="340" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="590" cy="265" r="24" fill="#207448"/>
+  <text x="590" y="265" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  <text x="635" y="275" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Step 2</text>
+
+  
+  <g transform="translate(985, 237)">
+    <rect x="4" y="8" width="48" height="32" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="12" y1="24" x2="26" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="40" cy="24" r="3" fill="#207448"/>
+    <path d="M 28 48 L 46 48 M 38 42 L 46 48 L 38 54" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  
+  <text x="800" y="360" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">kubectl drain NODE</tspan>
+    <tspan x="800" dy="38">--ignore-daemonsets</tspan>
+  </text>
+  <text x="800" y="450" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">(kubeadm requires draining</tspan>
+    <tspan x="800" dy="38">before a minor kubelet upgrade)</tspan>
+  </text>
+
+  
+  <line x1="1070" y1="380" x2="1108" y2="380" stroke="#207448" stroke-width="4" marker-end="url(#arrow-right)"/>
+
+  
+  <rect x="1110" y="210" width="400" height="340" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="1170" cy="265" r="24" fill="#207448"/>
+  <text x="1170" y="265" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  <text x="1215" y="275" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Step 3</text>
+
+  
+  <g transform="translate(1425, 237)">
+    <circle cx="28" cy="28" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28 M 11 11 L 16 16 M 40 40 L 45 45 M 11 45 L 16 40 M 40 16 L 45 11" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 24 20 L 32 28 L 24 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  
+  <text x="1310" y="390" text-anchor="middle" font-family="sans-serif" font-size="26" fill="#303a36">
+    <tspan x="1310" dy="0">upgrade and restart</tspan>
+    <tspan x="1310" dy="44">the kubelet</tspan>
+  </text>
+
+  
+  <line x1="1310" y1="550" x2="1310" y2="618" stroke="#207448" stroke-width="4" marker-end="url(#arrow-down)"/>
+
+  
+
+  
+  <rect x="1060" y="620" width="450" height="340" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="1120" cy="675" r="24" fill="#207448"/>
+  <text x="1120" y="675" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  <text x="1165" y="685" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Step 4</text>
+
+  
+  <g transform="translate(1425, 647)">
+    <rect x="10" y="10" width="36" height="36" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="18" y1="2" x2="18" y2="10" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="28" y1="2" x2="28" y2="10" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="38" y1="2" x2="38" y2="10" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="18" y1="46" x2="18" y2="54" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="28" y1="46" x2="28" y2="54" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="38" y1="46" x2="38" y2="54" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="2" y1="18" x2="10" y2="18" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="2" y1="28" x2="10" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="2" y1="38" x2="10" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="46" y1="18" x2="54" y2="18" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="46" y1="28" x2="54" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="46" y1="38" x2="54" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="1285" y="755" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1285" dy="0">check the device plugin</tspan>
+    <tspan x="1285" dy="38">pod is back and registered,</tspan>
+    <tspan x="1285" dy="38">and node Allocatable</tspan>
+    <tspan x="1285" dy="38">shows the GPU count</tspan>
+  </text>
+
+  
+  <line x1="1060" y1="790" x2="1022" y2="790" stroke="#207448" stroke-width="4" marker-end="url(#arrow-left)"/>
+
+  
+  <rect x="590" y="620" width="430" height="340" rx="14" fill="#fffaf5" stroke="#db8129" stroke-width="4"/>
+
+  
+  <g transform="translate(777, 650)">
+    <circle cx="28" cy="28" r="26" fill="none" stroke="#db8129" stroke-width="4"/>
+    <line x1="14" y1="28" x2="42" y2="28" stroke="#db8129" stroke-width="5" stroke-linecap="round"/>
+    <line x1="28" y1="14" x2="28" y2="20" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="36" x2="28" y2="42" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="805" y="790" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="805" dy="0">do not uncordon until</tspan>
+    <tspan x="805" dy="42">Allocatable is restored</tspan>
+  </text>
+
+  
+  <line x1="590" y1="790" x2="552" y2="790" stroke="#207448" stroke-width="4" marker-end="url(#arrow-left)"/>
+
+  
+  <rect x="340" y="620" width="210" height="340" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="445" cy="665" r="24" fill="#207448"/>
+  <text x="445" y="665" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+  <text x="445" y="720" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 5</text>
+
+  
+  <g transform="translate(417, 742)">
+    <rect x="6" y="16" width="44" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 16 16 L 16 10 C 16 4 24 2 32 6 C 38 10 38 16 38 16" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="32" r="4" fill="#207448"/>
+  </g>
+
+  
+  <text x="445" y="855" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">uncordon</text>
+
+  
+  <line x1="340" y1="790" x2="302" y2="790" stroke="#207448" stroke-width="4" marker-end="url(#arrow-left)"/>
+
+  
+  <rect x="90" y="620" width="210" height="340" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="195" cy="665" r="24" fill="#207448"/>
+  <text x="195" y="665" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+  <text x="195" y="720" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 6</text>
+
+  
+  <g transform="translate(167, 742)">
+    <rect x="4" y="12" width="30" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="10" y1="24" x2="20" y2="24" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M 38 24 L 52 24 M 46 18 L 52 24 L 46 30" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  
+  <text x="195" y="855" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">next node</text>
+
+  
+  <line x1="195" y1="620" x2="195" y2="552" stroke="#207448" stroke-width="4" marker-end="url(#arrow-up)"/>
+
+  
+  <rect x="60" y="1025" width="1480" height="110" rx="12" fill="#207448"/>
+  <text x="800" y="1068" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">
+    <tspan x="800" dy="0">One node at a time, with a PDB that allows one disruption, and a check that</tspan>
+    <tspan x="800" dy="38">the device plugin is back and Allocatable is restored before the next node.</tspan>
+  </text>
+</svg>

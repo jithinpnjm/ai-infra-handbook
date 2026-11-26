@@ -1,0 +1,248 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>From a vLLM metric to an HPA decision</title>
+  <desc>Architecture flow showing custom metric pipeline from vLLM through Prometheus and prometheus-adapter to Kubernetes HPA, alongside an external metric pipeline for Kafka lag, with verification commands and HPA conditions.</desc>
+
+  <defs>
+    <style>
+      .bg { fill: #f5f8f5; }
+      .title { font-family: system-ui, -apple-system, sans-serif; font-size: 48px; font-weight: bold; fill: #207448; }
+      .section-header { font-family: system-ui, -apple-system, sans-serif; font-size: 26px; font-weight: bold; fill: #207448; letter-spacing: 1px; }
+      .box-bg { fill: #ffffff; stroke: #207448; stroke-width: 2.5; rx: 12; ry: 12; }
+      .box-bg-alt { fill: #ffffff; stroke: #207448; stroke-width: 2.5; rx: 12; ry: 12; }
+      .panel-bg { fill: #e8f1ea; stroke: #c2dcd0; stroke-width: 2; rx: 16; ry: 16; }
+      .callout-bg { fill: #fff8f0; stroke: #db8129; stroke-width: 2.5; rx: 12; ry: 12; }
+      .text-title { font-family: system-ui, -apple-system, sans-serif; font-size: 30px; font-weight: bold; fill: #303a36; }
+      .text-body { font-family: system-ui, -apple-system, sans-serif; font-size: 24px; fill: #303a36; }
+      .text-body-bold { font-family: system-ui, -apple-system, sans-serif; font-size: 24px; font-weight: bold; fill: #303a36; }
+      .cmd-text { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 24px; fill: #207448; font-weight: 600; }
+      .cmd-box { fill: #ffffff; stroke: #207448; stroke-width: 2; rx: 8; ry: 8; }
+      .arrow { stroke: #207448; stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .arrow-orange { stroke: #db8129; stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .icon-stroke { stroke: #207448; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+      .step-circle { fill: #207448; }
+      .step-num { font-family: system-ui, -apple-system, sans-serif; font-size: 26px; font-weight: bold; fill: #ffffff; text-anchor: middle; dominant-baseline: central; }
+    </style>
+
+    <marker id="arrowhead" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
+      <path d="M 2 2 L 12 7 L 2 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrowhead-orange" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
+      <path d="M 2 2 L 12 7 L 2 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" class="bg" />
+
+  
+  <text x="60" y="70" class="title">From a vLLM metric to an HPA decision</text>
+
+  
+  
+  <g transform="translate(60, 110)">
+    <rect width="250" height="260" class="box-bg" />
+    <circle cx="44" cy="44" r="22" class="step-circle" />
+    <text x="44" y="44" class="step-num">1</text>
+    
+    <g transform="translate(140, 20)">
+      <rect x="0" y="0" width="48" height="48" rx="6" class="icon-stroke" />
+      <line x1="10" y1="14" x2="38" y2="14" class="icon-stroke" />
+      <line x1="10" y1="24" x2="26" y2="24" class="icon-stroke" />
+      <circle cx="34" cy="34" r="4" fill="#207448" />
+    </g>
+    <text x="24" y="125" class="text-body-bold">
+      <tspan x="24" dy="0">vLLM pod</tspan>
+      <tspan x="24" dy="36">exposes</tspan>
+      <tspan x="24" dy="36">vllm:num_requests_</tspan>
+      <tspan x="24" dy="36">waiting</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 310 240 L 356 240" class="arrow" marker-end="url(#arrowhead)" />
+
+  
+  <g transform="translate(370, 110)">
+    <rect width="250" height="260" class="box-bg" />
+    <circle cx="44" cy="44" r="22" class="step-circle" />
+    <text x="44" y="44" class="step-num">2</text>
+    
+    <g transform="translate(140, 20)">
+      <circle cx="24" cy="24" r="22" class="icon-stroke" />
+      <polyline points="10,26 18,16 26,30 38,18" class="icon-stroke" />
+    </g>
+    <text x="24" y="145" class="text-body-bold">
+      <tspan x="24" dy="0">Prometheus</tspan>
+      <tspan x="24" dy="36">scrapes it</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 620 240 L 666 240" class="arrow" marker-end="url(#arrowhead)" />
+
+  
+  <g transform="translate(680, 110)">
+    <rect width="470" height="260" class="box-bg" />
+    <circle cx="44" cy="44" r="22" class="step-circle" />
+    <text x="44" y="44" class="step-num">3</text>
+    
+    <g transform="translate(360, 20)">
+      <circle cx="24" cy="24" r="12" class="icon-stroke" />
+      <path d="M 24 4 L 24 12 M 24 36 L 24 44 M 4 24 L 12 24 M 36 24 L 44 24 M 10 10 L 16 16 M 32 32 L 38 38 M 10 38 L 16 32 M 32 16 L 38 10" class="icon-stroke" />
+    </g>
+    <text x="24" y="105" class="text-body">
+      <tspan x="24" dy="0" font-weight="bold">prometheus-adapter rule:</tspan>
+      <tspan x="24" dy="32">seriesQuery</tspan>
+      <tspan x="24" dy="28">vllm:num_requests_waiting with</tspan>
+      <tspan x="24" dy="28">namespace and pod labels;</tspan>
+      <tspan x="24" dy="28">resources overrides map namespace</tspan>
+      <tspan x="24" dy="28">and pod; name as</tspan>
+      <tspan x="24" dy="28">vllm_requests_waiting; metricsQuery</tspan>
+      <tspan x="24" dy="28">sum by group</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 1150 240 L 1196 240" class="arrow" marker-end="url(#arrowhead)" />
+
+  
+  <g transform="translate(1210, 110)">
+    <rect width="330" height="260" class="box-bg" />
+    <circle cx="44" cy="44" r="22" class="step-circle" />
+    <text x="44" y="44" class="step-num">4</text>
+    
+    <g transform="translate(230, 20)">
+      <rect x="0" y="6" width="48" height="36" rx="4" class="icon-stroke" />
+      <line x1="10" y1="18" x2="20" y2="18" class="icon-stroke" />
+      <line x1="10" y1="28" x2="38" y2="28" class="icon-stroke" />
+    </g>
+    <text x="24" y="150" class="text-title">
+      <tspan x="24" dy="0">custom.metrics.</tspan>
+      <tspan x="24" dy="40">k8s.io API</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(60, 400)">
+    <rect width="1480" height="66" class="cmd-box" />
+    <text x="20" y="42" class="cmd-text">kubectl get --raw /apis/custom.metrics.k8s.io/v1beta1/namespaces/serving/pods/*/vllm_requests_waiting</text>
+  </g>
+
+  
+  <g transform="translate(60, 485)">
+    <rect width="1480" height="60" class="callout-bg" />
+    
+    <g transform="translate(24, 13)">
+      <circle cx="16" cy="16" r="14" stroke="#db8129" stroke-width="3" fill="none" />
+      <line x1="16" y1="9" x2="16" y2="18" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <circle cx="16" cy="24" r="2" fill="#db8129" />
+    </g>
+    <text x="70" y="39" class="text-body-bold" fill="#db8129" style="fill: #db8129;">
+      if the first command returns nothing, no amount of tuning helps
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(60, 580)">
+    <rect width="450" height="150" class="box-bg-alt" />
+    
+    <g transform="translate(360, 24)">
+      <rect x="0" y="4" width="48" height="38" rx="6" class="icon-stroke" />
+      <line x1="8" y1="16" x2="40" y2="16" class="icon-stroke" />
+      <line x1="8" y1="28" x2="28" y2="28" class="icon-stroke" />
+    </g>
+    <text x="28" y="85" class="text-title">
+      <tspan x="28" dy="0">kafka_consumergroup_</tspan>
+      <tspan x="28" dy="36">lag topic embed</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 510 655 L 566 655" class="arrow" marker-end="url(#arrowhead)" />
+
+  
+  <g transform="translate(580, 580)">
+    <rect width="450" height="150" class="box-bg-alt" />
+    
+    <g transform="translate(360, 24)">
+      <polygon points="4,8 44,8 28,26 28,42 20,38 20,26" class="icon-stroke" />
+    </g>
+    <text x="28" y="70" class="text-body">
+      <tspan x="28" dy="0">rule name</tspan>
+      <tspan x="28" dy="42" font-family="ui-monospace, monospace" font-size="30px" font-weight="bold" fill="#207448">kafka_lag</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 1030 655 L 1086 655" class="arrow" marker-end="url(#arrowhead)" />
+
+  
+  <g transform="translate(1100, 580)">
+    <rect width="440" height="150" class="box-bg-alt" />
+    
+    <g transform="translate(345, 24)">
+      <path d="M 12 36 A 10 10 0 0 1 8 18 A 14 14 0 0 1 32 10 A 14 14 0 0 1 44 24 A 10 10 0 0 1 40 36 Z" class="icon-stroke" />
+    </g>
+    <text x="28" y="90" class="text-title">
+      external.metrics.k8s.io
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 755)">
+    <rect width="1480" height="66" class="cmd-box" />
+    <text x="20" y="42" class="cmd-text">kubectl get --raw /apis/external.metrics.k8s.io/v1beta1/namespaces/serving/kafka_lag</text>
+  </g>
+
+  
+  
+  
+  <path d="M 1375 370 L 1375 390" class="arrow" />
+  
+  <path d="M 1320 730 L 1320 745" class="arrow" />
+
+  
+  <g transform="translate(60, 850)">
+    <rect width="640" height="160" class="box-bg" />
+    
+    <g transform="translate(540, 25)">
+      <line x1="8" y1="44" x2="48" y2="44" class="icon-stroke" />
+      <line x1="28" y1="8" x2="28" y2="44" class="icon-stroke" />
+      <polygon points="12,20 28,12 44,20" class="icon-stroke" />
+      <circle cx="16" cy="30" r="8" class="icon-stroke" />
+      <circle cx="40" cy="30" r="8" class="icon-stroke" />
+    </g>
+    <text x="32" y="95" class="text-title">
+      HPA reads it and decides
+    </text>
+  </g>
+
+  
+  <path d="M 1540 240 L 1570 240 L 1570 930 L 715 930" class="arrow" marker-end="url(#arrowhead)" />
+  
+  <path d="M 1540 655 L 1560 655 L 1560 910 L 715 910" class="arrow" />
+
+  
+  <g transform="translate(730, 850)">
+    <rect width="810" height="210" class="panel-bg" />
+    <g transform="translate(720, 20)">
+      <rect x="0" y="0" width="48" height="48" rx="8" class="icon-stroke" />
+      <polyline points="12,24 22,34 36,16" class="icon-stroke" />
+    </g>
+    <text x="30" y="45" class="section-header">Conditions box:</text>
+    <text x="30" y="95" class="text-body">
+      <tspan x="30" dy="0" font-weight="bold">AbleToScale: can the HPA change the count at all</tspan>
+      <tspan x="30" dy="45" font-weight="bold">ScalingActive: can it read the metrics</tspan>
+      <tspan x="30" dy="45" font-weight="bold">ScalingLimited: has a minimum or maximum capped the result</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 1080)">
+    <rect width="1480" height="66" class="cmd-box" />
+    <text x="20" y="42" class="cmd-text">kubectl describe hpa vllm -n serving</text>
+  </g>
+
+</svg>

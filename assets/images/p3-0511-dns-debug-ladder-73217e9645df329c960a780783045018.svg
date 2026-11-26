@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Debugging a name that will not resolve</title>
+  <desc>Visual infographic explaining Kubernetes DNS troubleshooting ladder and symptoms</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="52" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Debugging a name that will not resolve</text>
+  <text x="40" y="92" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Ten-step ladder compressed into five groups with commands.</text>
+
+  
+  <g>
+    <rect x="40" y="115" width="990" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="75" cy="150" r="24" fill="#207448" />
+    <text x="75" y="158" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <rect x="115" y="130" width="48" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="115" y1="142" x2="163" y2="142" stroke="#207448" stroke-width="2" />
+    <path d="M 123 152 L 131 157 L 123 162 M 135 162 L 145 162" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="180" y="156" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Is it DNS?</text>
+    
+    <text x="65" y="200" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">getent hosts svc.ns</tspan>
+      <tspan font-family="sans-serif"> and </tspan>
+      <tspan font-family="monospace" font-weight="bold">dig</tspan>
+      <tspan font-family="sans-serif"> from the failing pod;</tspan>
+    </text>
+    <text x="65" y="234" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">curl</tspan>
+      <tspan font-family="sans-serif"> by IP works but the name fails means DNS</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="290" width="990" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="75" cy="325" r="24" fill="#207448" />
+    <text x="75" y="333" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <path d="M 120 306 L 148 306 L 162 320 L 162 352 L 120 352 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 148 306 L 148 320 L 162 320" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="128" y1="330" x2="142" y2="330" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="128" y1="340" x2="154" y2="340" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="180" y="331" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Which resolver?</text>
+    
+    <text x="65" y="375" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">cat /etc/resolv.conf</tspan>
+      <tspan font-family="sans-serif">: nameserver should be kube-dns or</tspan>
+    </text>
+    <text x="65" y="409" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif">the node-local cache; note </tspan>
+      <tspan font-family="monospace" font-weight="bold">ndots</tspan>
+      <tspan font-family="sans-serif">, search list, </tspan>
+      <tspan font-family="monospace" font-weight="bold">dnsPolicy</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="465" width="990" height="265" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="75" cy="500" r="24" fill="#207448" />
+    <text x="75" y="508" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <rect x="115" y="480" width="48" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="115" y1="501" x2="163" y2="501" stroke="#207448" stroke-width="2" />
+    <circle cx="125" cy="491" r="3" fill="#207448" />
+    <circle cx="125" cy="512" r="3" fill="#207448" />
+    <path d="M 135 491 L 140 491 L 143 486 L 147 496 L 150 491 L 155 491" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="180" y="506" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Is CoreDNS healthy?</text>
+    
+    <text x="65" y="550" font-family="sans-serif" font-size="24" fill="#303a36">pods Running and Ready, endpoints present, logs show no loop,</text>
+    <text x="65" y="582" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif">SERVFAIL or forward errors; </tspan>
+      <tspan font-family="monospace" font-weight="bold">dig @coredns-pod-ip</tspan>
+    </text>
+    <text x="65" y="614" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">kubernetes.default.svc.cluster.local</tspan>
+      <tspan font-family="sans-serif">; compare three paths:</tspan>
+    </text>
+    <text x="65" y="646" font-family="sans-serif" font-size="24" fill="#303a36">ClusterIP tests kube-proxy and CNI, pod IP tests CoreDNS alone,</text>
+    <text x="65" y="678" font-family="sans-serif" font-size="24" fill="#303a36">node-local cache tests that layer</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="745" width="990" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="75" cy="780" r="24" fill="#207448" />
+    <text x="75" y="788" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <path d="M 124 785 C 120 785 116 789 116 793 C 116 797 119 801 123 801 L 157 801 C 161 801 164 798 164 794 C 164 790 161 787 157 787 C 157 780 151 774 144 774 C 139 774 134 777 132 781 C 130 780 127 780 124 785 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <line x1="140" y1="801" x2="140" y2="811" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="130" y1="811" x2="150" y2="811" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="180" y="786" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Upstream and records:</text>
+    
+    <text x="65" y="830" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">dig @upstream example.com</tspan>
+      <tspan font-family="sans-serif"> from the CoreDNS pod;</tspan>
+    </text>
+    <text x="65" y="862" font-family="sans-serif" font-size="24" fill="#303a36">firewall for UDP and TCP 53; headless Service with</text>
+    <text x="65" y="894" font-family="sans-serif" font-size="24" fill="#303a36">no ready pods returns no A records; check selectors,</text>
+    <text x="65" y="926" font-family="sans-serif" font-size="24" fill="#303a36">namespace spelling, fallthrough, pods mode</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="970" width="990" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="75" cy="1005" r="24" fill="#207448" />
+    <text x="75" y="1013" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <circle cx="140" cy="1005" r="20" fill="none" stroke="#207448" stroke-width="4" />
+    <polyline points="140,993 140,1005 150,1005" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="180" y="1011" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Timing and kernel:</text>
+    
+    <text x="65" y="1055" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">tcpdump -ni any port 53</tspan>
+      <tspan font-family="sans-serif"> for unanswered queries and</tspan>
+    </text>
+    <text x="65" y="1087" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif">5 s retransmits; </tspan>
+      <tspan font-family="monospace" font-weight="bold">dig +stats, time getent hosts, strace -T</tspan>
+      <tspan font-family="sans-serif">;</tspan>
+    </text>
+    <text x="65" y="1119" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">dig name.</tspan>
+      <tspan font-family="sans-serif"> with trailing dot versus </tspan>
+      <tspan font-family="monospace" font-weight="bold">dig name</tspan>
+      <tspan font-family="sans-serif"> to count</tspan>
+    </text>
+    <text x="65" y="1151" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif">NXDOMAINs; </tspan>
+      <tspan font-family="monospace" font-weight="bold">conntrack -S</tspan>
+      <tspan font-family="sans-serif"> and </tspan>
+      <tspan font-family="monospace" font-weight="bold">insert_failed</tspan>
+      <tspan font-family="sans-serif"> counters</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1060" y="115" width="500" height="1065" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 1060 127 C 1060 120 1066 115 1072 115 L 1548 115 C 1554 115 1560 120 1560 127 L 1560 170 L 1060 170 Z" fill="#e8f1ea" />
+    <text x="1085" y="154" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">symptoms</text>
+    
+    <path d="M 1520 132 L 1538 138 L 1538 150 C 1538 161 1520 167 1520 167 C 1520 167 1502 161 1502 150 L 1502 138 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <circle cx="1520" cy="148" r="3" fill="#207448" />
+
+    
+    <rect x="1078" y="185" width="464" height="85" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="1098" y="238" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">CrashLoop Loop detected</text>
+
+    
+    <rect x="1078" y="305" width="464" height="85" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="1098" y="358" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">SERVFAIL external names</text>
+
+    
+    <rect x="1078" y="425" width="464" height="85" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="1098" y="478" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">NXDOMAIN for existing Service</text>
+
+    
+    <rect x="1078" y="545" width="464" height="95" rx="8" fill="#fff7f0" stroke="#db8129" stroke-width="3" />
+    <rect x="1078" y="545" width="10" height="95" rx="4" fill="#db8129" />
+    <text x="1102" y="604" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">random 5 s delays</text>
+    <circle cx="1514" cy="592" r="8" fill="#db8129" />
+
+    
+    <rect x="1078" y="675" width="464" height="125" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="1098" y="725" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">hostNetwork pods fail</text>
+    <text x="1098" y="760" font-family="sans-serif" font-size="24" fill="#303a36">(use ClusterFirstWithHostNet)</text>
+
+    
+    <rect x="1078" y="835" width="464" height="165" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="1098" y="882" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">failures during CoreDNS</text>
+    <text x="1098" y="917" font-family="sans-serif" font-size="24" fill="#303a36">rollout (lameduck, PDB,</text>
+    <text x="1098" y="952" font-family="sans-serif" font-size="24" fill="#303a36">3+ replicas)</text>
+
+    
+    <rect x="1078" y="1035" width="464" height="125" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="1098" y="1085" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">large responses fail</text>
+    <text x="1098" y="1120" font-family="sans-serif" font-size="24" fill="#303a36">(allow TCP 53, EDNS, MTU)</text>
+  </g>
+</svg>

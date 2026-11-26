@@ -1,0 +1,213 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>completions and parallelism make three Job patterns</title>
+  <desc>Visual comparison of three Kubernetes Job patterns: One shot, Parallel fixed completions, and Work queue: parallel jobs.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="78" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">completions and parallelism make three Job patterns</text>
+
+  
+  
+  <g transform="translate(40, 110)">
+    <rect width="745" height="68" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="44" cy="34" r="18" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M36 34 L42 40 L52 28" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="78" y="43" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">completions: successful finishes needed</text>
+  </g>
+
+  
+  <g transform="translate(815, 110)">
+    <rect width="745" height="68" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="26" y="24" width="14" height="20" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="46" y="24" width="14" height="20" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="78" y="43" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">parallelism: Pods running at the same time</text>
+  </g>
+
+  
+  <g transform="translate(40, 205)">
+    <rect width="1520" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="195" y="35" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Pattern</text>
+    <text x="522" y="35" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Use case</text>
+    <text x="807" y="35" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">completions</text>
+    <text x="1022" y="35" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">parallelism</text>
+  </g>
+
+  
+  <g transform="translate(40, 275)">
+    
+    <rect width="1520" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    
+    <g transform="translate(60, 28)">
+      <rect width="52" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <circle cx="26" cy="26" r="12" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="26" cy="26" r="4" fill="#207448"/>
+    </g>
+    <text x="60" y="132" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">One shot</text>
+
+    
+    <text x="360" y="118" font-family="sans-serif" font-size="25" fill="#303a36">Database migrations</text>
+
+    
+    <text x="807" y="118" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">1</text>
+
+    
+    <text x="1022" y="118" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">1</text>
+
+    
+    <line x1="1140" y1="20" x2="1140" y2="195" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <g transform="translate(1307, 65)">
+      <rect width="84" height="84" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+      
+      <rect x="14" y="14" width="56" height="16" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <path d="M22 52 L36 66 L64 38" fill="none" stroke="#207448" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+
+  
+  <g transform="translate(40, 510)">
+    
+    <rect width="1520" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    
+    <g transform="translate(60, 24)">
+      <rect width="52" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <line x1="12" y1="18" x2="40" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="12" y1="26" x2="40" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="12" y1="34" x2="40" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="60" y="122" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="60" dy="0">Parallel fixed</tspan>
+      <tspan x="60" dy="36">completions</tspan>
+    </text>
+
+    
+    <text x="360" y="104" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="360" dy="0">Work items processed</tspan>
+      <tspan x="360" dy="32">side by side</tspan>
+    </text>
+
+    
+    <text x="807" y="118" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">1 or more</text>
+
+    
+    <text x="1022" y="118" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">1 or more</text>
+
+    
+    <line x1="1140" y1="20" x2="1140" y2="195" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <g transform="translate(1202, 75)">
+      
+      <g transform="translate(0, 0)">
+        <rect width="66" height="66" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+        <rect x="11" y="11" width="44" height="13" rx="3" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+        <path d="M18 42 L28 52 L50 30" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      
+      <g transform="translate(114, 0)">
+        <rect width="66" height="66" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+        <rect x="11" y="11" width="44" height="13" rx="3" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+        <path d="M18 42 L28 52 L50 30" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      
+      <g transform="translate(228, 0)">
+        <rect width="66" height="66" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+        <rect x="11" y="11" width="44" height="13" rx="3" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+        <path d="M18 42 L28 52 L50 30" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+    </g>
+  </g>
+
+  
+  <g transform="translate(40, 745)">
+    
+    <rect width="1520" height="215" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+
+    
+    
+    <g transform="translate(60, 24)">
+      <rect width="52" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <rect x="12" y="14" width="28" height="8" rx="2" fill="none" stroke="#207448" stroke-width="2"/>
+      <rect x="12" y="26" width="28" height="8" rx="2" fill="none" stroke="#207448" stroke-width="2"/>
+      <line x1="26" y1="38" x2="26" y2="44" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="60" y="122" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="60" dy="0">Work queue:</tspan>
+      <tspan x="60" dy="36">parallel jobs</tspan>
+    </text>
+
+    
+    <text x="360" y="104" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="360" dy="0">Workers pulling items</tspan>
+      <tspan x="360" dy="32">from one shared queue</tspan>
+    </text>
+
+    
+    <text x="807" y="118" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">1</text>
+
+    
+    <text x="1022" y="118" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">2 or more</text>
+
+    
+    <line x1="1140" y1="20" x2="1140" y2="195" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <g transform="translate(1190, 20)">
+      
+      <rect x="42" y="10" width="232" height="54" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      <text x="158" y="45" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Shared queue</text>
+
+      
+      
+      <g transform="translate(0, 114)">
+        <rect width="64" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+        <rect x="10" y="10" width="44" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+        <circle cx="23" cy="42" r="5" fill="#207448"/>
+        <circle cx="41" cy="42" r="5" fill="#207448"/>
+      </g>
+
+      
+      <g transform="translate(126, 114)">
+        <rect width="64" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+        <rect x="10" y="10" width="44" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+        <circle cx="23" cy="42" r="5" fill="#207448"/>
+        <circle cx="41" cy="42" r="5" fill="#207448"/>
+      </g>
+
+      
+      <g transform="translate(252, 114)">
+        <rect width="64" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+        <rect x="10" y="10" width="44" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+        <circle cx="23" cy="42" r="5" fill="#207448"/>
+        <circle cx="41" cy="42" r="5" fill="#207448"/>
+      </g>
+
+      
+      <path d="M96 64 L32 108" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+      <path d="M158 64 L158 108" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+      <path d="M220 64 L284 108" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+    </g>
+  </g>
+
+  
+  <g transform="translate(40, 990)">
+    <rect width="1520" height="66" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <text x="760" y="42" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">A Job with neither setting changed runs one Pod once until it succeeds.</text>
+  </g>
+</svg>

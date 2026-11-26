@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Why forward secrecy matters: static RSA key transport versus ephemeral Diffie-Hellman</title>
+  <desc>Visual comparison between vulnerable static RSA key transport in TLS 1.2 and secure ephemeral Diffie-Hellman forward secrecy in TLS 1.3</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Why forward secrecy matters:</tspan>
+    <tspan x="800" dy="56">static RSA key transport versus ephemeral Diffie-Hellman</tspan>
+  </text>
+
+  
+  <rect x="40" y="155" width="1080" height="305" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(65, 175)">
+    <rect x="0" y="10" width="28" height="22" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 6 10 L 6 6 A 8 8 0 0 1 22 6 L 22 10" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="105" y="200" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Old RSA key transport (TLS 1.2 option)</text>
+
+  
+  <rect x="65" y="220" width="540" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="95" cy="248" r="20" fill="#207448" />
+  <text x="95" y="255" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="130" y="248" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="130" dy="0">client picks a random pre-master secret,</tspan>
+    <tspan x="130" dy="28">encrypts it under the server's public key, sends it</tspan>
+  </text>
+
+  
+  <rect x="665" y="220" width="430" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="695" cy="248" r="20" fill="#207448" />
+  <text x="695" y="255" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <g transform="translate(725, 230)">
+    <ellipse cx="14" cy="8" rx="12" ry="5" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 2 8 L 2 24 A 12 5 0 0 0 26 24 L 26 8" fill="none" stroke="#207448" stroke-width="2.5" />
+  </g>
+  <text x="765" y="262" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="765" dy="0">an attacker records the traffic</tspan>
+  </text>
+
+  
+  <rect x="230" y="345" width="375" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="260" cy="392" r="20" fill="#207448" />
+  <text x="260" y="400" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <g transform="translate(290, 375)">
+    <circle cx="10" cy="10" r="7" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 17 10 L 32 10 L 32 17 M 26 10 L 26 15" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="335" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">steals the server key</text>
+
+  
+  <rect x="665" y="345" width="430" height="95" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <circle cx="695" cy="392" r="20" fill="#db8129" />
+  <text x="695" y="400" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  <g transform="translate(725, 372)">
+    <rect x="0" y="14" width="26" height="20" rx="4" fill="none" stroke="#db8129" stroke-width="3" />
+    <path d="M 6 14 L 6 8 A 7 7 0 0 1 20 8" fill="none" stroke="#db8129" stroke-width="3" />
+  </g>
+  <text x="765" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">decrypts recorded sessions</text>
+
+  
+  <path d="M 605 267 L 657 267" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+  <path d="M 880 315 L 880 330 L 417 330 L 417 337" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+  <path d="M 605 392 L 657 392" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="480" width="1080" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6,4" />
+  <g transform="translate(65, 500)">
+    <rect x="0" y="0" width="42" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="21" cy="16" r="6" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 21 16 L 27 16" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  </g>
+  <text x="125" y="514" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="125" dy="0">Hybrid use: slow careful public-key courier delivers the agreement,</tspan>
+    <tspan x="125" dy="30">fast symmetric safe (<tspan font-family="ui-monospace, monospace">AES-GCM</tspan>, <tspan font-family="ui-monospace, monospace">ChaCha20-Poly1305</tspan>) carries the data</tspan>
+  </text>
+
+  
+  <rect x="40" y="585" width="1080" height="305" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(65, 605)">
+    <path d="M 14 2 L 28 8 L 28 18 C 28 26 14 34 14 34 C 14 34 0 26 0 18 L 0 8 Z" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="105" y="630" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Ephemeral Diffie-Hellman (TLS 1.3 requires it)</text>
+
+  
+  <rect x="65" y="650" width="1030" height="105" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="95" cy="685" r="20" fill="#207448" />
+  <text x="95" y="692" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="130" y="682" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="130" dy="0">both sides send key shares, each session's keys are made fresh and thrown away,</tspan>
+    <tspan x="130" dy="30">session keys cannot be derived from the server's long-term key</tspan>
+  </text>
+
+  
+  <rect x="180" y="780" width="375" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="210" cy="825" r="20" fill="#207448" />
+  <text x="210" y="832" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <g transform="translate(240, 808)">
+    <circle cx="10" cy="10" r="7" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 17 10 L 32 10 L 32 17" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <path d="M 28 22 L 28 29" fill="none" stroke="#207448" stroke-width="2.5" stroke-dasharray="2,2" />
+  </g>
+  <text x="285" y="833" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">server key leaks</text>
+
+  
+  <rect x="615" y="780" width="480" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="645" cy="825" r="20" fill="#207448" />
+  <text x="645" y="832" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <g transform="translate(675, 808)">
+    <path d="M 14 2 L 28 7 L 28 16 C 28 24 14 30 14 30 C 14 30 0 24 0 16 L 0 7 Z" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 8 15 L 12 19 L 20 11" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="715" y="833" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">recorded traffic still cannot be decrypted</text>
+
+  
+  <path d="M 367 755 L 367 772" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+  <path d="M 555 825 L 607 825" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="1145" y="155" width="415" height="735" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(1165, 175)">
+    <circle cx="16" cy="16" r="14" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 8 8 L 24 24 M 24 8 L 8 24" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="1210" y="200" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">What TLS 1.3 removed</text>
+
+  
+  <rect x="1165" y="225" width="375" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(1185, 245)">
+    <circle cx="12" cy="12" r="11" fill="none" stroke="#207448" stroke-width="2" />
+    <path d="M 7 7 L 17 17 M 17 7 L 7 17" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  </g>
+  <text x="1225" y="268" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">static-RSA key transport</text>
+
+  
+  <rect x="1165" y="310" width="375" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(1185, 330)">
+    <circle cx="12" cy="12" r="11" fill="none" stroke="#207448" stroke-width="2" />
+    <path d="M 7 7 L 17 17 M 17 7 L 7 17" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  </g>
+  <text x="1225" y="353" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">compression</text>
+
+  
+  <rect x="1165" y="395" width="375" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(1185, 415)">
+    <circle cx="12" cy="12" r="11" fill="none" stroke="#207448" stroke-width="2" />
+    <path d="M 7 7 L 17 17 M 17 7 L 7 17" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  </g>
+  <text x="1225" y="438" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">renegotiation</text>
+
+  
+  <rect x="1165" y="480" width="375" height="390" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(1185, 500)">
+    <path d="M 12 2 L 24 7 L 24 15 C 24 22 12 27 12 27 C 12 27 0 22 0 15 L 0 7 Z" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 7 13 L 10 17 L 17 9" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="1185" y="565" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1185" dy="0">left a reduced set of</tspan>
+    <tspan x="1185" dy="34">strong AEAD cipher</tspan>
+    <tspan x="1185" dy="34">suites; certificate and</tspan>
+    <tspan x="1185" dy="34">handshake messages</tspan>
+    <tspan x="1185" dy="34">after <tspan font-family="ui-monospace, monospace">ServerHello</tspan> are</tspan>
+    <tspan x="1185" dy="34">encrypted</tspan>
+  </text>
+
+  
+  <rect x="40" y="910" width="1520" height="165" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(65, 960)">
+    <path d="M 15 2 L 30 8 L 30 18 C 30 26 15 32 15 32 C 15 32 0 26 0 18 L 0 8 Z" fill="none" stroke="#207448" stroke-width="2.5" />
+    <line x1="15" y1="10" x2="15" y2="20" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <circle cx="15" cy="24" r="1.5" fill="#207448" />
+  </g>
+  <text x="120" y="960" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="120" dy="0">Hashes alone give integrity only against accidental change; against an active attacker</tspan>
+    <tspan x="120" dy="34">you need a MAC or a signature; encryption hides data but does not prove who sent it,</tspan>
+    <tspan x="120" dy="34">a signature proves who sent it but hides nothing, so TLS needs both</tspan>
+  </text>
+
+  
+  <rect x="40" y="1095" width="1520" height="75" rx="8" fill="#207448" />
+  <text x="800" y="1142" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Ephemeral means fresh keys per session, then thrown away</text>
+</svg>

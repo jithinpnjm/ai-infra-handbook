@@ -1,0 +1,285 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1090" width="1600" height="1090">
+  <title>Why every data-loader worker ends up with a full dataset copy</title>
+  <desc>Visual explanation of copy-on-write page sharing, reference counting writes breaking sharing, and process dataset duplication in PyTorch DataLoader</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1090" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Why every data-loader worker ends up with a full dataset copy</text>
+
+  
+  <rect x="40" y="135" width="345" height="750" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  
+  <circle cx="75" cy="175" r="24" fill="#207448" />
+  <text x="75" y="184" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  
+  <g transform="translate(120, 147)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="10" r="6" />
+    <circle cx="10" cy="46" r="6" />
+    <circle cx="28" cy="46" r="6" />
+    <circle cx="46" cy="46" r="6" />
+    <path d="M 28 16 L 28 30 M 28 30 L 10 40 M 28 30 L 28 40 M 28 30 L 46 40" />
+  </g>
+
+  
+  <text x="65" y="245" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="65" dy="0">fork: parent and</tspan>
+    <tspan x="65" dy="38">workers share the</tspan>
+    <tspan x="65" dy="38">dataset pages</tspan>
+    <tspan x="65" dy="38">copy-on-write</tspan>
+  </text>
+
+  
+  <rect x="60" y="400" width="305" height="200" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <g transform="translate(76, 412)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="2" width="28" height="24" rx="4" />
+    <line x1="8" y1="2" x2="8" y2="26" />
+    <circle cx="18" cy="14" r="4" />
+  </g>
+
+  
+  <rect x="75" y="455" width="275" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  
+  <g stroke="#207448" stroke-width="1.5" fill="#f5f8f5">
+    <rect x="90" y="470" width="50" height="35" rx="4" />
+    <rect x="150" y="470" width="50" height="35" rx="4" />
+    <rect x="210" y="470" width="50" height="35" rx="4" />
+    <rect x="270" y="470" width="50" height="35" rx="4" />
+  </g>
+
+  
+  <text x="212" y="550" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">one physical copy</text>
+
+  
+  <rect x="60" y="695" width="90" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(85, 718)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="2" width="36" height="36" rx="6" />
+    <circle cx="20" cy="20" r="7" />
+  </g>
+
+  <rect x="167" y="695" width="90" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(192, 718)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="2" width="36" height="36" rx="6" />
+    <circle cx="20" cy="20" r="7" />
+  </g>
+
+  <rect x="275" y="695" width="90" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(300, 718)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="2" width="36" height="36" rx="6" />
+    <circle cx="20" cy="20" r="7" />
+  </g>
+
+  
+  <line x1="105" y1="695" x2="105" y2="585" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <line x1="212" y1="695" x2="212" y2="585" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <line x1="320" y1="695" x2="320" y2="585" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+
+  
+  <rect x="409" y="135" width="335" height="750" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <circle cx="444" cy="175" r="24" fill="#207448" />
+  <text x="444" y="184" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+  
+  <g transform="translate(485, 147)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="44" height="40" rx="6" />
+    <path d="M 16 28 L 26 38 L 42 18" />
+  </g>
+
+  
+  <text x="430" y="245" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="430" dy="0">Python reference</tspan>
+    <tspan x="430" dy="38">counting writes</tspan>
+    <tspan x="430" dy="38">to each object</tspan>
+    <tspan x="430" dy="38">it touches</tspan>
+  </text>
+
+  
+  <rect x="435" y="400" width="283" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(450, 422)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="20" r="16" />
+    <path d="M 20 12 L 20 28 M 12 20 L 28 20" />
+  </g>
+  <circle cx="650" cy="442" r="22" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <path d="M 640 442 L 660 442 M 654 434 L 660 442 L 654 450" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+  
+  <text x="525" y="525" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="525" dy="0">refcount update</tspan>
+    <tspan x="525" dy="32">is a write</tspan>
+  </text>
+
+  <line x1="650" y1="485" x2="650" y2="585" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="435" y="590" width="283" height="235" rx="10" fill="#f5f8f5" stroke="#c8dccb" stroke-width="2" />
+
+  
+  <rect x="450" y="608" width="120" height="95" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <rect x="585" y="608" width="120" height="95" rx="8" fill="#db8129" stroke="#db8129" stroke-width="2" />
+  <text x="645" y="663" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">written</text>
+
+  <rect x="450" y="715" width="120" height="95" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="585" y="715" width="120" height="95" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+
+  
+  <rect x="768" y="135" width="365" height="750" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <circle cx="803" cy="175" r="24" fill="#207448" />
+  <text x="803" y="184" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+  
+  <g transform="translate(844, 147)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="16" width="30" height="34" rx="4" />
+    <path d="M 18 16 L 18 8 L 48 8 L 48 38 L 36 38" />
+  </g>
+
+  
+  <text x="788" y="245" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="788" dy="0">the write breaks</tspan>
+    <tspan x="788" dy="38">the sharing: each</tspan>
+    <tspan x="788" dy="38">worker gradually</tspan>
+    <tspan x="788" dy="38">copies the dataset</tspan>
+  </text>
+
+  
+  
+  <g>
+    <rect x="788" y="400" width="85" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(813, 420)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="2" width="30" height="30" rx="4" />
+      <circle cx="17" cy="17" r="6" />
+    </g>
+    <rect x="885" y="400" width="228" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g stroke="#207448" stroke-width="1.5" fill="#ffffff">
+      <rect x="900" y="420" width="40" height="35" rx="4" />
+      <rect x="950" y="420" width="40" height="35" rx="4" />
+      <rect x="1000" y="420" width="40" height="35" rx="4" />
+      <rect x="1050" y="420" width="40" height="35" rx="4" />
+    </g>
+  </g>
+
+  
+  <g>
+    <rect x="788" y="490" width="85" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(813, 510)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="2" width="30" height="30" rx="4" />
+      <circle cx="17" cy="17" r="6" />
+    </g>
+    <rect x="885" y="490" width="228" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g stroke="#207448" stroke-width="1.5" fill="#ffffff">
+      <rect x="900" y="510" width="40" height="35" rx="4" />
+      <rect x="950" y="510" width="40" height="35" rx="4" />
+      <rect x="1000" y="510" width="40" height="35" rx="4" />
+      <rect x="1050" y="510" width="40" height="35" rx="4" />
+    </g>
+  </g>
+
+  
+  <g>
+    <rect x="788" y="580" width="85" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(813, 600)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="2" width="30" height="30" rx="4" />
+      <circle cx="17" cy="17" r="6" />
+    </g>
+    <rect x="885" y="580" width="228" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g stroke="#207448" stroke-width="1.5" fill="#ffffff">
+      <rect x="900" y="600" width="40" height="35" rx="4" />
+      <rect x="950" y="600" width="40" height="35" rx="4" />
+      <rect x="1000" y="600" width="40" height="35" rx="4" />
+      <rect x="1050" y="600" width="40" height="35" rx="4" />
+    </g>
+  </g>
+
+  
+  <rect x="788" y="675" width="325" height="185" rx="10" fill="#f5f8f5" stroke="#c8dccb" stroke-width="2" />
+  
+  <text x="806" y="718" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="806" dy="0">memory grows with</tspan>
+    <tspan x="806" dy="36">every worker you add</tspan>
+    <tspan x="806" dy="36">instead of staying</tspan>
+    <tspan x="806" dy="36">flat</tspan>
+  </text>
+
+
+  
+  <rect x="1157" y="135" width="403" height="750" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(1330, 150)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 48 14 L 48 30 C 48 44 28 54 28 54 C 28 54 8 44 8 30 L 8 14 Z" />
+    <path d="M 18 28 L 25 35 L 38 21" />
+  </g>
+
+  
+  <rect x="1177" y="225" width="363" height="240" rx="12" fill="#ffffff" stroke="#c8dccb" stroke-width="2" />
+  <circle cx="1205" cy="260" r="14" fill="#207448" />
+  <path d="M 1199 260 L 1203 264 L 1211 256" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="1228" y="267" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1228" dy="0">Store the dataset in</tspan>
+    <tspan x="1197" dy="36">NumPy, Arrow, mmap or</tspan>
+    <tspan x="1197" dy="36">shared memory instead</tspan>
+    <tspan x="1197" dy="36">of Python lists, so the</tspan>
+    <tspan x="1197" dy="36">pages stay shared</tspan>
+  </text>
+
+  
+  <rect x="1177" y="485" width="363" height="160" rx="12" fill="#ffffff" stroke="#c8dccb" stroke-width="2" />
+  <circle cx="1205" cy="522" r="14" fill="#207448" />
+  <path d="M 1199 522 L 1203 526 L 1211 518" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="1228" y="529" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1228" dy="0">recycle worker</tspan>
+    <tspan x="1197" dy="38">processes with</tspan>
+    <tspan x="1197" dy="38" font-family="monospace">maxtasksperchild</tspan>
+  </text>
+
+  
+  <rect x="1177" y="665" width="363" height="195" rx="12" fill="#ffffff" stroke="#c8dccb" stroke-width="2" />
+  <circle cx="1205" cy="708" r="14" fill="#207448" />
+  <path d="M 1199 708 L 1203 712 L 1211 704" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="1228" y="715" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1228" dy="0">avoid giant</tspan>
+    <tspan x="1197" dy="38">collections of</tspan>
+    <tspan x="1197" dy="38">Python objects</tspan>
+  </text>
+
+
+  
+  <rect x="40" y="905" width="1520" height="65" rx="10" fill="#ffffff" stroke="#c8dccb" stroke-width="2" />
+  
+  <g transform="translate(62, 924)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="14" cy="14" r="12" />
+    <line x1="14" y1="12" x2="14" y2="20" />
+    <circle cx="14" cy="7" r="1.5" fill="#207448" />
+  </g>
+
+  <text x="100" y="946" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan>GPU note: </tspan>
+    <tspan font-family="monospace">del plus torch.cuda.empty_cache()</tspan>
+    <tspan> acts on GPU memory only, not on host RAM</tspan>
+  </text>
+
+
+  
+  <rect x="40" y="990" width="1520" height="75" rx="12" fill="#207448" />
+  <text x="800" y="1038" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Fork shares pages copy-on-write, but reference counting writes to them</text>
+
+</svg>
