@@ -154,3 +154,144 @@ Marks: [MUST] [SHOULD] [IF TIME]. Never cut Recall, Coding, Python.
 | Block | Study | Hands-on |
 |---|---|---|
 | Light recall | [20.3](./part-20-nebius-sre-interview/03-triage-method-for-a-sick-linux-box.md) triage checklist, [2.1](./part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md) symptom table, Kubernetes request-path drawing, GPU-cluster tour | One easy problem |
+
+## Possible gaps (not yet in the day tables; add if time)
+| Topic | Why it may come up | Where |
+|---|---|---|
+| SSH keys, config, port forward | daily access path; "can't log in" questions | [1.5](./part-01-linux/05-working-remotely-ssh-keys-file-transfer-tmux-and-editors.md) |
+| Boot process, systemd targets | "server won't boot", recovery | [1.14](./part-01-linux/14-boot-firmware-grub-kernel-initramfs.md), [1.15](./part-01-linux/15-systemd-units-targets-timers-journald.md) |
+| Packages (apt/yum), repos | install, versions, broken dependencies | [1.7](./part-01-linux/07-packages-repositories-and-software-installation.md) |
+| LVM, RAID, mounts, fstab | disk full, grow a volume | [1.12](./part-01-linux/12-disks-partitions-and-filesystems.md), [1.13](./part-01-linux/13-lvm-raid-and-nvme.md) |
+| Firewall: iptables/nftables, conntrack | "port open but blocked", NAT | [2.23](./part-02-networking/23-linux-networking-netfilter-nftables-conntrack-and-nat.md) |
+| Git basics, branching, rollback | DevOps staple | not in handbook; do `git log`, `branch`, `rebase`, `revert` |
+| Monitoring and alerts: metrics, logs, traces, Prometheus basics | SRE core, SLO alerts | [20.19](./part-20-nebius-sre-interview/19-slis-slos-and-alerts-for-token-apis.md), [20.25](./part-20-nebius-sre-interview/25-promql-grafana-and-tracing-traps.md), [5.24](./part-05-kubernetes/24-observability-for-kubernetes.md) |
+| Incident response, on-call, post-mortem | experience discussion | [20.27](./part-20-nebius-sre-interview/27-post-mortems-on-call-and-incident-leadership.md) |
+| Docker commands and image layers | container basics | [5.1](./part-05-kubernetes/01-containers-from-first-principles-images-layers-registries.md), [5.2](./part-05-kubernetes/02-container-runtimes-containerd-runc-cri-and-oci.md) |
+| Databases basics (replication, backups, indexes) | page says OS/DB experience is discussed | not in handbook; prepare one example from your work |
+| High availability, failover, SPOF, RTO/RPO | basic DevOps/SRE concepts | [20.33](./part-20-nebius-sre-interview/33-ai-factory-solution-architecture-ha-and-recovery.md), [5.19](./part-05-kubernetes/19-cluster-deployment-models-and-day-2-operations.md), [5.20](./part-05-kubernetes/20-upgrades-etcd-backup-and-restore-and-disaster-recovery.md) |
+| Cloud basics: VPC, subnets, security groups, IAM | cloud questions | [2.32](./part-02-networking/32-cloud-networking-vpc-peering-load-balancers-and-gcp-specifics.md), [20.31](./part-20-nebius-sre-interview/31-nebius-ai-cloud-foundation-gpu-fabric-and-platform-choices.md) |
+
+## Python topic map (topic, subtopics, where to read, day)
+| Topic | Subtopics | Read | Day |
+|---|---|---|---|
+| Types and strings | int/float/bool, str methods, slicing, f-strings, bytes vs str | [3.1](./part-03-python/01-python-core-types-control-flow-functions.md) sections 3-4 | 1 |
+| Collections | list, dict, set, tuple, sorting with `key=`, `sorted` | [3.1](./part-03-python/01-python-core-types-control-flow-functions.md) section 5, [3.3](./part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md) sections 2-3 | 1-2 |
+| Counting and grouping | `Counter`, `defaultdict`, `deque`, `heapq`, `bisect` | [3.3](./part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md) section 3 and stdlib docs | 2, 6 |
+| Comprehensions | list/dict/set comprehensions, conditions | [3.3](./part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md) section 7 | 2 |
+| Functions | args, defaults, `*args`, `**kwargs`, scope, return | [3.1](./part-03-python/01-python-core-types-control-flow-functions.md) section 8 | 3 |
+| References and mutability | copy vs deepcopy, mutable defaults, aliasing | [3.1](./part-03-python/01-python-core-types-control-flow-functions.md) section 2, [3.3](./part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md) section 5 | 3 |
+| Idioms | `enumerate`, `zip`, unpacking, EAFP, truthiness | [3.3](./part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md) section 9 | 3 |
+| Exceptions | try/except/else/finally, raise, custom errors | [3.5](./part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md) section 1 | 4 |
+| Files and paths | `with open`, `pathlib`, reading line by line | [3.5](./part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md) section 3 | 3-4 |
+| Logging | levels, format, `logging.getLogger` | [3.5](./part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md) section 2 | 4 |
+| subprocess and OS | `subprocess.run`, exit codes, env vars, `sys.exit`, signals | [3.5](./part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md) sections 6-7 | 5 |
+| Data formats | JSON, CSV, YAML | [3.5](./part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md) section 5 | 7 |
+| Text and regex | `re` basics, encodings | [3.5](./part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md) section 4 | 7 |
+| CLI scripts | `argparse`, robust script template | [3.5](./part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md) section 8, [3.8](./part-03-python/08-building-clis-agents-and-exporters-prometheus-exporters-redfish-client.md) | 3, 5 |
+| Network helpers | `ipaddress`, `socket`, retry/backoff | [3.1](./part-03-python/01-python-core-types-control-flow-functions.md), [3.5](./part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md) and stdlib docs | 8 |
+| Classes | class, `__init__`, `__repr__`, `dataclass` | [3.4](./part-03-python/04-classes-dataclasses-typing-and-protocols.md) | 9 |
+| Iterators and generators | `yield`, generator pipelines, `itertools` | [3.3](./part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md) section 8 | 6, 10 |
+| Decorators and closures | wrapper, `functools.wraps`, retry decorator | [3.3](./part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md) section 6 | 10 |
+| Concurrency (low priority) | threads, processes, asyncio, thread pool | [3.6](./part-03-python/06-concurrency-threads-processes-and-asyncio.md) sections 2-5 | optional |
+| Testing | pytest, fixtures, mocks | [3.9](./part-03-python/09-testing-quality-and-ci-for-python-tooling.md) sections 2-3 | 11 |
+| Interview angles | common questions and mistakes | [3.1](./part-03-python/01-python-core-types-control-flow-functions.md) section 13, [3.3](./part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md) section 13, [3.5](./part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md) section 11 | any |
+
+## Shell practice (type every one; one or two lines each)
+### Navigate and inspect files
+| Command | Use when | Example | Alternative / note |
+|---|---|---|---|
+| `ls -lah` | list with sizes and hidden files | `ls -lah /var/log` | `ls -lt` newest first; `tree` |
+| `ls -li` | see inode numbers (hard links) | `ls -li file` | `stat file` |
+| `stat` | full metadata, times, inode | `stat /etc/passwd` | `file` for type |
+| `find` | locate files by name, size, age | `find /var/log -name "*.log" -mtime -1` | `locate` (indexed, fast but stale) |
+| `du` | find what fills a disk | `du -xh --max-depth=1 / \| sort -h` | `ncdu` (interactive) |
+| `df` | free space per mount | `df -h` and `df -i` (inodes) | `lsblk`, `findmnt` |
+| `ln -s` | symlink to latest release | `ln -sfn /srv/app/rel42 /srv/app/current` | hard link `ln` has no `-s` |
+| `chmod`, `chown` | fix permissions/ownership | `chmod 640 f; chown app:app f` | `setfacl` for ACLs |
+
+### Read and search text
+| Command | Use when | Example | Alternative / note |
+|---|---|---|---|
+| `cat`, `less` | read files, page long output | `less +F app.log` (follow) | `tail -f`, `bat` |
+| `head`, `tail` | first/last lines, follow live | `tail -n 100 -f app.log` | `journalctl -f` for systemd |
+| `grep` | find lines | `grep -rniE "error\|timeout" /var/log/app` | `rg` (ripgrep, faster) |
+| `grep -c`, `-v`, `-A/-B` | count, invert, context | `grep -B2 -A2 "OOM" log` | |
+| `wc` | count lines/words | `wc -l *.log` | |
+| `sort`, `uniq` | rank frequency | `sort file \| uniq -c \| sort -rn \| head` | needs sorted input for `uniq` |
+| `cut` | pick delimited columns | `cut -d: -f1 /etc/passwd` | `awk -F:` is more flexible |
+| `awk` | columns, sums, filters | `awk '{print $1}' access.log` ; `awk '{s+=$NF} END {print s}' f` | Python for complex logic |
+| `sed` | substitute, delete lines | `sed -i 's/old/new/g' f` ; `sed -n '10,20p' f` | `-i.bak` keeps a backup |
+| `tr` | translate/delete characters | `tr 'a-z' 'A-Z'` ; `tr -d '\r'` | |
+| `xargs` | build commands from a list | `find . -name "*.tmp" \| xargs rm` | `-P 4` parallel; `-0` with `find -print0` |
+| `jq` | JSON on the command line | `curl -s url \| jq '.items[].name'` | Python `json` |
+| `diff` | compare files | `diff -u old new` | `vimdiff`, `git diff --no-index` |
+| `tee` | save and show output | `cmd \| tee out.log` | `-a` append |
+
+### Processes and resources
+| Command | Use when | Example | Alternative / note |
+|---|---|---|---|
+| `ps` | snapshot of processes | `ps aux --sort=-%mem \| head` | `ps -ef`, `pgrep -af name` |
+| `top`, `htop` | live CPU/mem view | `top -o %MEM` | `htop` is friendlier; `pidstat 1` |
+| `kill`, `pkill` | stop a process | `kill -TERM 1234`, then `kill -KILL 1234` last | `pkill -f name` |
+| `jobs`, `bg`, `fg`, `nohup` | background work | `nohup ./job.sh > job.log 2>&1 &` | `tmux`/`screen`, systemd unit |
+| `free`, `vmstat` | memory and run queue | `free -m`; `vmstat 1 5` | `/proc/meminfo` |
+| `iostat`, `iotop` | disk busy/latency | `iostat -x 1 3` | `sar -d` |
+| `uptime`, `nproc` | load vs core count | `uptime; nproc` | load above cores means queueing |
+| `lsof` | open files/ports/deleted files | `lsof -i :8080` ; `lsof +L1` | `ss -ltnp` for ports |
+| `strace` | see system calls | `strace -f -e trace=file -p 1234` | `ltrace`, `perf trace` |
+| `dmesg` | kernel messages (OOM, disk errors) | `dmesg -T \| tail -50` | `journalctl -k` |
+| `ulimit` | file descriptor limit | `ulimit -n` | `/proc/<pid>/limits` |
+
+### Services, logs, time
+| Command | Use when | Example | Alternative / note |
+|---|---|---|---|
+| `systemctl` | manage services | `systemctl status nginx` ; `systemctl restart nginx` | `service nginx status` (old) |
+| `journalctl` | read service logs | `journalctl -u nginx -e --since "1 hour ago"` | `-p err` errors only |
+| `crontab -e` | schedule jobs | `*/5 * * * * /opt/check.sh` | systemd timers |
+| `date`, `timedatectl` | time and timezone | `timedatectl status` | `chronyc tracking` for NTP |
+| `logrotate` | stop logs filling disks | `logrotate -d /etc/logrotate.conf` (dry run) | |
+
+### Networking commands
+| Command | Use when | Example | Alternative / note |
+|---|---|---|---|
+| `ip a`, `ip r` | addresses and routes | `ip a` ; `ip route get 8.8.8.8` | `ifconfig`/`route` are old |
+| `ss` | sockets and listeners | `ss -ltnp` ; `ss -s` | `netstat` is old |
+| `ping`, `traceroute`, `mtr` | reachability and path | `mtr -rw host` | `tracepath` |
+| `dig`, `nslookup` | DNS | `dig +short A example.com` ; `dig +trace example.com` | `host` |
+| `curl` | HTTP checks | `curl -sS -o /dev/null -w "%{http_code} %{time_total}\n" URL` | `wget`, `httpie` |
+| `nc` | test a TCP port | `nc -vz host 443` | `telnet`, bash `/dev/tcp` |
+| `tcpdump` | packet capture | `tcpdump -nn -i any port 53` | `tshark` |
+| `openssl s_client` | check TLS cert | `openssl s_client -connect host:443 -servername host` | `curl -v` |
+| `ssh` | remote access, tunnels | `ssh -L 8080:localhost:80 host` | `~/.ssh/config`, `scp`, `rsync` |
+| `iptables`/`nft` | view firewall | `iptables -L -n -v` ; `nft list ruleset` | `ufw status` |
+
+### Archive, copy, transfer
+| Command | Use when | Example | Alternative / note |
+|---|---|---|---|
+| `tar` | archive/compress | `tar czf b.tgz dir/` ; `tar xzf b.tgz` | `zip` |
+| `rsync` | copy with resume/diff | `rsync -avz --progress src/ host:/dst/` | `scp` for single files |
+| `cp`, `mv`, `rm` | basic file ops | `cp -a src dst` | `rm -i`; never `rm -rf $VAR/` unquoted |
+| `mktemp` | safe temp files | `tmp=$(mktemp)` | |
+
+### Small scripts to write from memory
+| Goal | Script |
+|---|---|
+| Top 10 IPs in a log | `awk '{print $1}' access.log \| sort \| uniq -c \| sort -rn \| head` |
+| Requests per status code | `awk '{print $9}' access.log \| sort \| uniq -c` |
+| Disk over 80 percent | `df -h \| awk 'NR>1 && $5+0>80 {print $6, $5}'` |
+| Biggest 10 files | `find . -type f -printf '%s %p\n' \| sort -rn \| head` |
+| Kill by name safely | `pgrep -af myapp` then `pkill -TERM -f myapp` |
+| Loop over hosts | `for h in a b c; do ping -c1 -W1 $h >/dev/null && echo "$h up" \|\| echo "$h down"; done` |
+| Read file line by line | `while IFS= read -r line; do echo "$line"; done < file` |
+| Check a service and exit code | `systemctl is-active --quiet nginx \|\| { echo "down"; exit 1; }` |
+| Port check | `nc -z -w2 host 443 && echo open \|\| echo closed` |
+| Retry 3 times | `for i in 1 2 3; do curl -fsS URL && break; sleep 2; done` |
+| Safe script header | `#!/usr/bin/env bash` then `set -euo pipefail` |
+| Cleanup on exit | `trap 'rm -f "$tmp"' EXIT` |
+| Parallel run | `cat hosts \| xargs -P 4 -I{} ssh {} uptime` |
+| Count errors per hour | `grep ERROR app.log \| cut -c1-13 \| sort \| uniq -c` |
+| Replace in many files | `grep -rl old . \| xargs sed -i 's/old/new/g'` |
+| Find deleted-but-open files | `lsof +L1` |
+| Who listens on a port | `ss -ltnp \| grep :8080` |
+| Quick HTTP latency | `curl -o /dev/null -s -w "%{time_namelookup} %{time_connect} %{time_total}\n" URL` |
+Where to read: [1.2](./part-01-linux/02-the-command-line-shells-commands-pipes-and-redirection.md), [1.4](./part-01-linux/04-text-processing-essentials-grep-sed-awk-find-xargs-sort.md), [1.8](./part-01-linux/08-processes-signals-and-job-control.md), [1.9](./part-01-linux/09-shell-scripting-that-survives-production.md) (scripting), [20.7](./part-20-nebius-sre-interview/07-the-console-round-text-tools-systemd-and-everyday-operations.md) (console tasks).
