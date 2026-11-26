@@ -26,6 +26,26 @@ def L(ch,*keys):
         t,s=hit[0];lab=t if len(t)<=58 else t[:55]+'...'
         out.append(f"[{ch} {lab}](./{os.path.basename(os.path.dirname(f))}/{os.path.basename(f)}#{s})")
     return '<br />'.join(out)
+NVROOT='/Users/jithinpjoseph/Documents/GitHub/nvidia-devops/docs'
+NVURL='https://jithinpnjm.github.io/nvidia-devops/curriculum'
+nvcache={}
+def NV(path,*keys):
+    v,c=path.split('/');f=glob.glob(f'{NVROOT}/{v}/{c}-*.md')[0]
+    if f not in nvcache:
+        txt=open(f).read();slug=re.search(r'^slug:\s*"?([^"\n]+)"?',txt,re.M).group(1).strip();slug=slug if slug.startswith('/') else f'/{v}/{slug}';H=[];seen={}
+        for l in txt.split('\n'):
+            m=re.match(r'^(#{2,4}) (.+?)\s*$',l)
+            if m:
+                t=re.sub(r'[`*]','',m.group(2));sl=re.sub(r'[^\w\s-]','',t.lower(),flags=re.U).strip().replace(' ','-');n=seen.get(sl,0);seen[sl]=n+1
+                H.append((t,sl if n==0 else f'{sl}-{n}'))
+        nvcache[f]=(slug,H)
+    slug,H=nvcache[f];out=[]
+    for k in keys:
+        kk=re.sub(r'[`#]','',k).strip().lower();hit=[h for h in H if h[0].lower().startswith(kk)]
+        if not hit: print('NV MISSING',path,k);continue
+        t,sl=hit[0];lab=t if len(t)<=50 else t[:47]+'...'
+        out.append(f"[NV {v[-2:].lstrip('0')}.{int(c)} {lab}]({NVURL}{slug}#{sl})")
+    return '<br />'.join(out)
 def M(*parts): return '<br />'.join(p for p in parts if p)
 K8S="[kubeconfig docs (kubernetes.io)](https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/)"
 # ---------- topic map ----------
@@ -83,10 +103,23 @@ SC=[
 Cd={1:"Reverse string, palindrome, FizzBuzz",2:"Run-length encode `AABBBCCCCCDEFF` to `A2B3C5D1E1F2`; decode; character frequency",3:"Valid anagram, first non-repeating char, remove duplicates",4:"Two-sum, contains-duplicate, majority element",5:"Valid parentheses, merge two sorted lists, binary search",6:"Isomorphic strings, group anagrams, top-K frequent",7:"Longest substring without repeating characters, max subarray",8:"Merge intervals, meeting rooms, insert interval",9:"O(1) insert/delete/get-random set, LRU cache",10:"Number of islands (BFS/DFS), tree level-order, max depth",11:"Three fresh problems, 30 min each",12:"Three fresh problems, aloud"}
 Pd={1:(M('Refresh:',L('3.1','4. Strings and bytes','5. Core collections')),"Word count, top 5 words in a file"),2:(M('Refresh:',L('3.3','7. Comprehensions','3. Mappings and sets')),"Top 10 IPs and status codes from a log"),3:(M('Refresh:',L('3.1','8. Functions','2. Objects, names and references')),"`argparse` CLI: 10 largest files in a directory"),4:(M('Refresh:',L('3.5','1. Exceptions','3. Files and paths')),"Parse a log, skip bad lines, count failures"),5:(M('Refresh:',L('3.5','6. Running external programs')),"Run `df -h`, exit non-zero if a filesystem is over 80%"),6:(M('Refresh:',L('3.3','2. Sequences','3. Mappings and sets'),'(`deque`, `heapq`: stdlib docs)'),"Top-K slowest requests from a log"),7:(M('Refresh:',L('3.5','5. Data formats')),"Count errors per service from JSON lines"),8:(M('Refresh:',L('3.5','7. Interacting with the operating system'),'(`ipaddress`, `socket`: stdlib docs)'),"CIDR tool: network, broadcast, host count, contains"),9:(M('Refresh:',L('3.4','1. Classes and objects','3. Data class builders')),"Nodes and pods: find pods that fit no node"),10:(M('Refresh:',L('3.3','8. Iterables, iterators and generators','6. Functions as objects')),"`@retry` decorator and timer context manager"),11:(M('Refresh:',L('3.9','2. pytest essentials','3. Isolating dependencies')),"6 tests for two earlier programs, one failure case"),12:("Re-run all programs","Fix any that fail")}
 Sd={1:"`wc`, `sort | uniq -c | sort -rn | head`",2:"`awk`, `sort`, `uniq`: top IPs in one pipeline",3:"`find -size +10M`, `du -xh --max-depth=1 | sort -h`",4:"`pgrep -f`, `nohup cmd &`, `jobs`, `kill %1`",5:"`for` loop with `ping -c1`, print up/down",6:"`awk '{s+=$NF} END {print s}'`, `cut -d, -f2`",7:"`sed -i`, `grep -rn`, `tar czf` / `tar xzf`",8:"`xargs -P 4`, `curl -s -o /dev/null -w \"%{http_code}\"`",9:"Script with args, `set -euo pipefail`, function, `trap`",10:"Health check: `nc -z`, `systemctl is-active`, `df`, exit code",11:"All one-liners from memory",12:"Re-run all scripts"}
+NVD={1:M(NV('volume-01/04','2. Systemd and the Boot Chain','6. Container Isolation')),
+2:M(NV('volume-01/01','3. Processes, Threads','4. CPU Scheduling Deep Dive'),NV('volume-01/04','4. Process Mechanics and Signals')),
+3:M(NV('volume-01/01','5. Virtual Memory','6. Page Cache, Swap','7. NUMA Architecture','8. The OOM Killer')),
+4:M(NV('volume-01/02','Part 2: File descriptors and VFS','Part 4: Capacity versus latency'),NV('volume-01/01','11. Senior Solutions Architect Troubleshoo','12. Interview Questions')),
+5:M(NV('volume-01/04','3. Systemd Slices','5. Logging with Journald'),NV('volume-01/03','6. DNS and Application Layer')),
+6:M(NV('volume-01/04','6. Container Isolation','7. Resource Control','8. OverlayFS'),NV('volume-01/03','14. Network Namespaces')),
+7:M(NV('volume-01/03','5. Netfilter, Conntrack','8. Observability and Deep Troubleshooting','9. Senior Solutions Architect Scenarios'),NV('volume-09/05','1. Q5: Complex Linux/Networking')),
+8:M(NV('volume-01/03','3. Sockets, TCP Internals','16. Advanced Traffic Control','19. Advanced Packet Drop Debugging'),NV('volume-03/03','2. Advanced Kubernetes Networking')),
+9:M(NV('volume-03/01','3. Deep Dive: API Machinery','4. Deep Dive: etcd','5. Advanced Scheduling Framework'),NV('volume-03/02','2. The Kubelet','3. Node Pressure and Eviction','4. Container Runtime Interface','5. Storage & Container Storage Interface'),NV('volume-01/03','21. Hardware Offloads: SR-IOV')),
+10:M(NV('volume-03/03','3. Security, Admission Control','6. Senior Level Troubleshooting'),NV('volume-09/02','Question 2: SR-IOV','Question 4: Kubernetes HA','Question 6: Bare-Metal')),
+11:M(NV('volume-04/01','2. The GPU Execution Mental Model','3. The GPU Memory Mental Model','4. System Buses: PCIe','5. NVIDIA Interconnects','6. NUMA and Host Topology'),NV('volume-04/02','2. The Foundation: NVIDIA UNIX Driver','3. Containerizing the GPU','4. Kubernetes Integration','5. The NVIDIA GPU Operator','6. Troubleshooting')),
+12:M(NV('volume-10/01','2. The Out-of-Band','7. Deterministic Network Booting','9. Senior Solutions Architect'),NV('volume-10/03','1.'),NV('volume-07/03','2. Alert Design','3. Incident Workflows','4. Incident Playbooks'),NV('volume-02/02','1.'))}
 def day(n,title,linux,net,k8s,gpu,connect,hands):
     rows=[("Linux and bare metal",linux,hands[0]),("Networking",net,hands[1]),("Kubernetes",k8s,hands[2])]
     if gpu: rows.append(("GPU on Linux",gpu,hands[3]))
     rows.append(("Connect it (say aloud)",connect,"Draw the chain on paper, name one command per hop"))
+    if n in NVD: rows.append(("Also read: nvidia-devops (senior scenarios)",NVD[n],"Optional second source, same topic"))
     rows+=[("Coding",Cd[n],"Timed 25 min"),("Python",Pd[n][0],"Program: "+Pd[n][1]),("Shell",Sd[n],"Type and run")]
     return (title,rows)
 D=[
@@ -109,7 +142,7 @@ D+=[("Day 13, Wed 9 Dec (review day: recall 25 min on Days 1-12)",[("Mock A","10
 o=["# Prelims plan: Fri 27 Nov to Fri 11 Dec morning (interview 11 Dec)","",
 "Format: 90 min. First 60 min experience + Linux/networking/Kubernetes/DevOps questions; last 30 min one LeetCode-style problem. Senior level means every answer is a chain across layers, so each day ends with a connected scenario (S1 to S11) said aloud.","",
 "| Every day | What |","|---|---|","| Recall (10 min) | Aloud, no notes: 2 cards each from yesterday, 3 days ago, 7 days ago |","| Speak + cards (10 min) | Explain the day's chain aloud; write 6 flashcards |","",
-"Marks: [MUST] [SHOULD] [IF TIME]. Links go to the exact section; the rest of a chapter is optional.","",
+"Marks: [MUST] [SHOULD] [IF TIME]. Links go to the exact section; the rest of a chapter is optional. Links starting with NV go to your nvidia-devops core volumes (senior scenarios and interview Q&A); the full question bank is [Consolidated Core Interview Questions](https://jithinpnjm.github.io/nvidia-devops/curriculum/core-interview-questions/chapter-01-consolidated-interview-questions).","",
 "## Topic map: every area and subtopic (check each off)","","| Area | Subtopics | Read |","|---|---|---|"]
 o+=[f"| {a} | {b} | {c} |" for a,b,c in TOPICS]
 o+=["","## Connected scenarios: follow one thing through the whole stack","","| Scenario | The chain | Check with | Read |","|---|---|---|---|"]
