@@ -106,14 +106,25 @@ D=[
 ("Coding (30)","Three fresh problems, 30 min each","Timed"),
 ("Python (30)",M('Refresh:',L('3.9','2. pytest essentials','3. Isolating dependencies')),"Program: 6 tests for two earlier programs, one failure case"),
 ("Shell (15)","All one-liners from Days 1-10","From memory")]),
-("Day 12, Tue 8 Dec",[
-("Mock (90)","10 min your experience; 50 min general questions (Linux, networking, Kubernetes, DevOps, GPU basics; under 2 min each); 30 min a new medium problem aloud, no AI","Record if possible"),
+("Day 12, Tue 8 Dec (catch-up and gaps; revisit the weakest 3 topics from the recall cards)",[
+("Linux (30)",M('[IF TIME] items you skipped:',L('1.12','6. Inside a traditional filesystem','8. Files, file descriptors and the read path'),L('1.13','4. NVMe in depth'),L('1.17','4. How Linux frees memory','8. Huge pages')),"Re-run one triage drill from memory"),
+("Networking (25)",M('[IF TIME] SR-IOV vs virtio, BGP in the data centre, VXLAN, one paragraph each:',L('2.16','1.'),L('2.17','1.'),L('11.10','1.')),"Explain a packet leaving a pod to the internet, hop by hop"),
+("Platform (30)",M('Read only: SRE basics',L('20.19','5. Error budgets','6. Burn rate'),'; deployment strategies (rolling, canary, blue-green), rollback, CI/CD stages; Terraform',L('20.24','2. Remote state','4. Safe changes'),'; Ansible',L('4.3','1. What Ansible is','2. How Ansible executes')),"Explain each aloud in 1-2 minutes"),
+("Coding (30)","Three fresh problems, 10 min each, aloud","Timed"),
+("Python + Shell (45)","Re-run all your programs and one-liners; fix any that fail","From memory")]),
+("Day 13, Wed 9 Dec (review day: recall 25 min on Days 1-12)",[
+("Mock A (60)","10 min your experience; 50 min general questions (Linux, networking, Kubernetes, DevOps, GPU basics; under 2 min each)","Record if possible"),
+("Coding mock (30)","One new medium problem aloud, no AI: clarify, brute force, better approach, code, test, complexity","Timed 30 min"),
 ("Story (30)","6-8 projects/incidents: problem, role, actions, trade-offs, failures, results with numbers","Write it down"),
-("Gaps (30)",M('Fix weak topics. [Read only, IF TIME] SRE basics:',L('20.19','5. Error budgets','6. Burn rate'),'Deployment strategies (rolling, canary, blue-green), rollback, CI/CD stages: explain aloud. Terraform:',L('20.24','2. Remote state','4. Safe changes'),'Ansible (read only):',L('4.3','1. What Ansible is','2. How Ansible executes')),"Explain plan/apply, state, locking, drift, idempotency aloud")]),
-("Wed 9 Dec morning",[
-("Light recall",M(L('20.3','### 3. The first 60 seconds'),L('2.1','12. A map from symptom to layer'),'Kubernetes request-path drawing; GPU-cluster tour'),"One easy problem")]),
+("Fix (30)","Fix the weak topics found in the mock","")]),
+("Day 14, Thu 10 Dec",[
+("Full mock (90)","Same format as the real interview: 60 min discussion + 30 min coding, aloud, no AI","Record if possible"),
+("Gaps (30)","Fix only what failed in the mock","One easy problem to stay warm"),
+("Light recall (30)",M(L('20.3','### 3. The first 60 seconds'),L('2.1','12. A map from symptom to layer'),'Kubernetes request-path drawing; the 12-step table'),"Stop by evening, sleep early")]),
+("Fri 11 Dec morning (interview day)",[
+("Light recall",M('Triage checklist, networking symptom table, Kubernetes request path, your project story'),"No new material")]),
 ]
-o=["# Prelims plan: Fri 27 Nov to Wed 9 Dec morning","",
+o=["# Prelims plan: Fri 27 Nov to Fri 11 Dec morning (interview 11 Dec)","",
 "Format: 90 min. First 60 min experience + general Linux/networking/DevOps questions; last 30 min one LeetCode-style problem.","",
 "| Every day | Min | What |","|---|---|---|",
 "| Recall | 10 | Aloud, no notes: 2 cards each from yesterday, 3 days ago, 7 days ago |",

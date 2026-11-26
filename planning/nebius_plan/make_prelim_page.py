@@ -21,5 +21,5 @@ for line in src.split('\n'):
     line=''.join(parts)
     out.append(line)
 body='\n'.join(out)
-open(f'{root}/docs/prelim-plan.md','w').write('---\nid: prelim-plan\ntitle: "TEMPORARY: Preliminary interview plan (27 Nov - 9 Dec)"\nsidebar_label: "Prelim interview plan (temporary)"\nsidebar_position: 0\n---\n\n:::caution Temporary page\nDelete `docs/prelim-plan.md` after the interview (source: planning/nebius_plan/PRELIM_PLAN.md).\n:::\n\n'+body)
+open(f'{root}/docs/prelim-plan.md','w').write('---\nid: prelim-plan\ntitle: "TEMPORARY: Preliminary interview plan (27 Nov - 11 Dec)"\nsidebar_label: "Prelim interview plan (temporary)"\nsidebar_position: 0\n---\n\n:::caution Temporary page\nDelete `docs/prelim-plan.md` after the interview (source: planning/nebius_plan/PRELIM_PLAN.md).\n:::\n\n'+body)
 print('written',body.count('](./'),'links')

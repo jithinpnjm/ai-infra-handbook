@@ -1,6 +1,6 @@
 ---
 id: prelim-plan
-title: "TEMPORARY: Preliminary interview plan (27 Nov - 9 Dec)"
+title: "TEMPORARY: Preliminary interview plan (27 Nov - 11 Dec)"
 sidebar_label: "Prelim interview plan (temporary)"
 sidebar_position: 0
 ---
@@ -9,7 +9,7 @@ sidebar_position: 0
 Delete `docs/prelim-plan.md` after the interview (source: planning/nebius_plan/PRELIM_PLAN.md).
 :::
 
-# Prelims plan: Fri 27 Nov to Wed 9 Dec morning
+# Prelims plan: Fri 27 Nov to Fri 11 Dec morning (interview 11 Dec)
 
 Format: 90 min. First 60 min experience + general Linux/networking/DevOps questions; last 30 min one LeetCode-style problem.
 
@@ -172,19 +172,38 @@ Links go to the exact section to read, not the whole chapter. Everything else in
 | Python (30) | Refresh:<br />[3.9 2. pytest essentials](./part-03-python/09-testing-quality-and-ci-for-python-tooling.md#2-pytest-essentials)<br />[3.9 3. Isolating dependencies: fakes, stubs and mocks](./part-03-python/09-testing-quality-and-ci-for-python-tooling.md#3-isolating-dependencies-fakes-stubs-and-mocks) | Program: 6 tests for two earlier programs, one failure case |
 | Shell (15) | All one-liners from Days 1-10 | From memory |
 
-## Day 12, Tue 8 Dec
+## Day 12, Tue 8 Dec (catch-up and gaps; revisit the weakest 3 topics from the recall cards)
 
 | Block | Read these sections | Hands-on |
 |---|---|---|
-| Mock (90) | 10 min your experience; 50 min general questions (Linux, networking, Kubernetes, DevOps, GPU basics; under 2 min each); 30 min a new medium problem aloud, no AI | Record if possible |
+| Linux (30) | [IF TIME] items you skipped:<br />[1.12 6. Inside a traditional filesystem](./part-01-linux/12-disks-partitions-and-filesystems.md#6-inside-a-traditional-filesystem)<br />[1.12 8. Files, file descriptors and the read path](./part-01-linux/12-disks-partitions-and-filesystems.md#8-files-file-descriptors-and-the-read-path)<br />[1.13 4. NVMe in depth](./part-01-linux/13-lvm-raid-and-nvme.md#4-nvme-in-depth)<br />[1.17 4. How Linux frees memory](./part-01-linux/17-memory-management-virtual-memory-numa-huge-pages-oom.md#4-how-linux-frees-memory)<br />[1.17 8. Huge pages and transparent huge pages](./part-01-linux/17-memory-management-virtual-memory-numa-huge-pages-oom.md#8-huge-pages-and-transparent-huge-pages) | Re-run one triage drill from memory |
+| Networking (25) | [IF TIME] SR-IOV vs virtio, BGP in the data centre, VXLAN, one paragraph each:<br />[2.16 1. The standard design: eBGP in a Clos](./part-02-networking/16-bgp-in-the-data-center-ebgp-clos-unnumbered-ecmp-anycast.md#1-the-standard-design-ebgp-in-a-clos)<br />[2.17 1. What is a virtual network?](./part-02-networking/17-overlays-vxlan-and-evpn.md#1-what-is-a-virtual-network)<br />[11.10 1. Basics: Primary Pod networking and the GPUDirect RDM...](./part-11-gpu-kubernetes/10-secondary-networks-multus-sr-iov-device-plugin-and-rdma-device-plugin.md#1-basics-primary-pod-networking-and-the-gpudirect-rdma-data-path) | Explain a packet leaving a pod to the internet, hop by hop |
+| Platform (30) | Read only: SRE basics<br />[20.19 5. Error budgets: do the arithmetic](./part-20-nebius-sre-interview/19-slis-slos-and-alerts-for-token-apis.md#5-error-budgets-do-the-arithmetic)<br />[20.19 6. Burn rate and the multiwindow alert](./part-20-nebius-sre-interview/19-slis-slos-and-alerts-for-token-apis.md#6-burn-rate-and-the-multiwindow-alert)<br />; deployment strategies (rolling, canary, blue-green), rollback, CI/CD stages; Terraform<br />[20.24 2. Remote state, locking and why the state is the crown...](./part-20-nebius-sre-interview/24-terraform-for-resilient-gpu-clusters.md#2-remote-state-locking-and-why-the-state-is-the-crown-jewel)<br />[20.24 4. Safe changes: read the plan, guard the stateful thin...](./part-20-nebius-sre-interview/24-terraform-for-resilient-gpu-clusters.md#4-safe-changes-read-the-plan-guard-the-stateful-things-keep-history)<br />; Ansible<br />[4.3 1. What Ansible is](./part-04-automation/03-ansible-from-zero-what-it-is-how-it-works-installation-and-ad-hoc-comm.md#1-what-ansible-is)<br />[4.3 2. How Ansible executes a task](./part-04-automation/03-ansible-from-zero-what-it-is-how-it-works-installation-and-ad-hoc-comm.md#2-how-ansible-executes-a-task) | Explain each aloud in 1-2 minutes |
+| Coding (30) | Three fresh problems, 10 min each, aloud | Timed |
+| Python + Shell (45) | Re-run all your programs and one-liners; fix any that fail | From memory |
+
+## Day 13, Wed 9 Dec (review day: recall 25 min on Days 1-12)
+
+| Block | Read these sections | Hands-on |
+|---|---|---|
+| Mock A (60) | 10 min your experience; 50 min general questions (Linux, networking, Kubernetes, DevOps, GPU basics; under 2 min each) | Record if possible |
+| Coding mock (30) | One new medium problem aloud, no AI: clarify, brute force, better approach, code, test, complexity | Timed 30 min |
 | Story (30) | 6-8 projects/incidents: problem, role, actions, trade-offs, failures, results with numbers | Write it down |
-| Gaps (30) | Fix weak topics. [Read only, IF TIME] SRE basics:<br />[20.19 5. Error budgets: do the arithmetic](./part-20-nebius-sre-interview/19-slis-slos-and-alerts-for-token-apis.md#5-error-budgets-do-the-arithmetic)<br />[20.19 6. Burn rate and the multiwindow alert](./part-20-nebius-sre-interview/19-slis-slos-and-alerts-for-token-apis.md#6-burn-rate-and-the-multiwindow-alert)<br />Deployment strategies (rolling, canary, blue-green), rollback, CI/CD stages: explain aloud. Terraform:<br />[20.24 2. Remote state, locking and why the state is the crown...](./part-20-nebius-sre-interview/24-terraform-for-resilient-gpu-clusters.md#2-remote-state-locking-and-why-the-state-is-the-crown-jewel)<br />[20.24 4. Safe changes: read the plan, guard the stateful thin...](./part-20-nebius-sre-interview/24-terraform-for-resilient-gpu-clusters.md#4-safe-changes-read-the-plan-guard-the-stateful-things-keep-history)<br />Ansible (read only):<br />[4.3 1. What Ansible is](./part-04-automation/03-ansible-from-zero-what-it-is-how-it-works-installation-and-ad-hoc-comm.md#1-what-ansible-is)<br />[4.3 2. How Ansible executes a task](./part-04-automation/03-ansible-from-zero-what-it-is-how-it-works-installation-and-ad-hoc-comm.md#2-how-ansible-executes-a-task) | Explain plan/apply, state, locking, drift, idempotency aloud |
+| Fix (30) | Fix the weak topics found in the mock |  |
 
-## Wed 9 Dec morning
+## Day 14, Thu 10 Dec
 
 | Block | Read these sections | Hands-on |
 |---|---|---|
-| Light recall | [20.3 3. The first 60 seconds, command by command](./part-20-nebius-sre-interview/03-triage-method-for-a-sick-linux-box.md#3-the-first-60-seconds-command-by-command)<br />[2.1 12. A map from symptom to layer](./part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md#12-a-map-from-symptom-to-layer)<br />Kubernetes request-path drawing; GPU-cluster tour | One easy problem |
+| Full mock (90) | Same format as the real interview: 60 min discussion + 30 min coding, aloud, no AI | Record if possible |
+| Gaps (30) | Fix only what failed in the mock | One easy problem to stay warm |
+| Light recall (30) | [20.3 3. The first 60 seconds, command by command](./part-20-nebius-sre-interview/03-triage-method-for-a-sick-linux-box.md#3-the-first-60-seconds-command-by-command)<br />[2.1 12. A map from symptom to layer](./part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md#12-a-map-from-symptom-to-layer)<br />Kubernetes request-path drawing; the 12-step table | Stop by evening, sleep early |
+
+## Fri 11 Dec morning (interview day)
+
+| Block | Read these sections | Hands-on |
+|---|---|---|
+| Light recall | Triage checklist, networking symptom table, Kubernetes request path, your project story | No new material |
 
 ## Possible gaps (not yet in the day tables; add if time)
 | Topic | Why it may come up | Where |
