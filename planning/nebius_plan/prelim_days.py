@@ -102,14 +102,14 @@ D=[
 ("Shell (15)","Health check","`nc -z` port, `systemctl is-active`, `df`, exit code")]),
 ("Day 11, Mon 7 Dec (review day: recall 25 min on Days 1-10)",[
 ("Linux + Networking (55)",M(L('2.1','12. A map from symptom to layer'),L('20.3','### 3. The first 60 seconds')),"One timed 30-min Linux mock"),
-("Platform: DevOps + GPU overview (30)",M(L('20.19','5. Error budgets','6. Burn rate'),'[IF TIME] GPU overview:',L('10.8','2. The three misleading metrics'),L('12.1','2. RDMA, RoCEv2'),L('15.1','3. Prefill vs. Decode')),"Explain rolling/canary/blue-green, rollback, CI/CD stages aloud; one-minute GPU story: storage feeds GPUs, NVLink/RDMA move gradients, checkpoints go back to storage"),
+("Platform: DevOps + GPU overview (30)",M('SRE basics, read only (10 min, no practice needed):',L('20.19','5. Error budgets','6. Burn rate'),'[IF TIME] GPU overview:',L('10.8','2. The three misleading metrics'),L('12.1','2. RDMA, RoCEv2'),L('15.1','3. Prefill vs. Decode')),"Explain rolling/canary/blue-green, rollback, CI/CD stages aloud; one-minute GPU story: storage feeds GPUs, NVLink/RDMA move gradients, checkpoints go back to storage"),
 ("Coding (30)","Three fresh problems, 30 min each","Timed"),
 ("Python (30)",M('Refresh:',L('3.9','2. pytest essentials','3. Isolating dependencies')),"Program: 6 tests for two earlier programs, one failure case"),
 ("Shell (15)","All one-liners from Days 1-10","From memory")]),
 ("Day 12, Tue 8 Dec",[
 ("Mock (90)","10 min your experience; 50 min general questions (Linux, networking, Kubernetes, DevOps, GPU basics; under 2 min each); 30 min a new medium problem aloud, no AI","Record if possible"),
 ("Story (30)","6-8 projects/incidents: problem, role, actions, trade-offs, failures, results with numbers","Write it down"),
-("Gaps (30)",M('Fix weak topics. [IF TIME] Terraform:',L('20.24','2. Remote state','4. Safe changes'),'Ansible:',L('4.3','1. What Ansible is','2. How Ansible executes')),"Explain plan/apply, state, locking, drift, idempotency aloud")]),
+("Gaps (30)",M('Fix weak topics. [Read only, IF TIME] Terraform:',L('20.24','2. Remote state','4. Safe changes'),'Ansible (read only):',L('4.3','1. What Ansible is','2. How Ansible executes')),"Explain plan/apply, state, locking, drift, idempotency aloud")]),
 ("Wed 9 Dec morning",[
 ("Light recall",M(L('20.3','### 3. The first 60 seconds'),L('2.1','12. A map from symptom to layer'),'Kubernetes request-path drawing; GPU-cluster tour'),"One easy problem")]),
 ]
