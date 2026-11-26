@@ -18,132 +18,132 @@ Format: 90 min. First 60 min experience + general Linux/networking/DevOps questi
 | Recall | 10 | Aloud, no notes: 2 cards each from yesterday, 3 days ago, 7 days ago |
 | Speak + cards | 10 | Explain the day's 3 biggest ideas; write 6 flashcards |
 
-Marks: [MUST] [SHOULD] [IF TIME]. Never cut Recall, Coding, Python.
+Links go to the exact section to read, not the whole chapter. Everything else in a chapter is optional.
 
 ## Day 1, Fri 27 Nov
 
-| Block | Study | Hands-on |
+| Block | Read these sections | Hands-on |
 |---|---|---|
-| Linux (30) | [1.1](./part-01-linux/01-the-linux-big-picture-kernel-userspace-distributions.md) big picture [SHOULD]; [1.2](./part-01-linux/02-the-command-line-shells-commands-pipes-and-redirection.md) command line [MUST] | Pipes, redirection, `man` |
-| Networking (25) | [2.1](./part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md) what happens when you curl a URL [MUST] | `curl -v` |
-| Platform (30) | [5.1](./part-05-kubernetes/01-containers-from-first-principles-images-layers-registries.md) containers [MUST] | Run a container, `docker ps`, `docker exec` |
+| Linux (30) | [1.1 2. The three layers](./part-01-linux/01-the-linux-big-picture-kernel-userspace-distributions.md#2-the-three-layers)<br />[1.1 3. What the kernel does: four jobs](./part-01-linux/01-the-linux-big-picture-kernel-userspace-distributions.md#3-what-the-kernel-does-four-jobs)<br />[1.2 6. Standard streams, redirection and pipes](./part-01-linux/02-the-command-line-shells-commands-pipes-and-redirection.md#6-standard-streams-redirection-and-pipes)<br />[1.2 7. Exit status and combining commands](./part-01-linux/02-the-command-line-shells-commands-pipes-and-redirection.md#7-exit-status-and-combining-commands) | Pipes, redirection, `man` |
+| Networking (25) | [2.1 1. The whole journey in one picture](./part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md#1-the-whole-journey-in-one-picture)<br />[2.1 3. Step 1: name resolution (what is the IP address?)](./part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md#3-step-1-name-resolution-what-is-the-ip-address)<br />[2.1 7. Step 5: TCP connection establishment](./part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md#7-step-5-tcp-connection-establishment)<br />[2.1 8. Step 6: TLS handshake (HTTPS)](./part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md#8-step-6-tls-handshake-https) | `curl -v` |
+| Platform (30) | [5.1 1. What a container is](./part-05-kubernetes/01-containers-from-first-principles-images-layers-registries.md#1-what-a-container-is)<br />[5.1 2. Images: layers, content addressing and the OCI formats](./part-05-kubernetes/01-containers-from-first-principles-images-layers-registries.md#2-images-layers-content-addressing-and-the-oci-formats) | Run a container, `docker ps`, `docker exec` |
 | Coding (30) | Reverse string, palindrome, FizzBuzz | Timed 25 min |
-| Python (30) | Types, list/dict/set/tuple, f-strings | Program: word count, top 5 words in a file |
+| Python (30) | Refresh:<br />[3.1 4. Strings and bytes](./part-03-python/01-python-core-types-control-flow-functions.md#4-strings-and-bytes)<br />[3.1 5. Core collections](./part-03-python/01-python-core-types-control-flow-functions.md#5-core-collections) | Program: word count, top 5 words in a file |
 | Shell (15) | `wc`, `sort`, `uniq` | `sort \| uniq -c \| sort -rn \| head` |
-| Setup | Ubuntu VM or container; install strace, lsof, tcpdump, dnsutils, iproute2, kind | Folders `py/` and `sh/` |
+| Setup | Ubuntu VM or container; strace, lsof, tcpdump, dnsutils, iproute2, kind | Folders `py/` and `sh/` |
 
 ## Day 2, Sat 28 Nov
 
-| Block | Study | Hands-on |
+| Block | Read these sections | Hands-on |
 |---|---|---|
-| Linux (30) | [1.6](./part-01-linux/06-users-groups-permissions-acls-sudo-and-user-environments.md) permissions/sudo [MUST]; [1.3](./part-01-linux/03-files-and-the-directory-hierarchy-paths-links-inodes.md) files, inodes, links [MUST] | chmod, chown, umask, `df -i` |
-| Networking (25) | [2.2](./part-02-networking/02-how-networks-work-layers-encapsulation-the-tcp-ip-model.md) layers [MUST]; [2.4](./part-02-networking/04-ip-addressing-subnetting-and-cidr-ipv4-and-ipv6-with-practice.md) subnetting/CIDR [MUST] | 5 subnet sums by hand |
-| Platform (30) | [5.3](./part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md) Kubernetes architecture [MUST] | Draw control plane vs node |
+| Linux (30) | [1.6 3. File permissions: read, write, execute](./part-01-linux/06-users-groups-permissions-acls-sudo-and-user-environments.md#3-file-permissions-read-write-execute)<br />[1.6 Changing permissions: chmod, chown, chgrp](./part-01-linux/06-users-groups-permissions-acls-sudo-and-user-environments.md#changing-permissions-chmod-chown-chgrp)<br />[1.3 4. Inodes: what a file really is](./part-01-linux/03-files-and-the-directory-hierarchy-paths-links-inodes.md#4-inodes-what-a-file-really-is)<br />[1.3 5. Links: hard and symbolic](./part-01-linux/03-files-and-the-directory-hierarchy-paths-links-inodes.md#5-links-hard-and-symbolic) | chmod, chown, umask, `df -i` |
+| Networking (25) | [2.2 3. Layered models](./part-02-networking/02-how-networks-work-layers-encapsulation-the-tcp-ip-model.md#3-layered-models)<br />[2.2 4. Encapsulation and decapsulation](./part-02-networking/02-how-networks-work-layers-encapsulation-the-tcp-ip-model.md#4-encapsulation-and-decapsulation)<br />[2.4 2. IPv4 addresses and masks](./part-02-networking/04-ip-addressing-subnetting-and-cidr-ipv4-and-ipv6-with-practice.md#2-ipv4-addresses-and-masks)<br />[2.4 Fast subnetting: the block-size method](./part-02-networking/04-ip-addressing-subnetting-and-cidr-ipv4-and-ipv6-with-practice.md#fast-subnetting-the-block-size-method) | 5 subnet sums by hand |
+| Platform (30) | [5.3 1. The big picture](./part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md#1-the-big-picture)<br />[5.3 2. Control plane components](./part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md#2-control-plane-components) | Draw control plane vs node |
 | Coding (30) | Run-length encode `AABBBCCCCCDEFF` to `A2B3C5D1E1F2`; decode; character frequency | Timed |
-| Python (30) | Loops, comprehensions, `Counter`, `defaultdict` | Program: top 10 IPs and status codes from a log |
+| Python (30) | Refresh:<br />[3.3 7. Comprehensions](./part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md#7-comprehensions)<br />[3.3 3. Mappings and sets](./part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md#3-mappings-and-sets) | Program: top 10 IPs and status codes from a log |
 | Shell (15) | `awk`, `sort`, `uniq` | Same top-IPs job in one pipeline |
 
 ## Day 3, Sun 29 Nov
 
-| Block | Study | Hands-on |
+| Block | Read these sections | Hands-on |
 |---|---|---|
-| Linux (30) | [1.8](./part-01-linux/08-processes-signals-and-job-control.md) processes/signals [MUST] | `ps`, `top`, `kill`, zombie demo |
-| Networking (25) | [2.5](./part-02-networking/05-routing-on-a-host-routing-tables-default-gateways-and-forwarding.md) routing [MUST]; [2.3](./part-02-networking/03-ethernet-and-l2-frames-mac-addresses-switching-arp-and-ndp.md) Ethernet/ARP [SHOULD] | `ip route get`; 5 new subnet sums |
-| Platform (30) | [5.5](./part-05-kubernetes/05-the-api-server-and-etcd-how-a-request-becomes-cluster-state.md) API server/etcd, kubeconfig (cluster URL+CA, user, context) [MUST] | `kubectl get pods -v=8` |
+| Linux (30) | [1.8 2. What a process is](./part-01-linux/08-processes-signals-and-job-control.md#2-what-a-process-is)<br />[1.8 Zombies and orphans](./part-01-linux/08-processes-signals-and-job-control.md#zombies-and-orphans)<br />[1.8 4. Signals](./part-01-linux/08-processes-signals-and-job-control.md#4-signals)<br />[1.8 5. Shell job control](./part-01-linux/08-processes-signals-and-job-control.md#5-shell-job-control) | `ps`, `top`, `kill`, zombie demo |
+| Networking (25) | [2.5 1. The routing decision](./part-02-networking/05-routing-on-a-host-routing-tables-default-gateways-and-forwarding.md#1-the-routing-decision)<br />[2.5 2. Reading the routing table](./part-02-networking/05-routing-on-a-host-routing-tables-default-gateways-and-forwarding.md#2-reading-the-routing-table) | `ip route get`; 5 new subnet sums |
+| Platform (30) | [5.5 2. The request pipeline](./part-05-kubernetes/05-the-api-server-and-etcd-how-a-request-becomes-cluster-state.md#2-the-request-pipeline)<br />[5.3 6. From kubectl apply to a running container](./part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md#6-from-kubectl-apply-to-a-running-container)<br />[kubeconfig docs (kubernetes.io)](https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/) (kubeconfig: cluster URL+CA, user, context) | `kubectl config view`, `kubectl get pods -v=8` |
 | Coding (30) | Valid anagram, first non-repeating char, remove duplicates | Timed |
-| Python (30) | Functions, default args, mutability | Program: `argparse` CLI, 10 largest files in a directory |
+| Python (30) | Refresh:<br />[3.1 8. Functions](./part-03-python/01-python-core-types-control-flow-functions.md#8-functions)<br />[3.1 2. Objects, names and references](./part-03-python/01-python-core-types-control-flow-functions.md#2-objects-names-and-references) | Program: `argparse` CLI, 10 largest files in a directory |
 | Shell (15) | `find -size +10M` | `du -xh --max-depth=1 \| sort -h` |
 
 ## Day 4, Mon 30 Nov
 
-| Block | Study | Hands-on |
+| Block | Read these sections | Hands-on |
 |---|---|---|
-| Linux (30) | [1.17](./part-01-linux/17-memory-management-virtual-memory-numa-huge-pages-oom.md) memory/OOM [MUST]; [1.4](./part-01-linux/04-text-processing-essentials-grep-sed-awk-find-xargs-sort.md) grep/sed/awk [MUST] | `free -m`, `vmstat 1`, `dmesg -T \| tail` |
-| Networking (25) | [2.6](./part-02-networking/06-tcp-in-depth-handshake-windows-congestion-control-retransmission.md) TCP states, TIME_WAIT/CLOSE_WAIT [MUST] | `ss -tan`, `ss -ltnp` |
-| Platform (30) | [5.7](./part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md) workloads [MUST]; [5.8](./part-05-kubernetes/08-the-life-of-a-pod-end-to-end-including-what-the-kernel-does.md) life of a pod [MUST] | Kind: deploy, scale, delete a pod |
+| Linux (30) | [1.17 5. The OOM killer](./part-01-linux/17-memory-management-virtual-memory-numa-huge-pages-oom.md#5-the-oom-killer)<br />[1.17 The summary view: free and /proc/meminfo](./part-01-linux/17-memory-management-virtual-memory-numa-huge-pages-oom.md#the-summary-view-free-and-procmeminfo)<br />[1.4 3. grep: filter lines](./part-01-linux/04-text-processing-essentials-grep-sed-awk-find-xargs-sort.md#3-grep-filter-lines)<br />[1.4 6. awk: the Swiss army knife for columns](./part-01-linux/04-text-processing-essentials-grep-sed-awk-find-xargs-sort.md#6-awk-the-swiss-army-knife-for-columns) | `free -m`, `vmstat 1`, `dmesg -T \| tail` |
+| Networking (25) | [2.6 4. The handshake, data transfer and teardown](./part-02-networking/06-tcp-in-depth-handshake-windows-congestion-control-retransmission.md#4-the-handshake-data-transfer-and-teardown)<br />[2.6 5. Reliability: ACKs, retransmission and the RTO](./part-02-networking/06-tcp-in-depth-handshake-windows-congestion-control-retransmission.md#5-reliability-acks-retransmission-and-the-rto) | `ss -tan`, `ss -ltnp` |
+| Platform (30) | [5.7 3. Workload controllers: choosing](./part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md#3-workload-controllers-choosing)<br />[5.8 1. Timeline overview](./part-05-kubernetes/08-the-life-of-a-pod-end-to-end-including-what-the-kernel-does.md#1-timeline-overview)<br />[5.8 3. The kubelet takes over](./part-05-kubernetes/08-the-life-of-a-pod-end-to-end-including-what-the-kernel-does.md#3-the-kubelet-takes-over) | Kind: deploy, scale, delete a pod |
 | Coding (30) | Two-sum, contains-duplicate, majority element | Timed |
-| Python (30) | Files, `with`, exceptions | Program: parse a log, skip bad lines, count failures |
+| Python (30) | Refresh:<br />[3.5 1. Exceptions](./part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md#1-exceptions)<br />[3.5 3. Files and paths](./part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md#3-files-and-paths) | Program: parse a log, skip bad lines, count failures |
 | Shell (15) | `pgrep -f`, `nohup`, `jobs` | `nohup cmd &`, `kill %1` |
 
 ## Day 5, Tue 1 Dec
 
-| Block | Study | Hands-on |
+| Block | Read these sections | Hands-on |
 |---|---|---|
-| Linux (30) | [1.12](./part-01-linux/12-disks-partitions-and-filesystems.md) disks/filesystems [MUST]; [1.11](./part-01-linux/11-how-a-program-runs-system-calls-libraries-elf-strace-and-ldd.md) syscalls/strace [MUST] | `df -h` vs `df -i`, `strace -f -e trace=file ls` |
-| Networking (25) | [2.7](./part-02-networking/07-udp-icmp-and-the-diagnostic-tools-ping-traceroute-mtr.md) ICMP/ping/traceroute [MUST]; [2.8](./part-02-networking/08-dns-in-depth-resolution-records-resolvers-and-caching.md) DNS [MUST] | `dig +trace`, `/etc/resolv.conf` |
-| Platform (30) | [5.9](./part-05-kubernetes/09-the-kubelet-and-the-node-cri-cgroups-qos-classes-probes-and-eviction.md) kubelet, probes, evictions [MUST] | Break a pod with a bad probe and a low memory limit |
+| Linux (30) | [1.12 Capacity: df, du, inodes, reserved blocks](./part-01-linux/12-disks-partitions-and-filesystems.md#capacity-df-du-inodes-reserved-blocks)<br />[1.11 4. System calls](./part-01-linux/11-how-a-program-runs-system-calls-libraries-elf-strace-and-ldd.md#4-system-calls)<br />[1.11 6. Watching a program: strace and ltrace in practice](./part-01-linux/11-how-a-program-runs-system-calls-libraries-elf-strace-and-ldd.md#6-watching-a-program-strace-and-ltrace-in-practice) | `df -h` vs `df -i`, `strace -f -e trace=file ls` |
+| Networking (25) | [2.7 3. ping](./part-02-networking/07-udp-icmp-and-the-diagnostic-tools-ping-traceroute-mtr.md#3-ping)<br />[2.7 4. traceroute, tracepath and mtr](./part-02-networking/07-udp-icmp-and-the-diagnostic-tools-ping-traceroute-mtr.md#4-traceroute-tracepath-and-mtr)<br />[2.8 2. How a lookup actually works](./part-02-networking/08-dns-in-depth-resolution-records-resolvers-and-caching.md#2-how-a-lookup-actually-works)<br />[2.8 4. Tools: dig and friends](./part-02-networking/08-dns-in-depth-resolution-records-resolvers-and-caching.md#4-tools-dig-and-friends) | `dig +trace`, `/etc/resolv.conf` |
+| Platform (30) | [5.9 5. Probes](./part-05-kubernetes/09-the-kubelet-and-the-node-cri-cgroups-qos-classes-probes-and-eviction.md#5-probes)<br />[5.9 6. Node-pressure eviction](./part-05-kubernetes/09-the-kubelet-and-the-node-cri-cgroups-qos-classes-probes-and-eviction.md#6-node-pressure-eviction) | Break a pod with a bad probe and a low memory limit |
 | Coding (30) | Valid parentheses, merge two sorted lists, binary search | Timed |
-| Python (30) | `subprocess.run`, exit codes | Program: run `df -h`, exit non-zero if any filesystem over 80% |
+| Python (30) | Refresh:<br />[3.5 6. Running external programs: subprocess](./part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md#6-running-external-programs-subprocess) | Program: run `df -h`, exit non-zero if a filesystem is over 80% |
 | Shell (15) | `for` loop, `ping -c1` | Ping 3 hosts, print up/down |
 
 ## Day 6, Wed 2 Dec
 
-| Block | Study | Hands-on |
+| Block | Read these sections | Hands-on |
 |---|---|---|
-| Linux (30) | [1.15](./part-01-linux/15-systemd-units-targets-timers-journald.md) systemd/journald [MUST]; [1.16](./part-01-linux/16-logging-time-synchronisation-cron-and-batch-jobs.md) logs/cron [SHOULD] | Crashing unit: `systemctl status`, `journalctl -u -e` |
-| Networking (25) | [2.10](./part-02-networking/10-http-tls-and-pki-basics.md) HTTP/TLS [MUST]; [2.9](./part-02-networking/09-dhcp-nat-and-pat.md) DHCP/NAT [SHOULD] | `openssl s_client -connect host:443` |
-| Platform (30) | [5.10](./part-05-kubernetes/10-services-endpoints-and-kube-proxy-the-life-of-a-service.md) Services/kube-proxy [MUST]; [5.11](./part-05-kubernetes/11-dns-and-service-discovery-with-coredns.md) CoreDNS [MUST] | Kind: Service with wrong selector, find why no endpoints |
+| Linux (30) | [1.15 3. Operating systemd: systemctl](./part-01-linux/15-systemd-units-targets-timers-journald.md#3-operating-systemd-systemctl)<br />[1.15 12. Journald and journalctl](./part-01-linux/15-systemd-units-targets-timers-journald.md#12-journald-and-journalctl) | Crashing unit: `systemctl status`, `journalctl -u -e` |
+| Networking (25) | [2.10 1. HTTP in practice](./part-02-networking/10-http-tls-and-pki-basics.md#1-http-in-practice)<br />[2.10 The handshake (TLS 1.3)](./part-02-networking/10-http-tls-and-pki-basics.md#the-handshake-tls-13)<br />[2.10 6. Troubleshooting TLS and HTTP](./part-02-networking/10-http-tls-and-pki-basics.md#6-troubleshooting-tls-and-http) | `openssl s_client -connect host:443` |
+| Platform (30) | [5.10 3. kube-proxy](./part-05-kubernetes/10-services-endpoints-and-kube-proxy-the-life-of-a-service.md#3-kube-proxy)<br />[5.10 7. Debugging Services](./part-05-kubernetes/10-services-endpoints-and-kube-proxy-the-life-of-a-service.md#7-debugging-services)<br />[5.11 2. Resolver behaviour inside pods](./part-05-kubernetes/11-dns-and-service-discovery-with-coredns.md#2-resolver-behaviour-inside-pods)<br />[5.11 7. Debugging method](./part-05-kubernetes/11-dns-and-service-discovery-with-coredns.md#7-debugging-method) | Kind: Service with wrong selector, find why no endpoints |
 | Coding (30) | Isomorphic strings, group anagrams, top-K frequent | Timed |
-| Python (30) | `deque`, `heapq` | Program: top-K slowest requests from a log |
+| Python (30) | Refresh:<br />[3.3 2. Sequences](./part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md#2-sequences)<br />[3.3 3. Mappings and sets](./part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md#3-mappings-and-sets)<br />(`deque`, `heapq` in the stdlib docs) | Program: top-K slowest requests from a log |
 | Shell (15) | `awk` sums, `cut` | `awk '{s+=$NF} END {print s}'`, `cut -d, -f2` |
 
 ## Day 7, Thu 3 Dec (review day: recall 25 min on Days 1-6)
 
-| Block | Study | Hands-on |
+| Block | Read these sections | Hands-on |
 |---|---|---|
-| Linux (30) | [20.3](./part-20-nebius-sre-interview/03-triage-method-for-a-sick-linux-box.md) triage checklist [MUST] | Run it from memory on your VM |
-| Networking (25) | [2.22](./part-02-networking/22-linux-networking-inspecting-state-with-ip-ss-and-counters.md) `ip`/`ss` [MUST]; [2.26](./part-02-networking/26-packet-capture-from-scratch-tcpdump-tshark-and-wireshark.md) tcpdump [SHOULD] | Capture a handshake and a DNS query |
-| Platform (30) | Deployment strategies (rolling, canary, blue-green), rollback, CI/CD stages [MUST]; [20.19](./part-20-nebius-sre-interview/19-slis-slos-and-alerts-for-token-apis.md) SLI/SLO/error budget [SHOULD] | Explain each aloud |
+| Linux (30) | [20.3 3. The first 60 seconds, command by command](./part-20-nebius-sre-interview/03-triage-method-for-a-sick-linux-box.md#3-the-first-60-seconds-command-by-command)<br />[20.3 4. Reading load, run queue and pressure correctly](./part-20-nebius-sre-interview/03-triage-method-for-a-sick-linux-box.md#4-reading-load-run-queue-and-pressure-correctly)<br />[20.3 6. The USE method as a sweep](./part-20-nebius-sre-interview/03-triage-method-for-a-sick-linux-box.md#6-the-use-method-as-a-sweep) | Run the 60-second checklist from memory on your VM |
+| Networking (25) | [2.22 2. The ip command family](./part-02-networking/22-linux-networking-inspecting-state-with-ip-ss-and-counters.md#2-the-ip-command-family)<br />[2.22 5. Counters: where packets disappear](./part-02-networking/22-linux-networking-inspecting-state-with-ip-ss-and-counters.md#5-counters-where-packets-disappear)<br />[2.26 2. tcpdump](./part-02-networking/26-packet-capture-from-scratch-tcpdump-tshark-and-wireshark.md#2-tcpdump) | Capture a handshake and a DNS query |
+| Platform (30) | [5.7 3. Workload controllers: choosing](./part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md#3-workload-controllers-choosing)<br />[20.19 5. Error budgets: do the arithmetic](./part-20-nebius-sre-interview/19-slis-slos-and-alerts-for-token-apis.md#5-error-budgets-do-the-arithmetic)<br />[20.19 6. Burn rate and the multiwindow alert](./part-20-nebius-sre-interview/19-slis-slos-and-alerts-for-token-apis.md#6-burn-rate-and-the-multiwindow-alert) | Explain rolling, canary, blue-green, rollback, CI/CD stages aloud |
 | Coding (30) | Longest substring without repeating characters, max subarray | Timed |
-| Python (30) | `json`, `re` | Program: count errors per service from JSON lines |
+| Python (30) | Refresh:<br />[3.5 5. Data formats](./part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md#5-data-formats) | Program: count errors per service from JSON lines |
 | Shell (15) | `sed -i`, `grep -rn`, `tar` | `tar czf` and `tar xzf` |
 
 ## Day 8, Fri 4 Dec
 
-| Block | Study | Hands-on |
+| Block | Read these sections | Hands-on |
 |---|---|---|
-| Linux (30) | [20.4](./part-20-nebius-sre-interview/04-files-descriptors-syscalls-and-permissions.md) fds/syscalls/permissions [MUST]; [1.19](./part-01-linux/19-namespaces-the-kernel-feature-behind-containers.md) namespaces, [1.18](./part-01-linux/18-cpu-scheduling-and-cgroups-v1-and-v2.md) cgroups [SHOULD] | `lsof -p`, `/proc/<pid>/limits` |
-| Networking (25) | [20.6](./part-20-nebius-sre-interview/06-network-debugging-from-socket-to-switch.md) network debugging scenarios [MUST] | MTU test `ping -M do -s 1472` |
-| Platform (30) | Terraform basics [20.24](./part-20-nebius-sre-interview/24-terraform-for-resilient-gpu-clusters.md) [SHOULD]: plan/apply, state, locking, drift; Ansible [4.3](./part-04-automation/03-ansible-from-zero-what-it-is-how-it-works-installation-and-ad-hoc-comm.md), [4.6](./part-04-automation/06-ansible-playbooks-tasks-modules-idempotency-and-check-mode.md) [SHOULD]: inventory, idempotency | Explain each aloud |
+| Linux (30) | [20.4 4. strace: how to read what it prints](./part-20-nebius-sre-interview/04-files-descriptors-syscalls-and-permissions.md#4-strace-how-to-read-what-it-prints)<br />[20.4 5. Blocks, inodes, and files that are deleted but still...](./part-20-nebius-sre-interview/04-files-descriptors-syscalls-and-permissions.md#5-blocks-inodes-and-files-that-are-deleted-but-still-open)<br />[20.4 6. Permission checks beyond the mode bits](./part-20-nebius-sre-interview/04-files-descriptors-syscalls-and-permissions.md#6-permission-checks-beyond-the-mode-bits)<br />[1.19 2. The namespace types](./part-01-linux/19-namespaces-the-kernel-feature-behind-containers.md#2-the-namespace-types) | `lsof -p`, `/proc/<pid>/limits` |
+| Networking (25) | [20.6 1. Refused, timed out, reset: three different stories](./part-20-nebius-sre-interview/06-network-debugging-from-socket-to-switch.md#1-refused-timed-out-reset-three-different-stories)<br />[20.6 3. Reading ss: states and the two numbers](./part-20-nebius-sre-interview/06-network-debugging-from-socket-to-switch.md#3-reading-ss-states-and-the-two-numbers)<br />[20.6 4. SYN backlog and accept queue](./part-20-nebius-sre-interview/06-network-debugging-from-socket-to-switch.md#4-syn-backlog-and-accept-queue)<br />[20.6 5. TIME_WAIT and ephemeral ports](./part-20-nebius-sre-interview/06-network-debugging-from-socket-to-switch.md#5-time_wait-and-ephemeral-ports) | MTU test `ping -M do -s 1472` |
+| Platform (30) | [20.24 2. Remote state, locking and why the state is the crown...](./part-20-nebius-sre-interview/24-terraform-for-resilient-gpu-clusters.md#2-remote-state-locking-and-why-the-state-is-the-crown-jewel)<br />[20.24 4. Safe changes: read the plan, guard the stateful thin...](./part-20-nebius-sre-interview/24-terraform-for-resilient-gpu-clusters.md#4-safe-changes-read-the-plan-guard-the-stateful-things-keep-history)<br />[4.3 1. What Ansible is](./part-04-automation/03-ansible-from-zero-what-it-is-how-it-works-installation-and-ad-hoc-comm.md#1-what-ansible-is)<br />[4.3 2. How Ansible executes a task](./part-04-automation/03-ansible-from-zero-what-it-is-how-it-works-installation-and-ad-hoc-comm.md#2-how-ansible-executes-a-task) | Explain plan/apply, state, locking, drift, idempotency aloud |
 | Coding (30) | Merge intervals, meeting rooms, insert interval | Timed |
-| Python (30) | `ipaddress`, `socket`, retry with backoff | Program: CIDR tool (network, broadcast, host count, contains) |
+| Python (30) | Refresh:<br />[3.5 7. Interacting with the operating system](./part-03-python/05-errors-files-text-and-bytes-subprocess-and-system-scripting.md#7-interacting-with-the-operating-system)<br />(`ipaddress`, `socket` in the stdlib docs) | Program: CIDR tool (network, broadcast, host count, contains) |
 | Shell (15) | `xargs -P 4`, `curl -w` | `curl -s -o /dev/null -w "%{http_code}"` over a URL list |
 
 ## Day 9, Sat 5 Dec
 
-| Block | Study | Hands-on |
+| Block | Read these sections | Hands-on |
 |---|---|---|
-| Linux (30) | [20.5](./part-20-nebius-sre-interview/05-cpu-memory-disk-and-the-scheduler.md) CPU/mem/disk [MUST]; [20.7](./part-20-nebius-sre-interview/07-the-console-round-text-tools-systemd-and-everyday-operations.md) console tasks 1-4 [MUST] | Do the tasks in your VM |
-| Networking (25) | [2.20](./part-02-networking/20-load-balancing-l4-l7-ecmp-hashing-and-proxies.md) load balancing L4/L7/ECMP [MUST]; [2.32](./part-02-networking/32-cloud-networking-vpc-peering-load-balancers-and-gcp-specifics.md) cloud LBs [SHOULD] | Nginx reverse proxy with 2 backends |
-| Platform: GPU 1 (30) | [10.1](./part-10-gpu-cuda/01-why-gpus-cpu-versus-gpu-and-throughput-design.md) why GPUs [MUST]; [10.3](./part-10-gpu-cuda/03-the-gpu-memory-hierarchy.md) memory hierarchy [MUST]; [10.8](./part-10-gpu-cuda/08-operating-gpu-nodes-nvidia-smi-topology-clocks-and-throttling.md) nvidia-smi, topology [MUST] | Read the sample outputs |
+| Linux (30) | [20.5 1. Load average, utilisation and saturation](./part-20-nebius-sre-interview/05-cpu-memory-disk-and-the-scheduler.md#1-load-average-utilisation-and-saturation)<br />[20.5 3. CPU throttling from cgroup limits in containers](./part-20-nebius-sre-interview/05-cpu-memory-disk-and-the-scheduler.md#3-cpu-throttling-from-cgroup-limits-in-containers)<br />[20.5 7. The OOM killer and how to read its log](./part-20-nebius-sre-interview/05-cpu-memory-disk-and-the-scheduler.md#7-the-oom-killer-and-how-to-read-its-log)<br />[20.7 1. Build every pipeline in four moves](./part-20-nebius-sre-interview/07-the-console-round-text-tools-systemd-and-everyday-operations.md#1-build-every-pipeline-in-four-moves)<br />[20.7 5. Reading journald and systemd units](./part-20-nebius-sre-interview/07-the-console-round-text-tools-systemd-and-everyday-operations.md#5-reading-journald-and-systemd-units) | Do the pipelines in your VM |
+| Networking (25) | [2.20 2. Algorithms](./part-02-networking/20-load-balancing-l4-l7-ecmp-hashing-and-proxies.md#2-algorithms)<br />[2.20 3. Health checks, failure handling and draining](./part-02-networking/20-load-balancing-l4-l7-ecmp-hashing-and-proxies.md#3-health-checks-failure-handling-and-draining)<br />[2.20 4. ECMP, anycast and scaling out the L4 tier](./part-02-networking/20-load-balancing-l4-l7-ecmp-hashing-and-proxies.md#4-ecmp-anycast-and-scaling-out-the-l4-tier) | Nginx reverse proxy with 2 backends |
+| Platform: GPU 1 (30) | [10.1 2. CPU latency design versus GPU throughput design](./part-10-gpu-cuda/01-why-gpus-cpu-versus-gpu-and-throughput-design.md#2-cpu-latency-design-versus-gpu-throughput-design)<br />[10.1 4. Anatomy of an LLM inference request: Prefill, Decode...](./part-10-gpu-cuda/01-why-gpus-cpu-versus-gpu-and-throughput-design.md#4-anatomy-of-an-llm-inference-request-prefill-decode-and-the-kv-cache)<br />[10.3 1. The seven-tier GPU memory hierarchy and Points of Co...](./part-10-gpu-cuda/03-the-gpu-memory-hierarchy.md#1-the-seven-tier-gpu-memory-hierarchy-and-points-of-coherency)<br />[10.8 2. The three misleading metrics](./part-10-gpu-cuda/08-operating-gpu-nodes-nvidia-smi-topology-clocks-and-throttling.md#2-the-three-misleading-metrics)<br />[10.8 3. Clocks, power caps and throttle reasons](./part-10-gpu-cuda/08-operating-gpu-nodes-nvidia-smi-topology-clocks-and-throttling.md#3-clocks-power-caps-and-throttle-reasons) | Read the sample `nvidia-smi` outputs |
 | Coding (30) | O(1) insert/delete/get-random set, LRU cache | Timed |
-| Python (30) | Classes, `dataclasses` | Program: nodes and pods, find pods that fit no node |
+| Python (30) | Refresh:<br />[3.4 1. Classes and objects](./part-03-python/04-classes-dataclasses-typing-and-protocols.md#1-classes-and-objects)<br />[3.4 3. Data class builders](./part-03-python/04-classes-dataclasses-typing-and-protocols.md#3-data-class-builders) | Program: nodes and pods, find pods that fit no node |
 | Shell (15) | Script basics | Args, `set -euo pipefail`, a function, `trap` cleanup |
 
 ## Day 10, Sun 6 Dec
 
-| Block | Study | Hands-on |
+| Block | Read these sections | Hands-on |
 |---|---|---|
-| Linux (30) | [20.7](./part-20-nebius-sre-interview/07-the-console-round-text-tools-systemd-and-everyday-operations.md) console tasks 5-12 [MUST] | One triage drill on a deliberately broken VM |
-| Networking (25) | [2.30](./part-02-networking/30-network-troubleshooting-method-and-case-studies.md) troubleshooting method [MUST]; SR-IOV vs virtio, BGP in the data centre, VXLAN [IF TIME]: [2.16](./part-02-networking/16-bgp-in-the-data-center-ebgp-clos-unnumbered-ecmp-anycast.md), [2.17](./part-02-networking/17-overlays-vxlan-and-evpn.md), [11.10](./part-11-gpu-kubernetes/10-secondary-networks-multus-sr-iov-device-plugin-and-rdma-device-plugin.md) | One paragraph each |
-| Platform: GPU 2 (30) | [10.6](./part-10-gpu-cuda/06-gpu-interconnects-pcie-nvlink-nvswitch-and-nvlink-c2c.md) PCIe/NVLink/NVSwitch [MUST]; [12.1](./part-12-ai-networking/01-ai-traffic-collectives-incast-and-elephant-flows.md) collective traffic [MUST]; [12.2](./part-12-ai-networking/02-rdma-fundamentals-verbs-queue-pairs-and-memory-registration.md) RDMA [MUST]; [12.12](./part-12-ai-networking/12-ethernet-versus-infiniband-a-design-decision-guide.md) Ethernet vs InfiniBand [SHOULD] | Draw an 8-GPU node |
+| Linux (30) | [20.7 6. Processes, signals, zombies and PID 1](./part-20-nebius-sre-interview/07-the-console-round-text-tools-systemd-and-everyday-operations.md#6-processes-signals-zombies-and-pid-1)<br />[20.7 7. cron and logrotate gotchas](./part-20-nebius-sre-interview/07-the-console-round-text-tools-systemd-and-everyday-operations.md#7-cron-and-logrotate-gotchas)<br />[20.7 10. Bash that survives production](./part-20-nebius-sre-interview/07-the-console-round-text-tools-systemd-and-everyday-operations.md#10-bash-that-survives-production) | One triage drill on a deliberately broken VM |
+| Networking (25) | [2.30 4. A practical workflow](./part-02-networking/30-network-troubleshooting-method-and-case-studies.md#4-a-practical-workflow)<br />[2.30 5. The diagnostic kit](./part-02-networking/30-network-troubleshooting-method-and-case-studies.md#5-the-diagnostic-kit)<br />[IF TIME] SR-IOV vs virtio, BGP in the data centre, VXLAN: one paragraph each | Draw the decision tree for "A cannot reach B" |
+| Platform: GPU 2 (30) | [10.6 1. PCIe, PCIe Switches, and NUMA Host Data Paths](./part-10-gpu-cuda/06-gpu-interconnects-pcie-nvlink-nvswitch-and-nvlink-c2c.md#1-pcie-pcie-switches-and-numa-host-data-paths)<br />[10.6 2. NVLink, NVSwitch, and In-Switch SHARP (NVLS)](./part-10-gpu-cuda/06-gpu-interconnects-pcie-nvlink-nvswitch-and-nvlink-c2c.md#2-nvlink-nvswitch-and-in-switch-sharp-nvls)<br />[12.1 1. AI Workloads, 3D Parallelism, Job Completion Time (J...](./part-12-ai-networking/01-ai-traffic-collectives-incast-and-elephant-flows.md#1-ai-workloads-3d-parallelism-job-completion-time-jct-and-tail-latency)<br />[12.1 2. RDMA, RoCEv2 (UDP 4791), Elephant Flows, Flowlets, a...](./part-12-ai-networking/01-ai-traffic-collectives-incast-and-elephant-flows.md#2-rdma-rocev2-udp-4791-elephant-flows-flowlets-and-incast)<br />[12.12 1. Workload-backward design: AI training versus inferen...](./part-12-ai-networking/12-ethernet-versus-infiniband-a-design-decision-guide.md#1-workload-backward-design-ai-training-versus-inference-fabrics) | Draw an 8-GPU node |
 | Coding (30) | Number of islands (BFS/DFS), tree level-order, max depth | Timed |
-| Python (30) | Generators, decorators | Program: `@retry` decorator and timer context manager |
+| Python (30) | Refresh:<br />[3.3 8. Iterables, iterators and generators](./part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md#8-iterables-iterators-and-generators)<br />[3.3 6. Functions as objects, closures, decorators and desig...](./part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md#6-functions-as-objects-closures-decorators-and-design-patterns) | Program: `@retry` decorator and timer context manager |
 | Shell (15) | Health check | `nc -z` port, `systemctl is-active`, `df`, exit code |
 
 ## Day 11, Mon 7 Dec (review day: recall 25 min on Days 1-10)
 
-| Block | Study | Hands-on |
+| Block | Read these sections | Hands-on |
 |---|---|---|
-| Linux + Networking (55) | [2.1](./part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md) symptom table [MUST]; triage checklist from memory | One timed 30-min Linux mock |
-| Platform: GPU 3 (30) | [13.1](./part-13-ai-storage/01-the-ai-data-path-from-storage-to-gpu.md) storage path to GPU [MUST]; [13.7](./part-13-ai-storage/07-checkpoint-architecture-and-recovery.md) checkpoints [MUST]; [15.1](./part-15-inference/01-the-anatomy-of-an-inference-request.md) inference request, prefill/decode, KV cache [MUST]; [11.1](./part-11-gpu-kubernetes/01-why-kubernetes-needs-a-gpu-platform-layer.md), [11.2](./part-11-gpu-kubernetes/02-device-plugin-container-toolkit-cdi-and-runtime-classes.md) GPUs on Kubernetes [SHOULD] | Explain the full AI-cluster path aloud |
+| Linux + Networking (55) | [2.1 12. A map from symptom to layer](./part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md#12-a-map-from-symptom-to-layer)<br />[20.3 3. The first 60 seconds, command by command](./part-20-nebius-sre-interview/03-triage-method-for-a-sick-linux-box.md#3-the-first-60-seconds-command-by-command) | One timed 30-min Linux mock |
+| Platform: GPU 3 (30) | [13.1 1. Why AI storage is different: the five workload phase...](./part-13-ai-storage/01-the-ai-data-path-from-storage-to-gpu.md#1-why-ai-storage-is-different-the-five-workload-phases-and-the-capacity-illusion)<br />[13.1 2. The AI storage hierarchy and the 8-layer data path](./part-13-ai-storage/01-the-ai-data-path-from-storage-to-gpu.md#2-the-ai-storage-hierarchy-and-the-8-layer-data-path)<br />[13.7 1. How many bytes a checkpoint adds](./part-13-ai-storage/07-checkpoint-architecture-and-recovery.md#1-how-many-bytes-a-checkpoint-adds)<br />[13.7 2. Where the time goes in one save](./part-13-ai-storage/07-checkpoint-architecture-and-recovery.md#2-where-the-time-goes-in-one-save)<br />[15.1 2. The Nine-Stage End-to-End Inference Request Path](./part-15-inference/01-the-anatomy-of-an-inference-request.md#2-the-nine-stage-end-to-end-inference-request-path)<br />[15.1 3. Prefill vs. Decode Mechanics, Arithmetic Intensity, ...](./part-15-inference/01-the-anatomy-of-an-inference-request.md#3-prefill-vs-decode-mechanics-arithmetic-intensity-and-the-roofline-model)<br />[15.1 4. KV Cache Memory Anatomy, Continuous Batching, and Ch...](./part-15-inference/01-the-anatomy-of-an-inference-request.md#4-kv-cache-memory-anatomy-continuous-batching-and-chunked-prefill)<br />[11.1 1. CPU-Era Kubernetes vs. the GPU Operating Contract: T...](./part-11-gpu-kubernetes/01-why-kubernetes-needs-a-gpu-platform-layer.md#1-cpu-era-kubernetes-vs-the-gpu-operating-contract-the-two-path-model)<br />[11.1 2. Why an Integer Count (nvidia.com/gpu: 1) Is Not a GP...](./part-11-gpu-kubernetes/01-why-kubernetes-needs-a-gpu-platform-layer.md#2-why-an-integer-count-nvidiacomgpu-1-is-not-a-gpu-service) | Explain the full AI-cluster path aloud (storage, GPU, network, checkpoint) |
 | Coding (30) | Three fresh problems, 30 min each | Timed |
-| Python (30) | `pytest` | Program: 6 tests for two earlier programs, one failure case |
+| Python (30) | Refresh:<br />[3.9 2. pytest essentials](./part-03-python/09-testing-quality-and-ci-for-python-tooling.md#2-pytest-essentials)<br />[3.9 3. Isolating dependencies: fakes, stubs and mocks](./part-03-python/09-testing-quality-and-ci-for-python-tooling.md#3-isolating-dependencies-fakes-stubs-and-mocks) | Program: 6 tests for two earlier programs, one failure case |
 | Shell (15) | All one-liners from Days 1-10 | From memory |
 
 ## Day 12, Tue 8 Dec
 
-| Block | Study | Hands-on |
+| Block | Read these sections | Hands-on |
 |---|---|---|
 | Mock (90) | 10 min your experience; 50 min general questions (Linux, networking, Kubernetes, DevOps, GPU basics; under 2 min each); 30 min a new medium problem aloud, no AI | Record if possible |
 | Story (30) | 6-8 projects/incidents: problem, role, actions, trade-offs, failures, results with numbers | Write it down |
@@ -151,9 +151,9 @@ Marks: [MUST] [SHOULD] [IF TIME]. Never cut Recall, Coding, Python.
 
 ## Wed 9 Dec morning
 
-| Block | Study | Hands-on |
+| Block | Read these sections | Hands-on |
 |---|---|---|
-| Light recall | [20.3](./part-20-nebius-sre-interview/03-triage-method-for-a-sick-linux-box.md) triage checklist, [2.1](./part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md) symptom table, Kubernetes request-path drawing, GPU-cluster tour | One easy problem |
+| Light recall | [20.3 3. The first 60 seconds, command by command](./part-20-nebius-sre-interview/03-triage-method-for-a-sick-linux-box.md#3-the-first-60-seconds-command-by-command)<br />[2.1 12. A map from symptom to layer](./part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md#12-a-map-from-symptom-to-layer)<br />Kubernetes request-path drawing; GPU-cluster tour | One easy problem |
 
 ## Possible gaps (not yet in the day tables; add if time)
 | Topic | Why it may come up | Where |

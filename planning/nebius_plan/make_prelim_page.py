@@ -16,7 +16,9 @@ src=open(f'{root}/planning/nebius_plan/PRELIM_PLAN.md').read()
 out=[]
 for line in src.split('\n'):
     if line.startswith('Chapter refs:'): out.append(line);continue
-    line=re.sub(r'(?<![\w.`/])(\d{1,2})\.(\d{1,2})\b(?!\s*(?:h\b|hours|min|%|KB))(?![\d.])',link,line)
+    parts=re.split(r'(\[[^\]]*\]\([^)]*\))',line)
+    parts=[x if x.startswith('[') and '](' in x else re.sub(r'(?<![\w.`/])(\d{1,2})\.(\d{1,2})\b(?!\s*(?:h\b|hours|min|%|KB))(?![\d.])',link,x) for x in parts]
+    line=''.join(parts)
     out.append(line)
 body='\n'.join(out)
 open(f'{root}/docs/prelim-plan.md','w').write('---\nid: prelim-plan\ntitle: "TEMPORARY: Preliminary interview plan (27 Nov - 9 Dec)"\nsidebar_label: "Prelim interview plan (temporary)"\nsidebar_position: 0\n---\n\n:::caution Temporary page\nDelete `docs/prelim-plan.md` after the interview (source: planning/nebius_plan/PRELIM_PLAN.md).\n:::\n\n'+body)
