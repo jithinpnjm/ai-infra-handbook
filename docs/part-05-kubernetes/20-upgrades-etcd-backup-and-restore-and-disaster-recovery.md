@@ -169,6 +169,10 @@ For Kubernetes control plane and worker nodes, if `kubeadm` initialized the clus
 
 The block below walks through a single minor-version upgrade, from 1.30 → 1.31. Treat it as a template, and verify every command and flag against the docs for your versions. The first control-plane node gets `kubeadm upgrade apply`, and every other node gets `kubeadm upgrade node`. Read the block in order. Each numbered comment is a stage, and you should finish one stage and check it before you start the next.
 
+![The upgrade order: etcd snapshot, first control plane node, other control planes, then workers one by one](./img/pre-kubeadm-upgrade.jpg)
+
+*Figure 5.20.2. Upgrade the control plane first, then each worker. Drain, upgrade, uncordon.*
+
 ```bash
 # 0. Pre-flight (on a control-plane node)
 kubeadm version; kubectl version; kubectl get nodes -o wide

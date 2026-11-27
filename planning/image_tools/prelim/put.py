@@ -2,7 +2,7 @@
 """put.py NAME : copy jpg to docs img, insert after first paragraph under heading, then caller renumbers."""
 import json,glob,shutil,sys,re,os
 n=sys.argv[1];R='/Users/jithinpjoseph/Documents/GitHub/ai-infra-handbook'
-m=[x for x in json.load(open(R+'/planning/image_tools/prelim/meta.json')) if x[0]==n][0]
+m=[x for x in json.load(open(R+'/planning/image_tools/prelim/meta.json'))+json.load(open(R+'/planning/image_tools/prelim/meta2.json')) if x[0]==n][0]
 _,p,nn,h,alt,cap=m
 f=glob.glob(f'{R}/docs/{p}/{nn}-*.md')[0]
 src=os.path.expanduser(f'~/Downloads/handbook-images/final/pre-{n}.jpg')

@@ -197,6 +197,10 @@ These directory rules explain many puzzling denials. To read `/data/project/file
 
 Symbolic mode changes specific bits and leaves the rest alone. You choose who: `u`, `g`, `o`, or `a` for all. Then an operator: `+` to add, `-` to remove, `=` to set exactly. Last come the permissions themselves.
 
+![Permission bits r, w and x with the numbers 4, 2 and 1 and an example mode](./img/pre-chmod-bits.jpg)
+
+*Figure 1.6.6. Add the numbers per group. 7 is rwx, 5 is r-x, 4 is r only.*
+
 ```bash
 chmod u+x script.sh            # make it executable for the owner
 chmod go+r file ; chmod go-r file   # give/remove read for group and other
@@ -230,7 +234,7 @@ Be careful with world-writable files. Obviously, you should not make a file writ
 
 ![A table showing the file and directory modes produced by umask 022, 077 and 002 starting from 666 and 777, with who each suits.](./img/p3-0106-umask-table.svg)
 
-*Figure 1.6.6. A new file starts from 666 and a new directory from 777, and the umask removes bits from those starting modes.*
+*Figure 1.6.7. A new file starts from 666 and a new directory from 777, and the umask removes bits from those starting modes.*
 
 Every new file starts life with a default set of permissions, and the umask decides what those are. New regular files start from 666, which is read-write for everyone. New files are not executable by default. New directories start from 777. The **umask** is a mask of bits to remove from those starting values. With the common `umask 022`, a new file gets `666 - 022 = 644`, and a new directory gets `755`. With `umask 077`, they get `600` and `700`, which is private. With `umask 002`, which allows group write, files get `664` and directories get `775`. The umask is really a bit mask rather than a subtraction, but for normal masks the result is the same.
 
@@ -256,13 +260,13 @@ Two familiar examples show the bits at work. `/usr/bin/passwd` and `/usr/bin/sud
 
 ![setuid, setgid, sticky and umask](./img/ch06-fig2-special.jpg)
 
-*Figure 1.6.7. The three special bits, with a umask 022 example.*
+*Figure 1.6.8. The three special bits, with a umask 022 example.*
 
 ### A recipe: a safe shared project directory
 
 ![A comparison of default file creation resulting in permission denial versus a setgid 2770 directory with umask 002 enabling shared group collaboration.](./img/p4-0106-shared-dir-recipe.svg)
 
-*Figure 1.6.8. The setgid bit on a directory forces new files to inherit the parent group while umask 002 preserves group write permissions for teammates.*
+*Figure 1.6.9. The setgid bit on a directory forces new files to inherit the parent group while umask 002 preserves group write permissions for teammates.*
 
 Suppose a team called projx, with GID 2001, needs a directory on a shared filesystem. Every member should read and write the others' files, and outsiders should have no access. Here is how to set that up.
 
@@ -283,7 +287,7 @@ Before you hand a directory to a team, set the setgid bit and check that members
 
 ![ACLs add named user and group entries on top of owner, group and other, limited by a mask.](./img/l06-acl.svg)
 
-*Figure 1.6.9. An ACL lets you grant specific users or groups access without changing the owner or group.*
+*Figure 1.6.10. An ACL lets you grant specific users or groups access without changing the owner or group.*
 
 A teammate from another team needs to read one project directory, and nothing else. Classic permissions give you one owner, one group and "everyone else", so there is nowhere obvious to put her. Real teams often need a rule like this: alice and bob can read and write, carol can only read, and nobody else gets in. Without ACLs, you would need a special group for every combination. **POSIX ACLs** solve the problem. They add lists of extra users and groups, each with its own permissions, to a file or directory. Common Linux filesystems support them. ext4 and XFS support them by default, and others need the `acl` mount option. NFSv4 has its own form of ACLs. Not every network or parallel filesystem supports them, so check before you depend on them.
 
@@ -341,7 +345,7 @@ Utilities such as `su` and `sudo` combine these rules. They are setuid-root prog
 
 ![A setuid program keeps your real UID while its effective UID becomes the file owner.](./img/l06-setuid-ids.svg)
 
-*Figure 1.6.10. The effective UID is used for permission checks while the real UID records who started the process.*
+*Figure 1.6.11. The effective UID is used for permission checks while the real UID records who started the process.*
 
 A setuid program has to act as another user and then give that power back. For that reason, a process carries more than one user ID.
 
@@ -366,13 +370,17 @@ Keep three words distinct. **Identification** answers "who are you?" and is ulti
 
 ![Identification, authentication, authorization before sudo](./img/ch06-fig3-sudo.jpg)
 
-*Figure 1.6.11. The three questions sudo answers before a command runs as root.*
+*Figure 1.6.12. The three questions sudo answers before a command runs as root.*
 
 A program that needs its own username calls `geteuid()` to get the number. Then it asks the C library to map that number to a name with `getpwuid()`. The library decides where to look, and the site can configure that, as section 8.5 explains. This extra step is what lets a site move from local files to a network directory without changing any program. The old approach of simply reading `/etc/passwd` had three limits. It used one fixed hashing method, it always prompted for a password, and it had no support for tokens or smart cards. **PAM**, the Pluggable Authentication Modules framework, was created to remove those limits, as chapter 1.21 explains.
 
 ### `sudo`: administrative power with a trail
 
 You will need root from time to time. The disciplined way is **`sudo`**. It runs one command as another user, root by default, after you authenticate *as yourself*, and it logs the event. A root shell has real costs. Nothing records which commands were run or by whom. You lose your normal environment. With `su`, you also share a single root password. Use `sudo command` for individual commands. Use `sudo -i` or `sudo -s` for a root shell only when you really need a sequence of commands, and remember that the logging is coarser then.
+
+![A user running sudo, the sudoers check, then the command as root with a log entry](./img/pre-sudo-flow.jpg)
+
+*Figure 1.6.13. sudo checks the rules, runs the command as root, and leaves a log entry.*
 
 ```bash
 sudo systemctl restart slurmd           # one command as root
@@ -415,7 +423,7 @@ As chapter 1.2 introduced, the file that gets read depends on the kind of shell 
 
 ![Which file is read when (bash)](./img/ch06-d2-luna.svg)
 
-*Figure 1.6.12. Which file is read when (bash).*
+*Figure 1.6.14. Which file is read when (bash).*
 
 Two practical facts govern bash startup. First, login shells do not read `~/.bashrc`, and non-login shells do not read `~/.bash_profile`. The standard fix is to keep your settings in `~/.bashrc` and have `~/.bash_profile` or `~/.profile` source it. You can do that with a symlink or a one-liner, `[ -f ~/.bashrc ] && . ~/.bashrc`, and that is what the default files on Ubuntu do. Second, you can test which kind of shell you are in. `echo $0` shows a leading `-` for a login shell. Inside a startup file, `case $- in *i*)` tests for an interactive shell, because `$-` contains `i` only then. That keeps commands that print output or need a terminal away from scripts.
 
@@ -520,7 +528,7 @@ In most clusters, keeping the core identity fields in sync is enough. Those fiel
 
 ![Compute nodes pulling the account files from the master at boot and when triggered, with a staggered trigger loop and a timeout watchdog.](./img/p3-0106-pull-sync.svg)
 
-*Figure 1.6.13. Each node pulls the account files from the master at boot and on a staggered trigger, so a replaced node repairs itself and the network is not shocked.*
+*Figure 1.6.15. Each node pulls the account files from the master at boot and on a staggered trigger, so a replaced node repairs itself and the network is not shocked.*
 
 Historically, Linux stored accounts in `/etc/passwd`, `/etc/shadow` and `/etc/group`. Keeping an identical copy of those three files on every node has clear trade-offs compared with a network directory server.
 
@@ -592,7 +600,7 @@ Setting up NIS+ takes eight steps across the server and the clients.
 
 ![A diagram comparing a 500-node LDAP connection storm that drops requests against node-local SSSD caching that resolves queries locally in under one millisecond.](./img/p4-0106-ldap-storm-sssd.svg)
 
-*Figure 1.6.14. A standalone LDAP server drops requests during synchronized multi-node job launches unless node-local SSSD caches absorb the query burst.*
+*Figure 1.6.16. A standalone LDAP server drops requests during synchronized multi-node job launches unless node-local SSSD caches absorb the query burst.*
 
 **LDAP**, the *Lightweight Directory Access Protocol*, is a universal, schema-driven directory database for organizations, users, hosts and access policies. Where NIS+ only distributes lines from flat text files, LDAP stores structured records that can hold attributes, links between records, binary data and fine-grained access control lists for each record. Common implementations include **OpenLDAP**, Microsoft **Active Directory** (an LDAP server with Kerberos and Microsoft schema extensions), **Fedora Directory Server** (389 Directory Server, also known as FreeIPA), the **Apache Directory Project** and **Mandriva Directory Server**. On Red Hat family distributions, client setup has traditionally been automated with `authconfig`, or `authselect` on newer releases. Administrators often manage directory trees through web interfaces such as `phpLDAPadmin` or `LDAP Account Manager`.
 
@@ -624,7 +632,7 @@ Read each line from left to right. The local files come first, `/etc/passwd` and
 
 ![Cluster identity: NSS and SSSD caching](./img/ch06-d3-luna.svg)
 
-*Figure 1.6.15. Cluster identity: NSS and SSSD caching.*
+*Figure 1.6.17. Cluster identity: NSS and SSSD caching.*
 
 Before you move a site from local files to a directory service, confirm that `getent passwd` returns the same answer on every node.
 
@@ -673,7 +681,7 @@ Identity failures usually show up as "permission denied" or as a job that cannot
 
 ![Two timelines comparing sudo echo with a redirect, where the unprivileged shell opens the file and fails, with piping into sudo tee, where tee runs as root.](./img/p3-0106-sudo-redirect.svg)
 
-*Figure 1.6.16. The redirection happens in your own shell before sudo runs, so let a root process such as tee open the file instead.*
+*Figure 1.6.18. The redirection happens in your own shell before sudo runs, so let a root process such as tee open the file instead.*
 
 ## Hands-on lab: permissions, ACLs, sudo, and VM drills
 

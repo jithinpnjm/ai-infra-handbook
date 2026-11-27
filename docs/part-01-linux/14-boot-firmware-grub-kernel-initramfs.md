@@ -152,6 +152,10 @@ Confirm each of these settings in the platform guide before you rely on the node
 
 Picture the moment when the firmware hands over. The kernel file is sitting on a disk, and nothing on the machine can read that disk yet. The kernel's device drivers and filesystem code are not available, because the kernel is the very thing that has not started. So a boot loader carries its own small disk and filesystem drivers, which use the firmware's disk services. It finds the files it needs by reading the filesystem itself.
 
+![GRUB loading the kernel and initramfs and passing the kernel command line](./img/pre-boot-loader.jpg)
+
+*Figure 1.14.5. The boot loader's whole job: find the kernel and initramfs, load them, pass the command line, and jump to the kernel.*
+
 The boot loader's job sounds simple: it loads the kernel with its parameters. The work is subtle, because the loader has to do it with only the tools it brought along. The boot loader must do four things. It must find and load the kernel image and the initramfs. It must pass **kernel parameters**. It must let you choose among kernels or edit the parameters. And it can optionally boot other operating systems.
 
 Several boot loaders are in common use (*How Linux Works* Section 5.3.2). **GRUB 2** is the near-universal Linux default, and it supports both BIOS and UEFI. **systemd-boot**, formerly `gummiboot`, is a simple UEFI boot manager that some distributions use. **SYSLINUX**, **EXTLINUX**, **ISOLINUX** and **PXELINUX** are modular boot loaders for FAT, ext, ISO optical media and PXE network boot. **LILO**, the Linux Loader, is historical. **coreboot**, formerly `LinuxBIOS`, is a high-performance open-source replacement for the PC BIOS, and it can include a Linux kernel payload directly.
@@ -211,7 +215,7 @@ grub> boot
 
 ![Settings and scripts feed a generator that writes grub.cfg, which you should never edit by hand.](./img/l14-grub-config.svg)
 
-*Figure 1.14.5. grub.cfg is generated, so change /etc/default/grub or /etc/grub.d and regenerate.*
+*Figure 1.14.6. grub.cfg is generated, so change /etc/default/grub or /etc/grub.d and regenerate.*
 
 GRUB reads `grub.cfg`, which lives in `/boot/grub/` or `/boot/grub2/`. On EFI systems there is also a small stub on the ESP. **The file is generated, so your edits will be overwritten.** That surprises almost everyone once: you edit the file, boot works, and the next kernel update quietly throws your work away. Make your changes in the right place, and then regenerate the file. The workflow has four steps.
 
@@ -362,7 +366,7 @@ Read the diagram from top to bottom. Each arrow is one hand-off, from the boot l
 
 ![The initial RAM filesystem (initramfs)](./img/ch14-d2-luna.svg)
 
-*Figure 1.14.6. The initial RAM filesystem (initramfs).*
+*Figure 1.14.7. The initial RAM filesystem (initramfs).*
 
 The two families of distributions use different tools. Debian and Ubuntu use `initramfs-tools`, while RHEL, Fedora and SUSE use `dracut`. The table compares the commands for each.
 
@@ -397,6 +401,10 @@ You can test this at boot time. In the GRUB menu editor, remove the `initrd` lin
 ## 6. `init`: the first user-space process
 
 The kernel has one job left, and it is the smallest and most important one. It starts a single program, `/sbin/init`, or the program named by `init=`. If that fails, the kernel tries several standard locations. It panics if none of them works.
+
+![systemd as process 1 starting the default target and its services](./img/pre-init-pid1.jpg)
+
+*Figure 1.14.8. systemd is process 1. It reads its units and brings the machine up to the default target.*
 
 **`init` always has PID 1, and it is the only process the kernel watches. If it dies, the kernel panics.** That sentence explains a whole family of boot failures, so it is worth reading twice. The duties of `init` are to set up the system, mount filesystems, start services, and **adopt and reap orphaned processes**, which chapter 1.8 covers.
 
@@ -457,7 +465,7 @@ Before you change a unit file, check which location it lives in, because a copy 
 
 ![A table that maps common boot symptoms to their likely cause and first action.](./img/l14-boot-symptoms.svg)
 
-*Figure 1.14.7. Identify the failing boot stage first, then change only one thing before testing again.*
+*Figure 1.14.9. Identify the failing boot stage first, then change only one thing before testing again.*
 
 The moment a node will not boot, it is tempting to start changing things. Resist that, because every change you make without a note hides the cause a little further. Follow the same routine every time, because it stops you changing too much at once.
 
@@ -534,7 +542,7 @@ The diagram traces a network boot from the first DHCP request to the hand-off to
 
 ![Network booting: DHCP, TFTP, PXE and NFS root](./img/ch14-d3-luna.svg)
 
-*Figure 1.14.8. Network booting: DHCP, TFTP, PXE and NFS root.*
+*Figure 1.14.10. Network booting: DHCP, TFTP, PXE and NFS root.*
 
 ### Components
 

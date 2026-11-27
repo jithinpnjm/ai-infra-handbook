@@ -120,6 +120,10 @@ Finally, the kubelet calls the `StartContainer` method with that container ID. T
 
 Suppose you open the containerd configuration on a new GPU node. The file is long, and most of its blocks look unfamiliar. You want to know what each block controls before you change anything, because one wrong line can stop every pod on the node from starting.
 
+![The chain from kubelet through CRI, containerd, shim and runc to the container process](./img/pre-containerd-chain.jpg)
+
+*Figure 5.2.2. kubelet speaks CRI to containerd. containerd uses a shim and runc to start the container.*
+
 containerd is a daemon that exposes a gRPC API on `/run/containerd/containerd.sock`. A daemon is a background program that runs all the time and waits for requests. Its subsystems are plugins. They include the content store, snapshotters, metadata kept in a bolt DB, the image service, tasks that run through runtime v2 shims, events, CRI, NRI, CDI and more. A bolt DB is a small embedded database file that containerd uses for its own metadata. Everything is namespaced. Kubernetes uses the containerd namespace `k8s.io`, Docker uses `moby`, and nerdctl uses `default`. A tool that looks in the wrong namespace sees nothing, so use `ctr -n k8s.io containers ls` for Kubernetes containers. This is the single most common reason people think a node is empty when it is not.
 
 ### Configuration
@@ -514,6 +518,10 @@ Begin with the pod and container views from `crictl`, and drop down to `ctr` onl
 ## 7. Cgroup drivers and cgroup v2
 
 Two parts of the node both touch cgroups, so the kubelet and the runtime must agree on who manages them. A cgroup, as 5.1 explained, is the kernel's way of grouping processes so that limits and counters apply to the whole group. A cgroup driver is the component that creates and manages those groups. If two components both try to be the driver, they overwrite each other's work.
+
+![kubelet and containerd both needing the same systemd cgroup driver, set in two places](./img/pre-cgroup-drivers.jpg)
+
+*Figure 5.2.3. Set the same cgroup driver in the kubelet and in containerd, or the node becomes unstable.*
 
 The systemd driver is recommended on systemd distributions. The runtime asks systemd to create slices and scopes, such as `kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod<uid>.slice/cri-containerd-<id>.scope`. A slice is a systemd grouping, and a scope is a group for processes that systemd did not start itself. One cgroup manager, systemd, owns the hierarchy, and every tool sees the same tree.
 

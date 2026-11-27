@@ -68,6 +68,10 @@ When traffic goes wrong, decide first whether the L4 layer or the L7 layer made 
 
 Suppose one hostname has to reach a chat model while a second hostname reaches a different service. Something must read each request's host and path, then pick the right backend. In Kubernetes, that job belongs to an Ingress.
 
+![A client request through a load balancer and ingress controller to a Service and pods](./img/pre-ingress.jpg)
+
+*Figure 5.12.2. Ingress sends HTTP traffic by host and path to Services.*
+
 An **Ingress** declares L7 routing rules, and its API group and version is `networking.k8s.io/v1`. An **Ingress controller** does the actual work. It is a separate deployment that you install. The controller watches Ingress objects and configures a proxy from them. Kubernetes ships no controller by default. `IngressClass` selects which controller handles an Ingress, through `spec.ingressClassName`. Think of an Ingress as a list of instructions pinned to a board. The board does nothing by itself. The controller is the staff member who reads the board and acts on it.
 
 Read the example below as a whole. The annotations tune timeouts, body size and rate limits, and the `tls` block points at a Secret that cert-manager creates and renews. The first half of the manifest is routing. The annotations are tuning, and each one is specific to ingress-nginx, so another controller may not understand it.

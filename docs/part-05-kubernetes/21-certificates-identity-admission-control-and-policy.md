@@ -306,6 +306,10 @@ User identity usually comes from an SSO provider, so OIDC is the natural path. S
 
 Suppose a developer applies a Pod that requests more GPUs than the policy allows. Something has to stop that request before it reaches etcd. Admission runs after authentication and authorization, and before the object is persisted (5.5). Think of the API server as a building with a security desk. Authentication asks who you are, authorization asks whether you may do this kind of thing, and admission looks at the specific object you are trying to bring in. Admission can change the object, or it can turn the object away. There are several kinds of admission, and the table below lists them by phase:
 
+![The API request pipeline: authentication, authorization, mutating admission, validation, then etcd](./img/pre-admission.jpg)
+
+*Figure 5.21.2. Every request passes authentication, authorization and admission before it is stored.*
+
 | Phase | Mechanism | Examples |
 |---|---|---|
 | **Built-in mutating** | Compiled into the API server (enable/disable via `--enable-admission-plugins`) | `NamespaceLifecycle`, `LimitRanger`, `ServiceAccount`, `DefaultStorageClass`, `DefaultTolerationSeconds`, `MutatingAdmissionWebhook`, `Priority`, `RuntimeClass`, `StorageObjectInUseProtection`, `TaintNodesByCondition`, `ExtendedResourceToleration` (opt-in) |

@@ -278,6 +278,10 @@ Decide how each sysfs change will persist before you make it, because a plain wr
 
 Where do you look for a machine's pulse? The load average, the memory counters, the interrupts each CPU is serving. All of that lives in `/proc`, the third window, and much of it changes every second.
 
+![What lives in /proc and /proc/sys and how sysctl reads and writes kernel settings](./img/pre-procfs-sysctl.jpg)
+
+*Figure 1.10.5. /proc shows live kernel and process state. sysctl changes kernel settings under /proc/sys.*
+
 `/proc` is the older virtual filesystem of the two. It began with process information and later grew to hold everything else. The numeric directories hold per-process information, which chapter 1.8 covers. The rest of `/proc` holds system-wide state, as the table shows.
 
 | Path | Contents |
@@ -343,7 +347,7 @@ The kernel also notifies udev. udev does not create the nodes. It adjusts them b
 
 ![The problem and the design](./img/ch10-d2-luna.svg)
 
-*Figure 1.10.5. The problem and the design.*
+*Figure 1.10.6. The problem and the design.*
 
 When you read the diagram, start at the top and work down. The hardware and the kernel act first. udev and its rules then decide the final state of the node. Subscribers react last.
 
@@ -515,7 +519,7 @@ SATA disks connect through **libata**, which runs inside the kernel. libata tran
 
 ![Storage device stacks: SCSI vs NVMe](./img/ch10-d3-luna.svg)
 
-*Figure 1.10.6. Storage device stacks: the three-layer Linux SCSI subsystem and the separate NVMe stack.*
+*Figure 1.10.7. Storage device stacks: the three-layer Linux SCSI subsystem and the separate NVMe stack.*
 
 **Generic SCSI nodes and multiple access methods.** User processes can bypass the top-level class drivers, `sd` and `sr`. They send SCSI protocol commands straight to the device through its generic character device, `/dev/sg*`. Tools from `sg3_utils`, such as `sg_inq` and `sg_map`, do this for you. Run `lsscsi -g` to see the generic node beside each device. It appends the node on the right, as in `/dev/sda /dev/sg0`, `/dev/sr0 /dev/sg1`, and so on up to `/dev/sde /dev/sg5`. The generic nodes use major number `21`.
 
@@ -530,6 +534,10 @@ When a storage device misbehaves, start with `lsscsi` and `lsblk`, so you know w
 ## 8. Hardware inventory: PCI, USB, CPU, memory, firmware
 
 Someone hands you a node and asks a simple question: what is in this machine? You have ten minutes and no documentation. The tools in this section answer that question, and they answer it in a form you can compare across hundreds of nodes. The table lists them, and each row answers a different question. Start from the question you have.
+
+![Which command shows which hardware: lscpu, lsblk, lspci, free, dmidecode](./img/pre-hw-inventory.jpg)
+
+*Figure 1.10.8. One command per question about the hardware.*
 
 | Tool | Shows |
 |---|---|
@@ -567,7 +575,7 @@ Before you place a process, check the matrix, so the job uses the fastest path b
 
 ![A device is matched to a driver by its ID tables, and sysfs can unbind it and hand it to vfio-pci.](./img/l10-driver-bind.svg)
 
-*Figure 1.10.7. Drivers claim devices by ID, and the bind and unbind files in sysfs let you swap the driver.*
+*Figure 1.10.9. Drivers claim devices by ID, and the bind and unbind files in sysfs let you swap the driver.*
 
 Every device in a machine needs code that understands it. That code is the driver, and the kernel has to decide which driver owns which device, often within milliseconds of boot.
 

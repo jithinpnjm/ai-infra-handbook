@@ -159,6 +159,10 @@ Errors form the third part of the picture. These are allocation failures, OOM ki
 
 Swap holds paged-out anonymous pages, and for tmpfs, tmpfs pages. It lets rarely used memory, such as an idle daemon's heap, make room for cache. It also gives a grace period under pressure. With swap, an endlessly growing process first slows down, and you can see and debug that. Without swap, the OOM killer ends it immediately.
 
+![Cold anonymous pages moved from RAM to swap and back in when needed](./img/pre-swap.jpg)
+
+*Figure 1.17.6. Swap holds cold anonymous pages. Heavy swapping makes everything slow.*
+
 The cost is that touching swapped memory blocks on disk I/O. **On GPU and latency-sensitive nodes, the usual policy is little or no swap and a low `vm.swappiness`, with the OOM killer and cgroup limits as the safety net.** A partly swapped training process slows by orders of magnitude, and it can stall collective communication for the whole job.
 
 Large-scale services often prefer to be OOM-killed and rescheduled rather than limp along. Make sure the OOM victim is the job, not `sshd` or `kubelet`. Chapter 1.15 covers that in section 10. On small hosts, `zram` and `zswap` offer middle options, because they compress swap in RAM.
@@ -169,7 +173,7 @@ Useful commands are `swapon --show`, `free -h`, `cat /proc/swaps`, `swapoff -a` 
 
 ![A latency ladder from L1 cache at about 1 ns through L2, L3 and DRAM at 80 to 100 ns to remote NUMA memory at 1.3 to 2 times local latency.](./img/p3-0117-memory-latency-ladder.svg)
 
-*Figure 1.17.6. Latency grows from about 1 ns in L1 to 80 to 100 ns in DRAM, and remote NUMA memory costs 1.3x to 2x more.*
+*Figure 1.17.7. Latency grows from about 1 ns in L1 to 80 to 100 ns in DRAM, and remote NUMA memory costs 1.3x to 2x more.*
 
 Before you tune anything, know how far each kind of memory sits from the CPU. A value in a cache arrives almost immediately. The same value fetched from DRAM takes a noticeable journey through the memory controller and the interconnect. The size of that gap explains much of the behaviour you will see later in this chapter.
 
@@ -187,7 +191,7 @@ GPUs have their own memory, HBM, which is much faster and sits next to the GPU. 
 
 ![A data loader and its buffers on NUMA node 0 feeding a GPU on node 1 across the slow interconnect, then the fixed layout with both on node 1.](./img/p3-0117-loader-wrong-node.svg)
 
-*Figure 1.17.7. When a loader allocates on node 0 but its GPU hangs off node 1, every copy crosses the interconnect until you bind both to node 1.*
+*Figure 1.17.8. When a loader allocates on node 0 but its GPU hangs off node 1, every copy crosses the interconnect until you bind both to node 1.*
 
 You will meet the NUMA trap the first time a job slows down after the scheduler moves it to the other socket. To understand why, start with the simpler design. On a UMA or SMP machine, every CPU reaches all memory with the same latency over a shared bus. Modern servers are NUMA, which stands for non-uniform memory access. Each socket has its own memory controllers and attached DRAM, and that group is called a node. Sockets are joined by an interconnect, which is UPI on Intel and Infinity Fabric or xGMI on AMD.
 
@@ -199,7 +203,7 @@ The diagram shows a two-socket layout, with GPUs and NICs attached to each socke
 
 ![UMA versus NUMA](./img/ch17-d3-luna.svg)
 
-*Figure 1.17.8. UMA versus NUMA.*
+*Figure 1.17.9. UMA versus NUMA.*
 
 The NUMA trap is common on AI hosts, and it is easy to miss. A data-loading process runs on node 0 and allocates its buffers there. The GPU it feeds, though, is attached to node 1. Every host-to-device copy then crosses the interconnect, because the memory sits on node 0 while the GPU hangs off node 1's PCIe root. Picture a warehouse on the wrong side of town: the goods are correct, but every delivery pays the cross-town drive. The fix is to bind the loader's CPUs and memory to the GPU's node, which section 7 covers. Before you start a loader, check which node the GPU lives on, and bind to that node.
 
@@ -207,11 +211,11 @@ The NUMA trap is common on AI hosts, and it is easy to miss. A data-loading proc
 
 ![The ladder Linux climbs when memory runs low: reclaim cache, swap, then OOM kill](./img/pre-memory-pressure.jpg)
 
-*Figure 1.17.9. When memory runs low, Linux first drops cache, then swaps, and only then kills a process.*
+*Figure 1.17.10. When memory runs low, Linux first drops cache, then swaps, and only then kills a process.*
 
 ![A vertical water-level gauge showing the high, low, and min memory zone watermarks, where kswapd reclaims in the background between low and high while dropping to min triggers synchronous direct reclaim stalls.](./img/p4-0117-zone-watermarks.svg)
 
-*Figure 1.17.10. Zone watermarks govern page reclaim: kswapd wakes at the low watermark to restore free pages to high in the background, while hitting the min watermark forces synchronous direct reclaim and latency spikes.*
+*Figure 1.17.11. Zone watermarks govern page reclaim: kswapd wakes at the low watermark to restore free pages to high in the background, while hitting the min watermark forces synchronous direct reclaim and latency spikes.*
 
 A node raises an alarm because `free` shows very little memory. The alarm is often false, and this section explains why. Linux keeps RAM busy on purpose, and it gives memory back when something else needs it. Once you can see the machinery, an empty-looking free column stops being frightening.
 
@@ -223,7 +227,7 @@ When free memory falls, Linux responds in stages. The diagram shows the order, r
 
 ![How Linux frees memory](./img/ch17-d4-luna.svg)
 
-*Figure 1.17.11. How Linux frees memory.*
+*Figure 1.17.12. How Linux frees memory.*
 
 The steps run roughly in order as pressure rises, and the last step is the OOM killer. The next paragraphs explain each of the knobs that shape those steps.
 
@@ -247,15 +251,15 @@ When a node reports low free memory, check the page cache and reclaim counters b
 
 ![Container OOM kill compared with node memory pressure and eviction](./img/pre-s3-oom.jpg)
 
-*Figure 1.17.12. Two different kills. A container hits its own limit. A node runs out and the kubelet or kernel acts.*
+*Figure 1.17.13. Two different kills. A container hits its own limit. A node runs out and the kubelet or kernel acts.*
 
 ![The five parts of an OOM report in reading order and a decision showing that shmem, slab unreclaimable or one process anon rss points to different consumers.](./img/p3-0117-oom-report-read.svg)
 
-*Figure 1.17.13. Read the OOM report in order and ask whether tmpfs, unreclaimable slab or one process's anonymous memory grew.*
+*Figure 1.17.14. Read the OOM report in order and ask whether tmpfs, unreclaimable slab or one process's anonymous memory grew.*
 
 ![Three columns comparing a cgroup OOM inside a container, a global machine wide OOM and a NUMA constrained OOM, with the evidence for each.](./img/p3-0117-oom-three-kinds.svg)
 
-*Figure 1.17.14. A container can be OOM-killed with plenty of host memory free, while a global or NUMA-bound OOM leaves different evidence in the kernel log.*
+*Figure 1.17.15. A container can be OOM-killed with plenty of host memory free, while a global or NUMA-bound OOM leaves different evidence in the kernel log.*
 
 A training job disappears in the middle of the night, and the application logs show nothing useful. There is no traceback, no error, no goodbye. The reason is often the OOM killer. It is the kernel's last resort when memory runs out, and it leaves its trace in the kernel log rather than the application log. That is why the first place to look is `dmesg`, not your Python output.
 
@@ -263,7 +267,7 @@ When reclaim fails, the kernel invokes the **out-of-memory (OOM) killer**. Recla
 
 ![When memory runs out](./img/ch17-fig1-oom.jpg)
 
-*Figure 1.17.15. From low free memory to an OOM kill, and where to look afterwards.*
+*Figure 1.17.16. From low free memory to an OOM kill, and where to look afterwards.*
 
 The victim gets no chance to clean up, because it receives `SIGKILL` rather than `SIGTERM`. There is no exception handler, no final checkpoint, no flush. Partial checkpoints and GPU state may be left behind. A parent process, or Kubernetes, sees the exit status `137`, which is 128 + 9.
 
@@ -293,7 +297,7 @@ When a node feels slow, memory is one of the first places to look. The tools in 
 
 ![A free output with available highlighted beside a stacked bar of RAM split into anonymous pages, page cache, slab, page tables, huge pages and locked pages.](./img/p3-0117-meminfo-breakdown.svg)
 
-*Figure 1.17.16. The available number counts reclaimable cache, while anonymous pages, unreclaimable slab, huge page reservations and locked pages cannot be freed.*
+*Figure 1.17.17. The available number counts reclaimable cache, while anonymous pages, unreclaimable slab, huge page reservations and locked pages cannot be freed.*
 
 Start with the summary, the way you would look at a fuel gauge before checking the engine. `free` and `/proc/meminfo` tell you how much memory the machine has and how much of it is really available. Run both before you draw any conclusion about a node.
 
@@ -314,7 +318,7 @@ Remember this breakdown, because it answers most "where did my RAM go" questions
 
 ![Two timelines comparing PSI some, where at least one task is stalled, with PSI full, where all non idle tasks are stalled.](./img/p3-0117-psi-read.svg)
 
-*Figure 1.17.17. Some counts time when at least one task waits for memory and full counts time when all non-idle tasks wait, and either signals saturation.*
+*Figure 1.17.18. Some counts time when at least one task waits for memory and full counts time when all non-idle tasks wait, and either signals saturation.*
 
 The summary tells you how much memory is in use. Pressure tells you whether anything is waiting for it. A machine can have plenty of memory and still be saturated, so check both views.
 
@@ -360,7 +364,7 @@ BCC and bpftrace tools, covered in chapter 1.24, answer narrower questions. `drs
 
 ![A five-step memory method runs from a USE check through characterising the system, deciding growth versus leak, checking the static setup, and tuning one change at a time.](./img/p2-0117-mem-method.svg)
 
-*Figure 1.17.18. Memory investigations run from a USE check through growth-versus-leak analysis and a static check, and end with tuning one change at a time.*
+*Figure 1.17.19. Memory investigations run from a USE check through growth-versus-leak analysis and a static check, and end with tuning one change at a time.*
 
 Work through these steps in order, and change one thing at a time. A memory investigation goes wrong when someone changes three settings and then cannot tell which one helped.
 
@@ -380,7 +384,7 @@ NUMA settings only help once you know the layout of your machine. Start by disco
 
 ![A NUMA distance matrix with 10 for local and 21 for remote nodes beside four numastat counters numa_hit, numa_miss, numa_foreign and other_node.](./img/p3-0117-numa-counters.svg)
 
-*Figure 1.17.19. A distance of 21 against 10 means remote memory costs about 2.1 times more, and rising numa_miss or other_node shows pages landing remotely.*
+*Figure 1.17.20. A distance of 21 against 10 means remote memory costs about 2.1 times more, and rising numa_miss or other_node shows pages landing remotely.*
 
 Four commands together tell you almost everything: `lscpu` for the summary, `numactl --hardware` for the memory map, `lstopo` for the device tree, and `nvidia-smi topo -m` for the GPUs. Run them on every new platform before you trust a habit.
 
@@ -402,7 +406,7 @@ The `numa_hit` counter means an allocation landed on the node it was meant for. 
 
 ![Four rows showing where memory pages land under the local first touch, bind, preferred and interleave NUMA policies with the matching numactl commands.](./img/p3-0117-numa-policies.svg)
 
-*Figure 1.17.20. The default places a page on the node of the CPU that first touches it, while bind and interleave let you choose the nodes.*
+*Figure 1.17.21. The default places a page on the node of the CPU that first touches it, while bind and interleave let you choose the nodes.*
 
 The default policy is local allocation with first touch. A page lands on the node of the CPU that first writes it. That rule is sensible until a buffer is shared. If one thread initialises a huge buffer and other threads on a different node use it, that buffer is entirely remote for them. The other policies are bind, which uses only the named nodes; preferred, which tries a node and falls back; interleave, which spreads pages round-robin across nodes and suits data that every CPU reads; and local, which is the default.
 
@@ -435,11 +439,11 @@ Bind by topology rather than by habit, and check `numactl -H` on every new platf
 
 ![Three bars showing TLB reach of 256 KiB with 4 KiB pages, 128 MiB with 2 MiB pages and 64 GiB with 1 GiB pages for a 64 entry TLB.](./img/p3-0117-tlb-reach.svg)
 
-*Figure 1.17.21. A 64 entry TLB reaches 256 KiB with 4 KiB pages but 128 MiB with 2 MiB pages and 64 GiB with 1 GiB pages.*
+*Figure 1.17.22. A 64 entry TLB reaches 256 KiB with 4 KiB pages but 128 MiB with 2 MiB pages and 64 GiB with 1 GiB pages.*
 
 ![Explicit huge pages are reserved in a pool, while transparent huge pages are used automatically by the kernel.](./img/l17-thp-modes.svg)
 
-*Figure 1.17.22. THP is automatic and can add latency spikes, while explicit huge pages give a guaranteed page size.*
+*Figure 1.17.23. THP is automatic and can add latency spikes, while explicit huge pages give a guaranteed page size.*
 
 A database team once asked for huge pages on every node, and the reason was simple. Their working set was large and their TLB was thrashing. Here is the problem a huge page solves. A 256 GiB dataset mapped with 4 KiB pages needs 67 million page-table entries. The TLB can cache only a few dozen of them, so the program misses constantly and pays for a page walk on most accesses.
 
@@ -484,11 +488,11 @@ When you use large pinned host buffers, see section 11 for `memlock`.
 
 ![Workers sharing dataset pages copy-on-write after fork, then Python reference counting writing to objects so each worker gradually copies the data.](./img/p3-0117-fork-cow-workers.svg)
 
-*Figure 1.17.23. Reference counting writes to Python objects and breaks copy-on-write sharing, so each worker slowly copies the dataset.*
+*Figure 1.17.24. Reference counting writes to Python objects and breaks copy-on-write sharing, so each worker slowly copies the dataset.*
 
 ![A flow showing malloc taking memory from the kernel and free returning it to the allocator so RSS stays high, while large mmap allocations return to the OS at once.](./img/p3-0117-free-keeps-memory.svg)
 
-*Figure 1.17.24. Free usually returns memory to the allocator rather than the kernel, so RSS can stay high without any leak.*
+*Figure 1.17.25. Free usually returns memory to the allocator rather than the kernel, so RSS can stay high without any leak.*
 
 Here is a surprise that catches many engineers. You free a large block, and RSS stays high anyway. That alone does not mean a leak. The allocator is holding the memory on purpose, the way a warehouse keeps shelving after a delivery leaves.
 
@@ -562,7 +566,7 @@ Kernel command line settings, covered in chapter 1.14, include `transparent_huge
 
 ![A gauge of cgroup v2 memory files from memory.min and memory.low protection up through current usage, memory.high throttling and the memory.max OOM kill limit.](./img/p3-0117-cgroup-memory-ladder.svg)
 
-*Figure 1.17.25. Protection sits below usage, memory.high throttles above it, and memory.max triggers an OOM kill inside the cgroup.*
+*Figure 1.17.26. Protection sits below usage, memory.high throttles above it, and memory.max triggers an OOM kill inside the cgroup.*
 
 A container gets its memory from a cgroup, and the cgroup decides when that container is out of memory. That is the key idea of this section: the limit that matters may belong to the group, not to the machine. Read these files to see what a container is allowed to use and what it actually uses.
 
@@ -590,7 +594,7 @@ Slurm's `--mem`, `--mem-per-cpu` and `--mem-per-gpu` become cgroup limits, throu
 
 ![A pageable copy path with a staging copy compared with a direct pinned path, and the memlock limit that makes pinned registration fail.](./img/p3-0117-pinned-path.svg)
 
-*Figure 1.17.26. Pinned memory skips the staging copy and allows overlap, but a low memlock limit makes registration fail even when the GPU has room.*
+*Figure 1.17.27. Pinned memory skips the staging copy and allows overlap, but a low memlock limit makes registration fail even when the GPU has room.*
 
 A job that runs fine on one node can fail on another while registering memory, even though the GPU has room. The difference is often the `memlock` limit. GPUs and NICs move data by DMA, which needs physical addresses that do not move. Pinned, or page-locked, memory is excluded from swapping and migration, so the device can read and write it directly. Host-to-device copies from pinned memory are typically 2x to 3x faster than copies from pageable memory, because no staging copy is needed. Pinned memory also allows asynchronous overlap with compute, through `cudaMemcpyAsync`, PyTorch `pin_memory=True`, `tensor.pin_memory()` and `non_blocking=True`. GPUDirect RDMA, GPUDirect Storage and InfiniBand verbs need registered, pinned memory too. Pinning has five consequences.
 
@@ -604,7 +608,7 @@ A job that runs fine on one node can fail on another while registering memory, e
 
 ![A stacked host memory budget bar for a training node and the worked example of 8 GPUs times 16 workers times 2 GB equalling 256 GB.](./img/p3-0117-host-budget.svg)
 
-*Figure 1.17.27. Eight GPUs with sixteen workers each at 2 GB already need 256 GB, which can exceed RAM before anyone notices.*
+*Figure 1.17.28. Eight GPUs with sixteen workers each at 2 GB already need 256 GB, which can exceed RAM before anyone notices.*
 
 Budget host memory for each node in pieces, the way you would budget a household. Start with the operating system and daemons, which take a few GB. Add the data-loader workers. Each worker carries process overhead, decoded batches and a prefetch queue, so multiply that cost by the number of workers and GPUs. Then add the pinned staging buffers, the framework host allocations (CUDA context host memory, NCCL buffers, and NCCL proxy threads), the page cache you want to keep for the dataset, headroom for checkpoint staging in tmpfs or page cache, and a margin.
 
@@ -614,7 +618,7 @@ A common mistake is multiplying workers across GPUs: 8 GPUs x 16 workers x 2 GB 
 
 ![A table of starting memory settings for training, inference, login and Kubernetes nodes.](./img/l17-memory-policy.svg)
 
-*Figure 1.17.28. Start from the row for your node type and change it only after you measure.*
+*Figure 1.17.29. Start from the row for your node type and change it only after you measure.*
 
 The table brings the settings together by node type, so you can compare them side by side. Read it as a set of starting positions, not as law.
 
@@ -631,7 +635,7 @@ Start from the row that matches your node type, and change it only after you mea
 
 ![A six row ladder of limits that cause cannot allocate memory errors while RAM is free: map count, strict overcommit, address space, cgroup, NUMA bind and fork.](./img/p3-0117-enomem-ladder.svg)
 
-*Figure 1.17.29. Several limits other than free RAM can produce cannot allocate memory, and each has its own check.*
+*Figure 1.17.30. Several limits other than free RAM can produce cannot allocate memory, and each has its own check.*
 
 Use this list as a map from symptom to likely cause. Each entry names the check to run first, so start there. Check the named counters before you change a setting.
 

@@ -45,6 +45,10 @@ This chapter builds on 5.8, 5.10 and Part 2. From Part 2 you need Ethernet, IP r
 
 Imagine a cluster where pods run on many nodes. Any pod still needs to reach any other pod directly, with no translation step in between. The model sets four requirements to make that work. It calls this the "IP-per-pod" model.
 
+![The Kubernetes network rules: every pod has its own IP and pods reach each other without NAT](./img/pre-net-model.jpg)
+
+*Figure 5.13.1. Every pod gets its own IP. Pods reach each other directly with no NAT.*
+
 1. Every pod gets a unique IP in a cluster-wide address space. Containers in a pod share that IP.
 2. Pods can reach all other pods on any node **without NAT**. The destination sees the sender's pod IP as the source.
 3. Agents on a node, such as the kubelet and system daemons, can reach all pods on that node. Pods in the host network namespace can talk to all pods without NAT.
@@ -60,7 +64,7 @@ Suppose a node runs two pods and you want to see what the CNI actually builds fo
 
 ![A packet leaving a pod through veth, host routing, masquerade and the NIC](./img/pre-s5-pod-egress.jpg)
 
-*Figure 5.13.1. From pod to internet: veth, host routing, source rewrite, then the NIC.*
+*Figure 5.13.2. From pod to internet: veth, host routing, source rewrite, then the NIC.*
 
 The script below simulates two pods on one node. A bridge joins them, and their egress uses NAT. Read it top to bottom: it creates the namespaces and the bridge, adds one veth pair per pod, then tests pod-to-pod and egress traffic.
 
@@ -104,7 +108,7 @@ Each node owns a slice of the pod CIDR. The `node.spec.podCIDR` field records th
 
 ![Multi-node: how pods on different nodes talk](./img/m5-13-1.svg)
 
-*Figure 5.13.2. Multi-node: how pods on different nodes talk, as a diagram.*
+*Figure 5.13.3. Multi-node: how pods on different nodes talk, as a diagram.*
 
 1. **Overlay**, using Flannel VXLAN, Calico VXLAN or IPIP, Cilium VXLAN or Geneve, or Weave. It works on any L3 network. The cost is encapsulation overhead. VXLAN adds 50 bytes, which reduces the MTU. Encapsulation and decapsulation also take CPU, though modern NICs can offload that work. Overlays make traffic harder to see.
 2. **Routed (L3, no encapsulation)**. Nodes learn pod CIDR routes in one of three ways: BGP, from Calico, Cilium BGP or kube-router; static routes; or cloud route tables. The `host-gw` option in Flannel works only when nodes share L2. This design gives the best performance and clean traceability. It does require control of the underlay, or BGP peering with ToR switches. It fits leaf-spine fabrics that run BGP to hosts, as covered in 2.15 and 2.16.
@@ -128,6 +132,10 @@ The order matters because the family changes what the CIDR has to hold. An overl
 ## 3. The CNI specification
 
 Suppose a new node joins the cluster and stays `NotReady`, with a message that the CNI plugin is not initialized. The kubelet is running, and so is the runtime. What is missing is the piece that wires pods into the network. To know where to look, you need to understand the contract the runtime uses to call that piece.
+
+![The runtime calling a CNI plugin ADD that creates a veth, assigns an IP and returns a result](./img/pre-cni-add.jpg)
+
+*Figure 5.13.4. The runtime calls the CNI plugin with ADD. The plugin wires the network and returns the IP.*
 
 CNI, the Container Network Interface, is a CNCF project. It is a minimal contract between a container runtime and a plugin executable. Think of the runtime as a building manager who calls in an electrician. The manager hands over a work order, which is the network config, along with a few labelled notes, which are the environment variables. The electrician does the wiring and then writes back a receipt that says what was installed. The plugin sets up the network and reports back what it built, in the same way.
 

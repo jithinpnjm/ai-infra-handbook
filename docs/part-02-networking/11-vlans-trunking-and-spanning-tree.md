@@ -194,6 +194,10 @@ Before you change a trunk, list the VLANs it must carry, and prune the rest.
 
 Imagine two switches joined by two links, or a cable that someone has looped by mistake. Ethernet has no TTL. A broadcast frame in that loop circulates forever and multiplies at each switch. This is a broadcast storm. It saturates every link and the switch CPUs within seconds. MAC tables flap, because the same source MAC appears on alternating ports, and unicast frames get flooded. The network looks as if it has been cut, although every cable is plugged in.
 
+![Three switches in a loop where Spanning Tree blocks one link](./img/pre-stp-loop.jpg)
+
+*Figure 2.11.6. STP blocks one link so that frames cannot loop forever.*
+
 You still want redundant links for resilience, so simply removing the second cable is not an answer. The Spanning Tree Protocol (STP, IEEE 802.1D) solves this. It lets switches logically block redundant paths to form a loop-free tree, and it unblocks them when an active path fails. The spare cable stays plugged in but sleeps until it is needed.
 
 ### How STP works
@@ -202,7 +206,7 @@ STP settles the topology in four stages, and it helps to think of a group of str
 
 ![Spanning Tree blocks one link](./img/n11-fig2-stp.jpg)
 
-*Figure 2.11.6. STP keeps one loop-free path and blocks the redundant link.*
+*Figure 2.11.7. STP keeps one loop-free path and blocks the redundant link.*
 
 Picture three switches wired in a triangle, all left at the default priority. The one with the lowest MAC address becomes the root, which is why an old closet switch can win by accident. The other two each choose their cheapest path to it as the root port. On the link between those two, one end is blocked, and that single blocked port is what cuts the loop. If an active link fails, the blocked port wakes up and takes over.
 

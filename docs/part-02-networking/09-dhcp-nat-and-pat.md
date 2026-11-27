@@ -235,6 +235,10 @@ Before you put a NAT gateway in front of a service, decide which inbound paths i
 
 On Linux, NAT is done by netfilter, and conntrack tracks each flow. Packets pass through hooks along the way, which are fixed points where rules can act. DNAT happens at PREROUTING, before routing. SNAT and masquerade happen at POSTROUTING, after routing. Only the first packet of a flow walks the NAT chains. Later packets are translated by the conntrack entry that the first packet created. Chapter 2.23 covers the full ruleset model. The essentials are below.
 
+![Destination NAT before routing and source NAT after routing on a Linux router](./img/pre-nat-linux.jpg)
+
+*Figure 2.9.8. DNAT changes the destination before routing. SNAT and MASQUERADE change the source after routing.*
+
 The block below sets up a gateway. Forwarding must be on first, as chapter 2.5 explains.
 
 ```bash
@@ -313,7 +317,7 @@ When an inside host cannot reach the Internet, work through the flowchart from t
 
 ![Troubleshooting](./img/m2-09-3.svg)
 
-*Figure 2.9.8. Troubleshooting, as a diagram.*
+*Figure 2.9.9. Troubleshooting, as a diagram.*
 
 Counters tell you what the gateway actually did, which is often different from what the rules say it should do. Run `conntrack -S` to see the insert_failed, drop and early_drop counters, and `dmesg | grep conntrack` for kernel messages. `ss -s` gives a summary of sockets. `iptables -t nat -L -v -n` shows packet counters on each rule, and `nft list ruleset` shows counters too. Run `tcpdump -ni any host X` on both interfaces to compare what goes in and what comes out.
 

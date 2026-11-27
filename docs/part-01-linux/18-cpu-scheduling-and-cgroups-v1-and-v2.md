@@ -95,6 +95,10 @@ Microarchitecture bugs, such as the Spectre and Meltdown family, can cost CPU pe
 
 Picture a busy node where more threads want to run than there are CPUs. Something has to decide which threads run now and which ones wait. That is the scheduler's job.
 
+![Runnable processes waiting in a per-CPU run queue while the scheduler picks the next one](./img/pre-run-queue.jpg)
+
+*Figure 1.18.3. Each CPU has a run queue. The scheduler picks the next process and preempts when the time slice ends.*
+
 The scheduler is the kernel subsystem that assigns runnable threads, called tasks, to logical CPUs. It does three jobs, and the rest of this section takes them one at a time. The first is **time sharing**. When more tasks are runnable than there are CPUs, each one gets slices of time, so that all of them make progress. The system timer interrupt, `scheduler_tick`, drives the accounting and the preemption decisions. Chapter 1.8 covers the clock tick.
 
 The second job is **preemption**. When a higher-priority task becomes runnable, for example after an I/O completion wakes it, the scheduler may interrupt the running task. The new task then runs at once, which lowers its latency. The third job is **load balancing**. It moves tasks between CPUs, so that no CPU sits idle while another one has a queue.
@@ -109,11 +113,11 @@ The time a runnable task waits for a CPU is **scheduler latency**, also called r
 
 ![A one million microsecond period split into 950000 for real-time tasks and 50000 for everything else, showing how the RT bandwidth limit stops starvation.](./img/p3-0118-rt-valve.svg)
 
-*Figure 1.18.3. The RT bandwidth limit leaves about 5% of each period for other tasks, so a spinning real-time task cannot starve the machine forever.*
+*Figure 1.18.4. The RT bandwidth limit leaves about 5% of each period for other tasks, so a spinning real-time task cannot starve the machine forever.*
 
 ![Scheduling classes are ordered, with real-time tasks above all fair tasks.](./img/l18-sched-classes.svg)
 
-*Figure 1.18.4. The real-time class sits above every fair task, which makes it powerful and dangerous.*
+*Figure 1.18.5. The real-time class sits above every fair task, which makes it powerful and dangerous.*
 
 Suppose a real-time job spins on a CPU, and the shell you need to fix it stops responding. That happens when the scheduling class is wrong for the job. Each task has a **scheduling policy**, and each policy belongs to a **class**. The classes are strictly ordered, so a task in a higher class always runs before any task in a lower class.
 
@@ -144,7 +148,7 @@ Use real-time policies sparingly. Reserve them for genuinely latency-critical th
 
 ![A nice scale from -20 to 19 with weights 88761, 1024 and 15, and a worked example where a nice minus 5 task's vruntime advances about 3.3 ms in 10 ms.](./img/p3-0118-nice-weight.svg)
 
-*Figure 1.18.5. A lower nice value means a larger weight, so its vruntime grows more slowly and it runs more under contention.*
+*Figure 1.18.6. A lower nice value means a larger weight, so its vruntime grows more slowly and it runs more under contention.*
 
 Suppose you start a long build on a shared workstation, and the editor in the next terminal slows to a crawl. Nice values are the first tool for that kind of competition. The **nice value** runs from -20 to +19, with 0 as the default. It is the user-visible priority for the fair class. Each nice step changes the task's **weight** by about 25%.
 
@@ -158,7 +162,7 @@ Since Linux 2.6.38, **autogroup** groups tasks by session. Its purpose is to sto
 
 ![A side-by-side comparison of CFS selecting the leftmost task by virtual runtime versus EEVDF filtering eligible tasks and picking the earliest virtual deadline.](./img/p4-0118-cfs-vs-eevdf.svg)
 
-*Figure 1.18.6. CFS always picks the task with the lowest virtual runtime, whereas EEVDF filters for eligible tasks whose virtual runtime is below the queue average and selects the one with the earliest virtual deadline.*
+*Figure 1.18.7. CFS always picks the task with the lowest virtual runtime, whereas EEVDF filters for eligible tasks whose virtual runtime is below the queue average and selects the one with the earliest virtual deadline.*
 
 Consider a latency-sensitive service that sleeps between requests. How the scheduler handles its wake-ups decides how quickly it answers the next one.
 
@@ -184,7 +188,7 @@ The diagram shows idle balance in action. CPU 2 has nothing to run, so the balan
 
 ![Load balancing and migration cost](./img/ch18-d2-luna.svg)
 
-*Figure 1.18.7. Load balancing and migration cost.*
+*Figure 1.18.8. Load balancing and migration cost.*
 
 If a latency-sensitive thread keeps moving between cores, pin it with affinity and keep its memory local.
 
@@ -192,7 +196,7 @@ If a latency-sensitive thread keeps moving between cores, pin it with affinity a
 
 ![A flow from a hardware interrupt to a softirq on one CPU, with the commands to find the busy CPU and the settings that control where interrupts land.](./img/p3-0118-irq-path.svg)
 
-*Figure 1.18.8. A hardware interrupt preempts the CPU it lands on and defers the rest to a softirq, so heavy network traffic can take whole cores.*
+*Figure 1.18.9. A hardware interrupt preempts the CPU it lands on and defers the rest to a softirq, so heavy network traffic can take whole cores.*
 
 Sometimes one CPU is busy with network work, and the application threads on that core slow down. The interrupt path is the likely cause, not your code.
 
@@ -208,7 +212,7 @@ Before you pin any workload, check where its interrupts land, so that the cores 
 
 ![Load average as running plus runnable plus uninterruptible tasks, and four mpstat patterns: one hot CPU, steal, iowait and PSI cpu some.](./img/p3-0118-load-and-mpstat.svg)
 
-*Figure 1.18.9. Load counts running, runnable and D-state tasks, so compare it with the logical CPU count and look at per-CPU, steal and PSI numbers.*
+*Figure 1.18.10. Load counts running, runnable and D-state tasks, so compare it with the logical CPU count and look at per-CPU, steal and PSI numbers.*
 
 Suppose a node's load average looks alarming, and a colleague asks whether the CPUs are actually busy. Several commands can answer that question, and each one shows a different part of the picture. The block below lists the most useful ones.
 
@@ -246,7 +250,7 @@ To find where the CPU time goes, profile the node. Sample at 49 or 99 Hz with `p
 
 ![A seven step ladder for CPU problems from monitoring and the USE method to profiling, static setup review, tuning and benchmarks.](./img/p3-0118-cpu-method.svg)
 
-*Figure 1.18.10. Monitor, apply the USE method and characterise the workload before profiling, reviewing setup, tuning and benchmarking.*
+*Figure 1.18.11. Monitor, apply the USE method and characterise the workload before profiling, reviewing setup, tuning and benchmarking.*
 
 When a CPU problem lands on your desk, a fixed sequence keeps you from guessing. Step 1 monitors utilisation and saturation for each CPU, using `mpstat`, PSI and `runqlat`. Include limits and throttling in containers. Step 2 applies the USE method: check utilisation, saturation and errors. Errors include machine-check and EDAC events, offlined CPUs and thermal events. Use `dmesg`, `mcelog` or `rasdaemon` to find them.
 
@@ -262,7 +266,7 @@ Finish the first three steps before you tune anything. A tuning change made with
 
 ![Eight CPU cells with a cpuset fence around four of them and a taskset affinity marker inside it, showing affinity can only narrow the allowed set.](./img/p3-0118-affinity-fence.svg)
 
-*Figure 1.18.11. A cpuset sets the allowed CPUs from outside and affinity can only narrow that set, never escape it.*
+*Figure 1.18.12. A cpuset sets the allowed CPUs from outside and affinity can only narrow that set, never escape it.*
 
 Suppose a data loader keeps landing on busy cores while other cores sit idle. Affinity lets you say which CPUs a process may use.
 
@@ -283,7 +287,7 @@ A few pitfalls catch people out. Pinning on a shared host can collide with other
 
 ![Boot and runtime settings that keep the kernel, interrupts and other tasks off chosen CPUs.](./img/l18-isolation.svg)
 
-*Figure 1.18.12. Isolation keeps the rest of the system off the cores you reserve for latency-sensitive work.*
+*Figure 1.18.13. Isolation keeps the rest of the system off the cores you reserve for latency-sensitive work.*
 
 Picture a dedicated data-loader core that loses cycles each time the kernel or a system service wakes up on it. Isolation keeps the rest of the system off those cores. For latency- or jitter-sensitive work, such as dedicated data-loader or communication cores, real-time threads or benchmarks, you remove housekeeping work from some CPUs.
 
@@ -303,7 +307,7 @@ Most of these settings are boot parameters, so they take effect after a reboot. 
 
 ![A diagram comparing active C0 P-state frequency governors and turbo boost against idle C-states showing the wake-up latency penalty of deeper sleep.](./img/p4-0118-pstates-cstates.svg)
 
-*Figure 1.18.13. Frequency governors and P-states operate only while the core is active in C0, while deeper idle C-states save power at the cost of tens of microseconds of wake-up latency jitter.*
+*Figure 1.18.14. Frequency governors and P-states operate only while the core is active in C0, while deeper idle C-states save power at the cost of tens of microseconds of wake-up latency jitter.*
 
 Suppose a GPU node's clocks drift with the power policy. Then the CPU side becomes a variable in every benchmark you run.
 
@@ -319,6 +323,10 @@ Before you benchmark a GPU node, record its governor and turbo settings, so that
 
 Suppose you want to give a whole service a fixed CPU budget, but that service forks many helper processes. A `nice` value acts on one process at a time, so it cannot express a budget for the group.
 
+![A cgroup tree from the root through slices to a container with controllers](./img/pre-cgroup-tree.jpg)
+
+*Figure 1.18.15. cgroups form a tree. Limits on a parent apply to everything below it.*
+
 A **control group**, or **cgroup**, is a kernel mechanism. It groups processes and applies resource accounting and limits to the group as a whole. Where `nice` and `ulimit` act on a single process, a cgroup gives a set of processes a combined budget. These 40 processes together may use at most 4 CPUs and 16 GiB. The difference is like telling one person to work more slowly versus giving a whole department a fixed number of hours for the week.
 
 Cgroups are the basis of container resource limits, such as Docker `--cpus` and `--memory`, and of Kubernetes requests and limits. They also confine Slurm jobs, and systemd uses them for resource control, such as `CPUQuota=` and `MemoryMax=`. Chapter 1.15 covers that. Cgroups are a kernel feature that does not depend on systemd, but on modern systems systemd manages most of them.
@@ -331,11 +339,11 @@ Cgroups form a **tree**, also called a hierarchy. The tree appears as a special 
 
 ![A decision flow using stat on /sys/fs/cgroup to tell pure v2 from v1 or hybrid, with extra checks and a list of tools that expect v1.](./img/p3-0118-cgroup-version-check.svg)
 
-*Figure 1.18.14. The type of the cgroup mount tells you whether a node runs pure v2, and old tooling may expect v1.*
+*Figure 1.18.16. The type of the cgroup mount tells you whether a node runs pure v2, and old tooling may expect v1.*
 
 ![Version 1 uses one tree per controller, and version 2 uses a single unified tree.](./img/l18-cgroup-v1-v2.svg)
 
-*Figure 1.18.15. In v2 every process belongs to exactly one cgroup in a single hierarchy.*
+*Figure 1.18.17. In v2 every process belongs to exactly one cgroup in a single hierarchy.*
 
 A GPU node that works on one distribution can behave differently on the next, because the cgroup layout may change under your tools. Knowing which version you run is the first step.
 
@@ -374,7 +382,7 @@ Before you trust a container runtime with your cgroups, build one yourself. The 
 
 ![cgroup v2 is one tree](./img/ch18-fig1-cgtree.jpg)
 
-*Figure 1.18.16. In cgroup v2 every group is a directory; its control files set limits for all member processes.*
+*Figure 1.18.18. In cgroup v2 every group is a directory; its control files set limits for all member processes.*
 
 ```bash
 cd /sys/fs/cgroup
@@ -409,7 +417,7 @@ Remove a cgroup with `rmdir`, not `rm -r`, and only after it has no processes an
 
 ![A cgroup tree where interior branches distribute controllers and only leaves hold processes, with the EBUSY failure when a branch that holds processes enables a controller.](./img/p3-0118-no-internal-processes.svg)
 
-*Figure 1.18.17. A cgroup that enables controllers for its children cannot also hold processes, so put workloads in leaves.*
+*Figure 1.18.19. A cgroup that enables controllers for its children cannot also hold processes, so put workloads in leaves.*
 
 Suppose a rootless container runtime needs to create groups inside its own corner of the tree. The kernel lets you hand over that corner without handing over the whole tree.
 
@@ -425,11 +433,11 @@ Before you write to any cgroup file, check who owns that part of the tree.
 
 ![How a CPU limit becomes a quota per period and shows up as throttled counts](./img/pre-s2-cpu-throttle.jpg)
 
-*Figure 1.18.18. A CPU limit is a time budget per period. When it runs out, the container waits.*
+*Figure 1.18.20. A CPU limit is a time budget per period. When it runs out, the container waits.*
 
 ![Weight shares CPU proportionally under contention, while quota sets a hard ceiling.](./img/l18-weight-quota.svg)
 
-*Figure 1.18.19. A weight is a proportion that only matters under contention, but a quota is a ceiling that always applies.*
+*Figure 1.18.21. A weight is a proportion that only matters under contention, but a quota is a ceiling that always applies.*
 
 ### Weight (shares): relative fairness
 
@@ -443,7 +451,7 @@ This is the mechanism behind the Kubernetes CPU request, which is converted into
 
 ![The cpu.stat fields and cAdvisor metrics that reveal CPU throttling, and how a thread pool sized from the host's CPU count oversubscribes a two CPU quota.](./img/p3-0118-throttle-oversubscribe.svg)
 
-*Figure 1.18.20. Compare nr_throttled with nr_periods to detect throttling, and pass the container's CPU limit to runtimes that size thread pools from the host.*
+*Figure 1.18.22. Compare nr_throttled with nr_periods to detect throttling, and pass the container's CPU limit to runtimes that size thread pools from the host.*
 
 Picture a service with a hard budget of two CPUs' worth of time, even on a machine where other CPUs sit idle. That is what a quota does, and the quota is the ceiling that counts.
 
@@ -475,7 +483,7 @@ The diagram traces one throttling period from start to finish.
 
 ![Quota: hard ceiling (CFS bandwidth control)](./img/ch18-d3-luna.svg)
 
-*Figure 1.18.21. Quota: hard ceiling (CFS bandwidth control).*
+*Figure 1.18.23. Quota: hard ceiling (CFS bandwidth control).*
 
 Notice that the average looks healthy while the pauses hide inside each period.
 
@@ -483,7 +491,7 @@ Notice that the average looks healthy while the pauses hide inside each period.
 
 ![Three columns comparing cpuset for where a group may run, cpu.max quota for how much time, and cpu.weight for fairness under contention.](./img/p3-0118-cpuset-vs-quota.svg)
 
-*Figure 1.18.22. A cpuset restricts where a group runs, a quota caps how much CPU time it gets, and a weight sets its share under contention.*
+*Figure 1.18.24. A cpuset restricts where a group runs, a quota caps how much CPU time it gets, and a weight sets its share under contention.*
 
 Sometimes a job needs specific cores, not just a share of time. That is what a cpuset does. A quota says how much time a group may use; a cpuset says where that time may be spent.
 
@@ -502,7 +510,7 @@ An empty `cpuset.cpus` inherits the parent's value. A cpuset gives placement, wh
 
 ![A layered view where the scheduler or Slurm decides how many GPUs, the container toolkit and devices cgroup expose the nvidia device nodes, and a daemon reload can reset the rules.](./img/p3-0118-gpu-device-control.svg)
 
-*Figure 1.18.23. GPU quantity comes from the scheduler while access comes from the devices cgroup, which a reload or driver mismatch can reset.*
+*Figure 1.18.25. GPU quantity comes from the scheduler while access comes from the devices cgroup, which a reload or driver mismatch can reset.*
 
 Each controller has its own set of files, and each file enforces a different part of the limit. The table lists the rest.
 
@@ -535,7 +543,7 @@ Before you raise a limit, check the group's pressure file to confirm which resou
 
 ![Three bands showing how systemd directives, Docker run flags and Slurm cgroup settings each map onto cgroup files and the tree.](./img/p3-0118-manager-to-files.svg)
 
-*Figure 1.18.24. Whichever manager you use, its settings end up as cgroup files, so read the tree to see what is really enforced.*
+*Figure 1.18.26. Whichever manager you use, its settings end up as cgroup files, so read the tree to see what is really enforced.*
 
 Most of the time you do not create cgroups yourself. systemd, Docker and Slurm create them for you, and you need to know where they land. You may never have written a line under `/sys/fs/cgroup`, yet every service and every container on your node lives in a group that someone else created.
 
@@ -543,7 +551,7 @@ systemd owns the tree on most systems. It organises the tree into **slices**. `-
 
 ![Systemd, Docker, Slurm and the cgroup tree](./img/ch18-d4-luna.svg)
 
-*Figure 1.18.25. Systemd, Docker, Slurm and the cgroup tree.*
+*Figure 1.18.27. Systemd, Docker, Slurm and the cgroup tree.*
 
 Notice that Kubernetes gets its own slice, `kubepods.slice`, with a branch for each QoS class.
 
@@ -563,11 +571,11 @@ Before you blame a limit for odd behaviour, look at the cgroup tree from inside 
 
 ![A flow from a Guaranteed pod through the CPU Manager static policy and Topology Manager to exclusive NUMA aligned cores, with the matching cgroup driver rule.](./img/p3-0118-k8s-static-cpu.svg)
 
-*Figure 1.18.26. A Guaranteed pod with integer CPUs gets exclusive cores under the static policy, and the kubelet and runtime must use the same cgroup driver.*
+*Figure 1.18.28. A Guaranteed pod with integer CPUs gets exclusive cores under the static policy, and the kubelet and runtime must use the same cgroup driver.*
 
 ![Pod CPU requests become cpu.weight, CPU limits become cpu.max, and memory limits become memory.max, while the QoS class sets the OOM score.](./img/p2-0118-k8s-mapping.svg)
 
-*Figure 1.18.27. A pod's CPU request becomes a weight, its CPU limit becomes a quota, its memory limit becomes memory.max, and the QoS class sets the OOM score.*
+*Figure 1.18.29. A pod's CPU request becomes a weight, its CPU limit becomes a quota, its memory limit becomes memory.max, and the QoS class sets the OOM score.*
 
 A pod asks for a certain amount of CPU and memory. On the node, that request turns into a number in one of the files you met in section 6. The kubelet and the container runtime do the translation, and they do it differently depending on the cgroup version.
 
@@ -598,13 +606,13 @@ Finally, the NVIDIA device plugin and containers can lose GPU access after `syst
 
 ![A table of six cgroup failures with their likely causes, including failed subtree_control writes, missing controllers, processes that will not move and RT throttling.](./img/p3-0118-cgroup-write-failures.svg)
 
-*Figure 1.18.28. Most cgroup write failures come from a group that still holds processes, a controller not enabled from the top, or the wrong version or owner.*
+*Figure 1.18.30. Most cgroup write failures come from a group that still holds processes, a controller not enabled from the top, or the wrong version or owner.*
 
 When a node gets slow, start with the flowchart below. It walks you through the first questions to ask, in the order that saves the most time.
 
 ![Troubleshooting](./img/ch18-d5-luna.svg)
 
-*Figure 1.18.29. Troubleshooting.*
+*Figure 1.18.31. Troubleshooting.*
 
 Read the flowchart from the top, one question at a time. Each answer sends you to a different family of fixes.
 

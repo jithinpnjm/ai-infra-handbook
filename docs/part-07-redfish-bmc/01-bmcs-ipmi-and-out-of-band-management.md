@@ -199,6 +199,10 @@ The diagram puts everything that answers on the OOB network in one place. That i
 
 Picture a hung node and only a terminal on the head node. You need to read its sensors, check its event log and maybe power-cycle it. Which tool gets you into the box? The answer is often `ipmitool`, even though the industry has moved on from the protocol underneath it.
 
+![An admin using ipmitool over the network to the BMC for power, sensors and console](./img/pre-ipmi-bmc.jpg)
+
+*Figure 7.1.1. The BMC answers over the network even when the server is off. ipmitool is the client.*
+
 The **Intelligent Platform Management Interface (IPMI)** was started by Intel, Dell, HPE and NEC in 1998. It was standardized as **IPMI 2.0**. For two decades it was the universal command protocol for talking to a management controller (`MC`). `ipmitool` is the command-line client that speaks it. DMTF Redfish has since taken over most fleet automation, so you may wonder why you still need `ipmitool` at all. You still need it for three reasons.
 
 1. It is the standard **in-band KCS tool**. You use it to configure or reset a hung BMC from inside the host Linux OS, with `ipmitool mc reset cold`. When the OOB door is locked and the in-band door still works, this is the command that opens the first one again.

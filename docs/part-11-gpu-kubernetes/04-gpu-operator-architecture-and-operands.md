@@ -62,6 +62,10 @@ Check that you can read a DaemonSet and an init container before you go further,
 
 Think about how you run a stateless web service. You write a Deployment, Kubernetes starts a few replicas, and any replica can die and restart without anyone noticing. The order in which replicas start does not matter, because no replica depends on another. That is why a standard Deployment is easy to manage.
 
+![The GPU Operator reading a ClusterPolicy and deploying its operands in order on GPU nodes](./img/pre-operator-operands.jpg)
+
+*Figure 11.4.1. One ClusterPolicy tells the operator what to install on every GPU node, in order.*
+
 The GPU software stack on a worker node is different. Its components must start in a strict sequence, from hardware up to user space. User space is the layer where your applications and libraries run, above the kernel. The stack has to inspect the host kernel, patch container runtime configuration on the host filesystem, and check that CUDA contexts initialize before it admits tenant Pods. A tenant Pod is a workload that belongs to one of your users or teams. If any step runs out of order, the node can accept work it cannot run.
 
 The NVIDIA GPU Operator manages this lifecycle with two core Kubernetes control-plane primitives. The first is a single desired-state API. Instead of maintaining separate Helm charts or Ansible playbooks for every daemon, the platform team defines one cluster-scoped ClusterPolicy custom resource in the API group `nvidia.com/v1`. The second is a continuous reconciliation loop. The `gpu-operator` controller Deployment watches the ClusterPolicy resource and the cluster's Node objects. It reconciles child DaemonSets whenever NFD labels a node with `feature.node.kubernetes.io/pci-10de.present=true`. Reconciliation means the controller compares what you asked for with what exists, and then makes small changes until the two match again.

@@ -62,6 +62,10 @@ This chapter walks through how NFD probes PCIe class and vendor IDs to start GPU
 
 Picture a freshly booted GPU worker node that is about to join a cluster pool. It may not have an NVIDIA kernel driver or the `nvidia-smi` binary installed yet. Any discovery daemon that relies on the NVML library fails to see a GPU on a driverless host, so the cluster stays blind to the hardware. This is a classic chicken-and-egg problem. The tool that reads the GPU needs the driver, and the driver is what the cluster is trying to confirm.
 
+![NFD and GFD labelling nodes so the GPU Operator knows where to run](./img/pre-nfd-gfd.jpg)
+
+*Figure 11.3.1. NFD labels what the hardware is. GFD adds GPU details. The operator reads the labels.*
+
 The Linux kernel enumerates the PCI Express bus at boot, whether or not a vendor driver is loaded. Enumerating means the kernel walks every slot and records each device it finds, so the device is known to the system even before anyone can talk to it. Kubernetes therefore splits hardware discovery into two stages. The cluster detects raw PCIe hardware first, and it queries NVML capabilities second. The first stage works without a driver, and the second stage depends on one.
 
 #### Stage 1: Node Feature Discovery (NFD) — OS, CPU, and PCIe bus discovery

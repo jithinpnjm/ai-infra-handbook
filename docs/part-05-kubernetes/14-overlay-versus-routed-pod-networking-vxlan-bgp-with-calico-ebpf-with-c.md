@@ -45,6 +45,10 @@ If a line feels unfamiliar when you reach its section, slow down there and read 
 
 Suppose your team must build a GPU cluster on racks that the network engineers already manage. Before anyone opens a Helm chart, the team needs to know what the fabric can do. This table turns that conversation into a checklist.
 
+![Overlay networking compared with native routing for pod networks](./img/pre-overlay-vs-routed.jpg)
+
+*Figure 5.14.1. Overlay works anywhere but adds a header. Routed is leaner but the fabric must carry pod routes.*
+
 Before you read about any mode in detail, answer the questions in this table. Each row exposes a constraint that can rule a mode in or out. Read the right-hand column as the reason behind each question.
 
 | Question | Why it matters |
@@ -69,7 +73,7 @@ Picture a pod on Node A that must reach a pod on Node B, while the physical netw
 
 ![Overlay networks](./img/m5-14-1.svg)
 
-*Figure 5.14.1. Overlay networks, as a diagram.*
+*Figure 5.14.2. Overlay networks, as a diagram.*
 
 Read the diagram as one packet's trip. The packet leaves Pod A, and the Node A device looks up which VTEP, the tunnel endpoint that does the wrapping, owns the destination subnet. It then wraps the packet in an outer UDP packet addressed from Node A to Node B. Node B strips the outer layer and hands the inner packet to Pod B.
 
@@ -97,7 +101,7 @@ Imagine the fabric could route straight to pod addresses. Then no packet would n
 
 ![Routed designs with BGP](./img/m5-14-2.svg)
 
-*Figure 5.14.2. Routed designs with BGP, as a diagram.*
+*Figure 5.14.3. Routed designs with BGP, as a diagram.*
 
 The diagram shows one leaf switch per rack. Each node peers over eBGP with its rack's leaf, and every leaf connects to both spines. The leaves use ASNs 65101 and 65102, and node1 uses ASN 65201.
 
