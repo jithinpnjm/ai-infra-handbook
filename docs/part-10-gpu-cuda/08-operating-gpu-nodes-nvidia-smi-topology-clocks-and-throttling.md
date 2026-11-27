@@ -372,6 +372,10 @@ If `LnkSta` shows a lower speed or width than `LnkCap`, the link has trained dow
 
 When a node logs kernel errors in the middle of the night, or a job slows without crashing, you must separate harmless warnings from real hardware faults. Guessing wrong either pages the team for nothing or leaves a bad GPU in the cluster. Chapter 10.21 owns the full health and Xid reference. This section gives the triage rule an on-call engineer needs at the moment of the page.
 
+![A checklist of causes for a slow GPU job with the command for each](./img/pre-s11-slow-gpu-job.jpg)
+
+*Figure 10.8.1. A slow GPU job is usually not the GPU. Check placement, data, network and CPU.*
+
 ### 5.1 Xid errors: three tiers
 
 An Xid is an error code that the NVIDIA kernel driver prints to `dmesg`. The format is `NVRM: Xid (PCI:<bus>): <code>, <message>`, where the bus is the PCI address of the card and the code is the number that matters. Triage by the number, because the message text can change between driver releases while the number stays put. The function `classify_xid()` in `code/part10/gpu_node_ops.py` encodes this table.

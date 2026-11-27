@@ -380,7 +380,7 @@ These four scenarios reuse the numbers from the sections above, so the reasoning
 
 ![Flowchart showing the nine sequential calculation steps that lead from model weights and KV memory to 9 H100 GPUs and 44 cents per million tokens.](./img/p4-2012-opening-calc.svg)
 
-*Figure 20.0.0. The nine calculation steps for the opening scenario work from model parameters and KV cache to per-GPU throughput, replica count, and token cost.*
+*Figure 20.12.13. The nine calculation steps for the opening scenario work from model parameters and KV cache to per-GPU throughput, replica count, and token cost.*
 
 Picture the interviewer asking for the GPU count for an 8-billion-parameter model on H100s at 40 requests per second, 2,000 tokens in and 500 out. You take Qwen3-8B in BF16, as the question suggests, and you work the chain from the top. Say each step aloud as you finish it, so the interviewer can stop you at the first wrong input.
 
@@ -400,7 +400,7 @@ The answer is nine H100s, about $29,565 per month, which is 9 GPUs times $4.50 t
 
 ![A memory bar for four H100s showing weights, overhead and the remaining cache that fits only eleven full-length requests.](./img/p3-2012-long-context-fit.svg)
 
-*Figure 20.12.13. At long context the KV cache per request is large, so concurrency collapses even though the weights fit.*
+*Figure 20.12.14. At long context the KV cache per request is large, so concurrency collapses even though the weights fit.*
 
 Picture a customer who wants Qwen2.5-72B with 32,768 tokens of context on four H100s. The question is whether it fits, and for how many users. This is the case where the cache, not the weights, becomes the limit, so it tests whether you can see that shift.
 
@@ -415,7 +415,7 @@ The weights fit comfortably, and only eleven users can hold full-length conversa
 
 ![A KV cache at 95 percent with 60 requests implies about 5,430 tokens per request, more than twice the planned 2,500.](./img/x12-alert-backtrack.svg)
 
-*Figure 20.12.14. Working backwards from live cache usage and request count shows that real prompts are longer than the estimate assumed.*
+*Figure 20.12.15. Working backwards from live cache usage and request count shows that real prompts are longer than the estimate assumed.*
 
 Picture an alert that fires while you are on call: KV-cache usage is 95 percent and p99 time to first token is rising. The dashboard shows 60 requests running on the H100 from Scenario 1, where you estimated 137 would fit. The estimate and the dashboard disagree, and the disagreement is the clue. Work backwards from the live numbers to find the input that changed.
 
@@ -429,7 +429,7 @@ The planned figure was 2,500 tokens. Live requests carry more than twice that, s
 
 ![H100 and L40S compared on tokens per second, cost per million tokens and latency for the same model.](./img/p3-2012-cheaper-gpu-per-token.svg)
 
-*Figure 20.12.15. Hourly price alone misleads because the cost per token also depends on tokens produced per second.*
+*Figure 20.12.16. Hourly price alone misleads because the cost per token also depends on tokens produced per second.*
 
 Picture a colleague who says the L40S is a bargain because it costs far less per hour than the H100. The L40S from Nebius starts at $1.55 per GPU-hour, against $4.50 for the H100, both list prices from nebius.com/prices fetched on 2026-11-09. A colleague says it is three times cheaper. Test it with the same Qwen3-8B workload at a batch of 32 on both, because a per-hour price says nothing about tokens.
 

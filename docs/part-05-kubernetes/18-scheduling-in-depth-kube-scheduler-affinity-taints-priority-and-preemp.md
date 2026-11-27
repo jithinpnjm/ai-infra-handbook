@@ -413,7 +413,7 @@ Kueue also offers topology-aware scheduling (TAS). TAS places a workload's pods 
 
 ![Volcano batch scheduling pipeline showing enqueue, allocate, preempt, reclaim, and backfill actions coordinating with gang and fairness plugins.](./img/p4-0518-volcano-architecture.svg)
 
-*Figure 5.0.0. Volcano replaces kube-scheduler for batch workloads, evaluating all-or-nothing PodGroup admission and cross-queue fairness in a multi-stage action loop.*
+*Figure 5.18.17. Volcano replaces kube-scheduler for batch workloads, evaluating all-or-nothing PodGroup admission and cross-queue fairness in a multi-stage action loop.*
 
 Volcano is a batch scheduler from CNCF. It runs its own scheduler binary and uses its own CRDs. These are `Queue`, with weight, capability and reclaimable; `PodGroup`, with minMember and minResources, which give gang behaviour; and `Job`, a vcjob with tasks and lifecycle policies. Its actions are `enqueue`, `allocate`, `preempt`, `reclaim` and `backfill`. Its plugins include `gang`, `priority`, `drf` for fairness, `proportion`, `binpack`, `nodeorder`, `predicates`, `task-topology` and `numa-aware`. Network-topology awareness comes through HyperNode.
 
@@ -423,7 +423,7 @@ Pods set `schedulerName: volcano` and reference a PodGroup. Compared with Kueue,
 
 ![A table compares Kueue, Volcano, the coscheduling plugin and JobSet by how they add all-or-nothing admission.](./img/p3-0518-gang-tools-compare.svg)
 
-*Figure 5.18.17. Choose Kueue to add to the default scheduler or Volcano to replace it for batch pods.*
+*Figure 5.18.18. Choose Kueue to add to the default scheduler or Volcano to replace it for batch pods.*
 
 The coscheduling plugin comes from the scheduler-plugins project. It adds a `PodGroup` CRD and a Permit plugin that holds pods until `minMember` can be placed. It runs in the same scheduler and brings more plugins with it. These include `CapacityScheduling` for elastic quotas, `NodeResourceTopologyMatch`, `Trimaran` for load-aware scoring, and `NetworkAware` scheduling.
 
@@ -441,11 +441,11 @@ Choose Kueue or Volcano for batch jobs depending on whether you want to add to t
 
 ![A sequence shows the scheduler binding a pod and the kubelet later rejecting it with TopologyAffinityError.](./img/p3-0518-topology-reject.svg)
 
-*Figure 5.18.18. The scheduler does not know NUMA alignment, so make it visible or the kubelet rejects pods after binding.*
+*Figure 5.18.19. The scheduler does not know NUMA alignment, so make it visible or the kubelet rejects pods after binding.*
 
 ![Two panels contrast a device plugin that counts GPUs with DRA claims that select GPUs by attributes.](./img/p3-0518-device-plugin-vs-dra.svg)
 
-*Figure 5.18.19. DRA lets a pod ask for four GPUs sharing one PCIe root instead of just four GPUs.*
+*Figure 5.18.20. DRA lets a pod ask for four GPUs sharing one PCIe root instead of just four GPUs.*
 
 A job that spreads its GPUs across the wrong racks loses bandwidth on every all-reduce, and nothing in the logs shows an error. The fix is to tell the scheduler where things sit. GPU-to-GPU bandwidth depends on the NVLink domain. GPU-to-NIC bandwidth depends on PCIe and NUMA proximity. Node-to-node bandwidth depends on rail, leaf and spine hops. A mis-placed job therefore loses NCCL bandwidth substantially. See Part 12 for the details.
 
@@ -484,7 +484,7 @@ Attribute names and API versions differ by driver and Kubernetes release, so ver
 
 ![Three control loops coordinate placement: kube-scheduler places pods, the descheduler periodically evicts drifted pods to consolidate nodes, and the autoscaler provisions or removes nodes.](./img/p4-0518-placement-lifecycle.svg)
 
-*Figure 5.0.0. Maintaining optimal GPU cluster placement requires coordinating kube-scheduler placement, descheduler defragmentation, and autoscaler provisioning without interrupting running training jobs.*
+*Figure 5.18.21. Maintaining optimal GPU cluster placement requires coordinating kube-scheduler placement, descheduler defragmentation, and autoscaler provisioning without interrupting running training jobs.*
 
 A cluster has been running for months. Pods have drifted into awkward places, a few nodes are nearly empty, and others are packed. The descheduler is the tool that tidies that up over time. It periodically evicts pods to improve placement. It can remove duplicates, balance utilisation, fix pods that violate affinity, clean up node taints, and consolidate nodes with low utilisation. Run it with PDBs, and only on non-training pods.
 
@@ -558,9 +558,13 @@ In the unlikely event that you cannot use the Kubernetes scheduler, even with po
 
 ## 8. Debugging scheduling
 
+![Reasons a pod stays Pending and where to look for each](./img/pre-s8-pod-pending.jpg)
+
+*Figure 5.18.22. A Pending pod always has a reason in its events.*
+
 ![A FailedScheduling message is split into three reasons with counts and the next check for each.](./img/p3-0518-failedscheduling-anatomy.svg)
 
-*Figure 5.18.20. Each count in the event names a reason and points to one command to run next.*
+*Figure 5.18.23. Each count in the event names a reason and points to one command to run next.*
 
 A pod has been Pending for ten minutes, and the first guess is that the cluster is out of GPUs. The events often say something more specific. When a pod sits in Pending, start with its events. The `FailedScheduling` message gives the count of nodes rejected for each reason. The commands below show the state behind those counts.
 
@@ -604,7 +608,7 @@ For a Kueue pod stuck in Pending, start with `kubectl describe workload`, becaus
 
 ![A six-layer stack from node pools to governance describes a GPU platform scheduling design.](./img/p3-0518-gpu-platform-layers.svg)
 
-*Figure 5.18.21. Pools come first, since queues, quotas and placement rules all refer to them.*
+*Figure 5.18.24. Pools come first, since queues, quotas and placement rules all refer to them.*
 
 A platform team wants research teams to submit jobs without knowing node labels or taints. The patterns below show how to get there, one layer at a time.
 
@@ -666,7 +670,7 @@ A kubelet topology policy stricter than the scheduler's awareness leads to pods 
 
 ![A table maps eight pending-pod symptoms to likely causes and fixes.](./img/p3-0518-pending-symptom-table.svg)
 
-*Figure 5.18.22. Translate the scheduler's terse reason into one question and one check.*
+*Figure 5.18.25. Translate the scheduler's terse reason into one question and one check.*
 
 These are the questions an interviewer is likely to ask about this chapter. Each one tests whether you can explain the mechanism, not just name the feature. Give the mechanism first, then the example that shows it working or failing.
 

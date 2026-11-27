@@ -40,15 +40,19 @@ On the node, the toolkit reads runtime state with `crictl`, enters container nam
 
 ## 1. Method
 
+![A pod troubleshooting decision tree from pod status to the command to run](./img/pre-k8s-triage.jpg)
+
+*Figure 5.25.1. Read the pod status first. It tells you which command to run next.*
+
 ![A troubleshooting method that defines the scope of a failure, checks recent changes, then branches to the right layer from app to control plane.](./img/p2-0525-scope-first.svg)
 
-*Figure 5.25.1. Troubleshooting starts by defining the failure's scope and recent changes, then branches to the layer that holds the fault.*
+*Figure 5.25.2. Troubleshooting starts by defining the failure's scope and recent changes, then branches to the layer that holds the fault.*
 
 A doctor facing a patient with chest pain does not start with surgery. The doctor asks where the pain is, how long it has lasted and who else feels it, and each answer removes some causes from the list. Debugging a cluster works the same way. A failing workload rarely tells you where the fault is, so the first job is to measure how wide the failure is. Before you touch anything, define how wide the failure is: one pod, one node, one namespace, or the whole cluster. The diagram below turns that scope into a choice of layer, and each layer has its own first checks.
 
 ![Method](./img/m5-25-1.svg)
 
-*Figure 5.25.2. Method, as a diagram.*
+*Figure 5.25.3. Method, as a diagram.*
 
 Read the diagram from the top. Scope comes first because it cuts the list fastest. If only one pod fails, the cause is probably in that pod, its app or its node. If every pod on one node fails, the node is the suspect. If the failures began right after a deploy, the deploy is the suspect. Recent changes come next, because most incidents follow a change. Then you pick the layer the symptom points to, form a hypothesis, and run the cheapest test that can tell it apart from the alternatives. That test is often one command, not a long investigation.
 
@@ -67,7 +71,7 @@ Keep these principles in mind at every step.
 
 ![Three kubectl debug modes compared by command and when to use each.](./img/p3-0525-debug-modes.svg)
 
-*Figure 5.25.3. Pick ephemeral, copy or node mode depending on whether the pod is healthy, crashing or the node is suspect.*
+*Figure 5.25.4. Pick ephemeral, copy or node mode depending on whether the pod is healthy, crashing or the node is suspect.*
 
 When a pod misbehaves, kubectl is usually the first tool you reach for. Think of it as the front desk of the cluster. It tells you what the API server believes is true, which is useful, but the answer can lag behind reality. The commands below move from a cluster-wide overview to a single pod, then to debugging, and finally to API-level checks.
 
@@ -113,7 +117,7 @@ Plan your debug image before you need it. Keep a team-approved toolbox image, su
 
 ![A picker table pairs nine node-level questions with the commands that answer them.](./img/p3-0525-tool-picker.svg)
 
-*Figure 5.25.4. Start from the question you need answered and reach for the matching tool.*
+*Figure 5.25.5. Start from the question you need answered and reach for the matching tool.*
 
 Some problems only show up on the worker node. Picture a pod that reports `Running` while its traffic never arrives. kubectl talks to the API server, which stores what should exist. The node is where things actually run, so kubectl cannot show you the packets, the namespaces or the runtime state. You need to look at the node itself. The tools below cover those layers one at a time.
 
@@ -121,7 +125,7 @@ Some problems only show up on the worker node. Picture a pod that reports `Runni
 
 ![A pod name from kubectl maps to the node's log directory built from namespace, name and UID, then to a runtime container ID used by crictl.](./img/p2-0525-pod-name-to-node.svg)
 
-*Figure 5.25.5. Kubernetes names a pod by namespace and name, while the node finds its logs and containers by directory and ID, which crictl reads.*
+*Figure 5.25.6. Kubernetes names a pod by namespace and name, while the node finds its logs and containers by directory and ID, which crictl reads.*
 
 ```bash
 crictl pods; crictl ps -a; crictl images
@@ -139,7 +143,7 @@ Kubernetes names things by pod and container, but the node knows them by directo
 
 ![Host tools run through nsenter -n inside the pod's network namespace, so the pod image needs no debugging tools.](./img/k25-nsenter-room.svg)
 
-*Figure 5.25.6. The nsenter command runs the node's own tools inside a pod's network namespace, so the pod image needs none of them.*
+*Figure 5.25.7. The nsenter command runs the node's own tools inside a pod's network namespace, so the pod image needs none of them.*
 
 ```bash
 PID=$(crictl inspect --output go-template --template '{{.info.pid}}' <ctr-id>)
@@ -161,11 +165,11 @@ The `-a` flag enters every namespace at once, and it changes the root filesystem
 
 ![A ladder of connectivity tests from DNS name to ClusterIP to backend pod IP to packet captures with two deductions.](./img/p3-0525-connectivity-bisect.svg)
 
-*Figure 5.25.7. Each test removes one layer, so the last rung that fails names the broken layer.*
+*Figure 5.25.8. Each test removes one layer, so the last rung that fails names the broken layer.*
 
 ![Packets from a client pod cross its veth, the node uplink and the server veth, and captures at each point show where they vanish.](./img/k25-capture-points.svg)
 
-*Figure 5.25.8. Capturing packets at the client veth, the node uplink and the server veth shows the hop where traffic disappears.*
+*Figure 5.25.9. Capturing packets at the client veth, the node uplink and the server veth shows the hop where traffic disappears.*
 
 ```bash
 ip -br addr; ip -br link; ip route; ip rule; ip neigh; ip -s link show eth0           # errors/drops
@@ -194,7 +198,7 @@ Here is how that order plays out. Suppose a client pod cannot reach a Service by
 
 ![A four-rung ladder from mount to filesystem to I/O latency to stuck processes with the command for each.](./img/p3-0525-storage-ladder.svg)
 
-*Figure 5.25.9. Check the mount first, then space, then latency, then stuck processes.*
+*Figure 5.25.10. Check the mount first, then space, then latency, then stuck processes.*
 
 Storage faults often look like a stuck pod. Start with the mount, then the filesystem, then the I/O latency. A mount that is missing, read-only or hung blocks the app before it reads a single byte, and the app then looks broken from the outside.
 
@@ -215,7 +219,7 @@ Work through these in order. `findmnt` tells you whether the volume is mounted w
 
 ![A list pairs process-level questions with the tool that answers each, from threads to cgroup limits.](./img/p3-0525-process-tools.svg)
 
-*Figure 5.25.10. Start broad with thread views and narrow to stacks and cgroup limits.*
+*Figure 5.25.11. Start broad with thread views and narrow to stacks and cgroup limits.*
 
 When the process itself is the problem, you need to see what it is doing. The commands below sample CPU, memory and I/O first, then stacks, then the cgroup limits. Start broad and get narrower. A stack shows where a thread stopped, and a cgroup file shows whether the kernel was holding the process back.
 
@@ -237,7 +241,7 @@ Each tool answers a different question. `top -H` and `pidstat` ask which threads
 
 ![A five-tier diagnostic ladder for GPU and fabric hardware inspecting driver health, NVLink, PCIe link status, kernel Xid errors, and collective fabric tests before collecting a bug report.](./img/p4-0525-gpu-hw-ladder.svg)
 
-*Figure 5.0.0. GPU and fabric hardware triage moves through five layers from NVML queries down to PCIe link negotiation and kernel Xid errors before generating an official bug report.*
+*Figure 5.25.12. GPU and fabric hardware triage moves through five layers from NVML queries down to PCIe link negotiation and kernel Xid errors before generating an official bug report.*
 
 When a GPU or a fabric link misbehaves, the hardware tools and the kernel log are where you look first. A GPU can run hot, throttle its clocks, or drop off the PCIe bus, and none of those events show up as a Kubernetes error. The kernel log is the one place where the hardware reports its own faults.
 
@@ -265,7 +269,7 @@ Most failures in this section follow one pattern. An event or a log names the la
 
 ![Six checks for a Pending pod in order, from the FailedScheduling message through resources, placement, volumes, quota and the scheduler.](./img/p2-0525-pending-ladder.svg)
 
-*Figure 5.25.11. A Pending pod is checked in six steps, from the FailedScheduling message through resources, placement, volumes, quota and the scheduler.*
+*Figure 5.25.13. A Pending pod is checked in six steps, from the FailedScheduling message through resources, placement, volumes, quota and the scheduler.*
 
 Suppose your pod has been Pending for a while and nothing is running yet. Pending means the scheduler has not placed the pod on a node yet, so the problem is before the node, not on it.
 
@@ -282,7 +286,7 @@ Find the layer that holds the pod before you change any labels or limits. Changi
 
 ![A pod stuck in ContainerCreating shows its missing part in the event: FailedMount points to storage, FailedCreatePodSandBox to CNI, and Pulling to a large image download.](./img/p2-0525-creating-branches.svg)
 
-*Figure 5.25.12. A pod stuck in ContainerCreating shows the missing part in its event, such as FailedMount for storage or FailedCreatePodSandBox for CNI.*
+*Figure 5.25.14. A pod stuck in ContainerCreating shows the missing part in its event, such as FailedMount for storage or FailedCreatePodSandBox for CNI.*
 
 A pod that stays in `ContainerCreating` is waiting for something before its container can start, and the event usually names what it is waiting for. Picture a restaurant where the kitchen is ready, but the table is not set. The meal cannot start until the table is ready, and the event is the waiter who tells you which part is missing.
 
@@ -292,7 +296,7 @@ A pod that stays in `ContainerCreating` is waiting for something before its cont
 
 ![A decoder table maps container exit codes 137, 139, 143, 126, 127, 1 and 2 to who ended the process and what to check.](./img/p3-0525-exit-code-decoder.svg)
 
-*Figure 5.25.13. The exit code tells you who ended the process, so read it before changing anything.*
+*Figure 5.25.15. The exit code tells you who ended the process, so read it before changing anything.*
 
 Start with `kubectl logs --previous`, then let the exit code guide you. An exit code is a clue about who ended the process. Code 137 means something forced it to stop, most often the memory limit or a kill from the runtime. Code 143 means something asked it to stop politely, most often the kubelet during shutdown or a probe failure. Codes 1 and 2 mean the app stopped itself because of an error it chose to report.
 
@@ -304,7 +308,7 @@ To reproduce the crash, run `kubectl debug --copy-to` and override the command t
 
 ![A chain from DNS to endpoints to rules to datapath to backend with side branches for SNAT, MTU, policy and reverse path filtering.](./img/p3-0525-service-failure-chain.svg)
 
-*Figure 5.25.14. Check hops from the pod outward and keep a direct pod IP test to localise faults.*
+*Figure 5.25.16. Check hops from the pod outward and keep a direct pod IP test to localise faults.*
 
 When a Service fails, traffic passes through DNS, endpoints, rules and the datapath. The datapath is the path the packets physically take through the kernel. Use the 5.10 flow (DNS → endpoints → rules → datapath → backend) with these checks. Look at pod egress to the Internet, which may depend on SNAT or a NAT gateway. Cross-node pods point to CNI, the underlay or MTU. Policy drops show up in Hubble or Calico. Check conntrack exhaustion, `nf_conntrack` insert failures, a kube-proxy that is not running on a node, stale IPVS entries, NodePort source IP and traffic policy, and ingress or gateway 502 and 504 errors (5.12). DNS 5 s delays are covered in 5.11.
 
@@ -314,7 +318,7 @@ Asymmetric routing with multiple NICs ties to reverse path filtering, which chec
 
 ![A checklist for a NotReady node with the usual causes shown as chips and a warning against restarting first.](./img/p3-0525-notready-checklist.svg)
 
-*Figure 5.25.15. Confirm each suspect on the node before you restart, or the cause returns.*
+*Figure 5.25.17. Confirm each suspect on the node before you restart, or the cause returns.*
 
 When a node is `NotReady`, the control plane has stopped hearing a heartbeat from it. Run `kubectl describe node` for the reason and message. On the node, check `systemctl status kubelet containerd`, `journalctl -u kubelet -n 200`, disk use under `/var/lib/kubelet` and `/var/lib/containerd`, `free -h`, and `dmesg -T | tail`. Then check the kubelet client certificate with `openssl x509 -in /var/lib/kubelet/pki/kubelet-client-current.pem -noout -dates`, clock sync with `chronyc tracking`, and API reachability with `curl -k https://<api>:6443/healthz`. Check CNI readiness, PLEG (the Pod Lifecycle Event Generator, the part of the kubelet that notices when containers change state), and how quickly `crictl ps` answers.
 
@@ -324,7 +328,7 @@ The usual causes are kubelet certificate expiry, a runtime hang, a full disk, OO
 
 ![A container can hit its own memory limit while the node has memory free, and a node can run short while each container stays under its limit.](./img/k25-oom-scope.svg)
 
-*Figure 5.25.16. A container OOM kill comes from its own memory limit, while a node-level kill means the whole host ran out of memory.*
+*Figure 5.25.18. A container OOM kill comes from its own memory limit, while a node-level kill means the whole host ran out of memory.*
 
 Suppose a pod is `OOMKilled`, or the node is evicting pods. Separate the container's cgroup limit from the node's memory use before you change anything. A container can be killed while the node still has plenty of free memory, because the container hit its own ceiling. A node can also run short while every container stays under its limit.
 
@@ -334,7 +338,7 @@ For a pod, check `memory.events oom_kill`, the working set against the limit, an
 
 ![A Terminating pod is checked at the API for finalizers, on the node for D-state processes and stuck unmounts, and at the kubelet, runtime and CNI, then mitigated by fixing I/O first.](./img/p2-0525-terminating-chain.svg)
 
-*Figure 5.25.17. A pod stuck in Terminating is checked for finalizers, D-state processes, stuck unmounts and a hung kubelet or runtime, and the I/O is fixed before any restart.*
+*Figure 5.25.19. A pod stuck in Terminating is checked for finalizers, D-state processes, stuck unmounts and a hung kubelet or runtime, and the I/O is fixed before any restart.*
 
 A pod in Terminating has been asked to stop, but something is still holding it. On the API side, check `deletionTimestamp` and `finalizers` in `kubectl get pod -o yaml`. A finalizer is a marker that tells the API server to wait until some controller finishes its cleanup. A finalizer whose controller is dead will hold the pod forever.
 
@@ -352,7 +356,7 @@ A storage fault often looks like a slow job or a pod that never starts. Use the 
 
 ![A table maps nine GPU workload symptoms to the checks that narrow each one.](./img/p3-0525-gpu-symptom-table.svg)
 
-*Figure 5.25.18. Match the symptom row and work through its checks before changing the job.*
+*Figure 5.25.20. Match the symptom row and work through its checks before changing the job.*
 
 GPU workloads fail in ways Kubernetes does not report directly. The GPU is a device that the driver, the runtime and the scheduler each handle a little. Any one of them can fail quietly. The table pairs each symptom with the checks that narrow it down.
 
@@ -388,7 +392,7 @@ You can kill pods and nodes, delay or drop packets with `tc netem` or Chaos Mesh
 
 ![A three-stage loop of evidence collection, status updates and blameless review with game days feeding it.](./img/p3-0525-evidence-loop.svg)
 
-*Figure 5.25.19. Snapshots taken during the incident are worth far more than memory afterwards.*
+*Figure 5.25.21. Snapshots taken during the incident are worth far more than memory afterwards.*
 
 Incidents leave evidence behind, but only if someone collects it and writes down what happened in time order. Keep an incident log. It holds a timeline in UTC, the observations, the commands you ran, the changes you made, and who did what. Record the exact error strings, because a search for an exact message later can find the same fault in another incident.
 

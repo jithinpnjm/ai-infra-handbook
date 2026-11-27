@@ -127,6 +127,10 @@ Before you tune for latency, find out which preemption model the kernel was buil
 
 Suppose a colleague asks you to look at "the thing that is eating the node". You run `ps`, and you get a wall of numbers with one line per something. Before any of those numbers can mean anything, you need a clear idea of what one of those somethings is.
 
+![Process states R, S, D and Z with the events that move a process between them](./img/pre-process-states.jpg)
+
+*Figure 1.8.2. Process states seen in ps. D means waiting on disk and cannot be killed. Z means finished but not yet reaped.*
+
 A **program** is a file on disk. A **process** is what the kernel makes when it runs that program. The kernel builds an environment around the program so it can execute. A process consists of:
 
 - an **address space** (virtual memory: the program's code, libraries, heap, stacks, mapped files);
@@ -143,7 +147,7 @@ Think of a process as a small virtual computer that runs one program, with its o
 
 ![A PyTorch launcher starts one process per GPU, each with a main thread and extra threads, and each DataLoader forks more worker processes.](./img/p2-0108-thread-tree.svg)
 
-*Figure 1.8.2. A PyTorch job is a tree: a launcher starts one process per GPU, and each DataLoader forks worker processes.*
+*Figure 1.8.3. A PyTorch job is a tree: a launcher starts one process per GPU, and each DataLoader forks worker processes.*
 
 A **thread** is the unit the scheduler actually runs. Every process starts with one thread, the **main thread**, and it can create more. Threads inside a process share the address space and the file descriptors. Each thread still has its own stack and registers.
 
@@ -163,7 +167,7 @@ To run a different program, the child calls **exec** (the kernel call is `execve
 
 ![Where processes come from: `fork` and `exec`](./img/ch08-d2-luna.svg)
 
-*Figure 1.8.3. Where processes come from: `fork` and `exec`.*
+*Figure 1.8.4. Where processes come from: `fork` and `exec`.*
 
 Three practical consequences follow, and you will meet all of them.
 
@@ -175,7 +179,7 @@ Three practical consequences follow, and you will meet all of them.
 
 ![A zombie is an exited child waiting for its parent to collect the status, and an orphan is reparented to PID 1.](./img/l08-zombie-orphan.svg)
 
-*Figure 1.8.4. A zombie holds only a PID slot until the parent calls wait(), and orphans are adopted by PID 1.*
+*Figure 1.8.5. A zombie holds only a PID slot until the parent calls wait(), and orphans are adopted by PID 1.*
 
 When a process exits, it releases its memory and files. The kernel keeps a small **process-table entry**, though, and that entry holds the exit status until the **parent** collects it with `wait()`. Until then the process is a **zombie** (state `Z`, shown as `<defunct>`).
 
@@ -202,7 +206,7 @@ Every task is in exactly one state at any moment, and the kernel writes that sta
 
 ![Process states in ps](./img/ch08-fig2-states.jpg)
 
-*Figure 1.8.5. The five process states you will see in the ps STAT column.*
+*Figure 1.8.6. The five process states you will see in the ps STAT column.*
 
 **The `D` state causes the worst cluster days.** A process in `D` is waiting on a kernel operation that has not returned. The usual causes are a hung NFS, Lustre or GPFS mount, a failing disk, or a driver waiting for a GPU that has fallen off the bus.
 
@@ -212,7 +216,7 @@ You cannot kill it. `kill -9` is ignored until the I/O completes, and the proces
 
 ![Load average counts running, runnable and uninterruptible tasks, so compare it with CPU count and check I/O.](./img/l08-load-average.svg)
 
-*Figure 1.8.6. A high load with idle CPUs means many tasks are stuck waiting for I/O.*
+*Figure 1.8.7. A high load with idle CPUs means many tasks are stuck waiting for I/O.*
 
 Here is a scene that confuses almost everyone the first time. A node reports a load average of 90, dashboards turn red, and the CPUs sit idle. Nothing is computing, yet the machine looks busy. To understand how that is possible, you need to know what the number actually counts.
 
@@ -343,7 +347,7 @@ fuser -vn tcp 8080              # which process is listening on TCP port 8080
 
 ![Each process has a /proc directory whose files expose its state, memory, files and limits.](./img/l08-proc-pid.svg)
 
-*Figure 1.8.7. Reading /proc files is how ps and top work, and you can read them yourself.*
+*Figure 1.8.8. Reading /proc files is how ps and top work, and you can read them yourself.*
 
 `/proc` is a virtual filesystem (chapter 1.10). Each process has a directory, `/proc/<pid>`. Reading these files is how `ps` and `top` work. You can read them yourself when the tools are missing, as in a stripped container, or when you need more detail.
 
@@ -398,7 +402,7 @@ The second is "**cannot unmount, device is busy**". Here `lsof` or `fuser -vm /m
 
 ![Anatomy of lsof columns mapping process credentials, file descriptor types and numbers, and filesystem nodes.](./img/p4-0108-lsof-cols.svg)
 
-*Figure 1.8.8. The lsof command exposes process ownership, descriptor roles like cwd or descriptor 3u, filesystem node IDs, and device numbers.*
+*Figure 1.8.9. The lsof command exposes process ownership, descriptor roles like cwd or descriptor 3u, filesystem node IDs, and device numbers.*
 
 Unix puts a lot of weight on files, so a tool that lists them is a good place to start an investigation. `lsof` does not stop at regular files. It also reports network sockets, dynamic libraries, pipes and similar objects.
 
@@ -499,7 +503,7 @@ The numbers are for x86 Linux, so use names in scripts. `kill -l` lists all of t
 
 ![Escalation runs from SIGTERM to a wait for clean shutdown, and only if the program does not respond it moves to SIGKILL, which gives no cleanup.](./img/p2-0108-escalate.svg)
 
-*Figure 1.8.9. Send SIGTERM first and give the program time to clean up, and use SIGKILL only when it does not respond.*
+*Figure 1.8.10. Send SIGTERM first and give the program time to clean up, and use SIGKILL only when it does not respond.*
 
 ```bash
 kill 1234               # SIGTERM (15)
@@ -521,7 +525,7 @@ A killed process gets no chance to clean up. That can leave lock files, half-wri
 
 ![How signals reach a process](./img/ch08-d4-luna.svg)
 
-*Figure 1.8.10. How signals reach a process, dispositions, and why D state delays SIGKILL.*
+*Figure 1.8.11. How signals reach a process, dispositions, and why D state delays SIGKILL.*
 
 ### Stopping, continuing and processes that resist
 
@@ -537,7 +541,7 @@ Do not kill processes indiscriminately, especially ones you do not understand. Y
 
 ![A timeline where Slurm sends SIGUSR1 to the batch shell 180 seconds before the time limit, the trap forwards it to the training process, which saves a checkpoint.](./img/p3-0108-slurm-checkpoint.svg)
 
-*Figure 1.8.11. Run training in the background and wait for it, so the trap fires immediately and forwards SIGUSR1 to save a checkpoint before the time limit.*
+*Figure 1.8.12. Run training in the background and wait for it, so the trap fires immediately and forwards SIGUSR1 to save a checkpoint before the time limit.*
 
 A shell script handles signals with `trap`. A batch script can use it to clean up its scratch files, or to turn `SIGTERM` into a graceful stop.
 
@@ -574,7 +578,7 @@ On a shared cluster, keep core dumps off by default, and turn them on only when 
 
 ![Dropping the SSH session sends SIGHUP to jobs, and five remedies keep work alive.](./img/l08-hangup-remedies.svg)
 
-*Figure 1.8.12. Choose tmux, the scheduler, nohup, disown or systemd before the connection drops.*
+*Figure 1.8.13. Choose tmux, the scheduler, nohup, disown or systemd before the connection drops.*
 
 You have seen this happen, or you will. You start a long command over SSH, the VPN hiccups, the session drops, and the job dies with the terminal. Or you press Ctrl-Z in front of a long task, and the shell says `Stopped`. Both events come from the same small mechanism, and once you can see it, you can also outwit it.
 
@@ -609,7 +613,7 @@ Pick the remedy before you start the job, not after the connection drops.
 
 ![Ctrl-Z stops the foreground job, bg resumes it in the background, and fg brings it back to the foreground.](./img/p2-0108-job-states.svg)
 
-*Figure 1.8.13. Ctrl-Z suspends the foreground job, bg resumes it in the background, and fg brings it back to the foreground.*
+*Figure 1.8.14. Ctrl-Z suspends the foreground job, bg resumes it in the background, and fg brings it back to the foreground.*
 
 Job control lets you suspend a program with Ctrl-Z and resume it later with `fg` or `bg`. It works by sending TSTP and CONT signals for you, which is handy. It is not required, though, and it can confuse beginners. Many people press Ctrl-Z when they meant Ctrl-C, forget what they were running, and end up with several suspended processes. Run `jobs` to see whether you have suspended anything in the current terminal.
 
@@ -627,7 +631,7 @@ When stray output clutters the screen, press Ctrl-L to redraw it. Many full-scre
 
 ![Three dimensions of Linux task priority: CPU niceness from -20 to 19, disk IO classes 1 through 3, and CPU core affinity.](./img/p4-0108-priority-classes.svg)
 
-*Figure 1.8.14. Combining nice, ionice, and taskset or numactl controls CPU shares, disk scheduling priority, and NUMA core pinning independently.*
+*Figure 1.8.15. Combining nice, ionice, and taskset or numactl controls CPU shares, disk scheduling priority, and NUMA core pinning independently.*
 
 Picture a shared login node on a Friday afternoon. One user starts a compile with many parallel jobs, and every other shell on the machine turns sluggish. Nobody has done anything wrong, and the scheduler is working exactly as designed. The lever you have for this situation is priority, and it is gentler than it sounds.
 
@@ -690,7 +694,7 @@ To make a background job yield, raise its nice value with `renice`. Use a positi
 
 ![Four layers that set process limits, login sessions, systemd services, containers and Slurm jobs, each with where the limit is configured.](./img/p3-0108-limit-layers.svg)
 
-*Figure 1.8.15. Raising limits.conf does nothing for a systemd service or container, so find which layer actually starts the process.*
+*Figure 1.8.16. Raising limits.conf does nothing for a systemd service or container, so find which layer actually starts the process.*
 
 Two error messages account for a surprising number of GPU cluster tickets. One says "Too many open files", and the other says "Cannot allocate memory". Both appear while the machine has plenty of RAM and disk free. Neither is really about the machine. Both are about a per-process ceiling that was set long before the job started.
 
@@ -735,7 +739,7 @@ Those resources are **CPU, memory and I/O**. The kernel is a resource too, since
 
 ![Three worked examples of time output showing a job that mostly waits, a job using several cores, and a start-up with two major and 254 minor page faults.](./img/p3-0108-time-classify.svg)
 
-*Figure 1.8.16. When real is much bigger than user plus sys the job is waiting, and when user plus sys is bigger than real it used several cores.*
+*Figure 1.8.17. When real is much bigger than user plus sys the job is waiting, and when user plus sys is bigger than real it used several cores.*
 
 ```bash
 time ls /usr/lib
@@ -775,7 +779,7 @@ If the load is high and the system drags, check memory. When memory runs short, 
 
 ![A flow from an unmapped address to a page fault that branches into a cheap minor fault and a slow major fault that reads from disk.](./img/p3-0108-page-faults.svg)
 
-*Figure 1.8.17. A minor fault only updates a mapping, while a major fault must read from disk and a steady stream of them means memory pressure.*
+*Figure 1.8.18. A minor fault only updates a mapping, while a major fault must read from disk and a steady stream of them means memory pressure.*
 
 Chapter 1.17 is the full treatment. For now, hold one idea: the CPU's **memory management unit (MMU)** translates **virtual addresses**, which processes use, into **physical addresses**. It does this with page tables that the kernel maintains, in units called **pages**. A page is 4 KiB normally, and `getconf PAGE_SIZE` reports the size on your system.
 
@@ -799,7 +803,7 @@ When you run `free`, read the **available** figure, not **free**. Linux delibera
 
 ![A decision tree maps vmstat column patterns to a bottleneck, such as CPU-bound, I/O-bound, memory exhaustion or noisy neighbours.](./img/p2-0108-vmstat-tree.svg)
 
-*Figure 1.8.18. Reading vmstat columns in patterns tells you whether the machine is CPU-bound, I/O-bound, out of memory or sharing a VM with noisy neighbours.*
+*Figure 1.8.19. Reading vmstat columns in patterns tells you whether the machine is CPU-bound, I/O-bound, out of memory or sharing a VM with noisy neighbours.*
 
 The first time you run `vmstat`, it looks like a wall of columns with no story. Learn what one or two of them count, and the story appears. Running `vmstat 2` reports statistics every two seconds.
 
@@ -974,7 +978,7 @@ systemd-cgtop           # top-style live resource use per cgroup
 
 ![A cgroup with cpu.max, memory.max and pids.max limits and what happens on exceeding each: throttling, an OOM kill, and failing fork.](./img/p3-0108-cgroup-exceed.svg)
 
-*Figure 1.8.19. Exceeding the CPU quota throttles the group, exceeding the memory limit triggers an OOM kill, and exceeding the pids limit makes fork fail.*
+*Figure 1.8.20. Exceeding the CPU quota throttles the group, exceeding the memory limit triggers an OOM kill, and exceeding the pids limit makes fork fail.*
 
 Writing to these files changes behaviour. Run them as root.
 
@@ -1009,7 +1013,7 @@ Before you cap a workload, check which cgroup it actually runs in.
 
 ![A shell wrapper as PID 1 never forwards SIGTERM, so Kubernetes kills the pod with SIGKILL after 30 seconds, while exec lets Python handle SIGTERM.](./img/p2-0108-k8s-stop.svg)
 
-*Figure 1.8.20. When the shell wrapper stays PID 1 the training job never gets SIGTERM and is killed after 30 seconds, but exec fixes it.*
+*Figure 1.8.21. When the shell wrapper stays PID 1 the training job never gets SIGTERM and is killed after 30 seconds, but exec fixes it.*
 
 Everything so far was about one process on one machine. On a cluster, the same rules apply inside containers and batch jobs, where you do not control the parent process and cannot press Ctrl-C. These are the patterns you will meet most often.
 

@@ -247,7 +247,7 @@ High port-count devices use a crossbar fabric, a multi-stage Clos inside the cha
 
 ![Comparison of L2 switching preserving Ethernet headers and forwarding broadcasts versus L3 routing stripping L2 headers, decrementing TTL, rewriting MAC addresses, and terminating broadcast domains.](./img/p4-0203-switch-vs-route.svg)
 
-*Figure 2.0.0. An L2 switch forwards frames unchanged based on MAC lookup and floods broadcasts, whereas an L3 router terminates the L2 frame, decrements TTL, rewrites source and destination MACs, and confines broadcast domains.*
+*Figure 2.3.8. An L2 switch forwards frames unchanged based on MAC lookup and floods broadcasts, whereas an L3 router terminates the L2 frame, decrements TTL, rewrites source and destination MACs, and confines broadcast domains.*
 
 Switching forwards on the destination MAC and leaves the frame unchanged. Routing strips the L2 header, looks up the destination IP in a forwarding table, decrements the TTL and builds a new L2 header for the next hop. In the postal picture, a switch moves the letter between desks in one office, while a router re-addresses it for the next building. You route rather than switch for three reasons. Routing connects dissimilar link types. It limits state, because L2 tables grow with every host while IP prefixes aggregate. It also contains broadcast domains, since routers do not forward broadcasts. Most data-centre switches are really L3 switches, meaning routers with Ethernet ports. Modern fabrics push routing down to the top-of-rack switch to avoid large L2 domains (chapters 2.16, 2.18).
 
@@ -257,7 +257,7 @@ For a large fabric, decide early whether routing to the rack keeps your broadcas
 
 ![Four patterns for mapping an identifier at one layer to another: manual mappings, a query database like DNS and DHCP, peer advertisement like ARP and NDP, and calculation like EUI-64.](./img/p3-0203-interlayer-patterns.svg)
 
-*Figure 2.3.8. ARP and NDP are the peer-advertisement pattern, and EUI-64 and SLAAC are the calculated pattern of mapping between layers.*
+*Figure 2.3.9. ARP and NDP are the peer-advertisement pattern, and EUI-64 and SLAAC are the calculated pattern of mapping between layers.*
 
 Your program says "send this to 203.0.113.12", but the wire understands only MAC addresses. Hosts address packets with IP addresses but send frames with MAC addresses, so something has to translate between the two. This is interlayer discovery, which maps an identifier at one layer to one at another. There are four patterns. The first uses well-known or manually configured mappings, such as the port numbers in `/etc/services`. The second uses a mapping database with a query protocol: DNS for names, and DHCP for assignment. The third advertises the mapping directly between peers, as ARP and IPv6 Neighbor Discovery do. The fourth calculates one identifier from the other, as an IPv6 link-local address derived from a MAC does, or as SLAAC does. This section covers the third and fourth patterns, at the boundary of layers 2 and 3. DNS and DHCP come in chapters 2.8 and 2.9.
 
@@ -265,7 +265,7 @@ Your program says "send this to 203.0.113.12", but the wire understands only MAC
 
 ![A decision where the host ANDs the addresses with its subnet mask to choose between ARPing for the destination or sending to the default gateway, with the too wide and too narrow mask failures.](./img/p3-0203-on-link-decision.svg)
 
-*Figure 2.3.9. If the masked addresses match the host ARPs for the destination, otherwise it sends to the gateway, and a wrong mask breaks that picture in either direction.*
+*Figure 2.3.10. If the masked addresses match the host ARPs for the destination, otherwise it sends to the gateway, and a wrong mask breaks that picture in either direction.*
 
 Before your host sends anything, it has to decide whether the destination is on the same wire. This is the first decision, and everything else depends on it. It ANDs its own address and the destination with its subnet mask. If the two results match, the destination is on-link, and the host ARPs for the destination itself. If they differ, the host sends the frame to the default gateway's MAC address.
 
@@ -275,11 +275,11 @@ A wrong mask causes trouble in either direction, because the host's picture of "
 
 ![The 28 byte ARP packet fields, the Linux neighbour states from INCOMPLETE to FAILED, gratuitous ARP uses and the default neighbour table thresholds of 128, 512 and 1024.](./img/p3-0203-arp-cache.svg)
 
-*Figure 2.3.10. An ARP entry moves through neighbour states with timers, gratuitous ARP refreshes caches after a move, and the neighbour table has a size limit.*
+*Figure 2.3.11. An ARP entry moves through neighbour states with timers, gratuitous ARP refreshes caches after a move, and the neighbour table has a size limit.*
 
 ![ARP request and reply](./img/n03-arp.svg)
 
-*Figure 2.3.11. An ARP request is broadcast to the whole segment, and the owner of the address answers with a unicast reply.*
+*Figure 2.3.12. An ARP request is broadcast to the whole segment, and the owner of the address answers with a unicast reply.*
 
 An ARP request is an Ethernet broadcast. It asks a question to the whole room: "who has 203.0.113.12? tell 203.0.113.10". If you capture one with `tcpdump`, you will see every host receive it. The owner replies with a unicast ARP reply that carries its MAC address. The requester stores the mapping in the ARP cache, which Linux calls the neighbour table. Other hosts that see the request may also learn the sender's mapping. You can think of the whole exchange as asking "who is Alice?" in a hall and Alice answering "me, I am at desk 12".
 
@@ -315,7 +315,7 @@ sysctl net.ipv4.neigh.default.gc_thresh{1,2,3}
 
 ![A two NIC server where eth0 answers ARP for eth1's address under the default weak host behaviour, beside the arp_ignore, arp_announce, rp_filter and policy routing recipe that fixes it.](./img/p3-0203-weak-host.svg)
 
-*Figure 2.3.12. By default Linux answers ARP for any local address on any interface, and arp_ignore=1, arp_announce=2, rp_filter=2 and per-NIC routing fix it.*
+*Figure 2.3.13. By default Linux answers ARP for any local address on any interface, and arp_ignore=1, arp_announce=2, rp_filter=2 and per-NIC routing fix it.*
 
 By default, Linux is weak-host about ARP. It answers an ARP request for any local IP on any interface. On a server with several NICs in the same subnet, or with several IPs on one interface, the wrong interface may answer. The switch then learns the IP on the wrong port. Traffic comes back on a different NIC from the one you intended. The result is asymmetric paths, RDMA and NCCL oddities, flapping MAC tables and confused bonding. Four sysctl settings control this.
 
@@ -335,15 +335,15 @@ A common recipe for multi-homed servers, with one subnet per NIC (for example on
 
 ![A decision tree on the Router Advertisement A, M and O flags choosing SLAAC, DHCPv6 addresses or DHCPv6 other options, preceded by duplicate address detection and followed by where each approach is used.](./img/p3-0203-ra-flags.svg)
 
-*Figure 2.3.13. The RA flags decide the source of the address: A for SLAAC, M for DHCPv6 addresses and O for other options such as DNS.*
+*Figure 2.3.14. The RA flags decide the source of the address: A for SLAAC, M for DHCPv6 addresses and O for other options such as DNS.*
 
 ![A worked derivation from MAC 01:23:45:67:89:ab to the EUI-64 interface ID, link-local address fe80::323:45ff:fe67:89ab, solicited-node address ff02::1:ff67:89ab and multicast MAC 33:33:ff:67:89:ab.](./img/p3-0203-eui64.svg)
 
-*Figure 2.3.14. The MAC is turned into a link-local address by flipping the U/L bit and inserting ff:fe, and its last 24 bits give the solicited-node multicast address and MAC.*
+*Figure 2.3.15. The MAC is turned into a link-local address by flipping the U/L bit and inserting ff:fe, and its last 24 bits give the solicited-node multicast address and MAC.*
 
 ![IPv6 Neighbor Discovery steps](./img/n03-ndp.svg)
 
-*Figure 2.3.15. A new IPv6 host builds a link-local address, checks it with DAD, then learns the prefix from a router advertisement.*
+*Figure 2.3.16. A new IPv6 host builds a link-local address, checks it with DAD, then learns the prefix from a router advertisement.*
 
 IPv6 has no broadcast, so it needs a different way to ask the same question. It uses ICMPv6 messages instead. They are carried inside IPv6 rather than as a separate Ethernet protocol, and they go to multicast addresses.
 
@@ -385,7 +385,7 @@ Do not confuse ARP with the Reverse Address Resolution Protocol (RARP). RARP tur
 
 ![A chain from a pod's eth0 through a veth pair, a bridge, a VLAN subinterface or bond and the physical NIC out to the switch, with alternative macvlan, vxlan and tap objects and the tools for each.](./img/p3-0203-l2-objects-path.svg)
 
-*Figure 2.3.16. On a container host one frame can cross a veth, a bridge, a VLAN device and the NIC, and each object has its own inspection tool.*
+*Figure 2.3.17. On a container host one frame can cross a veth, a bridge, a VLAN device and the NIC, and each object has its own inspection tool.*
 
 Linux builds layer 2 out of software objects as well as hardware ports. A container host looks like a small switched network inside a single machine, and each object below is a piece of that network. The table lists the ones you will meet most often on a server or a hypervisor.
 
@@ -407,7 +407,7 @@ Chapter 2.25 covers these objects in depth. To observe layer 2 on Linux, use `ip
 
 ![Wired Ethernet's CSMA/CD and modern full duplex links compared with Wi-Fi's CSMA/CA with ACKs and the hidden node problem.](./img/p3-0203-wifi-vs-wired.svg)
 
-*Figure 2.3.17. Wired switched links have no collisions, while Wi-Fi cannot detect collisions, so it avoids them with back-off and ACKs and suffers the hidden node problem.*
+*Figure 2.3.18. Wired switched links have no collisions, while Wi-Fi cannot detect collisions, so it avoids them with back-off and ACKs and suffers the hidden node problem.*
 
 When you move from a cable to a radio, the rules change. Wi-Fi uses the same frame ideas, MAC addresses and an FCS, but its medium is very different. Radio is a shared broadcast medium. A transmitter cannot listen while it transmits, because its own signal swamps its receiver. So collision detection is impossible. It is like trying to hear a whisper while shouting. Instead of CSMA/CD, 802.11 uses CSMA/CA, collision avoidance. A station listens, waits a random back-off, transmits the whole frame, and needs an ACK from the receiver. No ACK means it assumes the frame was lost, backs off and retries.
 
@@ -433,7 +433,7 @@ Writing that configuration and running the daemon by hand is tedious. Even after
 
 ![A NIC to switch to NIC chain with the five items needed for a lossless RoCE class, PFC, ECN, trust mapping, headroom and counters, and the two failure modes of missing PFC versus pause storms.](./img/p3-0203-lossless-end-to-end.svg)
 
-*Figure 2.3.18. The lossless class needs PFC, ECN, trust mapping and buffer headroom set the same on every hop, because one missing setting causes drops or pause storms.*
+*Figure 2.3.19. The lossless class needs PFC, ECN, trust mapping and buffer headroom set the same on every hop, because one missing setting causes drops or pause storms.*
 
 Everything so far ties together in the AI back-end network. Ethernet back-end fabrics that carry RDMA (RoCE v2) need a lossless class. Configure PFC, which is priority flow control defined in 802.1Qbb, for the RoCE priority from end to end, on the NIC and on every switch. Add ECN marking with DCQCN or a similar rate control. Set correct DSCP and PCP trust and mapping, and size buffer allocation and headroom for each port speed and cable length (chapter 2.19). L2 problems hurt more here than anywhere else. A missing PFC configuration on one switch port causes drops, and RDMA retransmits are costly. If it is misconfigured the other way, the result is pause storms and deadlocks.
 
@@ -456,7 +456,7 @@ Treat a PFC change on one switch as a change to the whole fabric, because the lo
 
 ![A table linking carrier changes, CRC and FEC errors, discards, pause counters and a wrong negotiated speed to their likely physical causes with the commands that show them.](./img/p3-0203-link-counters.svg)
 
-*Figure 2.3.19. Each Ethernet counter points at a different suspect, from flapping optics to buffer overflow to flow control.*
+*Figure 2.3.20. Each Ethernet counter points at a different suspect, from flapping optics to buffer overflow to flow control.*
 
 If you are chasing a fault, the table maps each symptom to its likely cause and the first checks to run. Read each row from left to right: the symptom, the likely cause, then the checks. Most of the rows should now feel familiar, since each one is a story from an earlier section.
 
@@ -480,7 +480,7 @@ Use the first-checks column as your starting point for each symptom.
 
 ![Three namespaces joined to a Linux bridge, showing h3 seeing the flooded ARP request on the first ping and nothing once the bridge has learned the MAC addresses.](./img/p3-0203-lab-flood-learn.svg)
 
-*Figure 2.3.20. On the first ping the bridge floods the ARP broadcast so h3 sees it, and after learning, the conversation between h1 and h2 is private.*
+*Figure 2.3.21. On the first ping the bridge floods the ARP broadcast so h3 sees it, and after learning, the conversation between h1 and h2 is private.*
 
 A word on status first. The Python lab below has been run, while the interactive VM commands that follow have not been run for this chapter, so use a throwaway machine and confirm each result yourself. Start with the self-checking Python lab, and run it locally before you touch any network. It checks the I/G bit (unicast or multicast) and the U/L bit (globally unique or locally administered) when it decodes a MAC address. It checks FDB learning, flooding and filtering in an L2 switch. It derives the IPv6 EUI-64 link-local address (`fe80::323:45ff:fe67:89ab`), the solicited-node multicast address (`ff02::1:ff67:89ab`) and its MAC (`33:33:ff:67:89:ab`). It also checks serialisation delay for a 1500-byte frame, which is 120 ns at 100 Gb/s and 12 µs at 1 Gb/s.
 

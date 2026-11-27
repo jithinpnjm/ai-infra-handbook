@@ -278,7 +278,7 @@ Before you raise any limit, give the noisy client its own level and check whethe
 
 ![A diagram comparing stacked etcd on shared control plane nodes against dedicated etcd running on separate NVMe machines.](./img/p4-0505-etcd-topologies.svg)
 
-*Figure 5.0.0. Stacked etcd simplifies small clusters, while dedicated etcd isolates disk and CPU contention for clusters with over 200 nodes.*
+*Figure 5.5.10. Stacked etcd simplifies small clusters, while dedicated etcd isolates disk and CPU contention for clusters with over 200 nodes.*
 
 etcd is the database behind every object in a cluster. It is a distributed store. It uses a consensus algorithm to keep one copy of the cluster state on several machines. Consensus depends on reliable network links between the etcd members, and those members need low latency. Two choices shape the deployment. One is whether etcd runs on dedicated machines or shares them with the control plane. The other is whether etcd runs in a container or directly on the host.
 
@@ -292,7 +292,7 @@ For colocated etcd, run it in a container. Kubeadm supports and tests that setup
 
 ![A write goes to the etcd leader, is fsynced by a majority, then committed and applied.](./img/k05-raft-write.svg)
 
-*Figure 5.5.10. Every etcd write waits for a disk fsync on a majority of members, so disk latency sets the speed of the whole control plane.*
+*Figure 5.5.11. Every etcd write waits for a disk fsync on a majority of members, so disk latency sets the speed of the whole control plane.*
 
 etcd is a replicated, linearizable key-value store. Its members use Raft, a consensus algorithm. The idea is simple. One member is the leader, and it accepts every write. Before the leader confirms a write, a majority of members must have saved it. Here is the sequence. One leader accepts writes and appends them to its log, the WAL, which is the write-ahead log. A write-ahead log records each change on disk before the change takes effect, so a crash can be replayed. The leader replicates the entries to followers. Once a majority has persisted an entry, with an `fsync` per commit, the leader commits it. An fsync is the call that forces data out of memory onto the physical disk. It then applies the entry to the state machine, which is a bbolt B+tree. bbolt is the embedded storage engine that holds etcd's data on disk.
 
@@ -304,11 +304,11 @@ Quorum arithmetic governs every operation, as chapter 5.3 explains. Three member
 
 ![A four-step NOSPACE recovery ladder beside a wrong and right order for replacing a dead etcd member.](./img/p3-0505-nospace-recovery.svg)
 
-*Figure 5.5.11. Compact, defragment and disarm to clear NOSPACE, and always remove a dead member before adding its replacement.*
+*Figure 5.5.12. Compact, defragment and disarm to clear NOSPACE, and always remove a dead member before adding its replacement.*
 
 ![Compaction frees old revisions inside the database file, and defragmentation rewrites the file smaller.](./img/k05-compact-defrag.svg)
 
-*Figure 5.5.12. Compaction frees old revisions inside the etcd file, but only defragmentation shrinks the file on disk.*
+*Figure 5.5.13. Compaction frees old revisions inside the etcd file, but only defragmentation shrinks the file on disk.*
 
 Each write creates a new revision. A revision is a cluster-wide counter that only goes up. MVCC stands for multi-version concurrency control, a way of keeping several versions of a key at once so readers never block writers. etcd keeps a history of key versions for watches and consistent reads, and the Kubernetes `resourceVersion` comes from that revision. The history grows until compaction discards revisions older than a chosen point. The API server runs compaction every 5 minutes by default, controlled by `--etcd-compaction-interval`. Compaction frees logical space, but the bbolt file does not shrink until defragmentation runs. The space is freed inside the file, and it becomes reusable, but the file on disk stays the same size. Think of a warehouse where old boxes are emptied but still take up floor space. The shelves can hold new stock, and the building is no smaller until someone rearranges the racks and sells the spare room. Run `etcdctl defrag` one member at a time, because it briefly blocks that member. The database quota, set by `--quota-backend-bytes`, defaults to 2 GiB and is recommended up to 8 GiB. When the database exceeds the quota, etcd raises a `NOSPACE` alarm and becomes read-only until you free space. Compact, defragment and disarm the alarm, in that order.
 
@@ -333,7 +333,7 @@ The first lines show the status, health and membership. The compaction and defra
 
 ![A hierarchical tree diagram of keys stored in etcd under the registry prefix showing namespaces, leases, events, and size limits.](./img/p4-0505-registry-keyspace.svg)
 
-*Figure 5.0.0. Kubernetes partitions cluster state under /registry, where high-churn events and node leases can be redirected or isolated from main state.*
+*Figure 5.5.14. Kubernetes partitions cluster state under /registry, where high-churn events and node leases can be redirected or isolated from main state.*
 
 Keys live under `/registry/<resource>/...`. For namespaced objects, the key is `/registry/pods/<ns>/<name>`. Leases hold node heartbeats and leader election state. Events churn quickly and expire after one hour. Many clusters move events into a separate etcd cluster with `--etcd-servers-overrides=/events#https://...`. CRD custom resources live under `/registry/<group>/<resource>/...`.
 
@@ -343,11 +343,11 @@ An object can be up to about 1.5 MiB, the etcd request size limit. Large ConfigM
 
 ![Provider order decides whether Secrets are encrypted and old keys must stay for decryption.](./img/p3-0505-encryption-rotation.svg)
 
-*Figure 5.5.13. The first provider encrypts, later providers only decrypt, so keep old keys until every Secret is rewritten.*
+*Figure 5.5.15. The first provider encrypts, later providers only decrypt, so keep old keys until every Secret is rewritten.*
 
 ![Envelope encryption for Secrets, where a key encryption key held in an outside KMS wraps a per-Secret data encryption key stored with the data.](./img/p2-0505-envelope-keys.svg)
 
-*Figure 5.5.14. Envelope encryption wraps each Secret's data key with a key encryption key held in an external KMS, so the wrapped key can be stored with the data.*
+*Figure 5.5.16. Envelope encryption wraps each Secret's data key with a key encryption key held in an external KMS, so the wrapped key can be stored with the data.*
 
 Like most Kubernetes objects, Secrets are stored in etcd. By default, Kubernetes does not encrypt Secret data before it reaches etcd. That does not mean the data is exposed the moment someone touches the hardware. Encryption at rest still protects a removed drive. The weak point is access to the running host.
 
@@ -520,7 +520,7 @@ Watch these metrics: `etcd_server_has_leader`, `etcd_server_leader_changes_seen_
 
 ![Steps to restore etcd from a snapshot: stop the control plane, restore each member with a new cluster token, point the static pod at the restored directory, and restart.](./img/p2-0505-etcd-restore.svg)
 
-*Figure 5.5.15. Restoring etcd from a snapshot means stopping the control plane, restoring each member with a new cluster token, and restarting from the restored data directory.*
+*Figure 5.5.17. Restoring etcd from a snapshot means stopping the control plane, restoring each member with a new cluster token, and restarting from the restored data directory.*
 
 Take snapshots regularly. Run the save on a healthy member, schedule it, and ship the file off the cluster. A snapshot stored only on the cluster's own disk is lost with the cluster. The commands below save a snapshot, check it, restore it and replace a dead member.
 
@@ -550,7 +550,7 @@ Practise restores on a scratch cluster before you need one. A restore you have n
 
 ![An architecture diagram showing a load balancer distributing traffic across stateless API servers with independent watch caches and split etcd clusters.](./img/p4-0505-apiserver-ha-scaling.svg)
 
-*Figure 5.0.0. Stateless API servers scale out behind a load balancer with long idle timeouts, offloading high-churn events to a separate etcd cluster.*
+*Figure 5.5.18. Stateless API servers scale out behind a load balancer with long idle timeouts, offloading high-churn events to a separate etcd cluster.*
 
 kubeadm sets these flags through `ClusterConfiguration.apiServer.extraArgs`. Each flag controls one dial on the server. You do not need to memorize them all. Learn the groups, so you know which dial to look at when a symptom points to a particular area.
 
@@ -586,7 +586,7 @@ Work through the levers that match your bottleneck first, rather than changing a
 
 ![A six-rung ladder from slow kubectl symptom to fixing the noisy client.](./img/p3-0505-saturation-ladder.svg)
 
-*Figure 5.5.16. Start from the user symptom, confirm with metrics, find the noisy client in the audit log, then fix it at the source.*
+*Figure 5.5.19. Start from the user symptom, confirm with metrics, find the noisy client in the audit log, then fix it at the source.*
 
 When the platform slows down, match the symptom to a cause in the table below. Each row names the metric or log to check and the fix that usually follows. Start from what users see, because that is the symptom you can confirm first. Then work toward the metric that explains it.
 

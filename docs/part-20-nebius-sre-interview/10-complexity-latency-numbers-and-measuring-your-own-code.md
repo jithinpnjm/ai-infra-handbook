@@ -48,7 +48,7 @@ Name worst case against average case too. Fluent Python, chapter 3, explains tha
 
 ![Comparison of list.insert shifting every contiguous element to the right versus deque.appendleft placing an element into a free head slot without shifting.](./img/p4-2010-insert-vs-deque.svg)
 
-*Figure 20.0.0. Inserting at the head of a list requires shifting every reference in contiguous memory taking 30 microseconds at 100,000 items, while deque.appendleft takes 0.16 microseconds in constant time.*
+*Figure 20.10.2. Inserting at the head of a list requires shifting every reference in contiguous memory taking 30 microseconds at 100,000 items, while deque.appendleft takes 0.16 microseconds in constant time.*
 
 You review code that looks like O(n) and runs like O(n squared). Python hides the cost behind a short operator, so a one-line change can change the whole complexity. A reviewer who has measured these operators spots the trap quickly, and a reviewer who has not may approve it.
 
@@ -80,7 +80,7 @@ For the opening question the membership gap matters most. At 100,000 items a lis
 
 ![A list of one hundred thousand integers takes 0.8 megabytes while the matching set takes 4.19 megabytes for a much faster lookup.](./img/p2-2010-set-memory.svg)
 
-*Figure 20.10.2. A set of 100,000 integers takes about 4.19 MB against 0.8 MB for the list, a memory cost that buys much faster lookups.*
+*Figure 20.10.3. A set of 100,000 integers takes about 4.19 MB against 0.8 MB for the list, a memory cost that buys much faster lookups.*
 
 Picture a service that starts running out of memory some time after someone adds a cache to speed it up. The cache worked, but nobody counted what it cost. This section is about counting that cost, because interviewers listen for it.
 
@@ -96,7 +96,7 @@ The KV cache in chapter 20.12 is the same trade in serving: GPU memory spent so 
 
 ![A ladder of operation times from an L1 cache reference to a round trip across continents, with each time expressed as a ratio to a main memory read.](./img/p2-2010-latency-ladder.svg)
 
-*Figure 20.10.3. A ladder of 2009 latency figures, from an L1 cache reference to a round trip across continents, with ratios to a memory read.*
+*Figure 20.10.4. A ladder of 2009 latency figures, from an L1 cache reference to a round trip across continents, with ratios to a memory read.*
 
 An interviewer says, "How long does a network call take compared with reading memory?" You need a ruler in your head before you can answer. By ruler I mean a short list of how long common operations take, from the fastest to the slowest. Here are three printed sources. Each has an age, and hardware has changed since all of them, so use the table for ratios and orders of magnitude.
 
@@ -131,7 +131,7 @@ For inference numbers, such as KV bytes per token or GPU memory bandwidth, use t
 
 ![A curve of M/D/1 mean response time as a multiple of service time, 1.5 at 50 percent busy, 3 at 80 percent, 5.5 at 90 percent and 10.5 at 95 percent.](./img/p3-2010-md1-curve.svg)
 
-*Figure 20.10.4. Beyond about 60 percent utilisation the average response time doubles, and it keeps climbing as the server nears full.*
+*Figure 20.10.5. Beyond about 60 percent utilisation the average response time doubles, and it keeps climbing as the server nears full.*
 
 Suppose you are on a design call, and someone proposes a service that makes a long chain of calls for every user request. The table of times does not tell you whether that is a problem. You have to divide one time by another before you can say anything useful.
 
@@ -243,7 +243,7 @@ if __name__ == "__main__":
 
 ![A bar chart showing that the chance of at least one slow call rises from one percent at fan-out one to 63.4 percent at fan-out one hundred.](./img/p2-2010-fanout-tail.svg)
 
-*Figure 20.10.5. The chance that at least one of N calls lands in the slow one percent rises from 1.0 percent at N equals 1 to 63.4 percent at N equals 100.*
+*Figure 20.10.6. The chance that at least one of N calls lands in the slow one percent rises from 1.0 percent at N equals 1 to 63.4 percent at N equals 100.*
 
 A search request fans out to 100 backends and waits for all of them. Fan-out means one request starts many parallel calls. Each backend is fast 99 percent of the time and slow the other 1 percent. Your dashboard shows each backend with a healthy p99, yet users complain. The request is slow whenever any one of the calls is slow.
 
@@ -266,7 +266,7 @@ The simulation uses a continuous distribution. Each call is lognormal with a med
 
 ![Why the p99 of a fan-out is worse than the p99 of one call](./img/m20-10-1.svg)
 
-*Figure 20.10.6. Why the p99 of a fan-out is worse than the p99 of one call, as a diagram.*
+*Figure 20.10.7. Why the p99 of a fan-out is worse than the p99 of one call, as a diagram.*
 
 The diagram shows the wait. Each call starts at once, and the request leaves only when the last of them returns. The code below runs that model.
 
@@ -333,7 +333,7 @@ The paper describes the defences. A hedged request sends the same request to a s
 
 ![Summing an array in index order takes 0.157 seconds while summing it in shuffled order takes 0.622 seconds, about four times slower.](./img/p2-2010-locality-bars.svg)
 
-*Figure 20.10.7. Summing five million values in index order took 0.157 seconds against 0.622 seconds in shuffled order, because scattered reads waste cache lines.*
+*Figure 20.10.8. Summing five million values in index order took 0.157 seconds against 0.622 seconds in shuffled order, because scattered reads waste cache lines.*
 
 A loop reads the same array twice, once in order and once in a random order. The work is identical and the second loop is slower. Picture reading a book page by page, then reading the same book by opening it at random pages. You do the same amount of reading, but the second way keeps jumping, and the jumping costs you. The reason is the memory hierarchy, the set of stores that a CPU reads through, from small and fast to large and slow. Systems Performance, chapter 6, says a CPU cache line, the unit stored and transferred together, is typically 64 bytes on x86. Reading one value pulls in its neighbours. A sequential walk uses the neighbours and a random walk wastes them.
 
@@ -347,11 +347,11 @@ Systems Performance, chapter 2, gives the cache formula: runtime is hit rate tim
 
 ![A cProfile report for dedupe_slow with columns ncalls, tottime and cumtime, showing all 0.133 seconds inside the function itself because the in operator is not a function call.](./img/p3-2010-cprofile-anatomy.svg)
 
-*Figure 20.10.8. cProfile tells you which function is hot, not which line, and it slows the program, so use timeit for snippets and metrics in production.*
+*Figure 20.10.9. cProfile tells you which function is hot, not which line, and it slows the program, so use timeit for snippets and metrics in production.*
 
 ![A four-stage measurement loop of measure the whole, find the hot spot with cProfile, change one thing and measure again, with timeit for small snippets.](./img/p2-2010-measure-loop.svg)
 
-*Figure 20.10.9. A measurement loop of measuring the whole, finding the hot spot, changing one thing and measuring again, using timeit minimums for snippets.*
+*Figure 20.10.10. A measurement loop of measuring the whole, finding the hot spot, changing one thing and measuring again, using timeit minimums for snippets.*
 
 You think a function is slow, and an interviewer who hears "I would just optimise it" will push back. A better reply is a method. Measure the whole, find where the time goes, change one thing, and measure again. Systems Performance, chapter 5, says to profile the CPU and start with the most common code path. A measurement tells you where to look, while a guess only tells you where you hope the problem is.
 
@@ -480,7 +480,7 @@ Four things separate a textbook figure from your measurement: newer hardware, wh
 
 ![A budget of one hundred nanoseconds per item for ten million items, with measured loop costs that fit and a network call per item that does not.](./img/p2-2010-loop-budget.svg)
 
-*Figure 20.10.10. A one-second budget for ten million items allows 100 ns per item, so simple loops fit while one network call per item does not.*
+*Figure 20.10.11. A one-second budget for ten million items allows 100 ns per item, so simple loops fit while one network call per item does not.*
 
 The interviewer says, "Ten million items, one second, yes or no?" Do not answer from feeling. Compute a budget instead. One second divided by 10 million items leaves 100 ns per item. Then estimate the work per item and compare the two numbers.
 

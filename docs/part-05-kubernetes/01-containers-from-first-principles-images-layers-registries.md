@@ -424,7 +424,7 @@ BuildKit is the modern build engine and the default in current Docker. It runs s
 
 ![Comparison between traditional image pull downloading all layers before startup and lazy pulling starting in seconds while streaming layer chunks on demand.](./img/p4-0501-lazy-pull.svg)
 
-*Figure 5.0.0. Lazy-pulling snapshotters fetch index metadata first so the container starts immediately, downloading remaining layer data only as the application reads it.*
+*Figure 5.1.7. Lazy-pulling snapshotters fetch index metadata first so the container starts immediately, downloading remaining layer data only as the application reads it.*
 
 Large images cost you network, registry space, disk and time to start. Think of an image as a box that every node must receive before the job can begin. A heavier box takes longer to carry, and it fills more shelves. Several techniques reduce that cost. Use slim or distroless bases, and use multi-stage builds. Remove build tools, strip binaries, and avoid copying whole datasets into an image. Mount or download datasets when the container starts. Share base layers across images so that nodes already hold them. Compress with `zstd`, which decompresses faster than gzip.
 
@@ -434,7 +434,7 @@ Lazy-pulling snapshotters go a step further. These are stargz or eStargz, SOCI, 
 
 ![Base image choices arranged from smallest to most debuggable, with Alpine flagged as a poor fit for GPU and ML work because of musl libc.](./img/p2-0501-base-choice.svg)
 
-*Figure 5.1.7. Base images trade size against debuggability, and for GPU and ML work Debian, Ubuntu or NVIDIA images beat Alpine.*
+*Figure 5.1.8. Base images trade size against debuggability, and for GPU and ML work Debian, Ubuntu or NVIDIA images beat Alpine.*
 
 The base image decides how big your image is, how easy it is to debug, and whether CUDA and Python wheels will run. The table compares the common choices, with the pros and cons of each. Read it as a trade-off table. Smaller bases give you less to patch, but they also give you fewer tools when something goes wrong in the middle of the night.
 
@@ -453,7 +453,7 @@ For GPU and ML work, the table points you to Debian or Ubuntu bases, or to NVIDI
 
 ![A builder stage compiles the program, and only the compiled binary is copied into a slim final stage.](./img/k01-multistage.svg)
 
-*Figure 5.1.8. A multi-stage build compiles in a large stage and copies only the finished binary into a slim runtime stage.*
+*Figure 5.1.9. A multi-stage build compiles in a large stage and copies only the finished binary into a slim runtime stage.*
 
 Building an app needs compilers, SDKs and test tools. Running the app needs none of them. If you ship the build tools too, the image grows, takes longer to pull, and gives an attacker more to use. Imagine moving into a house and keeping the construction crew's tool chest in the hallway. The house works, but every visitor now has a set of saws. The fix is a multistage Dockerfile. One stage builds the program, and a second, slim stage runs it.
 
@@ -489,7 +489,7 @@ A container runs a single process and usually has no init system. That process m
 
 ![With shell form ENTRYPOINT the shell is PID 1 and does not forward SIGTERM so the pod waits the full grace period before SIGKILL, while exec form runs the app as PID 1 and receives SIGTERM directly.](./img/p3-0501-exec-vs-shell.svg)
 
-*Figure 5.1.9. Use the exec form of ENTRYPOINT and CMD so signals reach your process, and add tini or --init when the app forks children.*
+*Figure 5.1.10. Use the exec form of ENTRYPOINT and CMD so signals reach your process, and add tini or --init when the app forks children.*
 
 When you do not set a runtime user, the container's process usually runs as root. Containers share the host's Linux kernel, so the user matters. If an attacker escapes a root container, they can gain root on the host. Decide the user while you build the image, and set it with the `USER` directive. This example runs `my-app` as the `nonroot` user and group, which distroless images create by default:
 
@@ -544,7 +544,7 @@ Trust is also a concern. Images from a public registry are built by someone else
 
 ![Without a cache, every node pulls from the central registry; with a pull-through cache, only the cache pulls from it.](./img/k01-pull-cache.svg)
 
-*Figure 5.1.10. A pull-through cache inside the cluster fetches each image once, so the central registry is not overloaded by every node.*
+*Figure 5.1.11. A pull-through cache inside the cluster fetches each image once, so the central registry is not overloaded by every node.*
 
 Your cluster has a few hundred nodes, and a new job starts on all of them at once. Every node asks the same registry for the same image, at the same moment. The registry becomes the bottleneck, and the job waits. The answer to that problem depends on how registries store and hand out images, so this section starts there.
 
@@ -574,7 +574,7 @@ Each `hosts.toml` file belongs to one registry. The `server` line names the real
 
 ![Anatomy of an OCI container registry showing its API server, metadata database, and blob store replicated across regional failure domains.](./img/p4-0501-registry-anatomy.svg)
 
-*Figure 5.0.0. A container registry splits metadata from content-addressed blob storage and replicates across regions to keep pull traffic local and fault-tolerant.*
+*Figure 5.1.12. A container registry splits metadata from content-addressed blob storage and replicates across regions to keep pull traffic local and fault-tolerant.*
 
 A registry has three main parts. A server handles the user interface and the API. A blob store holds the image data. A database holds user and image metadata. The OCI standardizes registry operations, so different products interoperate. Storage backends are often configurable, and that choice shapes the registry's design.
 
@@ -588,7 +588,7 @@ Running a registry inside the cluster is convenient, because Kubernetes keeps it
 
 ![A process that is root inside a container maps to an unprivileged user ID on the host.](./img/k01-userns-map.svg)
 
-*Figure 5.1.11. In rootless mode, the kernel maps root inside the container to an unprivileged user on the host.*
+*Figure 5.1.13. In rootless mode, the kernel maps root inside the container to an unprivileged user on the host.*
 
 Suppose a runtime or container escape happens on a shared node. An attacker who breaks out of a container running as root now has root on the host, and every other workload on that node is exposed. Rootless mode limits the damage. Podman, rootless Docker, rootless containerd and nerdctl, and BuildKit in rootless mode run the runtime and its containers under an unprivileged user, using user namespaces configured in `/etc/subuid` and `/etc/subgid`. An escape then gives the attacker only an unprivileged user. Rootless networking uses slirp4netns or pasta, and storage uses fuse-overlayfs or native overlay on modern kernels. Rootless mode cannot bind privileged ports, and some cgroup limits need cgroup v2 delegation. Its networking performance is a limit too. GPU access needs device and permission setup, and CDI helps with that.
 
@@ -604,7 +604,7 @@ Supply-chain hygiene starts with trusted base images and pinned digests. Never r
 
 ![The host provides the kernel driver, device nodes and libcuda, the image provides the CUDA runtime, cuDNN and NCCL, and two different error messages point to a driver version problem or a compute capability problem.](./img/p3-0501-gpu-image-host-split.svg)
 
-*Figure 5.1.12. The image brings the tools and the host brings the engine; the error message tells you which side to fix.*
+*Figure 5.1.14. The image brings the tools and the host brings the engine; the error message tells you which side to fix.*
 
 Your first GPU container fails with `CUDA driver version is insufficient for CUDA runtime version`, and the image looked correct. The cause is not inside the image alone. It sits in the split between what the image carries and what the host provides, so the section begins by drawing that line.
 
@@ -612,7 +612,7 @@ A container cannot carry a GPU driver. The kernel driver and its device nodes li
 
 ![GPU containers](./img/m5-01-3.svg)
 
-*Figure 5.1.13. GPU containers, as a diagram.*
+*Figure 5.1.15. GPU containers, as a diagram.*
 
 The split between image and host is the key idea. Here is the walkthrough for a `--gpus all` request. The runtime is asked to start a container with GPU access. The toolkit's hook runs before the container's main process starts, and it reads the list of GPUs on the host. For each device it adds the matching device node, such as `/dev/nvidia*`, to the container's view. It also bind-mounts the host's driver libraries into the container. Only then does your process start. When your code calls CUDA, it loads the library from the image, and that library calls into the driver library that the toolkit mounted from the host. If a step in that chain is missing, the failure shows up as a CUDA error from inside your program, which is why the checks at the end of this section go in order.
 
@@ -640,7 +640,7 @@ docker run --rm --device nvidia.com/gpu=all ubuntu:22.04 ls /dev/nvidia*       #
 
 ![State machine of container lifecycle showing transitions between Created, Running, Paused, and Stopped with commands, signals, and resulting exit codes.](./img/p4-0501-container-lifecycle.svg)
 
-*Figure 5.0.0. The container lifecycle moves through distinct kernel states driven by CLI commands, signal propagation, and cgroup resource enforcement.*
+*Figure 5.1.16. The container lifecycle moves through distinct kernel states driven by CLI commands, signal propagation, and cgroup resource enforcement.*
 
 Most of your day with containers is spent starting them, watching them, stopping them and cleaning up. The block below collects those commands in the order you are likely to use them. Read it as a sequence: start, look, change, stop, clean. Each line is a small question you ask the container.
 
@@ -698,7 +698,7 @@ For general cleanup, `docker system prune` removes all stopped containers, all u
 
 ![A decision table from container exit code to likely cause: 137 with OOMKilled true is a memory limit kill, 143 is SIGTERM, 139 is a segmentation fault, 135 is a bus error on shared memory, and 1 or 2 is an application error.](./img/p3-0501-exit-code-map.svg)
 
-*Figure 5.1.14. An exit code of 128 plus N means the process died of signal N, and State.OOMKilled separates a memory kill from other SIGKILLs.*
+*Figure 5.1.17. An exit code of 128 plus N means the process died of signal N, and State.OOMKilled separates a memory kill from other SIGKILLs.*
 
 Your container exits, and the only clue is one line in the logs. The table below is how experienced engineers turn that one line into a short list of causes. Most container failures show a symptom that points to a small set of causes. The table matches each symptom to its likely cause and the check that confirms it.
 

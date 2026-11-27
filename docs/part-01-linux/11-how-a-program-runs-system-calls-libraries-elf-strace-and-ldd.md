@@ -191,15 +191,19 @@ Before you call a process a leak, watch its RSS over time. Virtual size on its o
 
 A program that opens a file, sends a packet or asks the GPU to do work crosses the same line every time. That line is the system call boundary. Once you can see it, most questions about what a program is doing become answerable. This section explains the crossing, then shows how to read it in `strace`.
 
+![A program crossing from user space into the kernel through a system call](./img/pre-syscall-boundary.jpg)
+
+*Figure 1.11.4. Programs ask the kernel for everything through system calls. strace shows them.*
+
 ![Crossing into the kernel](./img/ch11-fig1-syscall.jpg)
 
-*Figure 1.11.4. A system call is the controlled crossing from user space into the kernel; strace prints each one.*
+*Figure 1.11.5. A system call is the controlled crossing from user space into the kernel; strace prints each one.*
 
 ### The mechanism
 
 ![A diagram contrasting the full kernel-switch system call path with register handling and errno translation against the user-space vDSO bypass.](./img/p4-0111-syscall-mechanism.svg)
 
-*Figure 1.11.5. A system call transitions from user space to kernel space via CPU registers and the syscall instruction, with libc mapping negative returns to errno; vDSO calls execute entirely in user space.*
+*Figure 1.11.6. A system call transitions from user space to kernel space via CPU registers and the syscall instruction, with libc mapping negative returns to errno; vDSO calls execute entirely in user space.*
 
 Picture a program that wants one byte written to a file. It cannot touch the disk, the network or the GPU directly. It asks the kernel to do the work, and it does so through a system call. A **system call** is the controlled entry into the kernel. The C library offers a **wrapper function** for each one, such as `open()`, `read()`, `write()` or `mmap()`. The wrapper places the call **number** and the arguments in specific CPU registers. Then it runs a special instruction: `syscall` on x86-64, or `svc` on ARM64.
 
@@ -245,7 +249,7 @@ You install a library, and the file sits right there on disk, yet the program st
 
 ![Shared libraries at start-up](./img/ch11-fig2-sharedlibs.jpg)
 
-*Figure 1.11.6. The dynamic linker finds each needed library, and ldd shows what will load.*
+*Figure 1.11.7. The dynamic linker finds each needed library, and ldd shows what will load.*
 
 Chapter 1.7 covered how libraries are built and how `ld.so` searches for them. This section is about keeping them under control, and you can do that if you know four things. The source for this material is *How Linux Works* Section 15.1.3. First, you need to list the shared libraries an executable needs, with `ldd` or `readelf -d`. Second, you need to know how the executable looks for them: `DT_RPATH`, `LD_LIBRARY_PATH`, `DT_RUNPATH`, `/etc/ld.so.cache`, `/lib` and `/usr/lib`. Third, you need to link against a library at compile time, using `-L`, `-l` and `-Wl,-rpath`. Fourth, you need to know the common pitfalls. This section covers what makes a library file name work, how a program says which version it needs, and what goes wrong.
 
@@ -253,7 +257,7 @@ Chapter 1.7 covered how libraries are built and how `ld.so` searches for them. T
 
 ![A shared library has a linker name, a soname and a real file name tied together by symlinks.](./img/l11-lib-names.svg)
 
-*Figure 1.11.7. Programs record the soname, which is the compatibility contract, while the real name is the actual file.*
+*Figure 1.11.8. Programs record the soname, which is the compatibility contract, while the real name is the actual file.*
 
 A shared library has three names, and symbolic links tie them together.
 
@@ -269,7 +273,7 @@ The number in the soname is the ABI version. ABI stands for application binary i
 
 ![A binary built against a newer glibc fails on an older system, but not the other way round.](./img/l11-glibc-direction.svg)
 
-*Figure 1.11.8. Binaries are forward-compatible with newer glibc, not backward, so build on the oldest distribution you support.*
+*Figure 1.11.9. Binaries are forward-compatible with newer glibc, not backward, so build on the oldest distribution you support.*
 
 Within one soname, the GNU C library and libstdc++ attach **symbol versions** to their functions. Examples are `memcpy@GLIBC_2.14` and `GLIBCXX_3.4.30`. A newer library can then provide both new and old behaviour. At link time, the binary records the **minimum versions** it needs. You can read them with `readelf -V ./prog` or `objdump -T`. At run time, the loader refuses to start the program if the system library is older than required.
 
@@ -291,7 +295,7 @@ Inside a container, the libraries come from the **image**, not from the host. Th
 
 ![A five step library search order from RPATH through LD_LIBRARY_PATH, RUNPATH, the ldconfig cache and default directories, with three ways to fix a missing library.](./img/p3-0111-lib-search.svg)
 
-*Figure 1.11.9. The loader tries RPATH, LD_LIBRARY_PATH, RUNPATH, the ldconfig cache and the default directories in that order.*
+*Figure 1.11.10. The loader tries RPATH, LD_LIBRARY_PATH, RUNPATH, the ldconfig cache and the default directories in that order.*
 
 - **`LD_PRELOAD=/path/lib.so`** forces a library to load first, so its symbols override the normal ones. People use it to replace the allocator, such as `jemalloc` or `tcmalloc`, without recompiling. They also use it to intercept calls for debugging or profiling, which some GPU tools do, or to work around a library bug. The same mechanism is used by malware, and it is ignored for set-uid programs. It can also break programs in subtle ways, so treat it as a sharp tool.
 
@@ -319,7 +323,7 @@ When a library will not load, check the search path before you reinstall anythin
 
 ![A table that maps common symptoms to what to look for in a strace output.](./img/l11-strace-reading.svg)
 
-*Figure 1.11.10. Read a trace with one question in mind and use the matching filter or summary flag.*
+*Figure 1.11.11. Read a trace with one question in mind and use the matching filter or summary flag.*
 
 When a program fails or hangs, and its logs say nothing useful, `strace` is usually the first tool to reach for. You can see the process in `ps`, but you get no error, no stack and no clue why it stopped moving. Chapter 1.8 introduced `strace` in section 3. It prints the system calls the program makes, one line per call, so the kernel boundary where it stopped becomes visible. Start with a broad trace, then narrow it down to the calls that matter. The commands below follow that routine.
 
@@ -383,7 +387,7 @@ Prefer software you can *observe*. A slightly slower tool with rich metrics usua
 
 ![Diagram showing the 3-tier hybrid futex escalation from user-space atomic CAS to sleeping syscall, alongside false sharing on a 64-byte CPU cache line.](./img/p4-0111-futex-and-false-sharing.svg)
 
-*Figure 1.11.11. Hybrid futex locks escalate from user-space atomic operations to kernel sleeps only under contention, while false sharing degrades multi-threaded performance across shared 64-byte cache lines.*
+*Figure 1.11.12. Hybrid futex locks escalate from user-space atomic operations to kernel sleeps only under contention, while false sharing degrades multi-threaded performance across shared 64-byte cache lines.*
 
 The table lists techniques that applications use to cut overhead. Each one trades something away, so read the trade-off column as carefully as the idea column.
 
@@ -418,7 +422,7 @@ Lock contention limits scalability, because a single global lock serialises the 
 
 ![A stylised CPU flame graph with annotations that width is the share of samples, height is call depth, and a wide top box is where CPU time goes.](./img/p3-0111-flamegraph-read.svg)
 
-*Figure 1.11.12. In a flame graph the width of a box is its share of samples, the height is call depth, and the order left to right carries no time meaning.*
+*Figure 1.11.13. In a flame graph the width of a box is its share of samples, the height is call depth, and the order left to right carries no time meaning.*
 
 Each method below answers a different question. Use the first one that fits your symptom.
 
@@ -462,7 +466,7 @@ Start with the cheapest tool that can answer your question. The system-wide tool
 
 ![Diagram comparing intact call stack unwinding via RBP frame pointers against a truncated call stack caused by -fomit-frame-pointer.](./img/p4-0111-frame-pointer-unwind.svg)
 
-*Figure 1.11.13. Frame pointers maintain a linked chain of Saved RBP addresses on the stack that profilers walk; omitting frame pointers repurposes RBP, truncating profiles into single frames or unknown addresses.*
+*Figure 1.11.14. Frame pointers maintain a linked chain of Saved RBP addresses on the stack that profilers walk; omitting frame pointers repurposes RBP, truncating profiles into single frames or unknown addresses.*
 
 - **Missing symbols** appear as hex addresses or `[unknown]`. Stripped binaries cause this. The fix is to install the debuginfo packages or to build with symbols. JIT runtimes cause it too, because they generate code while the program runs. Give `perf` a map file at `/tmp/perf-<PID>.map`. The `perf-map-agent` tool produces one for Java, and `--perf-basic-prof` does so for Node.js. If the map is dumped after the code has moved, the symbols churn and stop matching.
 
@@ -474,7 +478,7 @@ Before you trust a flame graph, check that its stacks are complete. A short stac
 
 ![Two columns showing CUDA libraries that travel with the application and the driver files that come from the host and are injected into containers, with the order in which they load.](./img/p3-0111-cuda-who-brings.svg)
 
-*Figure 1.11.14. CUDA toolkit libraries ship inside the wheel or image, while libcuda.so.1 and the kernel module must come from the host driver.*
+*Figure 1.11.15. CUDA toolkit libraries ship inside the wheel or image, while libcuda.so.1 and the kernel module must come from the host driver.*
 
 Now apply these ideas to the software that matters most on a GPU node. When a CUDA job fails to start, the useful question is concrete: which files does it load, and in what order? The answer tells you which layer owns the piece that is missing.
 
@@ -520,7 +524,7 @@ Before you blame the framework for a slow or hung job, check which files it load
 
 ![A six stage startup pipeline with the error messages that come from each stage and the first command to run for each.](./img/p3-0111-error-to-stage.svg)
 
-*Figure 1.11.15. Match the error message to the startup stage that produces it, then run the first check for that stage.*
+*Figure 1.11.16. Match the error message to the startup stage that produces it, then run the first check for that stage.*
 
 Most of these failures show up with a clear message. The message rarely says which layer is at fault, though, so each item below gives you the cause and then the first thing to check.
 

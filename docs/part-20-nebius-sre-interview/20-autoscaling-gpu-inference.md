@@ -250,7 +250,7 @@ Capacity itself is a limit. Production Kubernetes advises knowing where a cluste
 
 ![A diagram contrasting dedicated always-on pools against shared on-demand pools, alongside disaggregated prefill and decode worker autoscaling with prefix cache eviction risks.](./img/p4-2020-multimodel-placement.svg)
 
-*Figure 20.0.0. Dedicated pools isolate hot model scaling and protect prefix caches, while disaggregated serving enables prefill and decode pools to scale on their distinct bottlenecks.*
+*Figure 20.20.14. Dedicated pools isolate hot model scaling and protect prefix caches, while disaggregated serving enables prefill and decode pools to scale on their distinct bottlenecks.*
 
 You run 40 models. A few are hot, most are quiet, and the on-call engineer wants to know which pool is slow without reading forty dashboards. Hands-On LLM Serving and Optimization, Chapter 3, describes the two obvious designs. The cost-optimised one shares serving instances and loads models on demand. Its challenges are cold start, with seconds or tens of seconds of delay when a model is not loaded, and hot-model scaling, because each instance keeps its own cache. The latency-optimised one gives each model a dedicated, always-on pool, with no cold-start delay and independent scaling. The book says that design excels for hot models and is simpler to run.
 
@@ -302,7 +302,7 @@ Read the scenario as a story in order. At the first sync the controller sees a c
 
 ![Headroom arithmetic showing 4 replicas needed with an eight-minute cold start versus 2 with a 150-second cold start.](./img/p3-2020-ramp-headroom.svg)
 
-*Figure 20.20.14. Headroom equals demand growth during one cold start divided by per-replica capacity.*
+*Figure 20.20.15. Headroom equals demand growth during one cold start divided by per-replica capacity.*
 
 Demand grows 0.4 requests per second every minute. A replica serves 0.8 requests per second. Cold start with a fresh node is 480 seconds.
 
@@ -314,7 +314,7 @@ When you present the choice, say what each option buys and what it leaves expose
 
 ![Two overlapping problems, flapping and undrained scale-down, with simulator counts of 130 versus 13 starts and 168 cut streams.](./img/p3-2020-sawtooth-two-fixes.svg)
 
-*Figure 20.20.15. Name both problems and fix the window first, then add the drain.*
+*Figure 20.20.16. Name both problems and fix the window first, then add the drain.*
 
 Short bursts arrive every six minutes. After each burst the autoscaler removes replicas, and a few minutes later it adds them again. Users report streams that stop halfway.
 

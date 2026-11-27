@@ -54,9 +54,13 @@ By the end of this chapter, you should be able to do the following:
 
 Something has gone wrong at boot, and you have a console open. Before you type anything, it helps to know how many stages the machine has to pass through, and what each one hands to the next. Here is that journey, drawn once from above.
 
+![The boot chain from firmware to systemd and services, with the BMC working beside it](./img/pre-boot-chain.jpg)
+
+*Figure 1.14.1. From power button to a running service, in order. The BMC works even before the OS exists.*
+
 ![The big picture](./img/ch14-d1-luna.svg)
 
-*Figure 1.14.1. The big picture.*
+*Figure 1.14.2. The big picture.*
 
 There are seven stages in the simple form, and each stage is one hand-off. Stage 1 is the firmware, which loads and runs a boot loader. Stage 2 is the boot loader, which finds the kernel image on disk, loads it into memory with its parameters, and starts it. Stage 3 is the kernel, which initialises devices and drivers. Stage 4 is the root filesystem, which the kernel mounts, using the initramfs when it is needed. Stage 5 is the point where the kernel starts `init` as PID 1. Stage 6 is `init` starting the rest of the system. Stage 7 is the moment a login service becomes available.
 
@@ -72,7 +76,7 @@ The first stage of boot happens before Linux exists. Long before any kernel code
 
 ![BIOS with MBR versus UEFI with GPT](./img/ch14-fig1-uefi.jpg)
 
-*Figure 1.14.2. The two firmware boot paths that lead to the kernel and initramfs.*
+*Figure 1.14.3. The two firmware boot paths that lead to the kernel and initramfs.*
 
 ### BIOS (legacy) boot
 
@@ -113,7 +117,7 @@ These commands tell you which mode a machine booted in, and what it will try nex
 
 ![Each stage of the boot verifies the next, up to the kernel modules.](./img/l14-secure-boot.svg)
 
-*Figure 1.14.3. A signed chain from firmware to kernel modules means an unsigned GPU driver module will not load.*
+*Figure 1.14.4. A signed chain from firmware to kernel modules means an unsigned GPU driver module will not load.*
 
 With **Secure Boot**, the firmware runs only boot code that is cryptographically **signed** by a key it trusts. A signature here works like a wax seal: the code carries a stamp the firmware can check before it runs a single instruction. Hardware vendors ship with Microsoft's keys. Distributions therefore use a small Microsoft-signed **`shim`**, which verifies and runs **GRUB**. GRUB verifies the **kernel**, and when the kernel is locked down, the kernel verifies **kernel modules**. The distribution's own key is built into shim. You can enrol more keys as **Machine Owner Keys (MOK)** with `mokutil`.
 
@@ -207,7 +211,7 @@ grub> boot
 
 ![Settings and scripts feed a generator that writes grub.cfg, which you should never edit by hand.](./img/l14-grub-config.svg)
 
-*Figure 1.14.4. grub.cfg is generated, so change /etc/default/grub or /etc/grub.d and regenerate.*
+*Figure 1.14.5. grub.cfg is generated, so change /etc/default/grub or /etc/grub.d and regenerate.*
 
 GRUB reads `grub.cfg`, which lives in `/boot/grub/` or `/boot/grub2/`. On EFI systems there is also a small stub on the ESP. **The file is generated, so your edits will be overwritten.** That surprises almost everyone once: you edit the file, boot works, and the next kernel update quietly throws your work away. Make your changes in the right place, and then regenerate the file. The workflow has four steps.
 
@@ -358,7 +362,7 @@ Read the diagram from top to bottom. Each arrow is one hand-off, from the boot l
 
 ![The initial RAM filesystem (initramfs)](./img/ch14-d2-luna.svg)
 
-*Figure 1.14.5. The initial RAM filesystem (initramfs).*
+*Figure 1.14.6. The initial RAM filesystem (initramfs).*
 
 The two families of distributions use different tools. Debian and Ubuntu use `initramfs-tools`, while RHEL, Fedora and SUSE use `dracut`. The table compares the commands for each.
 
@@ -453,7 +457,7 @@ Before you change a unit file, check which location it lives in, because a copy 
 
 ![A table that maps common boot symptoms to their likely cause and first action.](./img/l14-boot-symptoms.svg)
 
-*Figure 1.14.6. Identify the failing boot stage first, then change only one thing before testing again.*
+*Figure 1.14.7. Identify the failing boot stage first, then change only one thing before testing again.*
 
 The moment a node will not boot, it is tempting to start changing things. Resist that, because every change you make without a note hides the cause a little further. Follow the same routine every time, because it stops you changing too much at once.
 
@@ -530,7 +534,7 @@ The diagram traces a network boot from the first DHCP request to the hand-off to
 
 ![Network booting: DHCP, TFTP, PXE and NFS root](./img/ch14-d3-luna.svg)
 
-*Figure 1.14.7. Network booting: DHCP, TFTP, PXE and NFS root.*
+*Figure 1.14.8. Network booting: DHCP, TFTP, PXE and NFS root.*
 
 ### Components
 

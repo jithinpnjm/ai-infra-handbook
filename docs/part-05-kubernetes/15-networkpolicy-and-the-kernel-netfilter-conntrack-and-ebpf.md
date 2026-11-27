@@ -473,7 +473,7 @@ Read the two cluster-wide kinds as a pair of bookends. The admin policy sits at 
 
 ![A side-by-side architectural comparison of Calico Dikastes sidecar proxy model versus Cilium kernel eBPF numeric security identity model for workload authorization.](./img/p4-0515-identity-models.svg)
 
-*Figure 5.0.0. Calico pairs an Envoy sidecar and Dikastes daemon communicating over Unix sockets for service-account identity, whereas Cilium embeds numeric security identities directly into datapath eBPF maps.*
+*Figure 5.15.13. Calico pairs an Envoy sidecar and Dikastes daemon communicating over Unix sockets for service-account identity, whereas Cilium embeds numeric security identities directly into datapath eBPF maps.*
 
 For a long time, teams used the network itself as identity. IP addresses, VPNs and firewalls decided which application could reach which service. Cloud native systems break that model. Containers share network stacks and machines, and workloads move between nodes often. The result is a constant churn of IP addresses. In a multicloud, API-driven setup, calls also leave the cluster for providers that need proof of who is calling.
 
@@ -551,7 +551,7 @@ The `io.cilium.k8s.policy.*` label selectors pick out service accounts. Cilium t
 
 ![Six platform zones, from edge and serving to training and notebooks, each with the network policy stance for its workloads.](./img/p2-0515-zone-stance.svg)
 
-*Figure 5.15.13. Six platform zones on a multi-tenant GPU cluster each take a different network policy stance, from gateway-only ingress to restricted notebook egress.*
+*Figure 5.15.14. Six platform zones on a multi-tenant GPU cluster each take a different network policy stance, from gateway-only ingress to restricted notebook egress.*
 
 Not every zone of the cluster deserves the same policy. A serving zone with a gateway in front of it has different needs from a training zone full of jobs. The table lists each zone, the workloads it runs and the stance to take.
 
@@ -588,7 +588,7 @@ Protect the default-deny, and change only the allowances you need.
 
 ![A method for testing a network flow: define it, locate the policies at both ends, predict the result, run the test and compare.](./img/p2-0515-predict-test.svg)
 
-*Figure 5.15.14. To test a network flow, define it, locate the policies at both ends, predict the result, then test and compare the two.*
+*Figure 5.15.15. To test a network flow, define it, locate the policies at both ends, predict the result, then test and compare the two.*
 
 The method is simple to state. Define the exact flow: source pod, destination pod or IP, port and direction. Identify the applicable policies at both ends, predict the result, and then test it. The commands below follow that order, with Kubernetes checks first and then the tool for your CNI.
 

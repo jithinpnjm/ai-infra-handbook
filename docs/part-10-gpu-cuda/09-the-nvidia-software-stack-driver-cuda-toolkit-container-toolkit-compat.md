@@ -59,6 +59,10 @@ This chapter follows the stack from Python to the kernel. It starts with the Run
 
 When a researcher runs a single line of PyTorch code on a GPU, that call crosses seven distinct software and hardware layers. Each layer does one job and hands the work to the next. When any one of those layers is missing or mismatched, the job fails with an opaque runtime error. Knowing which boundary sits inside the container image and which sits on the host is the foundation of GPU troubleshooting, because it tells you which team and which image to look at first.
 
+![The seven software layers from the AI framework down to the GPU hardware](./img/pre-nvidia-seven-layers.jpg)
+
+*Figure 10.9.1. One framework call crosses seven layers before it reaches the GPU.*
+
 ```mermaid
 flowchart TB
   L1["1. AI frameworks<br/>PyTorch, JAX, TensorFlow"]

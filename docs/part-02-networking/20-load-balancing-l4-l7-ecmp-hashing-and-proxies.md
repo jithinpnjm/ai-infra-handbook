@@ -292,7 +292,7 @@ The `timeout tunnel 1h` line is the one to watch for streams, since it covers we
 
 ![Comparison of Server-Sent Events token streaming under nginx with proxy buffering enabled causing bursty delayed delivery versus proxy buffering disabled providing smooth real-time token delivery.](./img/p4-0220-sse-buffering.svg)
 
-*Figure 2.0.0. Disabling proxy buffering in nginx ensures each generated LLM token chunk flushes immediately to the client socket instead of stalling until an internal 4 KB buffer fills.*
+*Figure 2.20.16. Disabling proxy buffering in nginx ensures each generated LLM token chunk flushes immediately to the client socket instead of stalling until an internal 4 KB buffer fills.*
 
 ```nginx
 upstream triton_grpc { least_conn; keepalive 32; server 10.1.0.11:8001; server 10.1.0.12:8001; }
@@ -318,7 +318,7 @@ Open-source nginx resolves upstream hostnames when the configuration loads, so n
 
 ![An nginx reload leaving old workers alive or cutting streams, compared with an Envoy xDS update that adds the new host in slow start without restarting anything.](./img/p3-0220-reload-vs-xds.svg)
 
-*Figure 2.20.16. An nginx reload starts new workers while old ones linger, whereas an Envoy xDS update adds a host in slow start and cuts no streams.*
+*Figure 2.20.17. An nginx reload starts new workers while old ones linger, whereas an Envoy xDS update adds a host in slow start and cuts no streams.*
 
 Envoy is a modern L4 and L7 proxy. Its design centres on dynamic configuration through the **xDS** APIs for listeners, routes, clusters, endpoints and secrets. Instead of editing a file and reloading, a control plane pushes changes to Envoy while it runs. It handles HTTP/2 and gRPC natively, and it offers rich observability through stats, access logs and tracing, plus advanced load balancing and resilience.
 
@@ -368,15 +368,15 @@ Pick the proxy whose xDS and drain behaviour matches your streams, because a rel
 
 ![Four gRPC streams pinned to one backend by an L4 balancer, with three fixes of an L7 proxy, client-side balancing and MAX_CONNECTION_AGE, and the QUIC connection ID note.](./img/p3-0220-pinning-fixes.svg)
 
-*Figure 2.20.17. An L4 balancer pins all streams of a connection to one backend, fixed by per-request L7 balancing, client-side balancing or a maximum connection age.*
+*Figure 2.20.18. An L4 balancer pins all streams of a connection to one backend, fixed by per-request L7 balancing, client-side balancing or a maximum connection age.*
 
 ![Forwarded headers at layer 7 and the PROXY protocol at layer 4 carrying the client address to the backend, with the requirement that the backend expect the header.](./img/p3-0220-proxy-protocol.svg)
 
-*Figure 2.20.18. The proxy writes a PROXY header naming the client before any application bytes, and the backend must be configured to expect it.*
+*Figure 2.20.19. The proxy writes a PROXY header naming the client before any application bytes, and the backend must be configured to expect it.*
 
 ![TLS termination versus passthrough](./img/n20-tlsplace.svg)
 
-*Figure 2.20.19. Where TLS ends decides what the balancer can read and route on.*
+*Figure 2.20.20. Where TLS ends decides what the balancer can read and route on.*
 
 Picture a request that arrives over TLS. It is a sealed envelope, and where the balancer opens it decides what the balancer can read, which shapes routing, WAF rules and mTLS. Three placements are available.
 
@@ -400,11 +400,11 @@ Decide where TLS ends before anything else, because that choice sets what the ba
 
 ![A table of GCP, AWS and Azure load balancers by L7 and L4 types, and the differences to check including source IP preservation, idle timeouts, protocol support and draining.](./img/p3-0220-cloud-lbs.svg)
 
-*Figure 2.20.20. Cloud load balancers differ on source IP preservation, idle timeouts, protocol support, draining and cost, so read the idle timeout first.*
+*Figure 2.20.21. Cloud load balancers differ on source IP preservation, idle timeouts, protocol support, draining and cost, so read the idle timeout first.*
 
 ![kube-proxy iptables mode as a chain of rules with probability 1 over N, 1 over N minus 1 and so on, picking randomly per connection with no load awareness.](./img/p3-0220-kubeproxy-prob.svg)
 
-*Figure 2.20.21. kube-proxy's iptables mode picks a pod at random per connection with no load awareness, so long gRPC channels stay where they landed.*
+*Figure 2.20.22. kube-proxy's iptables mode picks a pod at random per connection with no load awareness, so long gRPC channels stay where they landed.*
 
 Most teams do not build their own balancers from scratch. They rent one from a cloud provider or get one from Kubernetes. Both come with defaults you should check before you depend on them, because a default that suits a website may quietly cut an LLM stream.
 
@@ -422,15 +422,15 @@ One warning applies to the Kubernetes side. The iptables mode of kube-proxy bala
 
 ![Flow diagram of prefix-cache-aware routing directing matching prompt prefixes to the replica holding cached KV blocks unless its load exceeds the bounded threshold, triggering a spillover.](./img/p4-0220-prefix-cache-spill.svg)
 
-*Figure 2.0.0. Prefix-cache-aware routing hashes prompt prefixes to warm GPU replicas to eliminate prefill latency, using bounded-load spillover to prevent hot-spot overload.*
+*Figure 2.20.23. Prefix-cache-aware routing hashes prompt prefixes to warm GPU replicas to eliminate prefill latency, using bounded-load spillover to prevent hot-spot overload.*
 
 ![Five differences of LLM serving from web traffic: long variable requests, long-lived connections, cache locality, expensive heterogeneous backends and slow autoscaling, with the routing response to each.](./img/p3-0220-llm-differences.svg)
 
-*Figure 2.20.22. LLM serving needs per-request balancing on queue depth and KV-cache load, cache-aware routing, graceful draining and early shedding.*
+*Figure 2.20.24. LLM serving needs per-request balancing on queue depth and KV-cache load, cache-aware routing, graceful draining and early shedding.*
 
 ![gRPC connection pinning](./img/n20-pinning.svg)
 
-*Figure 2.20.23. An L4 balancer pins each long gRPC connection to one backend, so per-request balancing is needed.*
+*Figure 2.20.25. An L4 balancer pins each long gRPC connection to one backend, so per-request balancing is needed.*
 
 Picture an inference service that answers every health check, while one replica is buried under long generations and the others sit nearly idle. The dashboard shows an average latency that looks acceptable, and the users of that one replica are very unhappy. The section below explains why the usual web assumptions fail for this kind of work, and what signal the balancer should use instead.
 
@@ -476,7 +476,7 @@ Measure first, and choose the load signal before you choose the algorithm.
 
 ![A four step ladder to walk a 502, comparing the balancer's read timeout with the backend deadline and checking keepalives, beside a table of other load balancer symptoms with causes and fixes.](./img/p3-0220-502-walk.svg)
 
-*Figure 2.20.24. To walk a 502, compare the balancer's read timeout with the backend deadline, check both keepalives, then change one timer and retest.*
+*Figure 2.20.26. To walk a 502, compare the balancer's read timeout with the backend deadline, check both keepalives, then change one timer and retest.*
 
 When a balancer misbehaves, the symptom usually points to a short list of causes. Find the row that matches what you see, then run the check in the third column.
 

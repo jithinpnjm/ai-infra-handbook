@@ -71,7 +71,7 @@ A worked way to do this is to write the timeline on paper before you touch any s
 
 ![A step-by-step pipeline from kubectl apply through API server admission and etcd storage to the scheduler filter, score, and binding stages.](./img/p4-0508-admission-scheduler-pipeline.svg)
 
-*Figure 5.0.0. The control-plane pipeline authenticates and mutates the pod, persists it with an empty nodeName, and filters and scores candidate nodes before posting the binding.*
+*Figure 5.8.3. The control-plane pipeline authenticates and mutates the pod, persists it with an empty nodeName, and filters and scores candidate nodes before posting the binding.*
 
 A pod that stays `Pending` with no node has not reached a kubelet yet. If you see that, start with the control plane.
 
@@ -95,15 +95,15 @@ Reading the scheduler's message is a skill worth practicing. The message usually
 
 ![A volume is attached to the node, staged once per node and published once per pod.](./img/p3-0508-csi-two-step.svg)
 
-*Figure 5.8.3. Stage once per node and publish once per pod explains why one device can serve several pods.*
+*Figure 5.8.4. Stage once per node and publish once per pod explains why one device can serve several pods.*
 
 ![Seven ordered kubelet steps from node admission to RunPodSandbox with the symptom each can show.](./img/p3-0508-syncpod-steps.svg)
 
-*Figure 5.8.4. The kubelet runs the same seven steps for each new pod, and each step has its own visible failure.*
+*Figure 5.8.5. The kubelet runs the same seven steps for each new pod, and each step has its own visible failure.*
 
 ![The scheduler passes a pod on node totals but the kubelet rejects it when NUMA alignment is impossible.](./img/p3-0508-schedule-vs-admit.svg)
 
-*Figure 5.8.5. Scheduling checks totals and node admission checks the actual NUMA layout, so a scheduled pod can still be rejected.*
+*Figure 5.8.6. Scheduling checks totals and node admission checks the actual NUMA layout, so a scheduled pod can still be rejected.*
 
 Once the scheduler binds a pod, the kubelet on that node takes over. The kubelet reacts to events and also runs on a timer. Its config sources, which are the API server watch filtered by `spec.nodeName`, static pod files and optionally HTTP, feed the **pod manager**. Each pod gets a **pod worker** goroutine that runs `syncPod` whenever the pod changes. It also runs on a periodic resync of about one minute, and whenever the **PLEG** (Pod Lifecycle Event Generator) notices a container state change.
 
@@ -131,11 +131,11 @@ The difference between scheduling and admission is easy to miss. The scheduler w
 
 ![The CNI plugin receives config on stdin and CNI variables and returns an IP result as JSON.](./img/p3-0508-cni-add-call.svg)
 
-*Figure 5.8.6. The runtime calls the CNI binary with environment variables and config, and the plugin returns the pod IP.*
+*Figure 5.8.7. The runtime calls the CNI binary with environment variables and config, and the plugin returns the pod IP.*
 
 ![The pause sandbox owns the pod network namespace, and the CNI ADD call creates the veth pair and the eth0 address.](./img/k08-sandbox-network.svg)
 
-*Figure 5.8.7. The pause sandbox owns the pod network namespace, and the CNI plugin connects eth0 to the host side through a veth pair.*
+*Figure 5.8.8. The pause sandbox owns the pod network namespace, and the CNI plugin connects eth0 to the host side through a veth pair.*
 
 The sandbox gives the pod its network, so `RunPodSandbox` builds it before any app container starts. The containerd CRI plugin does this in three steps.
 
@@ -153,15 +153,15 @@ A practical way to debug this is to work outward from the node. Check that the C
 
 ![Ready becomes true only when container probes and every readiness gate condition are true.](./img/p3-0508-readiness-gates.svg)
 
-*Figure 5.8.8. A readiness gate lets an external system hold a pod out of service until it is truly reachable.*
+*Figure 5.8.9. A readiness gate lets an external system hold a pod out of service until it is truly reachable.*
 
 ![The peer index after at-if in the pod namespace is looked up on the host to find the veth.](./img/p3-0508-veth-finder.svg)
 
-*Figure 5.8.9. The at-if number on eth0 names the host interface at the other end of the veth pair.*
+*Figure 5.8.10. The at-if number on eth0 names the host interface at the other end of the veth pair.*
 
 ![A cluster CIDR is split into per-node slices and the CNI hands each pod an address from its node's slice.](./img/p3-0508-pod-cidr.svg)
 
-*Figure 5.8.10. Each node owns a slice of the pod CIDR, and the CNI IPAM plugin picks the pod address from that slice.*
+*Figure 5.8.11. Each node owns a slice of the pod CIDR, and the CNI IPAM plugin picks the pod address from that slice.*
 
 In *Networking and Kubernetes* (Chapters 3 and 4) and *Production Kubernetes* (Chapter 5), James Strong, Vallery Lancey, and Josh Rosso et al. trace the exact kernel and control-plane plumbing during `RunPodSandbox`. The first piece is the per-node Pod CIDR. When `kubeadm init --pod-network-cidr 10.244.0.0/16` sets `--cluster-cidr` on `kube-controller-manager`, and the controller runs with `--allocate-node-cidrs=true`, `--cidr-allocator-type=RangeAllocator`, `--node-cidr-mask-size-ipv4=24` and `--node-cidr-mask-size-ipv6=64`, the node IPAM controller gives each `Node` a `/24` slice. That slice appears in `spec.podCIDR` and in the dual-stack array `spec.podCIDRs`. The same flag can take `10.30.0.0/16` instead. CNI operators can also manage block allocation through CRDs. Cilium uses `CiliumNode` `spec.ipam.podCIDRs`, and Calico uses `ipPools` with `blockSize: 26`.
 
@@ -193,19 +193,19 @@ When a sandbox has no network, start with the netns path that `crictl` reports, 
 
 ![A table of node commands and the kernel facts each one proves about a running container.](./img/p3-0508-inspect-kernel-artefacts.svg)
 
-*Figure 5.8.11. The kernel files show exactly which namespaces, limits and devices a container really has.*
+*Figure 5.8.12. The kernel files show exactly which namespaces, limits and devices a container really has.*
 
 ![Four steps from image pull to runc start and probes for each container.](./img/p3-0508-container-start-chain.svg)
 
-*Figure 5.8.12. The runtime turns one container spec into an OCI config, then runc builds the namespaces and starts PID 1.*
+*Figure 5.8.13. The runtime turns one container spec into an OCI config, then runc builds the namespaces and starts PID 1.*
 
 ![A single serialized image pull makes a small pod wait behind a 25 GB image on the same node.](./img/p3-0508-image-pull-queue.svg)
 
-*Figure 5.8.13. With serialized pulls a large image blocks every other pull on the node until it finishes.*
+*Figure 5.8.14. With serialized pulls a large image blocks every other pull on the node until it finishes.*
 
 ![Containers in one pod share the network, IPC and UTS namespaces, while mount and PID namespaces stay separate by default.](./img/k08-namespace-map.svg)
 
-*Figure 5.8.14. Containers in one pod share the network, IPC and hostname namespaces, while their mount and PID namespaces stay separate by default.*
+*Figure 5.8.15. Containers in one pod share the network, IPC and hostname namespaces, while their mount and PID namespaces stay separate by default.*
 
 Each container starts in a fixed order. Init containers run one after another, and then the app containers start together.
 
@@ -238,7 +238,7 @@ Compare the inode numbers with those of the pause container. The `net`, `ipc` an
 
 ![The device plugin allocates GPUs, the runtime exposes only the granted device nodes, and the cgroup device filter blocks other devices.](./img/k08-gpu-isolation.svg)
 
-*Figure 5.8.15. A container sees only the GPU device nodes it was granted, and the cgroup device filter blocks it from opening any other device.*
+*Figure 5.8.16. A container sees only the GPU device nodes it was granted, and the cgroup device filter blocks it from opening any other device.*
 
 GPU allocation starts with the NVIDIA device plugin, which advertises `nvidia.com/gpu: N` per node. The scheduler counts those GPUs. The kubelet's `Allocate` call then returns the chosen GPU UUIDs, either as `NVIDIA_VISIBLE_DEVICES` or as CDI names such as `nvidia.com/gpu=0`.
 
@@ -258,7 +258,7 @@ When your container cannot see its GPU, check the allocation and the device node
 
 ![Two lanes compare a kernel cgroup OOM kill with a kubelet node-pressure eviction.](./img/p3-0508-oom-vs-eviction.svg)
 
-*Figure 5.8.16. The kernel kills a process at its own limit, while the kubelet evicts whole pods when the node runs short.*
+*Figure 5.8.17. The kernel kills a process at its own limit, while the kubelet evicts whole pods when the node runs short.*
 
 Once a pod runs, the node keeps reporting on it, and the kernel keeps enforcing its limits. Several background loops handle this work.
 
@@ -282,19 +282,19 @@ Before you tune a node for latency, check which of these kernel effects your pod
 
 ![A three-row table compares who starts eviction, node pressure eviction and preemption and how each treats PDBs.](./img/p3-0508-who-pulled-trigger.svg)
 
-*Figure 5.8.17. Ask who pulled the trigger, because only API eviction strictly respects PodDisruptionBudgets.*
+*Figure 5.8.18. Ask who pulled the trigger, because only API eviction strictly respects PodDisruptionBudgets.*
 
 ![A chain of six steps shows how a hung network mount keeps a pod in Terminating.](./img/p3-0508-terminating-dominoes.svg)
 
-*Figure 5.8.18. A hung step early in teardown holds back every later step, so find the first one that is still stuck.*
+*Figure 5.8.19. A hung step early in teardown holds back every later step, so find the first one that is still stuck.*
 
 ![A process without a SIGTERM handler ignores the signal until SIGKILL arrives at 30 seconds.](./img/p3-0508-pid1-sigterm.svg)
 
-*Figure 5.8.19. PID 1 ignores SIGTERM without a handler, so the pod waits out the whole grace period.*
+*Figure 5.8.20. PID 1 ignores SIGTERM without a handler, so the pod waits out the whole grace period.*
 
 ![Five steps of pod termination, from the deletion timestamp and parallel endpoint removal through preStop, SIGTERM, SIGKILL and final object removal.](./img/p2-0508-termination-steps.svg)
 
-*Figure 5.8.20. Pod termination runs in five steps, from the deletion timestamp and endpoint removal through preStop, SIGTERM, SIGKILL and final removal.*
+*Figure 5.8.21. Pod termination runs in five steps, from the deletion timestamp and endpoint removal through preStop, SIGTERM, SIGKILL and final removal.*
 
 Termination starts with a deletion request, and several things happen at once. Knowing the order helps you see where a pod is waiting.
 
@@ -322,11 +322,11 @@ This is the same lesson as the previous chapter, seen from the node. A training 
 
 ![Six changes that remove specific delays from a 64 node GPU pod cold start.](./img/p3-0508-cold-start-fixes.svg)
 
-*Figure 5.8.21. Each fix removes one delay from the critical path of a pod start.*
+*Figure 5.8.22. Each fix removes one delay from the critical path of a pod start.*
 
 ![A startup timeline with the object or metric that measures each interval.](./img/p3-0508-startup-timeline-sources.svg)
 
-*Figure 5.8.22. Build the startup timeline from conditions, events and kubelet metrics, then attack the longest segment.*
+*Figure 5.8.23. Build the startup timeline from conditions, events and kubelet metrics, then attack the longest segment.*
 
 Start by measuring where the time went. The table uses objects you already have, so you can build the timeline from them.
 
@@ -362,7 +362,7 @@ Measuring also protects you from a common trap. A change that makes one phase fa
 
 ![Ten lifecycle stages each paired with their typical symptom and first commands.](./img/p3-0508-pod-stage-symptoms.svg)
 
-*Figure 5.8.23. Place the symptom on the lifecycle first, then run the commands for that stage.*
+*Figure 5.8.24. Place the symptom on the lifecycle first, then run the commands for that stage.*
 
 When you see a symptom, use this table to match it to the stage that produces it. Then run the first commands in that row.
 

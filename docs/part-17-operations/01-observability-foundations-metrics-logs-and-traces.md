@@ -109,6 +109,10 @@ Picture a new engineer on your team who gets paged for the first time and cannot
 
 ## 1. The three pillars
 
+![Metrics, logs and traces and the question each one answers](./img/pre-three-pillars.jpg)
+
+*Figure 17.1.1. Metrics say that something is wrong. Logs say what. Traces say where.*
+
 ### 1.1 Metrics, logs, traces: what each is for
 
 Imagine a model endpoint that suddenly takes twice as long to answer. One kind of evidence will not explain it. Chapter 11 of *Engineering AI Systems* walks through the three pillars, and each one answers a different question.

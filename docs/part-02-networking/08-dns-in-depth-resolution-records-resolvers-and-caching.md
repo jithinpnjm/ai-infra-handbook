@@ -379,7 +379,7 @@ Restrict who can use each resolver before you open it to a network.
 
 ![A rack caching resolver architecture showing redundant dnsmasq instances answering local records, caching external replies, and forwarding misses upstream to shield resolvers.](./img/p4-0208-local-resolver.svg)
 
-*Figure 2.0.0. A dedicated rack-level caching resolver serves local cluster records, caches external queries to reduce latency, and forwards cache misses upstream.*
+*Figure 2.8.18. A dedicated rack-level caching resolver serves local cluster records, caches external queries to reduce latency, and forwards cache misses upstream.*
 
 A recursive caching resolver in each site or rack reduces latency and shields the upstream resolvers. It is a local shortcut that most lookups never need to leave.
 
@@ -409,7 +409,7 @@ A name that will not resolve can fail at any layer, so the way to stay calm is t
 
 ![Diagnosing DNS problems](./img/m2-08-4.svg)
 
-*Figure 2.8.18. Diagnosing DNS problems, as a diagram.*
+*Figure 2.8.19. Diagnosing DNS problems, as a diagram.*
 
 Work through the routine in order.
 
@@ -426,7 +426,7 @@ Start with step 1 every time, because it tells you which layer to test next.
 
 ![DNS 5-second stall](./img/n08-5sec.svg)
 
-*Figure 2.8.19. Two parallel UDP queries can race in conntrack, so one is lost and the resolver waits for its 5 second timeout.*
+*Figure 2.8.20. Two parallel UDP queries can race in conntrack, so one is lost and the resolver waits for its 5 second timeout.*
 
 An inference service in a GPU cluster calls `https://models.internal.example.com` from its pods. Now and then, a call stalls for exactly 5 s. Nothing is broken, and nothing logs an error, which is what makes it so annoying. A `tcpdump` on the node showed two UDP queries, `A` and `AAAA`, sent from the same source port within microseconds. The AAAA query was lost in the node's conntrack. The cause was a race on parallel same-5-tuple UDP flows through NAT, a known kernel behaviour that newer kernels fix. The stub then retried after its default 5 s timeout.
 

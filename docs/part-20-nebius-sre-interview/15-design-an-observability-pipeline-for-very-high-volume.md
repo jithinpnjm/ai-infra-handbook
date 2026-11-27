@@ -38,7 +38,7 @@ The three signals have different costs. A metric costs by series count, a log by
 
 ![A multi-layer diagram mapping an inference request through gateway, engine, and GPU infrastructure, showing customer SLI measurement at the edge and root-cause signals at the engine and hardware layers.](./img/p4-2015-telemetry-layers.svg)
 
-*Figure 20.0.0. Measure user-facing SLIs at the gateway edge and reserve engine, GPU, and node telemetry for explaining latency spikes.*
+*Figure 20.15.1. Measure user-facing SLIs at the gateway edge and reserve engine, GPU, and node telemetry for explaining latency spikes.*
 
 Picture one slow customer request. It passed the gateway, a router, an engine, a GPU, a node and Kubernetes, and each of those layers can tell you something. One request meets the gateway, a router, an engine, a GPU, a node and Kubernetes. Each layer has a few signals that matter. Chapters 20.18 and 20.19 cover the engine signals and SLIs, so this table ties them to the pipeline.
 
@@ -91,7 +91,7 @@ Loki has the same rule for logs. Its label page says to use stable, bounded labe
 
 ![The label budget is enforced in three places: a linter at review time, per-job scrape limits, and alerts on new series at run time.](./img/p2-2015-three-places.svg)
 
-*Figure 20.15.1. The label budget is enforced by a linter at review time, per-job scrape limits, and an alert on new series at run time.*
+*Figure 20.15.2. The label budget is enforced by a linter at review time, per-job scrape limits, and an alert on new series at run time.*
 
 Picture a rule that says no new labels without review, written in a wiki page that nobody reads. Weeks later a new label arrives in a pull request, and nobody checked it against the wiki. A rule that lives only in a wiki does not hold. You need a check at review time, a limit at scrape time and an alarm at run time.
 
@@ -109,7 +109,7 @@ The automatic series `scrape_series_added` is the approximate number of new seri
 
 ![Two lanes compare pull, where a dead replica sets up to 0, with push, where silence looks like no traffic.](./img/p3-2015-pull-vs-push-silence.svg)
 
-*Figure 20.15.2. Only pull tells a dead replica from a quiet one.*
+*Figure 20.15.3. Only pull tells a dead replica from a quiet one.*
 
 A GPU replica dies at night. With pull, Prometheus notices at the next scrape because the automatic `up` series goes to 0. With push, silence just looks like no traffic. That is the strongest argument for pull. A quiet push system and a dead one look the same from the dashboard, and only pull makes the difference visible. In Production Kubernetes, Chapter 9, applications expose an endpoint and know nothing about the metrics system.
 
@@ -123,7 +123,7 @@ Remote write is also push, between Prometheus and a store. Each destination has 
 
 ![A single overloaded Prometheus is split into functional shards, which send only aggregates to a global Prometheus, with raw per-pod series kept local.](./img/p2-2015-prom-sharding.svg)
 
-*Figure 20.15.3. An overloaded Prometheus is split by function into shards, and only aggregates and SLI series are sent up to the global server.*
+*Figure 20.15.4. An overloaded Prometheus is split by function into shards, and only aggregates and SLI series are sent up to the global server.*
 
 Picture a Prometheus server that has grown until its memory is nearly full and its queries time out during an incident. One Prometheus server holds all its active series in memory and answers all its queries. When one server is not enough, you have three moves. Production Kubernetes calls them organization and federation. Organization here means deciding how to split the work across servers in a sensible way.
 
@@ -139,7 +139,7 @@ My design choice, labelled as reasoning: one Prometheus per cluster or region fo
 
 ![Long-term storage options are chosen by what breaks first, moving from local Prometheus memory to remote write to a layer such as Thanos.](./img/p2-2015-long-term-store.svg)
 
-*Figure 20.15.4. Long-term storage options run from local Prometheus to remote write to a layer such as Thanos, chosen by what breaks first.*
+*Figure 20.15.5. Long-term storage options run from local Prometheus to remote write to a layer such as Thanos, chosen by what breaks first.*
 
 Picture a manager asking for a year of latency history for a model launch review. The local Prometheus has only the last 15 days, so the question is how to keep the rest. Prometheus local storage keeps 15 days by default. The storage page says it stores 1 to 2 bytes per sample on average, and gives the formula you use for disk: retention seconds times samples per second times bytes per sample. It groups samples into two-hour blocks and compacts them. Compaction merges small blocks into larger ones so reads stay fast. The WAL is kept in 128 MB segments.
 
@@ -162,7 +162,7 @@ The failure to know is in the remote write page. If the remote endpoint is down,
 
 ![Recording rule names follow the level, metric and operations pattern, and ratios are computed by summing numerator and denominator before dividing, not by averaging.](./img/p2-2015-recording-rule-name.svg)
 
-*Figure 20.15.5. Recording rules are named level, metric and operations, and a ratio is computed by summing the numerator and denominator before dividing.*
+*Figure 20.15.6. Recording rules are named level, metric and operations, and a ratio is computed by summing the numerator and denominator before dividing.*
 
 Picture a dashboard that refreshes every few seconds and asks for the 99th percentile TTFT per model across 400 engine pods. Every refresh, Prometheus must read 400 times 25 histogram series. A recording rule computes the aggregate once per interval and stores a small series, so the dashboard reads the small one instead.
 
@@ -233,7 +233,7 @@ groups:
 
 ![A worked log volume calculation reaching 86.4 GB per day, with a keep or drop policy for each kind of line.](./img/p3-2015-log-volume-arithmetic.svg)
 
-*Figure 20.15.6. Keep errors in full, sample the successes and never put identifiers in labels.*
+*Figure 20.15.7. Keep errors in full, sample the successes and never put identifiers in labels.*
 
 Picture an on-call engineer scrolling through logs in the middle of the night, finding a wall of identical lines and no clue in any of them. An engine logs one line per request at 500 bytes. At 2,000 requests per second that is 1 MB per second, or 86.4 GB per day before replication. Replication means keeping extra copies so a disk failure does not lose the data, and it multiplies the storage again. The arithmetic is mine, using assumed inputs. Few of those lines will ever be read.
 
@@ -251,7 +251,7 @@ Prompts and completions can contain customer secrets. Scalable Kubernetes Infras
 
 ![Spans from engines pass an edge tier that routes by trace id to a stateful tail sampling tier, which keeps errors, slow traces and a share of healthy ones.](./img/x15-tail-sampling-tiers.svg)
 
-*Figure 20.15.7. Tail sampling holds whole traces in memory, so all spans of a trace must reach the same sampler instance.*
+*Figure 20.15.8. Tail sampling holds whole traces in memory, so all spans of a trace must reach the same sampler instance.*
 
 An engineer asks to see one slow request. With random 1 percent sampling, 99 percent of slow requests have no trace. If you keep all traces, the span bill is enormous. Sampling decides which traces survive, and the choice of when to decide is the important part.
 
@@ -359,7 +359,7 @@ service:
 
 ![A latency spike in a histogram links through an exemplar to one trace, and a tail sampler that drops that trace breaks the link.](./img/p2-2015-exemplar-link.svg)
 
-*Figure 20.15.8. An exemplar links a histogram spike to one trace, and a tail sampler that drops that trace leaves the link pointing nowhere.*
+*Figure 20.15.9. An exemplar links a histogram spike to one trace, and a tail sampler that drops that trace leaves the link pointing nowhere.*
 
 Picture a latency panel with a spike in the top bucket, and an engineer who wants one real request from that spike to read end to end. A latency histogram shows the spike, but it cannot name a request. An exemplar is a reference attached to a metric sample that points outside the metric set, and the OpenMetrics specification says a common use is the id of a trace. Counter totals and histogram buckets may carry exemplars. The labels on one exemplar must stay within 128 UTF-8 code points in total. A code point is one character in the Unicode scheme, so the limit is about the length of the text the exemplar can carry.
 
@@ -373,7 +373,7 @@ The trap is the interaction with sampling. The exemplar points at a trace id. If
 
 ![The gateway feeds an approximate sampled metrics path for dashboards and an exactly-once ledger path for billing, and the two are reconciled daily.](./img/x15-metering-split.svg)
 
-*Figure 20.15.9. Operational metrics explain trends while the billing ledger holds the exact charge record, so the two must be kept as separate systems.*
+*Figure 20.15.10. Operational metrics explain trends while the billing ledger holds the exact charge record, so the two must be kept as separate systems.*
 
 A tenant asks why their dashboard says 10 million tokens and the invoice says 10.2 million. Both can be honest, because they have different accuracy. The dashboard is built to show trends, and the invoice is built to be exact. Confusing the two is how a billing dispute starts.
 
@@ -398,7 +398,7 @@ My design, labelled as such: show customers a dashboard fed by the operational p
 
 ![Telemetry can be dropped at five stages, and the collector's memory limiter placed first lets backpressure reach senders before data is lost.](./img/x15-where-data-drops.svg)
 
-*Figure 20.15.10. Every stage of the telemetry path can drop data under load, so the drop order should be chosen before an incident.*
+*Figure 20.15.11. Every stage of the telemetry path can drop data under load, so the drop order should be chosen before an incident.*
 
 Picture a traffic spike at noon, when the collector's memory climbs toward its limit and begins refusing spans. Under load, something in the pipeline will drop data. The design question is whether you chose what to drop. Four places can drop it. A scrape can fail because of a limit. The remote write queue can fall behind and lose data after two hours. A collector can refuse spans when memory is high. A log agent can overflow its buffer.
 
@@ -423,7 +423,7 @@ Choose the drop order in advance. The order also helps during a review, because 
 
 ![A dead man's switch alert always fires, and an external service pages when it stops arriving, so a dead Prometheus still gets noticed.](./img/p2-2015-dead-mans-switch.svg)
 
-*Figure 20.15.11. A dead man's switch is an alert that always fires, and an external service pages when it stops arriving, so a failed Prometheus is still noticed.*
+*Figure 20.15.12. A dead man's switch is an alert that always fires, and an external service pages when it stops arriving, so a failed Prometheus is still noticed.*
 
 Picture the worst moment for a monitoring system: your own Prometheus falls over during an incident, and nobody pages, because the thing that pages is the thing that fell over. Production Kubernetes calls the answer a dead man's switch. It is an alert that always fires, and an external service pages you when it stops arriving. Silence is the signal, and it is only trustworthy if the path that carries it is independent.
 
@@ -498,7 +498,7 @@ groups:
 
 ![A table of cost drivers and levers per signal, with disk estimates of 2.1 to 4.3 GB versus 130 to 261 GB.](./img/p3-2015-cost-knobs.svg)
 
-*Figure 20.15.12. Find the cost driver behind a bill line before choosing a knob.*
+*Figure 20.15.13. Find the cost driver behind a bill line before choosing a knob.*
 
 Picture the monthly cloud bill arriving with a line item nobody can explain. The three signals have three different cost drivers, so the levers differ, and the first job is to find the driver behind the line. Knowing the driver tells you which knob to turn.
 
@@ -521,7 +521,7 @@ Picture the whole path on one page, from an engine's first metric to the moment 
 
 ![The pipeline at a glance](./img/m20-15-1.svg)
 
-*Figure 20.15.13. The pipeline at a glance, as a diagram.*
+*Figure 20.15.14. The pipeline at a glance, as a diagram.*
 
 ## How to answer out loud
 
@@ -550,7 +550,7 @@ Picture a trace the interviewer wants and cannot find. Define both in a sentence
 
 ![A six-step ladder from the TSDB status check to the linter, with adding memory marked as the wrong first move.](./img/p3-2015-prometheus-oom-ladder.svg)
 
-*Figure 20.15.14. Find the label that exploded the series count before touching memory.*
+*Figure 20.15.15. Find the label that exploded the series count before touching memory.*
 
 Picture the page in the middle of the night and a Prometheus that has stopped answering. Ask the TSDB status endpoint which metric names and labels have the most series. Look at `scrape_series_added` for a recent jump and find the matching deploy. Mitigate by dropping the label with relabeling at the scrape, then fix the code. Prevent it with the linter. Do not say "add more memory" first, because more memory only delays the same failure.
 
@@ -568,7 +568,7 @@ Picture the interviewer asking how you would notice that your own alerts have go
 
 ![Adding a tenant label with a thousand values to the gateway metrics raises the series count from about 9,600 to about 3 million, past a 2 million budget.](./img/x15-cardinality-math.svg)
 
-*Figure 20.15.15. Cardinality multiplies across labels, pods and histogram buckets, so one high-cardinality label can break the series budget.*
+*Figure 20.15.16. Cardinality multiplies across labels, pods and histogram buckets, so one high-cardinality label can break the series budget.*
 
 A product manager asks for per-tenant request and latency metrics, and an engineer adds a `tenant` label to both gateway families.
 
@@ -582,7 +582,7 @@ The fix has three parts. Aggregate the pod away from series that carry tenant. C
 
 ![A worked sizing example where 150,000 held traces fit in 200,000 but 240,000 at a higher rate do not.](./img/p3-2015-tail-sampler-sizing.svg)
 
-*Figure 20.15.16. Raise the trace limit and memory together when the trace rate grows.*
+*Figure 20.15.17. Raise the trace limit and memory together when the trace rate grows.*
 
 After a traffic increase, engineers say the slow traces they expect are missing, and some traces have only a few spans. Picture the trace viewer showing fragments where complete journeys used to be. Check the collector metrics. If `otelcol_receiver_refused_spans` is non-zero, the memory limiter is shedding load. If the load balancing tier was scaled up, spans for one trace may now be split across samplers during the change, because the routing pool changed.
 
@@ -592,7 +592,7 @@ The reasoning: the sampler holds traces for `decision_wait`. At 5,000 traces per
 
 ![A three hour timeline showing retries safe until two hours, then data lost from the store but still present locally.](./img/p3-2015-remote-write-gap.svg)
 
-*Figure 20.15.17. The hour past the two-hour line is missing from the store but kept in local Prometheus.*
+*Figure 20.15.18. The hour past the two-hour line is missing from the store but kept in local Prometheus.*
 
 The long-term store is down. Prometheus keeps running, and local queries work. After 3 hours the store returns. Dashboards that read the store show a hole. Picture the on-call engineer who sees the gap and asks whether the data is gone for good.
 
@@ -602,7 +602,7 @@ From the remote write page, retries lose nothing only for outages up to 2 hours,
 
 ![A troubleshooting ladder from cheap metric explanations to ledger duplicates or missing rows.](./img/p3-2015-invoice-dispute-ladder.svg)
 
-*Figure 20.15.18. Check scrape loss and extrapolation first, then the ledger for duplicates or dropped records.*
+*Figure 20.15.19. Check scrape loss and extrapolation first, then the ledger for duplicates or dropped records.*
 
 A tenant sees 10,000,000 tokens on their dashboard and 10,200,000 on the invoice. Which is right? The invoice, if the ledger is built correctly. Picture the account manager who has to answer the customer on a call within the hour. Check the cheap explanations first. A gateway pod that was killed lost the increments since its last scrape. The dashboard rule uses `increase`, which extrapolates. Some scrapes failed, and `up` shows gaps.
 

@@ -107,9 +107,13 @@ Inside your own namespace, the service name `alpaca-prod` is enough. To reach a 
 
 ## 2. Resolver behaviour inside pods
 
+![The path of a request to a Service: DNS, ClusterIP, DNAT, conntrack, pod](./img/pre-s4-request-service.jpg)
+
+*Figure 5.11.3. A request to a Service goes through DNS, a virtual IP, a rewrite and a pod. Conntrack sends the reply back.*
+
 ![Four cards compare ClusterFirst, Default, ClusterFirstWithHostNet and None dnsPolicy values.](./img/p3-0511-dnspolicy-modes.svg)
 
-*Figure 5.11.3. ClusterFirst is the real default, and Default means inherit the node's resolver.*
+*Figure 5.11.4. ClusterFirst is the real default, and Default means inherit the node's resolver.*
 
 A pod that looks up `api.example.com` can send 8 or more queries before it gets an answer. The reason sits in the pod's `/etc/resolv.conf`. The kubelet writes that file according to `dnsPolicy`, and the table shows what each value produces.
 
@@ -142,7 +146,7 @@ Each `options` entry tunes the resolver, and `searches` adds one more domain to 
 
 ![A name with fewer than five dots is tried against each search domain first, so one external lookup costs several failed queries before the answer.](./img/k11-ndots-walk.svg)
 
-*Figure 5.11.4. A name with fewer than five dots is tried against each search domain first, so one external lookup can cost several wasted queries.*
+*Figure 5.11.5. A name with fewer than five dots is tried against each search domain first, so one external lookup can cost several wasted queries.*
 
 Here is the problem in plain words. `ndots:5` means that if a name has fewer than 5 dots, the resolver tries the search domains first. Take a lookup of `api.example.com` from namespace `ml`. That name has 2 dots, so the resolver tries the search domains before it tries the name as written. Each name below gets an A query and an AAAA query, so you can count them:
 
@@ -172,17 +176,17 @@ For most external calls, the trailing dot is the first change you should make.
 
 ![CoreDNS forwards to the systemd stub which loops the query back, and the fix points kubelet at the real upstream file.](./img/p3-0511-loop-detected.svg)
 
-*Figure 5.11.5. Pointing CoreDNS upstream at 127.0.0.53 makes the query circle, and the loop plugin stops CoreDNS.*
+*Figure 5.11.6. Pointing CoreDNS upstream at 127.0.0.53 makes the query circle, and the loop plugin stops CoreDNS.*
 
 ![The default Corefile annotated line by line beside stub domain, rewrite and DoT recipes.](./img/p3-0511-corefile-annotated.svg)
 
-*Figure 5.11.6. The Corefile is a chain of plugins, and three small blocks cover most customisation needs.*
+*Figure 5.11.7. The Corefile is a chain of plugins, and three small blocks cover most customisation needs.*
 
 A single DNS query from a pod passes through several components before it gets an answer. The diagram shows that path, from the pod's resolver through NodeLocal DNSCache to CoreDNS and then to the upstream resolver. Follow one lookup of `alpaca-prod` from a pod to see how the parts work together. The resolver appends search domains. The query goes to the node-local cache if one exists, and a miss goes on to CoreDNS. The `kubernetes` plugin answers cluster names from its copy of the API data. Any other name goes to the `forward` plugin, which asks the upstream resolver.
 
 ![CoreDNS architecture](./img/m5-11-1.svg)
 
-*Figure 5.11.7. CoreDNS architecture, as a diagram.*
+*Figure 5.11.8. CoreDNS architecture, as a diagram.*
 
 CoreDNS is a chain of plugins. Each server block in the Corefile, which lives in the ConfigMap `kube-system/coredns`, defines zones and plugins. The plugins run in a fixed order that is set when CoreDNS is compiled. The order you write them in the file does not change that order. Think of the Corefile as a row of stations on a conveyor belt. A query moves through the stations in a fixed order, and each station either answers, passes the query on or leaves it alone.
 
@@ -272,7 +276,7 @@ The first DNS outage many teams see happens when a big job starts. Thousands of 
 
 ![A comparison shows how reactive HPA causes query drops during sudden pod start bursts while cluster-proportional autoscaling provisions CoreDNS replicas ahead of time based on node and core counts.](./img/p4-0511-cpa-autoscaling.svg)
 
-*Figure 5.0.0. Cluster-proportional autoscaling sizes CoreDNS replicas before a large job launches, avoiding the scaling lag and query drops of reactive CPU autoscalers.*
+*Figure 5.11.9. Cluster-proportional autoscaling sizes CoreDNS replicas before a large job launches, avoiding the scaling lag and query drops of reactive CPU autoscalers.*
 
 Picture a 5,000-pod job that starts all at once, with every pod calling `getaddrinfo` for each connection. That job can easily generate 100k+ queries in seconds. The query rate grows with pod count × lookup rate × ndots amplification, so each factor multiplies the load. Put simply, the total is the product of those factors, so trimming any one of them cuts the whole load. Each factor is a lever you can pull without adding replicas, which makes the ndots setting one of the cheapest changes to test first.
 
@@ -286,7 +290,7 @@ Size the requests and limits too. For example, at modest scale you might request
 
 ![A per-node cache answers pod DNS without DNAT or conntrack and asks CoreDNS over TCP on a miss.](./img/p3-0511-nodelocal-cache.svg)
 
-*Figure 5.11.8. NodeLocal DNSCache removes the DNAT and conntrack steps that cause the race and cuts CoreDNS load.*
+*Figure 5.11.10. NodeLocal DNSCache removes the DNAT and conntrack steps that cause the race and cuts CoreDNS load.*
 
 NodeLocal DNSCache runs a caching CoreDNS, `node-local-dns`, as a `DaemonSet` on every node. It listens on a link-local address, `169.254.20.10`, and on the `kube-dns` ClusterIP, through a dummy interface and NOTRACK iptables rules. Pods query the local cache with no DNAT, no conntrack and no cross-node hop. Think of the node-local cache as a small shop on every street corner. Most requests are answered at the corner, and only new questions travel to the main warehouse.
 
@@ -300,7 +304,7 @@ Decide how each node falls back if its cache is down before you roll NodeLocal D
 
 ![Parallel A and AAAA queries from one socket race the conntrack DNAT insertion, so one packet is dropped and the client waits for its timeout.](./img/k11-conntrack-race.svg)
 
-*Figure 5.11.9. Parallel A and AAAA queries from one socket can collide in conntrack, so one packet is dropped and the client waits five seconds.*
+*Figure 5.11.11. Parallel A and AAAA queries from one socket can collide in conntrack, so one packet is dropped and the client waits five seconds.*
 
 The symptom is a lookup that takes exactly 5 s, which is the default resolver timeout, or an intermittent `EAI_AGAIN`. A short picture helps. Two people try to write their names on the same guest book page at the same instant, and one pen stroke lands on top of the other. The second entry is lost, and the person who wrote it waits for a confirmation that never comes. The cause sits in the kernel. glibc sends the A and AAAA queries from the same UDP socket at the same time. Both packets hit netfilter `conntrack` together. The DNAT that kube-proxy applies, to reach the kube-dns ClusterIP, creates entries, and one of those insertions races with the other. The packet loses the race and is dropped. The resolver then waits, times out and retries.
 
@@ -312,7 +316,7 @@ If you see exact 5-second delays, check the conntrack counters before you change
 
 ![A sequence flow shows a large DNS response setting the UDP truncation bit and failing when an egress network policy allows UDP 53 but blocks TCP 53.](./img/p4-0511-dns-tcp-truncation.svg)
 
-*Figure 5.0.0. When large DNS responses set the truncation bit, resolvers fall back to TCP port 53, which fails unless egress NetworkPolicies explicitly permit both UDP and TCP.*
+*Figure 5.11.12. When large DNS responses set the truncation bit, resolvers fall back to TCP port 53, which fails unless egress NetworkPolicies explicitly permit both UDP and TCP.*
 
 A few smaller habits keep DNS healthy over time. Think of these as the small habits of a tidy kitchen. None of them looks urgent, and each one prevents a late-night problem. Keep CoreDNS and the Corefile in GitOps, and test changes in staging first. Check version skew against Kubernetes releases, and watch for the `loop` plugin crash.
 
@@ -332,11 +336,11 @@ Put the Corefile under GitOps and test each change in staging before it reaches 
 
 ![A negative DNS answer is cached for 30 seconds even after the peer pod appears.](./img/p3-0511-negative-cache-startup.svg)
 
-*Figure 5.11.10. A too-early lookup is remembered as a failure, so retry with backoff instead of waiting on a stale answer.*
+*Figure 5.11.13. A too-early lookup is remembered as a failure, so retry with backoff instead of waiting on a stale answer.*
 
 ![Workers cannot resolve the rendezvous pod until it is ready, and it cannot become ready until they connect, which deadlocks the job.](./img/k11-rendezvous-deadlock.svg)
 
-*Figure 5.11.11. Workers cannot resolve the rendezvous pod until it is ready, so the job deadlocks unless the headless Service publishes not-ready addresses.*
+*Figure 5.11.14. Workers cannot resolve the rendezvous pod until it is ready, so the job deadlocks unless the headless Service publishes not-ready addresses.*
 
 Distributed training depends on DNS more than most workloads do. Every worker needs the addresses of its peers before it can start, so one missing name can stall the whole job. A small job shows the pattern. Worker 0 acts as the rendezvous point, and each of the other workers asks for its name before it can join. If that name does not resolve, the worker waits, and the whole job waits with it.
 
@@ -384,7 +388,7 @@ Before you rely on these alerts, run the load test and confirm that the numbers 
 
 ![A five-group ladder for diagnosing DNS failures with a symptom list beside it.](./img/p3-0511-dns-debug-ladder.svg)
 
-*Figure 5.11.12. Start with the client's view and work toward the server, then the network and the kernel.*
+*Figure 5.11.15. Start with the client's view and work toward the server, then the network and the kernel.*
 
 A pod reports that a name will not resolve. Before you change any config, work through the steps below in order, and stop at the first step that shows a fault. The order matters because each step rules out one layer. You start with the client's view, move toward the server, and only then look at the network and the kernel.
 

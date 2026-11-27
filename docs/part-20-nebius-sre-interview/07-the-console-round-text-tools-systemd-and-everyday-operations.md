@@ -239,7 +239,7 @@ Decide: when a log does not rotate, check whether the writer reopens the file be
 
 ![Anatomy of colon-separated passwd and group files alongside POSIX df table showing UID thresholds and multi-word mount point reconstruction.](./img/p4-2007-passwd-group-df.svg)
 
-*Figure 20.0.0. Parsing colon-delimited user databases and POSIX df tables relies on fixed field indices and loop reconstruction for spaced paths.*
+*Figure 20.7.11. Parsing colon-delimited user databases and POSIX df tables relies on fixed field indices and loop reconstruction for spaced paths.*
 
 Someone asks "which filesystems are nearly full" or "who has sudo on this box." These are reading tasks, and they look easy until the output is messy. For disks, use `df -P`, because the POSIX format puts each filesystem on exactly one line and makes the columns predictable. Mount points can contain spaces, as the fixture shows with `/mnt/model cache`. So rebuild the mount point from the sixth field onward. Chapter 20.4 explains when `df` and `du` disagree, and chapter 20.5 covers disk latency.
 
@@ -255,7 +255,7 @@ Decide: parse by delimiter and field number from a trusted file layout, never by
 
 ![The same request for a missing page exits zero without the fail flag and exits twenty-two with it, which changes whether a script stops.](./img/p2-2007-curl-exit.svg)
 
-*Figure 20.7.11. A missing page returns exit code 0 from curl by default and exit code 22 with the fail flag, so only the second stops a script.*
+*Figure 20.7.12. A missing page returns exit code 0 from curl by default and exit code 22 with the fail flag, so only the second stops a script.*
 
 Picture a backup job that must copy a directory to a second host, and a colleague who asks you to check the result. Four tools turn up in every console round: `tar`, `rsync`, `curl` and `jq`. The demo script `c07_transfer_demo.sh` ran on the Mac with `openrsync` and `curl 8.9.1`, and on Ubuntu with rsync 3.2.7 and curl 8.5.0. The output was identical. On a bare Ubuntu image the script fails with `rsync: command not found` until the package is installed, which is itself a lesson about minimal hosts.
 
@@ -273,7 +273,7 @@ Decide: in a script, always give `curl` the `-f` flag and a time limit, and use 
 
 ![Three bash production pitfalls showing how unquoted pipes hide failures, local masks subshell exit codes, and arithmetic post-increment trips set -e.](./img/p4-2007-bash-pitfalls.svg)
 
-*Figure 20.0.0. Shell safety flags like set -e require defensive coding because pipes, local assignments, and arithmetic expansions can silently mask or trigger exit codes.*
+*Figure 20.7.13. Shell safety flags like set -e require defensive coding because pipes, local assignments, and arithmetic expansions can silently mask or trigger exit codes.*
 
 A script works on your laptop and does something awful at 03:00. Chapter 11 of How Linux Works explains that every program leaves an exit code, zero for success, and that `$?` holds the last one and is overwritten by the next command. Its advice on temporary files is to use `trap` so a Ctrl-C does not leave them behind. The demo script `c07_robust_demo.sh` runs eight pitfalls and prints the results. These are real outputs from bash 3.2.57 on macOS. I ran the demo again on bash 5.2.21 in the Ubuntu container. Six of the seven rows matched. The `((i++))` pitfall differs, and it has its own row.
 
@@ -332,7 +332,7 @@ Twelve tasks follow. Treat each as a timed drill with a budget of about four min
 
 ![A five-stage pipeline of awk, sort, uniq -c, awk and sort that turns access log lines into counted client addresses, with the top client 203.0.113.77 at 362 requests.](./img/p3-2007-pipeline-stages.svg)
 
-*Figure 20.7.12. Each stage does one job, and sort must come before uniq -c because uniq only merges neighbouring lines.*
+*Figure 20.7.14. Each stage does one job, and sort must come before uniq -c because uniq only merges neighbouring lines.*
 
 Your team wants the five client addresses that sent the most requests in this log. Task: list the five client addresses with the most requests.
 
@@ -462,7 +462,7 @@ Why it works: after a numeric sort, the nearest-rank value is the one at positio
 
 ![Comparison of auth.log lines showing how invalid user insertions shift column 11 from an IP address to a username.](./img/p4-2007-auth-log-shift.svg)
 
-*Figure 20.0.0. Log lines with variable phrase counts shift positional fields, making delimiter-anchored regular expressions far more reliable than fixed column extraction.*
+*Figure 20.7.15. Log lines with variable phrase counts shift positional fields, making delimiter-anchored regular expressions far more reliable than fixed column extraction.*
 
 Someone on the security side asks which source addresses are guessing passwords. Task: find the three source addresses with the most failed password attempts.
 
@@ -522,7 +522,7 @@ Why it works: systemd logs "Scheduled restart job, restart counter is at N" at e
 
 ![Zombie children of one parent process, which must be fixed or stopped because a zombie cannot be killed.](./img/x07-zombie-parent-tree.svg)
 
-*Figure 20.7.13. Zombies are finished children that the parent has not collected, so the fix is in the parent and not in the zombie.*
+*Figure 20.7.16. Zombies are finished children that the parent has not collected, so the fix is in the parent and not in the zombie.*
 
 The process table is full of defunct entries, and you need to know whose children they are. Task: list zombie processes grouped by parent.
 
@@ -583,7 +583,7 @@ Why it works: the mount point is rebuilt from the sixth field on, so the space i
 
 ![find piped to xargs splits old requests.log and core dump.log at the spaces, while find print0 with xargs -0 keeps each name whole and uses ref.stamp as a fixed reference.](./img/p3-2007-xargs-nul.svg)
 
-*Figure 20.7.14. Pass names through find -print0 and xargs -0, and compare against ref.stamp instead of the clock.*
+*Figure 20.7.17. Pass names through find -print0 and xargs -0, and compare against ref.stamp instead of the clock.*
 
 A cleanup job needs the old, large log files in a directory tree, and the file names include spaces. Task: under a directory, list `.log` files over 100 KiB that are not newer than `ref.stamp`, safe for spaces.
 

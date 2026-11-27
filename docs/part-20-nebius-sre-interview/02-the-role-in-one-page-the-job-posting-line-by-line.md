@@ -75,7 +75,7 @@ R6 and R7 are about the rest of the incident life. Detection, isolation and reme
 
 ![A comparison grid sorting the seven job requirements into day-one required foundations and desirable growth areas across three technical domains.](./img/p4-2002-requirements-split.svg)
 
-*Figure 20.0.0. Requirements split into required day-one engineering foundations and desirable AI-specific growth areas, with the evidence standard expected for each.*
+*Figure 20.2.4. Requirements split into required day-one engineering foundations and desirable AI-specific growth areas, with the evidence standard expected for each.*
 
 The same rule applies here. Each row gives short quotes, then where to study. Requirements tell you what the team expects on day one, and preferences tell you where you can grow. Read each row as a pair: the posting's words on one side and your own evidence on the other.
 
@@ -134,7 +134,7 @@ Fill the table in one sitting, without looking things up. Your first honest answ
 
 ![Token Factory split into a control plane for managing endpoints and a regional data plane that serves requests, with dedicated endpoint settings.](./img/p2-2002-token-factory-planes.svg)
 
-*Figure 20.2.4. Token Factory separates a control plane, used to manage endpoints, from a regional data plane, where requests are served.*
+*Figure 20.2.5. Token Factory separates a control plane, used to manage endpoints, from a regional data plane, where requests are served.*
 
 Imagine the moment an interviewer asks what you know about the product. You want to answer with facts and not with a guess about the internals. Token Factory is the inference platform within Nebius Cloud. Inference is the step where a trained model answers a request, as opposed to the training step where the model learns. The posting says it serves text, vision, audio and multimodal foundation models at large scale. [official] A foundation model is a large model trained on broad data that many tasks can build on, and multimodal means it handles more than one kind of input, such as text and images. Beyond that, what follows is from Nebius marketing and documentation as recorded in the volume plan, and I did not re-fetch those pages today. [vendor]
 
@@ -152,7 +152,7 @@ What is not public: the autoscaling signals and thresholds, the router algorithm
 
 ![A worked ranking of three skills using the priority formula, where low confidence across three posting lines ranks first and an unevidenced high rating triggers a warning.](./img/p2-2002-priority-worked.svg)
 
-*Figure 20.2.5. A worked example of the gap-tracker formula, showing how confidence and posting lines set the study order and trigger a warning.*
+*Figure 20.2.6. A worked example of the gap-tracker formula, showing how confidence and posting lines set the study order and trigger a warning.*
 
 Suppose a Friday afternoon with the filled table open and a long list of chapters in front of you. You cannot read thirty chapters evenly before the call, so you need an order. Reading all 30 chapters evenly is a poor plan. The tracker ranks skills by how much confidence you lack and by how many posting lines the skill touches. The priority of a skill is five minus confidence, multiplied by the number of posting lines. A skill rated 2 that maps to three lines scores 9. A skill rated 4 that maps to one line scores 1.
 
@@ -464,7 +464,7 @@ Imagine the interviewer leaning back and saying: "You have not run vLLM in produ
 
 ![Two engines both show busy GPUs, but only the one with a growing waiting queue is drowning, so queue depth is a better scaling signal than utilisation alone.](./img/p2-2002-gpu-signals.svg)
 
-*Figure 20.2.6. Busy GPUs can look the same for a healthy engine and a drowning one, so queue depth and waiting time are better autoscaling signals.*
+*Figure 20.2.7. Busy GPUs can look the same for a healthy engine and a drowning one, so queue depth and waiting time are better autoscaling signals.*
 
 Think of the interviewer asking, with a slight smile, what that phrase means to you. Start with the problem: GPUs are expensive and idle capacity costs money, while too little capacity makes users wait. Say that scaling on GPU utilisation alone can mislead, because a drowning engine and a healthy one can both look busy. Say you would prefer signals such as queue depth and time spent waiting, and that you would add headroom because a new GPU replica takes minutes to be ready. State that Nebius has not published its signals, so this is your design. Chapter 20.20 gives the full argument and the sources.
 

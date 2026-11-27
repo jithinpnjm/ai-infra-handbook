@@ -46,11 +46,15 @@ Nothing else is assumed. Each new name in this chapter, from ASN plans to DPF, i
 
 Suppose you are handed a blank fabric and told to make every rack reach every other rack. Before any protocol runs, you have two questions. The first is the shape of the wiring, and the second is the protocol that fills the routing tables. The shape comes first, because the shape is what makes the protocol's job easy.
 
+![A leaf-spine fabric where every leaf connects to every spine](./img/pre-clos-leaf-spine.jpg)
+
+*Figure 2.16.1. In leaf-spine every leaf connects to every spine, so any two servers are the same distance apart.*
+
 A **Clos (leaf-spine)** fabric has tiers of switches. Servers plug into **leaf (ToR)** switches. ToR stands for top of rack, and it simply means the switch that sits above one rack of servers. Every leaf connects to every **spine**, and the spines do nothing except carry traffic between leaves. Larger fabrics add a super-spine tier, which gives a five-stage design, or they build pods, a topic chapter 2.18 covers properly. In a three-stage design, every leaf-to-leaf path crosses exactly one spine. Think of a city where every neighbourhood has a road to every one of four ring roads: to get from any neighbourhood to any other, you pick one ring road, and all the choices are the same length. That is why ECMP can use every link. No path is longer or shorter than another, so nothing is wasted.
 
 ![The standard design: eBGP in a Clos](./img/m2-16-1.svg)
 
-*Figure 2.16.1. The standard design: eBGP in a Clos, as a diagram.*
+*Figure 2.16.2. The standard design: eBGP in a Clos, as a diagram.*
 
 Look at the ASNs in the diagram. All four spines share one ASN, and each leaf has its own. That choice looks odd at first, because we are used to every router having a unique number. It is the heart of the design, though, and the next few pages explain why.
 
@@ -68,7 +72,7 @@ On top of that, BGP scales and works across vendors, and it is the best-studied 
 
 ![Shared spine ASN safety net](./img/n16-valley.svg)
 
-*Figure 2.16.2. Giving all spines one ASN makes eBGP loop prevention reject valley paths after multiple failures.*
+*Figure 2.16.3. Giving all spines one ASN makes eBGP loop prevention reject valley paths after multiple failures.*
 
 Before you configure anything you need an ASN plan, and the plan is where most of the cleverness hides. Three patterns are common, and we take them one at a time.
 
@@ -104,7 +108,7 @@ Finally, decide carefully what each device advertises. Each leaf originates its 
 
 ![BGP unnumbered](./img/n16-unnumbered.svg)
 
-*Figure 2.16.3. Link-local IPv6 addresses and the extended next hop capability remove the need for a subnet on every link.*
+*Figure 2.16.4. Link-local IPv6 addresses and the extended next hop capability remove the need for a subnet on every link.*
 
 Every leaf-spine link needs an address, and handing out and tracking a `/31` for each one is tedious work that invites mistakes. A single typo in a spreadsheet, and a session will not come up on a Friday night. Take a 32-leaf, 16-spine fabric. Multiplying 32 by 16 gives 512 links, and with 8 rails the count reaches the thousands. **BGP unnumbered** removes that addressing work altogether.
 
@@ -183,7 +187,7 @@ Notice that every technique trades something away, because hiding information al
 
 ![Aggregation black hole](./img/n16-blackhole.svg)
 
-*Figure 2.16.4. An aggregate advertised by a spine that has lost its path keeps attracting traffic it cannot deliver.*
+*Figure 2.16.5. An aggregate advertised by a spine that has lost its path keeps attracting traffic it cannot deliver.*
 
 The best way to see the price is to aggregate on the spine, so let us do it on purpose and watch it fail. Each spine advertises `10.10.0.0/16` for all server subnets below it. Suppose leaf3 loses its uplink to spine2, but still has spines 1, 3 and 4. Spine2 can no longer reach the `10.10.3.0/24` of leaf3. Yet it keeps advertising the covering `/16` upward, because other leaves still reach other racks through it. From outside, spine2 still looks like a perfectly good way to reach anything in `10.10.0.0/16`. Traffic from outside that hashes via spine2 toward the subnet of leaf3 arrives at spine2, finds no way forward and is black-holed.
 
@@ -201,7 +205,7 @@ The standard design works well for ordinary traffic. AI traffic stresses it in s
 
 ![ADD-PATH](./img/n16-addpath.svg)
 
-*Figure 2.16.5. ADD-PATH lets a speaker advertise all good paths instead of only its single best path.*
+*Figure 2.16.6. ADD-PATH lets a speaker advertise all good paths instead of only its single best path.*
 
 Picture a leaf that has two good ways out of the fabric, one through each border leaf. Traffic to the internet is fine on both paths, yet the leaf sends everything through a single one. When the chosen border leaf is busy, the other path sits idle, and nothing on the leaf explains why. The answer is in what the spine chose to pass along.
 
@@ -221,7 +225,7 @@ This is useful at the border and for server-originated routes in multi-tenant de
 
 ![Weighted ECMP](./img/n16-ucmp.svg)
 
-*Figure 2.16.6. The link bandwidth community lets receivers split traffic in proportion to each path's capacity.*
+*Figure 2.16.7. The link bandwidth community lets receivers split traffic in proportion to each path's capacity.*
 
 Plain ECMP splits traffic equally, and that becomes a problem when next-hop links differ in capacity. Think of four checkout lanes where one lane is a wide trolley bay and another is a narrow turnstile, and a guard sends exactly a quarter of the shoppers to each. You might have 400G, 800G and 100G paths north-south. Or a link may fail and leave 1-of-8 uplinks down. Equal splitting then overloads the smaller links while the big ones sit half empty.
 
@@ -301,7 +305,7 @@ Picture a leaf that has to tell every spine about a new server. Classic flooding
 
 ![Flood reduction in a small example](./img/m2-16-2.svg)
 
-*Figure 2.16.7. Flood reduction in a small example, as a diagram.*
+*Figure 2.16.8. Flood reduction in a small example, as a diagram.*
 
 In this small topology the saving is minor, because there are only a few copies to save. With 32 or 64 spines, each leaf sends one copy instead of dozens, and convergence speeds up. The gain grows in dense multilevel fabrics with many parallel links between each pair of nodes, which is typical of a non-oversubscribed AI cluster. The optimisation is described in the draft `draft-white-lsr-distoptflood`, and some open-source networks and vendors already use it.
 
@@ -335,7 +339,7 @@ In a sparse dragonfly, each group is a small leaf-spine Clos fabric, and only th
 
 ![The sparse dragonfly](./img/m2-16-3.svg)
 
-*Figure 2.16.8. The sparse dragonfly, as a diagram.*
+*Figure 2.16.9. The sparse dragonfly, as a diagram.*
 
 The cross-group links are the part that the routing protocol must understand. The sparse design gives shorter paths with fewer long cables. Traffic can take several routes between the same two points, and the fabric can be split into partitions. The control plane has to find the inter-group links, know the topology and use adaptive routing with unequal-cost paths.
 
@@ -411,7 +415,7 @@ The diagram shows how forwarding works in a two-tier fabric. The ingress leaf ad
 
 ![Segment routing terms, the SR domain and the SRv6 header](./img/m2-16-4.svg)
 
-*Figure 2.16.9. Segment routing terms, the SR domain and the SRv6 header, as a diagram.*
+*Figure 2.16.10. Segment routing terms, the SR domain and the SRv6 header, as a diagram.*
 
 There are two common identifiers. A Node SID is attached to a node and works like a loopback address for that node. An Adjacency SID is attached to each adjacency between two nodes. Two further types exist, the Anycast SID and the SID for Egress Peer Engineering.
 

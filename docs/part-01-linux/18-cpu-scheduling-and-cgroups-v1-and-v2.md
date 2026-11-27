@@ -423,9 +423,13 @@ Before you write to any cgroup file, check who owns that part of the tree.
 
 ## 7. The CPU controller: weight, quota and throttling
 
+![How a CPU limit becomes a quota per period and shows up as throttled counts](./img/pre-s2-cpu-throttle.jpg)
+
+*Figure 1.18.18. A CPU limit is a time budget per period. When it runs out, the container waits.*
+
 ![Weight shares CPU proportionally under contention, while quota sets a hard ceiling.](./img/l18-weight-quota.svg)
 
-*Figure 1.18.18. A weight is a proportion that only matters under contention, but a quota is a ceiling that always applies.*
+*Figure 1.18.19. A weight is a proportion that only matters under contention, but a quota is a ceiling that always applies.*
 
 ### Weight (shares): relative fairness
 
@@ -439,7 +443,7 @@ This is the mechanism behind the Kubernetes CPU request, which is converted into
 
 ![The cpu.stat fields and cAdvisor metrics that reveal CPU throttling, and how a thread pool sized from the host's CPU count oversubscribes a two CPU quota.](./img/p3-0118-throttle-oversubscribe.svg)
 
-*Figure 1.18.19. Compare nr_throttled with nr_periods to detect throttling, and pass the container's CPU limit to runtimes that size thread pools from the host.*
+*Figure 1.18.20. Compare nr_throttled with nr_periods to detect throttling, and pass the container's CPU limit to runtimes that size thread pools from the host.*
 
 Picture a service with a hard budget of two CPUs' worth of time, even on a machine where other CPUs sit idle. That is what a quota does, and the quota is the ceiling that counts.
 
@@ -471,7 +475,7 @@ The diagram traces one throttling period from start to finish.
 
 ![Quota: hard ceiling (CFS bandwidth control)](./img/ch18-d3-luna.svg)
 
-*Figure 1.18.20. Quota: hard ceiling (CFS bandwidth control).*
+*Figure 1.18.21. Quota: hard ceiling (CFS bandwidth control).*
 
 Notice that the average looks healthy while the pauses hide inside each period.
 
@@ -479,7 +483,7 @@ Notice that the average looks healthy while the pauses hide inside each period.
 
 ![Three columns comparing cpuset for where a group may run, cpu.max quota for how much time, and cpu.weight for fairness under contention.](./img/p3-0118-cpuset-vs-quota.svg)
 
-*Figure 1.18.21. A cpuset restricts where a group runs, a quota caps how much CPU time it gets, and a weight sets its share under contention.*
+*Figure 1.18.22. A cpuset restricts where a group runs, a quota caps how much CPU time it gets, and a weight sets its share under contention.*
 
 Sometimes a job needs specific cores, not just a share of time. That is what a cpuset does. A quota says how much time a group may use; a cpuset says where that time may be spent.
 
@@ -498,7 +502,7 @@ An empty `cpuset.cpus` inherits the parent's value. A cpuset gives placement, wh
 
 ![A layered view where the scheduler or Slurm decides how many GPUs, the container toolkit and devices cgroup expose the nvidia device nodes, and a daemon reload can reset the rules.](./img/p3-0118-gpu-device-control.svg)
 
-*Figure 1.18.22. GPU quantity comes from the scheduler while access comes from the devices cgroup, which a reload or driver mismatch can reset.*
+*Figure 1.18.23. GPU quantity comes from the scheduler while access comes from the devices cgroup, which a reload or driver mismatch can reset.*
 
 Each controller has its own set of files, and each file enforces a different part of the limit. The table lists the rest.
 
@@ -531,7 +535,7 @@ Before you raise a limit, check the group's pressure file to confirm which resou
 
 ![Three bands showing how systemd directives, Docker run flags and Slurm cgroup settings each map onto cgroup files and the tree.](./img/p3-0118-manager-to-files.svg)
 
-*Figure 1.18.23. Whichever manager you use, its settings end up as cgroup files, so read the tree to see what is really enforced.*
+*Figure 1.18.24. Whichever manager you use, its settings end up as cgroup files, so read the tree to see what is really enforced.*
 
 Most of the time you do not create cgroups yourself. systemd, Docker and Slurm create them for you, and you need to know where they land. You may never have written a line under `/sys/fs/cgroup`, yet every service and every container on your node lives in a group that someone else created.
 
@@ -539,7 +543,7 @@ systemd owns the tree on most systems. It organises the tree into **slices**. `-
 
 ![Systemd, Docker, Slurm and the cgroup tree](./img/ch18-d4-luna.svg)
 
-*Figure 1.18.24. Systemd, Docker, Slurm and the cgroup tree.*
+*Figure 1.18.25. Systemd, Docker, Slurm and the cgroup tree.*
 
 Notice that Kubernetes gets its own slice, `kubepods.slice`, with a branch for each QoS class.
 
@@ -559,11 +563,11 @@ Before you blame a limit for odd behaviour, look at the cgroup tree from inside 
 
 ![A flow from a Guaranteed pod through the CPU Manager static policy and Topology Manager to exclusive NUMA aligned cores, with the matching cgroup driver rule.](./img/p3-0118-k8s-static-cpu.svg)
 
-*Figure 1.18.25. A Guaranteed pod with integer CPUs gets exclusive cores under the static policy, and the kubelet and runtime must use the same cgroup driver.*
+*Figure 1.18.26. A Guaranteed pod with integer CPUs gets exclusive cores under the static policy, and the kubelet and runtime must use the same cgroup driver.*
 
 ![Pod CPU requests become cpu.weight, CPU limits become cpu.max, and memory limits become memory.max, while the QoS class sets the OOM score.](./img/p2-0118-k8s-mapping.svg)
 
-*Figure 1.18.26. A pod's CPU request becomes a weight, its CPU limit becomes a quota, its memory limit becomes memory.max, and the QoS class sets the OOM score.*
+*Figure 1.18.27. A pod's CPU request becomes a weight, its CPU limit becomes a quota, its memory limit becomes memory.max, and the QoS class sets the OOM score.*
 
 A pod asks for a certain amount of CPU and memory. On the node, that request turns into a number in one of the files you met in section 6. The kubelet and the container runtime do the translation, and they do it differently depending on the cgroup version.
 
@@ -594,13 +598,13 @@ Finally, the NVIDIA device plugin and containers can lose GPU access after `syst
 
 ![A table of six cgroup failures with their likely causes, including failed subtree_control writes, missing controllers, processes that will not move and RT throttling.](./img/p3-0118-cgroup-write-failures.svg)
 
-*Figure 1.18.27. Most cgroup write failures come from a group that still holds processes, a controller not enabled from the top, or the wrong version or owner.*
+*Figure 1.18.28. Most cgroup write failures come from a group that still holds processes, a controller not enabled from the top, or the wrong version or owner.*
 
 When a node gets slow, start with the flowchart below. It walks you through the first questions to ask, in the order that saves the most time.
 
 ![Troubleshooting](./img/ch18-d5-luna.svg)
 
-*Figure 1.18.28. Troubleshooting.*
+*Figure 1.18.29. Troubleshooting.*
 
 Read the flowchart from the top, one question at a time. Each answer sends you to a different family of fixes.
 

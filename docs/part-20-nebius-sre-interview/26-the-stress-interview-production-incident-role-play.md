@@ -74,7 +74,7 @@ Pick the lowest-risk reversible action, and name the graph that will confirm it.
 
 ![A 2x2 matrix ranking incident hypotheses by likelihood versus cost to test alongside a five-step scientific falsification loop.](./img/p4-2026-hypothesis-matrix.svg)
 
-*Figure 20.0.0. Rank hypotheses by likelihood and cost to test, and formulate predictions that can decisively kill a theory before investigating zebras.*
+*Figure 20.26.4. Rank hypotheses by likelihood and cost to test, and formulate predictions that can decisively kill a theory before investigating zebras.*
 
 Picture a latency graph that bends upward at one clear moment, while the team is already arguing about why. Everyone has a favourite theory, and the job is to put them in order before anyone spends an hour on one.
 
@@ -86,7 +86,7 @@ Rank by likelihood and cost to test. Ranking is two questions asked together. Ho
 
 ![Incident status updates arrive on a cadence of five minutes then every ten minutes, each with impact, what is known, what is being done and when the next update comes.](./img/p2-2026-status-cadence.svg)
 
-*Figure 20.26.4. Incident status updates run on a cadence and each has four parts: impact now, what is known, what is being done and when the next update comes.*
+*Figure 20.26.5. Incident status updates run on a cadence and each has four parts: impact now, what is known, what is being done and when the next update comes.*
 
 Picture a support channel that goes quiet for most of an hour while the engineers are busy. The support team starts answering customers with guesses, and the guesses are usually worse than the truth.
 
@@ -98,7 +98,7 @@ An update has four parts: impact now, what you know, what you are doing, and whe
 
 ![A rollback decision: roll back when a symptom begins right after a change and the rollback is tested and cheap, while destructive commands are avoided.](./img/p2-2026-rollback-decision.svg)
 
-*Figure 20.26.5. Roll back when a symptom starts right after a change and the rollback is cheap and tested, and avoid destructive commands that look like fixes.*
+*Figure 20.26.6. Roll back when a symptom starts right after a change and the rollback is cheap and tested, and avoid destructive commands that look like fixes.*
 
 Picture a change that landed at lunchtime, and a symptom that began within minutes of it. The timing is the strongest clue in the room, and it is also the easiest one to ignore when everyone wants a deeper explanation.
 
@@ -110,7 +110,7 @@ Every drill has a destructive trap, such as restarting every replica at once, de
 
 ![Architecture of the interview drill runner showing slash commands feeding an event log evaluated across seven scorecard categories totalling 100 points.](./img/p4-2026-drill-scorecard.svg)
 
-*Figure 20.0.0. The drill runner evaluates session timing and actions across seven rubric categories, rewarding prompt control, structured evidence gathering, and safe mitigation order.*
+*Figure 20.26.7. The drill runner evaluates session timing and actions across seven rubric categories, rewarding prompt control, structured evidence gathering, and safe mitigation order.*
 
 Picture yourself alone at a laptop with a 30-minute timer, typing questions to a program that stands in for the interviewer.
 
@@ -376,7 +376,7 @@ Picture a Thursday practice session with a study partner and a stack of incident
 
 ![Evidence pointing from slow first tokens and a collapsed prefix cache hit ratio to a lost prefix-aware routing setting.](./img/p3-2026-ttft-evidence-map.svg)
 
-*Figure 20.26.6. Flat inter-token latency and a collapsed hit ratio point to routing, not traffic or memory.*
+*Figure 20.26.8. Flat inter-token latency and a collapsed hit ratio point to routing, not traffic or memory.*
 
 Picture the chat team pasting a slow-response graph into the incident channel. The model is running, but users wait a long time before the first word arrives, and the error panel shows nothing unusual.
 
@@ -406,7 +406,7 @@ Picture the chat team pasting a slow-response graph into the incident channel. T
 
 ![Loop in which a tight liveness probe restarts busy workers that never rejoin the router, with the three steps of the fix beside it](./img/x26-liveness-loop-workers.svg)
 
-*Figure 20.26.7. Liveness loop: a tight probe restarts busy workers, and the restarted workers never rejoin the router even though Kubernetes reports them ready.*
+*Figure 20.26.9. Liveness loop: a tight probe restarts busy workers, and the restarted workers never rejoin the router even though Kubernetes reports them ready.*
 
 Picture a customer writing in about slowness that has crept up for days, while the monitoring says every pod is healthy. No alert fired, so the only signal in the room is the person complaining.
 
@@ -435,7 +435,7 @@ Picture a customer writing in about slowness that has crept up for days, while t
 
 ![KV arithmetic showing one 28,000-token request holding about 14 GB, with preemptions and retries behind a 22 percent 429 rate.](./img/p3-2026-429-storm-math.svg)
 
-*Figure 20.26.8. Cap by tokens or concurrent long requests, because the pool is full of memory, not requests.*
+*Figure 20.26.10. Cap by tokens or concurrent long requests, because the pool is full of memory, not requests.*
 
 Picture a product manager in the room asking for a quick fix: raise the rate limits so the errors stop. The request sounds reasonable, and your job is to find out whether it would help before anyone changes a number.
 
@@ -464,7 +464,7 @@ Picture a product manager in the room asking for a quick fix: raise the rate lim
 
 ![Chain of user request, SDK client, gateway and router, each retrying three times, so one request reaches the worker up to 64 times](./img/x26-retry-multiplication-layers.svg)
 
-*Figure 20.26.9. Retry amplification: each layer makes its first try plus three retries, so the layers multiply to 64 attempts unless a retry budget caps them.*
+*Figure 20.26.11. Retry amplification: each layer makes its first try plus three retries, so the layers multiply to 64 attempts unless a retry budget caps them.*
 
 Picture the gateway CPU graphs climbing to three times their normal level while the user traffic line stays flat. The system is doing far more work for the same people, and the cause is not more users.
 
@@ -493,7 +493,7 @@ Picture the gateway CPU graphs climbing to three times their normal level while 
 
 ![Timeline comparing the ten minute startup probe window with a two hour download, and the restart loop that starts the download again at shard 1](./img/x26-cold-start-download-race.svg)
 
-*Figure 20.26.10. Cold-start loop: a 140 GB download at 20 MB per second takes about two hours, far longer than the ten-minute startup probe, so each restart begins at shard 1.*
+*Figure 20.26.12. Cold-start loop: a 140 GB download at 20 MB per second takes about two hours, far longer than the ten-minute startup probe, so each restart begins at shard 1.*
 
 Picture the autoscaler adding pods on a busy morning. The new pods sit at zero ready for minutes at a time, and the pods that are already running get hotter with every minute.
 
@@ -520,7 +520,7 @@ Picture the autoscaler adding pods on a busy morning. The new pods sit at zero r
 
 ![A full disk where df reports 100 GB used but du finds about 40 GB, explained by a deleted log file still held open by the engine process.](./img/p2-2026-df-du-gap.svg)
 
-*Figure 20.26.11. df reports 100 GB used while du finds about 40 GB, and a deleted 58 GB log held open by the engine explains the gap.*
+*Figure 20.26.13. df reports 100 GB used while du finds about 40 GB, and a deleted 58 GB log held open by the engine explains the gap.*
 
 Picture an alert named DiskPressure on one node, evicted pods, and a restarted replica that crashes with a message about no space left on the device. The replica cannot start until the disk has room again.
 
@@ -548,7 +548,7 @@ Picture an alert named DiskPressure on one node, evicted pods, and a restarted r
 
 ![A 90-day timeline from certificate issue and token rotation through 30 days of failed renewal to the 09:00 expiry.](./img/p3-2026-cert-expiry-timeline.svg)
 
-*Figure 20.26.12. The token changed in one place and the cluster kept the old copy, so name the second expiring certificate too.*
+*Figure 20.26.14. The token changed in one place and the cluster kept the old copy, so name the second expiring certificate too.*
 
 Picture the support queue filling at one fixed time in the morning, with the same message from client after client. The internal dashboards load normally, which is what makes the problem confusing at first.
 
@@ -576,7 +576,7 @@ Picture the support queue filling at one fixed time in the morning, with the sam
 
 ![A resolver with ndots 5 sending failed suffix queries before the real name, multiplying load on throttled CoreDNS.](./img/p3-2026-ndots-amplification.svg)
 
-*Figure 20.26.13. The new external lookup multiplied DNS load, and the naming fix cuts queries for every later lookup.*
+*Figure 20.26.15. The new external lookup multiplied DNS load, and the naming fix cuts queries for every later lookup.*
 
 Picture gateway logs filling with name-resolution errors on about one request in twenty, while the inference path keeps working. The errors are small and steady, which makes them easy to dismiss until the failures spread.
 
@@ -604,7 +604,7 @@ Picture gateway logs filling with name-resolution errors on about one request in
 
 ![A causal chain from a 40 GB backup on member 2's disk to 180 ms fsync, leader elections and an 8 second kubectl get.](./img/p3-2026-etcd-fsync.svg)
 
-*Figure 20.26.14. Stop the source first and wait for fsync and leader changes to settle before anything else.*
+*Figure 20.26.16. Stop the source first and wait for fsync and leader changes to settle before anything else.*
 
 Picture a simple command that used to answer at once now taking seconds to return, and a rollout that has stopped moving. Nothing is failing for the users yet, but the control plane is slowly losing its ability to change anything.
 
@@ -632,7 +632,7 @@ Picture a simple command that used to answer at once now taking seconds to retur
 
 ![Ordered steps for a bad config push: pause the sync, revert to the last known good commit, verify the 503 rate in each region, then add validation and a canary](./img/x26-config-push-stop-spread.svg)
 
-*Figure 20.26.15. Bad config push: pause the sync first so the change stops spreading, then revert through the pipeline and verify region by region.*
+*Figure 20.26.17. Bad config push: pause the sync first so the change stops spreading, then revert through the pipeline and verify region by region.*
 
 Picture a gateway returning errors everywhere at once, minutes after an automatic sync reported success. The sync is the change, and the team is asking whether anyone has noticed it is still spreading.
 

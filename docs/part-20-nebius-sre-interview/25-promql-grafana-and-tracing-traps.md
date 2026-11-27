@@ -144,7 +144,7 @@ Two layers belong together. `up == 0` catches a target that exists but cannot be
 
 ![A PromQL many-to-one join between queue depth series and pod info using on pod group_left node.](./img/p4-2025-group-left-join.svg)
 
-*Figure 20.0.0. Many-to-one vector matching requires explicit group_left to attach labels from a single info series to multiple metric series.*
+*Figure 20.25.10. Many-to-one vector matching requires explicit group_left to attach labels from a single info series to multiple metric series.*
 
 Suppose you want vLLM queue depth shown by node. The node name lives on `kube_pod_info`, not on the vLLM metric. The two series share a pod label, so you join them with `on (pod)`.
 
@@ -158,7 +158,7 @@ The safe habit is to know which side is many before you write the join. The side
 
 ![A queue depth timeline with two spikes and a plateau and three alert variants showing when each one fires.](./img/p3-2025-for-keepfiring.svg)
 
-*Figure 20.25.10. Use for to ignore blips and keep_firing_for to stop flapping.*
+*Figure 20.25.11. Use for to ignore blips and keep_firing_for to stop flapping.*
 
 Picture a queue that spikes for a few seconds every time a batch of requests lands. A person who gets paged for every spike will stop trusting the pager. An alert without a `for` clause becomes active on the first evaluation, as the docs say, so one noisy sample pages a person. A `for` clause holds the alert in the pending state until it has been active for the whole duration.
 
@@ -174,7 +174,7 @@ A burn-rate alert from chapter 20.19 can skip `for` because its two windows alre
 
 ![Alertmanager flow: alerts grouped by cluster and model, routed by severity to a pager or a ticket queue, with inhibition rules that silence symptoms](./img/x25-alertmanager-routing.svg)
 
-*Figure 20.25.11. Alertmanager routing: group by cluster and model, send pages and tickets to separate receivers, and let a cause alert or a page silence its symptoms.*
+*Figure 20.25.12. Alertmanager routing: group by cluster and model, send pages and tickets to separate receivers, and let a cause alert or a page silence its symptoms.*
 
 The pager rings forty times in a minute because one pod failure trips twenty alerts. The fix is not in Prometheus. It is in Alertmanager, the component that receives alerts from Prometheus and decides who hears about them and when.
 
@@ -246,7 +246,7 @@ exit $fail
 
 ![Three layers of recording rules from rates through ratios and quantiles to alerts, with the naming convention.](./img/p3-2025-rule-layers.svg)
 
-*Figure 20.25.12. Record the expensive expression once and build each layer on a clean input.*
+*Figure 20.25.13. Record the expensive expression once and build each layer on a clean input.*
 
 A dashboard takes eight seconds to load because every refresh runs a heavy `histogram_quantile` over a week of data. Nobody can wait eight seconds for a p99 during an incident. The fix is to precompute the expensive expression once, on a schedule, and let the dashboard read the result. That is what a recording rule does.
 
@@ -337,7 +337,7 @@ A subquery runs an instant query repeatedly over a range, and its resolution def
 
 ![A diagram showing series multiplication across ten histogram buckets, twenty models, and one thousand tenants yielding 260,000 series.](./img/p4-2025-cardinality-explosion.svg)
 
-*Figure 20.0.0. Metric labels multiply series combinatorially, making high-cardinality identifiers like request ID suitable only for traces and logs.*
+*Figure 20.25.14. Metric labels multiply series combinatorially, making high-cardinality identifiers like request ID suitable only for traces and logs.*
 
 A new label named `request_id` ships on a Friday afternoon. By Monday Prometheus is out of memory. Every distinct value makes a new series, and a histogram makes many series per value. The label looked like one extra dimension. In fact it multiplied everything by the number of requests.
 
@@ -351,7 +351,7 @@ Keep user, request and prompt identifiers out of metric labels. They belong in l
 
 ![The four fields of a traceparent header and a table of gateway, router and engine spans for a streaming request.](./img/p3-2025-traceparent-anatomy.svg)
 
-*Figure 20.25.13. One span per hop, with the gateway span covering the whole stream.*
+*Figure 20.25.15. One span per hop, with the gateway span covering the whole stream.*
 
 A user says the answer started late. The gateway shows a healthy p50 and the engine shows a healthy queue. Both dashboards look fine, so neither one explains the complaint. You need to see one slow request end to end, from the moment it entered the gateway to the moment its last token left.
 
@@ -361,7 +361,7 @@ A streaming request is awkward because the HTTP status is sent early and the wor
 
 ![Tracing a streaming request](./img/m20-25-2.svg)
 
-*Figure 20.25.14. Tracing a streaming request, as a diagram.*
+*Figure 20.25.16. Tracing a streaming request, as a diagram.*
 
 | Span | Kind | Lives until | Attributes and events |
 |---|---|---|---|
@@ -379,7 +379,7 @@ vLLM documents tracing through the flags `--otlp-traces-endpoint` and `--collect
 
 ![Five steps from a red bar on a metrics panel through an exemplar and a trace to the matching log lines using one trace ID](./img/x25-exemplar-join-path.svg)
 
-*Figure 20.25.15. Metrics to traces: an exemplar on a slow bucket links the panel to one trace, and the same trace ID finds the matching log lines.*
+*Figure 20.25.17. Metrics to traces: an exemplar on a slow bucket links the panel to one trace, and the same trace ID finds the matching log lines.*
 
 At high volume you cannot keep every trace. Storing each one costs money and attention, and most of them show a request that went fine. The question is which traces to keep. The OTel docs split sampling into two approaches, and the choice between them is a trade-off that you need to explain in your own words.
 
@@ -433,7 +433,7 @@ Run the linter on the old query. It reports P003 for averaging a quantile. The a
 
 ![Two quiet alerts during a pod loss and the up, count and absent checks that would have caught the shrinking fleet.](./img/p3-2025-silent-outage-count.svg)
 
-*Figure 20.25.16. Count what should be there, because a vanished series returns nothing rather than zero.*
+*Figure 20.25.18. Count what should be there, because a vanished series returns nothing rather than zero.*
 
 One of four vLLM pods crashes at night. The error ratio alert stays quiet because requests moved to other pods. The `absent` alert is quiet too.
 
@@ -471,7 +471,7 @@ All steps run on a laptop with `promtool`, `amtool` and Python. No Docker is nee
 
 ![A table of five query mistakes with their errors and fixes, covering absent, joins, labels, extrapolation and offset.](./img/p3-2025-query-mistakes-alerts.svg)
 
-*Figure 20.25.17. A query that parses can still mean something other than what you intended.*
+*Figure 20.25.19. A query that parses can still mean something other than what you intended.*
 
 Picture a pull request that changes one line of a dashboard query and claims the panel is now correct. Each exercise below is that kind of change, with the bad query, the reason it fails and the fix. The status line says how it was checked. "Test" means `promtool test rules` passed with the bad and fixed query asserted. "Lint" means the linter flags the bad one.
 

@@ -789,7 +789,7 @@ The fix is to make the chain 60, 40, two tries of 18 and an engine abort of 15, 
 
 ![A timeline comparing the default 30-second Kubernetes grace period cutting 90-second streams with SIGKILL against a 135-second budget combining a 5-second preStop sleep, 120-second stream cap, and 10-second margin.](./img/p4-2021-deploy-grace-period.svg)
 
-*Figure 20.0.0. Sizing the termination grace period to 135 seconds covers endpoint propagation and the maximum stream duration, preventing SIGKILL from truncating active generations.*
+*Figure 20.21.18. Sizing the termination grace period to 135 seconds covers endpoint propagation and the maximum stream duration, preventing SIGKILL from truncating active generations.*
 
 A deployment rolls eight replicas, one at a time. Each pod holds about forty streams, some lasting 90 seconds. Customers see truncated answers during every release, and the logs show SIGKILL.
 

@@ -507,7 +507,7 @@ Answer in the interview with that order. Say plainly that restore speed depends 
 
 ![A three-step bottom-up state recovery flow importing network, cluster, and pool resources in dependency order, validating clean plans, and enabling bucket versioning.](./img/p4-2024-unversioned-state-rebuild.svg)
 
-*Figure 20.0.0. Rebuilding unversioned lost state: import resources bottom-up in dependency order, adjust code until plan is clean, and enable bucket versioning immediately.*
+*Figure 20.24.14. Rebuilding unversioned lost state: import resources bottom-up in dependency order, adjust code until plan is clean, and enable bucket versioning immediately.*
 
 Your state bucket was deleted by a cleanup script. Versioning was off. You have the code and a running cluster, and the cleanup script's author is in the meeting, looking worried. Your job is to rebuild the map without touching the territory.
 

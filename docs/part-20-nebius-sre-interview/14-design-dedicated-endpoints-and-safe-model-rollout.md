@@ -335,7 +335,7 @@ The cost side is easy to state. One replica kept warm costs its GPUs for every h
 
 ![A visual answer architecture showing how the five dedicated endpoint interview questions map to control plane specs, checkpoint validation, surge-one rollout, quality gates, and SLA replica floors.](./img/p4-2014-interview-mental-map.svg)
 
-*Figure 20.0.0. Figure 20.14.17. Structuring the dedicated endpoint answer across lifecycle, scarce GPU rollout, multi-dimensional gates, and scale-to-zero trade-offs.*
+*Figure 20.14.15. Figure 20.14.17. Structuring the dedicated endpoint answer across lifecycle, scarce GPU rollout, multi-dimensional gates, and scale-to-zero trade-offs.*
 
 Picture an interviewer who has just said "design a dedicated endpoint" and is waiting for your first move. Each answer below is a short spoken outline. Say it in your own words, in under two minutes, and listen for the place where you hesitate.
 
@@ -355,7 +355,7 @@ Picture an interviewer who has just said "design a dedicated endpoint" and is wa
 
 ![Step-by-step execution trace showing how a rolling update with maxSurge 1 and maxUnavailable 0 safely uses a single spare GPU slot to replace eight pods without dropping below minimum capacity.](./img/p4-2014-scenario-a-trace.svg)
 
-*Figure 20.0.0. Figure 20.14.18. Rolling update mechanics under strict single-GPU surge constraints compared with zero-spare hang and down-scaling trade-offs.*
+*Figure 20.14.16. Figure 20.14.18. Rolling update mechanics under strict single-GPU surge constraints compared with zero-spare hang and down-scaling trade-offs.*
 
 An endpoint runs 8 replicas, one GPU each, in a region that has exactly one spare GPU. A new engine image must roll out. Engineering proposes the Kubernetes defaults.
 
@@ -371,7 +371,7 @@ python3 code/part20/c14_rollout_sim.py rolling
 
 ![A metrics table where latency and errors match but quality and finish_reason length share regress, triggering a rollback.](./img/p3-2014-quality-regression.svg)
 
-*Figure 20.14.15. A latency-only gate would have promoted a model that cut answers short.*
+*Figure 20.14.17. A latency-only gate would have promoted a model that cut answers short.*
 
 A canary of a fine-tuned checkpoint reaches 5 percent. TTFT and inter-token latency match the baseline. Error rate is the same. The next day support reports cut-off answers.
 
@@ -387,7 +387,7 @@ python3 code/part20/c14_rollout_sim.py decide code/part20/samples/c14_canary_qua
 
 ![A timeline from upload and validation through staged weights and a surge-one rolling update to a gated canary.](./img/p3-2014-custom-checkpoint-timeline.svg)
 
-*Figure 20.14.16. Pre-stage weights so each replica skips the download and the surge slot has four GPUs together.*
+*Figure 20.14.18. Pre-stage weights so each replica skips the download and the surge slot has four GPUs together.*
 
 A customer uploads a 70 billion parameter checkpoint in FP16 and wants it live on their existing endpoint within the hour. The endpoint runs 4 replicas of 4 GPUs.
 

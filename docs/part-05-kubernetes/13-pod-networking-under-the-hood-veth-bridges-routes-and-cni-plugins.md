@@ -58,6 +58,10 @@ Kubernetes itself implements none of this. Kubernetes describes what should be t
 
 Suppose a node runs two pods and you want to see what the CNI actually builds for them. You can reproduce the setup yourself, one primitive at a time. A pod's network namespace is a separate copy of the network stack, with its own interfaces, routing table, iptables and sockets. To connect that copy to the node, the CNI creates a **veth pair**. A veth pair is a virtual Ethernet cable: packets that enter one end come out the other. One end goes inside the namespace as `eth0`, and the other stays on the host.
 
+![A packet leaving a pod through veth, host routing, masquerade and the NIC](./img/pre-s5-pod-egress.jpg)
+
+*Figure 5.13.1. From pod to internet: veth, host routing, source rewrite, then the NIC.*
+
 The script below simulates two pods on one node. A bridge joins them, and their egress uses NAT. Read it top to bottom: it creates the namespaces and the bridge, adds one veth pair per pod, then tests pod-to-pod and egress traffic.
 
 ```bash
@@ -100,7 +104,7 @@ Each node owns a slice of the pod CIDR. The `node.spec.podCIDR` field records th
 
 ![Multi-node: how pods on different nodes talk](./img/m5-13-1.svg)
 
-*Figure 5.13.1. Multi-node: how pods on different nodes talk, as a diagram.*
+*Figure 5.13.2. Multi-node: how pods on different nodes talk, as a diagram.*
 
 1. **Overlay**, using Flannel VXLAN, Calico VXLAN or IPIP, Cilium VXLAN or Geneve, or Weave. It works on any L3 network. The cost is encapsulation overhead. VXLAN adds 50 bytes, which reduces the MTU. Encapsulation and decapsulation also take CPU, though modern NICs can offload that work. Overlays make traffic harder to see.
 2. **Routed (L3, no encapsulation)**. Nodes learn pod CIDR routes in one of three ways: BGP, from Calico, Cilium BGP or kube-router; static routes; or cloud route tables. The `host-gw` option in Flannel works only when nodes share L2. This design gives the best performance and clean traceability. It does require control of the underlay, or BGP peering with ToR switches. It fits leaf-spine fabrics that run BGP to hosts, as covered in 2.15 and 2.16.

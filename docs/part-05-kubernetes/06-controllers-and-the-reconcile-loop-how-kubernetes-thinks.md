@@ -181,7 +181,7 @@ A deleted pod on an unreachable node stays stuck in `Terminating` until the kube
 
 ![A three-column flow diagram showing how the EndpointSlice controller removes an unready inference pod from traffic routing during model loading without killing the container.](./img/p4-0506-endpointslice-readiness.svg)
 
-*Figure 5.0.0. The EndpointSlice controller updates endpoint conditions based on readiness probes, removing an unready model server from traffic while keeping its container alive.*
+*Figure 5.6.12. The EndpointSlice controller updates endpoint conditions based on readiness probes, removing an unready model server from traffic while keeping its container alive.*
 
 The EndpointSlice controller watches Services and Pods. For each Service, it maintains EndpointSlices that list ready pod IPs, along with `serving` and `terminating` states. It updates them when pods become Ready or NotReady, so readiness probes decide where traffic goes. A pod that fails its readiness check is removed from the list, but it is not killed. That is the difference between readiness and liveness, and it matters during a slow model load. `kube-proxy` consumes these slices (see 5.10). The Service controller, which runs in cloud-controller-manager, provisions cloud load balancers for `type: LoadBalancer`.
 
@@ -207,7 +207,7 @@ Decoupling is a key theme in Kubernetes. The core concepts are modular, so each 
 
 ![Removing the app label from a misbehaving pod orphans it, and the ReplicaSet creates a replacement.](./img/k06-quarantine.svg)
 
-*Figure 5.6.12. Removing a pod's matching label orphans it for debugging, and the ReplicaSet creates a replacement so capacity stays full.*
+*Figure 5.6.13. Removing a pod's matching label orphans it for debugging, and the ReplicaSet creates a replacement so capacity stays full.*
 
 Child objects carry `ownerReferences`, a list of entries with `apiVersion`, `kind`, `name`, `uid`, `controller: true` and `blockOwnerDeletion: true`. Think of an owner reference as a name tag on a child object. It says which parent is responsible for it, and the UID makes sure the tag points to this exact parent, not a parent with the same name created later. Each object has exactly one controller owner. A controller manages objects it owns. It can also adopt objects that match its selector, provided those objects have no other controller owner.
 
@@ -241,7 +241,7 @@ The fourth mechanic covers the Job patterns, from *Kubernetes: Up and Running*, 
 
 ![A two-branch tree for diagnosing a namespace stuck in Terminating.](./img/p3-0506-namespace-terminating.svg)
 
-*Figure 5.6.13. A stuck namespace is blocked either by a resource finalizer or by an unavailable aggregated API.*
+*Figure 5.6.14. A stuck namespace is blocked either by a resource finalizer or by an unavailable aggregated API.*
 
 Strings in `metadata.finalizers` block deletion. The API server sets `deletionTimestamp` and keeps the object until its owning controller removes each finalizer after cleanup. A finalizer is a sticky note that says "do not finish deleting me yet, because cleanup is still pending." Examples include `kubernetes.io/pv-protection`, `foregroundDeletion`, `batch.kubernetes.io/job-tracking`, and your operator's `example.com/cleanup`.
 
@@ -251,7 +251,7 @@ A resource stuck in `Terminating` almost always has an unfulfilled finalizer. Fi
 
 ![Diagram showing the separation between metadata.generation and status.observedGeneration through the status subresource, alongside the six fields of a condition object.](./img/p4-0506-status-conditions.svg)
 
-*Figure 5.0.0. Writing status through the /status subresource updates observedGeneration and conditions without bumping metadata.generation, preventing reconcile loops.*
+*Figure 5.6.15. Writing status through the /status subresource updates observedGeneration and conditions without bumping metadata.generation, preventing reconcile loops.*
 
 By convention, `status.conditions[]` entries carry `type`, `status` (`True`, `False` or `Unknown`), `reason` (a CamelCase, machine-readable value), `message`, `lastTransitionTime` and `observedGeneration`. Consumers such as `kubectl wait --for=condition=Available`, GitOps health checks and Kueue rely on them. A condition is a small, structured answer to a yes-or-no question, such as "is this Deployment available?" Tools can read it without understanding the rest of the object.
 
@@ -261,7 +261,7 @@ A good controller sets Ready, Progressing or Degraded style conditions, each wit
 
 ![A leader renews a Lease every few seconds, and a standby takes over after the lease duration expires.](./img/k06-lease.svg)
 
-*Figure 5.6.14. Leader election uses a Lease with a 15 second duration, so a standby takes over shortly after the leader stops renewing.*
+*Figure 5.6.16. Leader election uses a Lease with a 15 second duration, so a standby takes over shortly after the leader stops renewing.*
 
 Controller managers, schedulers and most operators run several replicas, but only one instance is active at a time. The others wait on standby, ready to take over. Running several copies gives you a backup, and running only one active copy avoids two controllers making conflicting decisions. A Lease object (`coordination.k8s.io/v1`) decides which instance that is. Candidates try to acquire or renew the lease by updating `holderIdentity` and `renewTime`. Whoever holds the lease is the leader, and the lease is the single written record of that fact.
 
@@ -280,7 +280,7 @@ If your controller runs with several replicas, stop the leader and confirm that 
 
 ![A controller that writes on every pass re-triggers itself until change detection breaks the cycle.](./img/p3-0506-hot-loop.svg)
 
-*Figure 5.6.15. A hot loop happens when a reconcile's own write triggers the next reconcile, and change detection stops it.*
+*Figure 5.6.17. A hot loop happens when a reconcile's own write triggers the next reconcile, and change detection stops it.*
 
 A controller problem usually shows up as a symptom on an object: a rollout that stalls, a pod that keeps coming back, or a namespace that never finishes deleting. The symptom is what you see first, and the cause hides behind it. The table below maps each symptom to its likely cause and to the check that confirms it. Start with the symptom you see, and work through the checks in order.
 
@@ -303,7 +303,7 @@ You can use the table as a starting point, because some symptoms have more than 
 
 ![A decision tree shows a GPU fault controller checking a budget and PodDisruptionBudget before draining gpu7.](./img/p3-0506-gpu-remediation-flow.svg)
 
-*Figure 5.6.16. A safe remediation controller checks a global budget, records intent and waits rather than forcing a drain.*
+*Figure 5.6.18. A safe remediation controller checks a global budget, records intent and waits rather than forcing a drain.*
 
 Suppose you write a script that cordons a node every time an alert fires. One false alarm could then take down the cluster, because a flaky monitor can fire for every node at once. The principles below apply when you write a controller or an automation script, including remediation of GPU faults. They are the habits that turn a risky script into a controller you can trust at night.
 

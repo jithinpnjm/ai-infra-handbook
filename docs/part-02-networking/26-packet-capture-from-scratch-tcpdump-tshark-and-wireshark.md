@@ -165,7 +165,7 @@ Read the output the way you would read a short conversation. The first two lines
 
 ![Diagram illustrating pcap-filter byte-offset slicing and bitmask operations across IPv4 and TCP headers for DSCP, ECN, fragmentation flags, TTL, and TCP flags.](./img/p4-0226-byte-offsets.svg)
 
-*Figure 2.0.0. Byte-offset syntax slices specific protocol header bytes and applies bitmasks, letting captures isolate DSCP EF, ECN CE, low TTL, and pure SYN flags directly in the kernel.*
+*Figure 2.26.9. Byte-offset syntax slices specific protocol header bytes and applies bitmasks, letting captures isolate DSCP EF, ECN CE, low TTL, and pure SYN flags directly in the kernel.*
 
 A capture filter is an expression built from primitives. Each primitive can carry a qualifier, such as a type (`host`, `net`, `port` or `portrange`), a direction (`src`, `dst` or `src or dst`) and a protocol (`ether`, `ip`, `ip6`, `arp`, `tcp`, `udp`, `icmp`, `icmp6` or `vlan`). You join the pieces with `and`/`&&`, `or`/`||` and `not`/`!`, and group them with parentheses when the order matters. Read the expression like a sentence: "host this and port that, but not from there".
 
@@ -205,7 +205,7 @@ Consider why the advice about clocks matters. Two captures, one on each side of 
 
 ![tcpdump filter primitives](./img/n26-filters.svg)
 
-*Figure 2.26.9. Filters are built from primitives such as tcp, host and port, joined with and, or and not.*
+*Figure 2.26.10. Filters are built from primitives such as tcp, host and port, joined with and, or and not.*
 
 A filter is built from primitives, which are its basic elements. The table lists the most important ones.
 
@@ -240,11 +240,11 @@ Even though most traffic is encrypted, you should not snoop around on a network 
 
 ![Five steps from opening a capture to a single packet using Conversations and Expert Information, with Follow stream, Decode As, tshark statistics and the TLS key log option.](./img/p3-0226-capture-to-event.svg)
 
-*Figure 2.26.10. Conversations narrows the file to one host pair and Expert Information jumps to the retransmission or reset that matters.*
+*Figure 2.26.11. Conversations narrows the file to one host pair and Expert Information jumps to the retransmission or reset that matters.*
 
 ![A pipeline showing a capture filter that runs in the kernel on the wire and a display filter that runs on the saved file, with example expressions for each.](./img/p3-0226-filter-vs-display.svg)
 
-*Figure 2.26.11. The capture filter runs in the kernel before streams exist, so fine questions about flags and retransmissions belong in the display filter.*
+*Figure 2.26.12. The capture filter runs in the kernel before streams exist, so fine questions about flags and retransmissions belong in the display filter.*
 
 On a headless server, where there is no desktop to run a GUI, `tshark` is the tool to reach for. It is the command-line version of Wireshark, with the same dissectors, display filters and statistics, and it suits scripts well. A dissector is the piece of code that knows how to read one protocol and label its fields. Wireshark itself, the GUI, is better for interactive analysis of files copied off the host.
 
@@ -274,7 +274,7 @@ A first session with a capture file might go like this. Open the file, then choo
 
 ![Three handshake ladders: a healthy SYN, SYN-ACK, ACK, a reset from a closed port, and a repeating SYN with no reply, with the server-side check for the silent case.](./img/p3-0226-silence-or-refuse.svg)
 
-*Figure 2.26.12. A reset means the port refuses you, while a SYN with no answer means a drop, a block or a missing route, which the server's capture tells apart.*
+*Figure 2.26.13. A reset means the port refuses you, while a SYN with no answer means a drop, a block or a missing route, which the server's capture tells apart.*
 
 Imagine a client that waits for an answer after it sends its SYN. In Wireshark you see the same SYN repeated, each copy a little later than the one before. No SYN-ACK ever arrives. The reading is that the server never received the SYN, or its answer never came back. Check the server's capture next. If the SYN is there and no SYN-ACK leaves, the server or a firewall in front of it is ignoring the port. If the SYN never appears on the server, the path between the two hosts is the suspect.
 
@@ -292,11 +292,11 @@ Finally, do not chase checksums. A "bad checksum" on the sending host is usually
 
 ![A table pairing trace signs such as duplicate ACKs, zero window, 40 ms and 200 ms gaps, ICMP 3/4, odd reset TTLs and sender bad checksums with their likely causes.](./img/p3-0226-tcp-trace-signs.svg)
 
-*Figure 2.26.13. Each pattern in a TCP trace has a named cause, from Nagle and RTO timers to MTU black holes, injected resets and NAT timeouts.*
+*Figure 2.26.14. Each pattern in a TCP trace has a named cause, from Nagle and RTO timers to MTU black holes, injected resets and NAT timeouts.*
 
 ![The first minute of a training node carries DNS, DHCP, ARP, TLS, NCCL bootstrap TCP and RoCEv2 traffic, and RoCEv2 needs a NIC or switch capture.](./img/p2-0226-first-minute.svg)
 
-*Figure 2.26.14. A training node's first minute carries DNS, DHCP, ARP, TLS, NCCL bootstrap and RoCEv2 traffic, and only RoCEv2 avoids the host capture.*
+*Figure 2.26.15. A training node's first minute carries DNS, DHCP, ARP, TLS, NCCL bootstrap and RoCEv2 traffic, and only RoCEv2 avoids the host capture.*
 
 A GPU server talks to many services, and each one leaves its own marks on the wire. When a capture shows a protocol you do not recognise, the table tells you what to look for. Each row names a protocol and the hints that matter in its traffic.
 
@@ -324,15 +324,15 @@ Keep the table open next to the capture. For RoCEv2, the kernel does not see all
 
 ![A table of SPAN, RSPAN, ERSPAN, sFlow, a TAP and a tc mirror with their trade-offs, a trigger ring buffer and privacy rules for captures.](./img/p3-0226-mirror-options.svg)
 
-*Figure 2.26.15. Switch mirrors may drop under load and alter VLAN tags, a TAP is lossless, and a trigger ring buffer keeps the packets from before a fault.*
+*Figure 2.26.16. Switch mirrors may drop under load and alter VLAN tags, a TAP is lossless, and a trigger ring buffer keeps the packets from before a fault.*
 
 ![A pod path from eth0 through the host veth and bridge to the tunnel device and uplink, with three capture points and the kubectl debug alternatives.](./img/p3-0226-pod-capture-steps.svg)
 
-*Figure 2.26.16. Capture inside the pod with nsenter, on the host veth, and at the tunnel and uplink, and compare the files to find where a packet vanished.*
+*Figure 2.26.17. Capture inside the pod with nsenter, on the host veth, and at the tunnel and uplink, and compare the files to find where a packet vanished.*
 
 ![Capture options for a 100 Gb/s link run from a tight filter and short snaplen through larger buffers and per-flow queues to hardware mirrors, sampling and trigger-based rings.](./img/p2-0226-scale-ladder.svg)
 
-*Figure 2.26.17. A 100 Gb/s link carries about 8 million packets per second, so capture options climb from tight filters to hardware mirrors and trigger-based rings.*
+*Figure 2.26.18. A 100 Gb/s link carries about 8 million packets per second, so capture options climb from tight filters to hardware mirrors and trigger-based rings.*
 
 Imagine trying to read every letter that passes through a busy sorting office. You could stand by the door and copy every envelope, but your hand would never keep up. A smarter team samples, filters and stores only the letters it needs. High-speed links make the same point for packet capture. The options below run from the simplest habit to the heaviest hardware, and you should climb only as far as the question requires.
 
@@ -368,7 +368,7 @@ If a fault comes and goes, set up a ring buffer that stops on the event, so the 
 
 ![Five steps of a BPF tool: compile, verifier check, attach to a probe, update a kernel map when the event fires, and read the map, with probe types and cautions.](./img/p3-0226-bpf-mechanism.svg)
 
-*Figure 2.26.18. The verifier checks the program before it attaches, and counting happens in a kernel map, so the tool does not receive each event.*
+*Figure 2.26.19. The verifier checks the program before it attaches, and counting happens in a kernel map, so the tool does not receive each event.*
 
 A capture shows packets on the wire or at an interface. It cannot show what the kernel and your applications do with those packets. That is the job of BPF tracing. With it you can see which process opened which connection, how long a handshake takes, which function dropped a packet, and how retransmits line up with socket state. You can also measure per-process TCP throughput. BPF programs run sandboxed in the kernel, and the kernel verifies them for safety before they run. A capture is the view from the cable. BPF tracing is the view from inside the machine.
 
@@ -382,7 +382,7 @@ Here is what happens when you run one of these tools. The tool compiles a small 
 
 ![A bpftrace one-liner for retransmits per destination split into the tracepoint, action block, map key, ntop and count, with the general probe filter action form and three more examples.](./img/p3-0226-bpftrace-anatomy.svg)
 
-*Figure 2.26.19. A bpftrace program is a probe, an optional filter and an action that fills a map, such as counting retransmits per destination address.*
+*Figure 2.26.20. A bpftrace program is a probe, an optional filter and an action that fills a map, such as counting retransmits per destination address.*
 
 BCC, the BPF Compiler Collection, gives you a Python front end with BPF programs written in embedded C. It also comes with many ready-made tools under `/usr/share/bcc/tools`, or with a `-bpfcc` suffix on Debian and Ubuntu. BCC suits complex tools that need argument parsing and custom output. Its single-purpose tools include `tcplife`, `tcpconnect`, `tcpaccept`, `tcpretrans`, `tcpdrop`, `tcpstates`, `tcpconnlat`, `tcptop`, `solisten`, `sockstat`, `biolatency`, `runqlat`, `execsnoop` and `opensnoop`. Its multi-purpose tools, `trace`, `argdist`, `funccount`, `stackcount` and `funclatency`, attach to any function you name. You install the set with `apt install bpfcc-tools linux-headers-$(uname -r)` or `dnf install bcc-tools`. Modern libbpf-tools, which use CO-RE, are lighter, and they need no compiler on the target. Here are some example multi-purpose calls: `sudo funccount 'tcp_*'`, `sudo trace 'tcp_retransmit_skb "skb=%p"'`, `sudo argdist -H 'r::tcp_sendmsg():int:$retval'` for a histogram of bytes sent, and `sudo stackcount -P tcp_drop` to see who triggers drops.
 
@@ -412,7 +412,7 @@ Two cautions matter in practice. Kprobe function names and arguments change betw
 
 ![A decision map pairs network questions such as connection origin, session life, retransmits, drops and handshake latency with the BPF tool that answers each one.](./img/p2-0226-bpf-question-tool.svg)
 
-*Figure 2.26.20. Each network question, from retransmits and drops to handshake latency and backlog overflow, maps to a specific BCC or bpftrace tool.*
+*Figure 2.26.21. Each network question, from retransmits and drops to handshake latency and backlog overflow, maps to a specific BCC or bpftrace tool.*
 
 The table matches a question to the tool that answers it.
 
@@ -436,15 +436,15 @@ BPF also powers several other network pieces. XDP programs filter and forward pa
 
 ![A table of capture patterns such as a SYN with no SYN-ACK, repeated retransmissions without ICMP, 200 ms gaps and PFC storms, with the likely cause and a second source to confirm it.](./img/p3-0226-pattern-guesses.svg)
 
-*Figure 2.26.21. Treat each pattern as a first guess and confirm it with counters, conntrack or BPF tools before changing any setting.*
+*Figure 2.26.22. Treat each pattern as a first guess and confirm it with counters, conntrack or BPF tools before changing any setting.*
 
 ![Client and server captures compared across five cases, such as no SYN-ACK, a lost SYN-ACK, a reset with a different TTL, a missing wscale and repeated full-size retransmissions, each with its cause.](./img/p3-0226-two-side-diagnosis.svg)
 
-*Figure 2.26.22. Comparing what left one host with what arrived at the other points to the device between them, matched by sequence number rather than clock time.*
+*Figure 2.26.23. Comparing what left one host with what arrived at the other points to the device between them, matched by sequence number rather than clock time.*
 
 ![Capture workflow](./img/n26-workflow.svg)
 
-*Figure 2.26.23. A fixed seven-step sequence turns a vague problem into a capture that answers one question.*
+*Figure 2.26.24. A fixed seven-step sequence turns a vague problem into a capture that answers one question.*
 
 Picture an intermittent reset that happens on a connection between two services. Nobody can reproduce it on demand, and the logs say only that the peer closed the connection. A capture is the right tool, but only if you set it up before the next reset and know what question it must answer. The workflow below is the order of work that turns a vague complaint into a question a capture can answer.
 
@@ -470,7 +470,7 @@ Use the patterns as first guesses, and confirm each one with a second source. A 
 
 ![The twelve lab steps grouped into reading a healthy trace, injecting faults such as loss, MTU black hole, zero window and offloads, and wider tools, after a Python offset check.](./img/p3-0226-lab-ladder.svg)
 
-*Figure 2.26.24. Start with a healthy handshake as the reference, then inject loss, an MTU black hole and a zero window, and finish by deleting the captures.*
+*Figure 2.26.25. Start with a healthy handshake as the reference, then inject loss, an MTU black hole and a zero window, and finish by deleting the captures.*
 
 Start with the self-checking Python lab, which you can run on your own machine. It checks the byte-offset `pcap-filter` expressions (`tcp[tcpflags]`, `ip[6:2] & 0x2000`, `ip[8]`, and `ip[1]` for DSCP `EF` and ECN `CE`). It also checks the packet rate on a `100 Gb/s` link (`~8.13 Mpps`), the ring-buffer storage with `-s 96`, and a comparison of TCP captures from two endpoints.
 
@@ -503,7 +503,7 @@ Clean up as the last step, and do not skip it. Capture files can hold credential
 
 ![A loop where a live tcpdump over SSH captures and prints its own SSH packets, with the filter and file fixes and a list of other capture mistakes.](./img/p3-0226-ssh-loop.svg)
 
-*Figure 2.26.25. Printing a live capture over SSH captures the SSH packets that carry the output, so exclude port 22 and write to a file.*
+*Figure 2.26.26. Printing a live capture over SSH captures the SSH packets that carry the output, so exclude port 22 and write to a file.*
 
 Imagine an engineer who runs `tcpdump` live over an SSH session to a busy node. Within seconds the terminal fills with lines, and each line is a new SSH packet that the capture then records and prints again. Nothing is broken on the node, but the capture is useless, and the session slows down. That is the feedback loop the next paragraph describes, and it is the most common self-inflicted problem with live captures.
 

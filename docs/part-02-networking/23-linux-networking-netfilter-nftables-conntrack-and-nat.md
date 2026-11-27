@@ -203,15 +203,19 @@ Many tools write rules on the same host. ufw runs on Ubuntu. firewalld runs on t
 
 If you run Kubernetes or a NAT gateway, you will eventually read this table. Conntrack is the kernel's table of active flows. It lets netfilter make stateful decisions, and it lets NAT translate replies back to the right client. A bank teller who remembers that you just asked to withdraw money can answer "yes, I was expecting you" when you return, and a conntrack table works the same way for packets. The module is `nf_conntrack`. Each entry stores the original tuple, which is the source, destination, protocol and ports as they arrived. A tuple is simply the set of values that identifies one flow. Each entry also stores the reply tuple, which shows how the reply looks after NAT, along with a state, a timeout, a mark, a zone and counters. Conntrack is required for stateful filtering with `ct state`, for NAT, for kube-proxy in iptables mode, for Docker published ports and for many helpers.
 
+![The netfilter hooks a packet passes, with conntrack recording every flow](./img/pre-netfilter-path.jpg)
+
+*Figure 2.23.2. Netfilter hooks decide each packet's route through the kernel. Conntrack remembers every flow.*
+
 ![Conntrack table](./img/n23-fig1-conntrack.jpg)
 
-*Figure 2.23.2. Conntrack remembers each flow so replies can be matched.*
+*Figure 2.23.3. Conntrack remembers each flow so replies can be matched.*
 
 ### States
 
 ![Conntrack states](./img/n23-states.svg)
 
-*Figure 2.23.3. A flow moves from NEW to ESTABLISHED once traffic is seen in both directions.*
+*Figure 2.23.4. A flow moves from NEW to ESTABLISHED once traffic is seen in both directions.*
 
 Think of conntrack states as stages in a visit. A new visitor arrives at the gate and is written in a book, and that is NEW. Once a reply comes back from the house they went to, the visit is known to be real, and the state becomes ESTABLISHED. A reply that belongs to an earlier visit but comes through a different gate is RELATED. A message that matches no visit at all is INVALID. Walk through a simple web request with these four stages in mind, and the rules that mention them will read like plain sentences.
 
@@ -251,7 +255,7 @@ Read an entry like this one from left to right: `tcp 6 431999 ESTABLISHED src=10
 
 ![Conntrack exhaustion](./img/n23-exhaust.svg)
 
-*Figure 2.23.4. A full conntrack table drops new connections silently, and five remedies are applied in order.*
+*Figure 2.23.5. A full conntrack table drops new connections silently, and five remedies are applied in order.*
 
 Imagine a busy gateway at night. New connections from many services start to time out, but nobody has changed anything, CPU is low, and the bandwidth graph looks calm. The problem is a table that has quietly filled up. Every flow the gateway handles takes one entry, and entries stay alive for as long as their timeouts allow. When the table is full, the gateway does not tell the client anything. It drops the new connection. The paragraphs below explain what fills the table, how long entries live, and the order in which to fix it.
 
@@ -295,7 +299,7 @@ Two UDP packets with the same 5-tuple, sent at the same moment, can race to crea
 
 ![NAT and conntrack](./img/n23-natfirst.svg)
 
-*Figure 2.23.5. Only the first packet of a flow traverses the nat table, and conntrack applies the stored translation to the rest.*
+*Figure 2.23.6. Only the first packet of a flow traverses the nat table, and conntrack applies the stored translation to the rest.*
 
 Consider a team that changes a NAT rule in the morning and sees no effect on connections already open. The change is correct. It applies only to new flows, because the mapping for each open flow was written into conntrack when that flow began. Once you know that, NAT stops being magic. It becomes a set of decisions taken at the start of each flow and remembered afterwards, and that memory is why the sections below worry so much about ports and tables.
 

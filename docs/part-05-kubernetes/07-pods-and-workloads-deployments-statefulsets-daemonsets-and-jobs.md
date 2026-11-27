@@ -490,6 +490,10 @@ When you write a new pod spec, decide which of these container types it needs be
 
 When a node runs short of memory, Kubernetes has to decide which pod to evict. The resource fields you set decide that order. `requests` drive scheduling, and they set the minimum guaranteed share. `limits` are enforced at run time by cgroups. A CPU limit throttles the container through the CFS quota, `cpu.max`. A memory limit is a hard cap. If the container exceeds it, the container suffers an OOM kill. Requests map to `cpu.weight`, which is the shares value. Memory requests inform eviction and, with MemoryQoS, `memory.min/high`.
 
+![Pod requests and limits mapped to cgroup files, with what each one does when the node is busy or the limit is hit](./img/pre-cgroup-requests-limits.jpg)
+
+*Figure 5.7.7. Pod requests and limits become cgroup files. A CPU limit throttles. A memory limit kills.*
+
 Extended resources such as `nvidia.com/gpu`, `rdma/hca_shared_devices_a`, `hugepages-2Mi` and `ephemeral-storage` are integers. For devices, requests must equal limits, so there is no overcommit. GPUs are not shared or fractional unless you use MIG, time-slicing or MPS through the device plugin or operator configuration. Part 11 covers that configuration.
 
 QoS classes are derived, not set. **Guaranteed** means every container has CPU and memory requests equal to its limits. **Burstable** means some requests or limits are set, but the pod does not meet the Guaranteed rules. **BestEffort** means no requests or limits are set at all. QoS decides the cgroup placement under `kubepods.slice/guaranteed`, `burstable` or `besteffort`. It also sets the `oom_score_adj` value, which is -997 for Guaranteed and 1000 for BestEffort, and scaled for Burstable. Finally, QoS sets the eviction order under node pressure, which 5.9 covers. Training and inference pods that must not be evicted should be Guaranteed. Guaranteed is also required for the CPU Manager static policy, which gives exclusive cores for integer CPU requests. It is needed for Topology Manager alignment too, covered in 5.18.
@@ -508,11 +512,11 @@ Ephemeral storage requests and limits cover the container's writable layers, its
 
 ![A two-core node shows CPU shares shrinking as pods are added while memory has no equivalent squeeze.](./img/p3-0507-cpu-vs-memory.svg)
 
-*Figure 5.7.7. A busy node slows CPU users in proportion to their requests, but it must stop a process to reclaim memory.*
+*Figure 5.7.8. A busy node slows CPU users in proportion to their requests, but it must stop a process to reclaim memory.*
 
 ![A container request of half a CPU and 128 MiB of memory, and the trap where 400m and 400M differ by a factor of a thousand.](./img/p2-0507-units-trap.svg)
 
-*Figure 5.7.8. A container asks for 500m of CPU and 128Mi of memory, and 400m and 400M differ by a factor of a thousand, a common costly mistake.*
+*Figure 5.7.9. A container asks for 500m of CPU and 128Mi of memory, and 400m and 400M differ by a factor of a thousand, a common costly mistake.*
 
 Most people adopt containers and Kubernetes for better packaging and reliable deploys. Utilization is another gain. Utilization is the amount of a resource actively in use, divided by the amount you bought. A one-core machine running an app that uses a tenth of a core sits at 10%. Kubernetes can push utilization above 50%, but only when you tell it what each app needs.
 
@@ -575,7 +579,7 @@ The kernel enforces limits. A container with a CPU limit of 0.5 cores gets only 
 
 ![A directory mount follows ConfigMap updates while a subPath file mount keeps pointing at the old file.](./img/p3-0507-subpath-symlink.svg)
 
-*Figure 5.7.9. A subPath mount binds one file, so it never sees the symlink swap that delivers ConfigMap updates.*
+*Figure 5.7.10. A subPath mount binds one file, so it never sees the symlink swap that delivers ConfigMap updates.*
 
 You will meet several volume types. `emptyDir` is per-pod scratch space. Set `medium: Memory` for tmpfs, and set `sizeLimit` to cap it. `configMap`, `secret`, `downwardAPI` and `projected` inject config and identity. Projected ServiceAccount tokens carry an audience and an expiry. `persistentVolumeClaim` gives durable storage, which 5.17 covers. `hostPath` mounts a node path. Avoid it except for system agents, because it carries a large security risk. The list also includes `nfs`, CSI ephemeral volumes, and `image` volumes, which mount OCI artifacts such as model weights in newer releases. The `ephemeral` type creates a generic ephemeral PVC for each pod.
 
@@ -700,7 +704,7 @@ The shell runs as user ID `1000` and group ID `3000`, and it belongs to group `2
 
 ![Two parallel lanes show endpoint removal racing with preStop, SIGTERM and SIGKILL after a pod delete.](./img/p3-0507-termination-race.svg)
 
-*Figure 5.7.10. A preStop sleep keeps the server answering while proxies learn the pod is leaving.*
+*Figure 5.7.11. A preStop sleep keeps the server answering while proxies learn the pod is leaving.*
 
 Pod termination runs as a sequence. The API sets `deletionTimestamp`. The endpoints controller removes the pod from Service endpoints, in parallel with the next step. The kubelet runs `preStop` hooks, sends `SIGTERM` to PID 1 of each container, and waits up to `terminationGracePeriodSeconds`. After that it sends `SIGKILL`.
 
@@ -776,13 +780,13 @@ The Pod definition grows as the chapter goes on. Each new capability you give th
 
 ![A decision tree that chooses a Deployment, StatefulSet or Job from replica identity, storage and run-to-completion questions, with DaemonSet asked separately.](./img/p2-0507-controller-choice.svg)
 
-*Figure 5.7.11. A decision tree that chooses between Deployment, StatefulSet and Job from three questions, with DaemonSet answering a separate per-node question.*
+*Figure 5.7.12. A decision tree that chooses between Deployment, StatefulSet and Job from three questions, with DaemonSet answering a separate per-node question.*
 
 ### Why a bare Pod is not enough
 
 ![A bare Pod stays on a failed node, while a controller re-creates the Pod on a healthy node.](./img/p2-0507-bare-pod.svg)
 
-*Figure 5.7.12. A bare Pod is not rescheduled when its node fails, while a controller re-creates the Pod on a healthy node.*
+*Figure 5.7.13. A bare Pod is not rescheduled when its node fails, while a controller re-creates the Pod on a healthy node.*
 
 A Pod that is scheduled to a node stays on that node. If the node fails, nothing reschedules the Pod. To run several copies, you would have to create and name each one by hand. Controllers automate that work. *Kubernetes: Up and Running* introduces ReplicaSets in its chapter on replicated pods, which create multiple identical Pods and re-create them after a node failure. The table below compares the controllers this chapter covers.
 
@@ -812,15 +816,15 @@ It is worth pausing on why a group matters at all. One pod is one bet on one mac
 
 ![A PDB with minAvailable 2 lets a drain proceed while minAvailable 3 on three replicas blocks it.](./img/p3-0507-pdb-drain.svg)
 
-*Figure 5.7.13. A budget that allows zero disruptions blocks every drain, so it must leave room for one pod to move.*
+*Figure 5.7.14. A budget that allows zero disruptions blocks every drain, so it must leave room for one pod to move.*
 
 ![A 12 GPU pool with three 4 GPU replicas cannot surge, so the rollout hangs unless maxUnavailable is 1.](./img/p3-0507-gpu-surge-stall.svg)
 
-*Figure 5.7.14. On a full GPU pool, surge has nowhere to land, so trade one replica of capacity for progress.*
+*Figure 5.7.15. On a full GPU pool, surge has nowhere to land, so trade one replica of capacity for progress.*
 
 ![A timeline shows the startup probe gating readiness and liveness probes for a slow model server.](./img/p3-0507-probe-gates.svg)
 
-*Figure 5.7.15. The startup probe protects a slow start, then readiness gates traffic and liveness restarts only a truly stuck server.*
+*Figure 5.7.16. The startup probe protects a slow start, then readiness gates traffic and liveness restarts only a truly stuck server.*
 
 Suppose you run an inference server that takes many minutes to load its model. It needs long probe windows and careful rollout settings. The manifest below runs three replicas of such a server and adds a PodDisruptionBudget. Read the comments on the rolling update settings, because GPUs are scarce.
 
@@ -876,11 +880,11 @@ Here is a concrete way to think about a PDB. Imagine three replicas and a PDB th
 
 ![An emergency undo fixes the cluster but not the Git manifests, so the bug returns on the next apply.](./img/p3-0507-undo-vs-git.svg)
 
-*Figure 5.7.16. Revert the manifest in Git so that source control and the cluster agree after a rollback.*
+*Figure 5.7.17. Revert the manifest in Git so that source control and the cluster agree after a rollback.*
 
 ![A Deployment rollout moves replicas from the old ReplicaSet to the new one in steps, with the old ones kept at zero.](./img/k07-rollout-shift.svg)
 
-*Figure 5.7.17. During a rollout the new ReplicaSet grows one step at a time while the old ReplicaSet shrinks, and the old one stays at zero for rollback.*
+*Figure 5.7.18. During a rollout the new ReplicaSet grows one step at a time while the old ReplicaSet shrinks, and the old one stays at zero for rollback.*
 
 During a `Deployment` rollout, the Deployment controller scales up the new `ReplicaSet` (`NewReplicaSet`) and scales down the old `ReplicaSet`s (`OldReplicaSets`). It keeps up to `spec.revisionHistoryLimit` old ReplicaSets, which default to `10`, scaled to `0` so you can roll back. *Kubernetes: Up and Running* shows how to record the reason for an update. Set the `kubernetes.io/change-cause` annotation inside `spec.template.metadata.annotations`. Put it on the Pod template, not on the top-level Deployment metadata. Add it only when you change the template, because any change to `spec.template` triggers a new rollout.
 
@@ -926,7 +930,7 @@ A short story shows why this matters. On a Friday evening, someone runs `kubectl
 
 ![A timeline shows old client code from version 1 calling a version 2 server during a rolling update.](./img/p3-0507-rollout-mixed-versions.svg)
 
-*Figure 5.7.18. A rollout mixes versions for a while, so adjacent versions must stay compatible.*
+*Figure 5.7.19. A rollout mixes versions for a while, so adjacent versions must stay compatible.*
 
 A rolling update means two versions of your service answer requests at the same time. Imagine a frontend rollout that is halfway done. Half your servers run version 1 and half run version 2. A user's first request reaches a version 1 server and downloads the version 1 client library. That library then calls your API, and the call may reach a version 2 server.
 
@@ -940,7 +944,7 @@ Before you roll out a version, ask whether it can talk to the version before it 
 
 ![A Deployment's replicas are interchangeable, while each StatefulSet replica keeps its own name and its own storage.](./img/k07-statefulset-identity.svg)
 
-*Figure 5.7.19. Deployment pods are interchangeable copies, whereas each StatefulSet pod keeps a stable name and its own volume claim.*
+*Figure 5.7.20. Deployment pods are interchangeable copies, whereas each StatefulSet pod keeps a stable name and its own volume claim.*
 
 Suppose a vector database runs three replicas, and each one must keep its own data across restarts. A `StatefulSet` gives each replica a stable name and its own storage. The manifest below sets that up, with a headless Service in front.
 
@@ -1022,7 +1026,7 @@ DaemonSets also help when you install software on nodes in a cloud cluster. Clou
 
 ![A DaemonSet controller adds one fluentd Pod to every node, including a node that joins the cluster later.](./img/k07-daemonset-reconcile.svg)
 
-*Figure 5.7.20. A DaemonSet places one Pod on every node and adds a Pod automatically when a new node joins.*
+*Figure 5.7.21. A DaemonSet places one Pod on every node and adds a Pod automatically when a new node joins.*
 
 By default, a DaemonSet creates a Pod on every node. A node selector narrows the eligible nodes to those with a matching set of labels. The DaemonSet fixes each Pod's node at creation time, by setting the `nodeName` field in the Pod spec. Because of that, the Kubernetes scheduler ignores the Pods that a DaemonSet creates.
 
@@ -1131,7 +1135,7 @@ This is exactly the behavior you want when you manage logging daemons and other 
 
 ![Labeling one of four nodes ssd true places a DaemonSet pod there and removing the label removes it.](./img/p3-0507-daemonset-label-switch.svg)
 
-*Figure 5.7.21. Node labels act as the switch for DaemonSet pods and the controller flips it for every node.*
+*Figure 5.7.22. Node labels act as the switch for DaemonSet pods and the controller flips it for every node.*
 
 Most DaemonSets run a Pod on every node. Sometimes you want a Pod on only a subset of nodes. Suppose a workload needs a GPU, or fast storage that only some nodes have. Node labels can tag the specific nodes that meet those requirements.
 
@@ -1247,7 +1251,7 @@ That matters most in an autoscaled cluster, where nodes come and go without anyo
 
 ![A plain 16 pod Job wastes 96 GPUs waiting at a barrier when only 12 nodes are free, while gang admission avoids it.](./img/p3-0507-gang-vs-plain-job.svg)
 
-*Figure 5.7.22. Distributed training needs all pods together, so use gang admission instead of a plain Job.*
+*Figure 5.7.23. Distributed training needs all pods together, so use gang admission instead of a plain Job.*
 
 A Job is batch work. It runs to completion, and then it stops. The manifest below defines an indexed Job with 16 completions, a Kueue queue label and a pod failure policy. Read the comments on the `podFailurePolicy` rules first. They explain which failures count against retries and which do not.
 
@@ -1287,7 +1291,7 @@ A simple picture helps here. A plain Job is like a group of runners who each sta
 
 ![Three Job patterns, one shot, parallel fixed completions and a work queue, set by the completions and parallelism values.](./img/p2-0507-job-patterns.svg)
 
-*Figure 5.7.23. Three Job patterns set by completions and parallelism: one shot, parallel fixed completions, and a work queue with parallel workers.*
+*Figure 5.7.24. Three Job patterns set by completions and parallelism: one shot, parallel fixed completions, and a work queue with parallel workers.*
 
 Some work should run once and then stop. Other work comes as many small items that you want processed side by side. A Job covers both cases with two settings. `completions` is how many successful finishes the Job needs. `parallelism` is how many Pods may run at the same time. A Job with neither setting changed runs a single Pod once until it succeeds.
 
@@ -1366,7 +1370,7 @@ The example sets no labels on the Job. That matters, because other controllers, 
 
 ![Comparison between OnFailure restarting containers in-place and Never creating new pods that accumulate in Error state.](./img/p4-0507-job-restart-policy.svg)
 
-*Figure 5.0.0. Under OnFailure the kubelet restarts the container in the same pod with backoff, while Never causes the Job controller to spawn replacement pods leaving failed pods in the cluster.*
+*Figure 5.7.25. Under OnFailure the kubelet restarts the container in the same pod with backoff, while Never causes the Job controller to spawn replacement pods leaving failed pods in the cluster.*
 
 A Job also has to handle failure. To test that, change the arguments so the program exits with a nonzero code after it generates three keys. The file uses `--keygen-exit-code=1` and `--keygen-num-to-gen=3`.
 
@@ -1437,7 +1441,7 @@ Study the finished Pods and their logs if you like. Each one prints the fingerpr
 
 ![A curl producer pushes 100 items into a queue server behind a Kubernetes Service while five consumer Job pods pull items and exit upon drain.](./img/p4-0507-work-queue-flow.svg)
 
-*Figure 5.0.0. The queue pod decouples producer from consumers, allowing parallel Job worker pods to process items independently and wind down once the queue is empty.*
+*Figure 5.7.26. The queue pod decouples producer from consumers, allowing parallel Job worker pods to process items independently and wind down once the queue is empty.*
 
 A common use of Jobs is to process work from a queue. A task creates a set of work items and publishes them to a queue. Then a worker Job runs until the queue is empty.
 
@@ -1676,7 +1680,7 @@ A benchmark is only useful if you can repeat it. Suppose you measure a model's t
 
 ![A five-rung ladder from pod status to events, last state, previous logs and debug containers.](./img/p3-0507-pod-wont-start-ladder.svg)
 
-*Figure 5.7.24. Ask the cheapest question first, and most pod failures are named by the events or the last container state.*
+*Figure 5.7.27. Ask the cheapest question first, and most pod failures are named by the events or the last container state.*
 
 A pod is in a state you do not understand, and a job is waiting on it. You need to find out why. When a pod misbehaves, the commands below show its state, its events and its logs. Work through them in order, because each one narrows the question for the next.
 
@@ -1743,7 +1747,7 @@ Delete a Pod by name with `kubectl delete pods/kuard`, or with the manifest it c
 
 ![A pod phase summarises the pod coarsely, while container waiting, running and terminated states carry the reason that explains the failure.](./img/p2-0507-phase-reasons.svg)
 
-*Figure 5.7.25. A pod phase is a coarse summary, and the container state reason, such as ImagePullBackOff or CrashLoopBackOff, explains the cause.*
+*Figure 5.7.28. A pod phase is a coarse summary, and the container state reason, such as ImagePullBackOff or CrashLoopBackOff, explains the cause.*
 
 A pod's `phase` is one of Pending, Running, Succeeded, Failed or Unknown. Pending means the Pod has been accepted, but not all of its containers are running yet. It may still be scheduling, pulling images or running init containers. Each container is in a Waiting, Running or Terminated state. A waiting container gives a reason such as `ContainerCreating`, `ImagePullBackOff`, `CrashLoopBackOff` or `CreateContainerConfigError`. A terminated container gives a reason such as `Completed`, `Error` or `OOMKilled`, along with an exit code. Conditions include `PodScheduled`, `Initialized`, `ContainersReady`, `Ready` and `DisruptionTarget`.
 
@@ -1770,7 +1774,7 @@ For most of these symptoms, start with `describe`, because its events usually po
 
 ![A diagram of an 8-GPU node showing kube-reserved headroom, a Guaranteed 8-GPU pod requesting full cores and RAM, and tmpfs shared memory budgeted inside the memory limit.](./img/p4-0507-gpu-node-sizing.svg)
 
-*Figure 5.0.0. Sizing a multi-GPU training pod as Guaranteed with requests matching limits prevents node fragmentation while budgeting tmpfs shared memory inside the container limit avoids unexpected OOM kills.*
+*Figure 5.7.29. Sizing a multi-GPU training pod as Guaranteed with requests matching limits prevents node fragmentation while budgeting tmpfs shared memory inside the container limit avoids unexpected OOM kills.*
 
 A GPU node has a fixed number of GPUs and CPU cores. A pod that claims the wrong share of them leaves the rest of the node idle or fragmented. Think of the node as a fixed-size parking garage. Oversized cars waste spaces, and undersized cars block the lanes. The guidelines below cover the sizing choices that matter most.
 

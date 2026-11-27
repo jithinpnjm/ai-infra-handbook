@@ -80,7 +80,7 @@ Try saying the starters aloud while you cook or walk. The goal is to make them s
 
 ![A five-step escalation ladder for recovering when stuck in a coding interview, progressing from tracing a smaller example to structural transforms, targeted hints, and brute force fallbacks.](./img/p4-2008-unstuck-ladder.svg)
 
-*Figure 20.0.0. When mental block strikes, work down the five-step recovery ladder out loud rather than remaining silent.*
+*Figure 20.8.3. When mental block strikes, work down the five-step recovery ladder out loud rather than remaining silent.*
 
 Every candidate gets stuck, including people who have done this many times. The interviewer is watching what you do next, and that is the part that counts. Nebius's page tells you to ask for hints, which means asking is expected and not a failure. A good request is specific: "I have the sliding window idea but I am not sure when to move the left pointer. Can you confirm the window must contain no repeats?" A vague request like "I am stuck" gives the interviewer very little to work with.
 
@@ -100,11 +100,11 @@ A useful sentence to have ready is "I have a correct version of the slow approac
 
 ![A loop that takes s[1:] on every step copies a shrinking list each time so the total cost is quadratic, while passing an index copies nothing, and deque popleft replaces list pop(0).](./img/p3-2008-slice-copy-cost.svg)
 
-*Figure 20.8.3. Pass indexes instead of slicing, and use a deque instead of pop(0), because each slice or pop(0) touches every remaining item.*
+*Figure 20.8.4. Pass indexes instead of slicing, and use a deque instead of pop(0), because each slice or pop(0) touches every remaining item.*
 
 ![A hand trace of compress on aaa and aa, showing the run character, run length and the final length comparison at each step.](./img/x08-compress-trace.svg)
 
-*Figure 20.8.4. Tracing the example by hand shows each variable at each step, including the final comparison that decides between the packed form and the original.*
+*Figure 20.8.5. Tracing the example by hand shows each variable at each step, including the final comparison that decides between the packed form and the original.*
 
 A secondary source says some rounds use a plain editor and do not let you run the code. Assume the worst. Picture a shared document with no run button, and an interviewer watching you type. In that case the main danger is not the algorithm. It is a typo, an off-by-one error, or a variable that was never defined. The defence is writing in a style that is easy to read back, because you will be reading it back in your head.
 
@@ -149,7 +149,7 @@ The line after the loop is the classic bug. The last run is never closed inside 
 
 ![Five input types, each with the edge-case probes to try, such as empty, duplicates and touching ends.](./img/p2-2008-edge-checklists.svg)
 
-*Figure 20.8.5. Edge-case probes for strings, lists, two lists, intervals and numbers, to run before saying the code works.*
+*Figure 20.8.6. Edge-case probes for strings, lists, two lists, intervals and numbers, to run before saying the code works.*
 
 The interviewer asked you to "review code for errors before submitting", in the official page's words. Do it in a fixed order, so the review does not depend on your mood. Trace the example you wrote at the start. Then trace the smallest input. Then trace one input that hits the special branch, such as a repeat at the end of the string. Say the values of the variables as you go, because a spoken value is easier for the interviewer to follow than a silent check.
 
@@ -257,7 +257,7 @@ The tests in `test_c08_check.py` check the harness itself, including the case wh
 
 ![A table of standard library calls from Counter, deque, heapq and bisect, each with the exact result verified on Python 3.12.](./img/p2-2008-stdlib-results.svg)
 
-*Figure 20.8.6. Verified results of common Python standard library calls, including Counter, deque with maxlen, heapq and bisect edge cases.*
+*Figure 20.8.7. Verified results of common Python standard library calls, including Counter, deque with maxlen, heapq and bisect edge cases.*
 
 You are strong in Python, so the point here is to know exact behaviours, because the interviewer will ask "what does that return?" Every result below was produced by running `code/part20/c08_stdlib_tour.py` under Python 3.12.7 on 2026-11-09. The Fluent Python book, chapter 3, says that dict keeps insertion order since Python 3.6, which matters later. A tool you know by name is not enough. You need to know what it returns on the edge cases.
 
@@ -293,7 +293,7 @@ The Learning Python book, chapter 16 onwards, and Fluent Python give the languag
 
 ![A comparison diagram detailing Python standard library tools alongside their Go equivalents and boilerplate requirements for coding interviews.](./img/p4-2008-go-python-bridge.svg)
 
-*Figure 20.0.0. Go equivalents for Python coding patterns require explicit boilerplate, especially the five container/heap interface methods and sort.SliceStable.*
+*Figure 20.8.8. Go equivalents for Python coding patterns require explicit boilerplate, especially the five container/heap interface methods and sort.SliceStable.*
 
 Nebius names Go as an acceptable language. If you are weaker in Go than Python, use Python, because the interview grades problem solving and not language choice. If you do use Go, know that it has no built-in counter, no heap function and no ordered-set type. The standard library gives you `map`, `container/heap`, `sort.Slice`, `sort.SliceStable` and `sort.SearchInts`. Each of these needs a small adjustment from what you know in Python, and the adjustments are the part to practise.
 
@@ -391,11 +391,11 @@ The differences to remember are these. A missing map key returns the zero value,
 
 ![A function with a default list argument keeps one list object across calls so the second call returns one and two together, while a None default creates a new list each call.](./img/p3-2008-mutable-default.svg)
 
-*Figure 20.8.7. Use None as the default argument and create the list inside the function.*
+*Figure 20.8.9. Use None as the default argument and create the list inside the function.*
 
 ![Multiplying a list of lists repeats one shared row, while a comprehension builds a separate row for each position.](./img/x08-grid-aliasing.svg)
 
-*Figure 20.8.8. Repeating a list with the multiply operator copies references to the same row, so a comprehension is needed for independent rows.*
+*Figure 20.8.10. Repeating a list with the multiply operator copies references to the same row, so a comprehension is needed for independent rows.*
 
 These are the errors that wreck a correct idea. All of them are in `code/part20/c08_pitfalls.py`, with tests. The outputs below were run on Python 3.12.7. Each one is small, and each one has cost someone a round, so they are worth a slow read now.
 
@@ -433,7 +433,7 @@ Changing a list while looping over it skips items. Removing the even numbers fro
 
 ![Four changed parameters, such as data too big for memory or a thread-safety requirement, each matched with a prepared answer.](./img/p2-2008-param-change.svg)
 
-*Figure 20.8.9. Four common changes to a coding problem, each paired with the standard answer and the assumption it breaks.*
+*Figure 20.8.11. Four common changes to a coding problem, each paired with the standard answer and the assumption it breaks.*
 
 Nebius lists "adapt if parameters change". Expect the interviewer to say: "Now the input has a billion lines." Or: "Now it must be thread-safe." Or: "Now the list is sorted." These are not traps. They test whether you understand why your solution works, and a solution you understand bends without breaking.
 
@@ -447,7 +447,7 @@ For the top-k errors question at the start, the answer has three layers. The sim
 
 ![A four-week practice plan with the focus and session time for each week, ending in full mock rounds.](./img/p2-2008-four-week-plan.svg)
 
-*Figure 20.8.10. The four-week practice routine, moving from language basics to full mock rounds, with a short test at the end of each week.*
+*Figure 20.8.12. The four-week practice routine, moving from language basics to full mock rounds, with a short test at the end of each week.*
 
 The plan fits a person with a job. It is my suggestion and not a Nebius requirement. Budget about five hours a week, and treat the weeks as a sequence where each one builds on the last. The problem set is in c20-11 and the patterns are in c20-09.
 
@@ -522,7 +522,7 @@ Follow-up: "What if I want the output in place, in a list of characters?" That n
 
 ![Three layers for the top k error endpoints problem: a Counter with most_common, a bounded heap of size k, and sharding by a hash of the endpoint with merged per-worker top k lists.](./img/p3-2008-topk-scale-ladder.svg)
 
-*Figure 20.8.11. Memory follows the number of distinct keys and not the number of lines, so the answer changes only when the distinct keys no longer fit.*
+*Figure 20.8.13. Memory follows the number of distinct keys and not the number of lines, so the answer changes only when the distinct keys no longer fit.*
 
 A log is full of lines from a busy gateway, and the on-call engineer wants the worst endpoints by name. Problem: given lines like `10.0.0.7 - GET /v1/chat 503 12ms`, return the three endpoints with the most 5xx responses.
 
@@ -540,7 +540,7 @@ Follow-up: memory. If the endpoint set is bounded, a `Counter` is fine at any lo
 
 ![Merge intervals: sort by start, then extend the last merged interval whenever the next start is within its end.](./img/x08-merge-intervals-sorted.svg)
 
-*Figure 20.8.12. Once intervals are sorted by start, each new interval can only overlap the most recent merged interval, so one sweep is enough.*
+*Figure 20.8.14. Once intervals are sorted by start, each new interval can only overlap the most recent merged interval, so one sweep is enough.*
 
 A scheduling tool has produced overlapping bookings, and you need to merge them before the report goes out. Problem: merge overlapping intervals. You have drawn two examples and cannot see the algorithm yet.
 

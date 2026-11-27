@@ -26,9 +26,13 @@ The answer needs a mechanism, not a guess. The rest of this chapter builds that 
 
 ### 1. Refused, timed out, reset: three different stories
 
+![A checklist of causes for slow or timing-out connections with the command for each](./img/pre-s6-slow-connections.jpg)
+
+*Figure 20.6.1. Slow connections have a short list of causes. Each has one command that shows it.*
+
 ![Three TCP failure stories: a refusal answered at once by a reset, a timeout where SYNs go unanswered, and a reset in the middle of a session.](./img/x06-refused-timeout-reset.svg)
 
-*Figure 20.6.1. A refused connection is answered at once, a timeout is silence while the client retries, and a reset destroys state in the middle of a session.*
+*Figure 20.6.2. A refused connection is answered at once, a timeout is silence while the client retries, and a reset destroys state in the middle of a session.*
 
 An engineer says "the network is down", and the room goes quiet. The first useful thing you can do is ask which error the client saw. Each error points to a different place, so the words are evidence. The question costs nothing, and it narrows the search before you type a single command.
 
@@ -48,7 +52,7 @@ When someone reports an error, ask for the exact words. Refused points to the se
 
 ![A network path from application to remote service, with one test at the middle node that sends the search to either the left or right half.](./img/p2-2006-half-split.svg)
 
-*Figure 20.6.2. A half-split test at the node tells you whether the fault sits in the left half of the path or in the fabric and remote side.*
+*Figure 20.6.3. A half-split test at the node tells you whether the fault sits in the left half of the path or in the fabric and remote side.*
 
 Picture a pager going off at night. The first instinct is to run twenty commands at once and hope one of them explains the fault. Under stress that feels productive, and it usually wastes the most time. Computer Networking Problems and Solutions, in its Troubleshooting chapter, describes a better habit called half split. Map the path of the signal. Split it roughly in half. Test the signal at the middle. If it is wrong there, move toward the source. If it is right, move toward the destination.
 
@@ -64,7 +68,7 @@ The mermaid diagram shows the order we use in this chapter. Say it aloud in the 
 
 ![The method: split the path in half](./img/m20-06-1.svg)
 
-*Figure 20.6.3. The method: split the path in half, as a diagram.*
+*Figure 20.6.4. The method: split the path in half, as a diagram.*
 
 Before you type, say which half of the path you are testing and what result you expect. Saying the expectation out loud is what turns a command into a test. If the result matches, you have learned something. If it does not, you have found the place to look.
 
@@ -72,7 +76,7 @@ Before you type, say which half of the path you are testing and what result you 
 
 ![A table of TCP states from ss with what a large count of each means, with CLOSE-WAIT pointing at the local application and SYN-RECV at a flood or vanishing clients.](./img/p3-2006-ss-states-fault.svg)
 
-*Figure 20.6.4. Run ss, count the states, and find the one that is out of place; the state tells you who owns the fault.*
+*Figure 20.6.5. Run ss, count the states, and find the one that is out of place; the state tells you who owns the fault.*
 
 Suppose you land on a gateway node with an alert about connect failures. The fastest honest picture of the host's TCP world is `ss`. Systems Performance, in the Network chapter, introduces it as the socket statistics tool from the iproute2 package, which is maintained by the kernel network engineers. Its default output has columns for state, Recv-Q, Send-Q, local address and peer address. Each row is one socket, which is one end of one connection, or one listener waiting for connections.
 
@@ -145,7 +149,7 @@ Start every network incident with ss, then say which states dominate and what th
 
 ![A new connection passes a SYN backlog, then waits in the accept queue until the application calls accept, and drops happen when the queue is full.](./img/x06-two-queues.svg)
 
-*Figure 20.6.5. Linux keeps two queues per listener, and a full accept queue causes SYNs to be dropped and retried by the client.*
+*Figure 20.6.6. Linux keeps two queues per listener, and a full accept queue causes SYNs to be dropped and retried by the client.*
 
 Picture a busy gateway that gets a burst of new connections during a deploy. The application is slow to call accept because its threads are busy. What happens to new clients? The answer depends on the two queues that Linux keeps for every listening socket, and that is the mechanism this section explains.
 
@@ -169,7 +173,7 @@ When connects are slow, read the listener queue, then the overflow counters, the
 
 ![The ephemeral port range as a parking lot where each closed connection holds its port for sixty seconds, giving a safe rate of about 1,092 connections per second.](./img/p2-2006-port-budget.svg)
 
-*Figure 20.6.6. The TIME_WAIT port budget: 65,536 ports held for 60 seconds gives a sustained safe rate of about 1,092 connections per second.*
+*Figure 20.6.7. The TIME_WAIT port budget: 65,536 ports held for 60 seconds gives a sustained safe rate of about 1,092 connections per second.*
 
 A different story. A service makes thousands of short calls per second to one downstream API, and after a while its calls fail with errors about addresses in use or time out on connect. The cause is port exhaustion, and the first reaction, to suspect the downstream API, is usually wrong.
 
@@ -202,7 +206,7 @@ Do not say "TIME_WAIT is a bug". It is a safety feature, and the answer is to op
 
 ![A conntrack table with a hard cap where existing flows keep their slots and new flows are refused, with the check of nf_conntrack_count against nf_conntrack_max.](./img/p3-2006-conntrack-guest-list.svg)
 
-*Figure 20.6.7. A full conntrack table fails quietly: established flows are untouched, only new connections are refused.*
+*Figure 20.6.8. A full conntrack table fails quietly: established flows are untouched, only new connections are refused.*
 
 Another story. Pods on one node begin to lose new connections at random, while existing connections are fine. CPU is low and every service is healthy. Suspect the connection tracking table, because a full table fails quietly and leaves every existing flow untouched.
 
@@ -271,7 +275,7 @@ For any "new connections fail, old ones work" symptom, compare conntrack count t
 
 ![A call to api.example.com in a pod with ndots 5 tries three suffixed names before the real name, costing eight queries.](./img/x06-ndots-candidate-ladder.svg)
 
-*Figure 20.6.8. With ndots 5, a dotted name is tried with each search suffix first, so one useful answer can cost eight queries.*
+*Figure 20.6.9. With ndots 5, a dotted name is tried with each search suffix first, so one useful answer can cost eight queries.*
 
 An engineer reports that a pod's calls to an external API are slow, and sometimes fail, but pinging the IP is fast. That points to name resolution. The fix often hides in one line of a file, and the file is the one the pod reads before it asks anyone for an address.
 
@@ -346,7 +350,7 @@ When names are slow, count the lookups a single call causes before you blame Cor
 
 ![A 1,500-byte link with VXLAN taking 50 bytes leaves 1,450 bytes for the pod, so full-size packets are dropped without a message.](./img/p2-2006-mtu-tunnel.svg)
 
-*Figure 20.6.9. VXLAN takes 50 bytes from a 1,500-byte link, leaving 1,450 bytes for the pod, so full-size packets are silently dropped.*
+*Figure 20.6.10. VXLAN takes 50 bytes from a 1,500-byte link, leaving 1,450 bytes for the pod, so full-size packets are silently dropped.*
 
 The oddest bug in this list: small requests work, large responses hang. A health check passes. A long answer stalls forever. This is the signature of a path MTU black hole, and it is confusing because every simple test looks green. The handshake and the health check are small, so they pass, and the first big packet is the only one that disappears.
 
@@ -410,7 +414,7 @@ When small works and large hangs, test packet size before you test anything exot
 
 ![One tcpdump line split into time, source and destination, flags, sequence range, ack, window and length, with the four wire signals: repeated SYN, repeated sequence range, reset, and full size packets never acked.](./img/p3-2006-tcpdump-reading.svg)
 
-*Figure 20.6.10. Read the flags first, then name the signal before naming the fault.*
+*Figure 20.6.11. Read the flags first, then name the signal before naming the fault.*
 
 At some point the interviewer says "show me on the wire". You need to read a capture, not just run one. A capture is a record of each packet that crossed an interface, and reading it is where the story of a fault becomes visible. The counters tell you that something went wrong, and the capture tells you what happened, packet by packet.
 
@@ -479,7 +483,7 @@ Name the signal before you name the fault. "I see the same sequence range twice,
 
 ![A TCP connect that succeeds followed by a failed TLS handshake, with the typical hostname mismatch, self-signed certificate and closed-port results.](./img/p2-2006-tls-layers.svg)
 
-*Figure 20.6.11. A TCP connect that works while the TLS handshake fails points the search at the name or certificate, not the path or port.*
+*Figure 20.6.12. A TCP connect that works while the TLS handshake fails points the search at the name or certificate, not the path or port.*
 
 A new client cannot connect to the endpoint over HTTPS, but a plain TCP connect works. The TCP handshake is fine, so the fault is in the layer above it. TLS is the encryption layer that runs on top of TCP, and it has its own handshake, certificates and names. A fault can sit there while the socket looks perfectly healthy.
 
@@ -504,7 +508,7 @@ Separate the TCP result from the TLS result first, and then name the failing ste
 
 ![A silent stream is closed by a middlebox after the idle timeout and fails on the next write, while a client that sends heartbeats stays alive.](./img/x06-idle-timeout-timeline.svg)
 
-*Figure 20.6.12. A middlebox that forgets an idle flow breaks a silent stream at the next write, while periodic heartbeats keep the flow alive.*
+*Figure 20.6.13. A middlebox that forgets an idle flow breaks a silent stream at the next write, while periodic heartbeats keep the flow alive.*
 
 Now the question from the start of the chapter. A token stream starts well, runs for about a minute, and then stops in the middle of an answer. The client sees the connection end. The model server logs show nothing wrong, and the GPUs are busy with other requests. This is the most important section for an inference platform, because streaming is one of the main ways chat answers reach a user, and a stream that dies at a fixed moment is a classic symptom.
 
@@ -575,7 +579,7 @@ For a streaming symptom that fails at a constant time, find which timer in the p
 
 ![Seven checks for a failing Kubernetes Service in order, from the pod through DNS and endpoints to kube-proxy rules and conntrack.](./img/x06-service-path-ladder.svg)
 
-*Figure 20.6.13. A failing Kubernetes Service is checked in a fixed order, so the first failing rung shows where to look.*
+*Figure 20.6.14. A failing Kubernetes Service is checked in a fixed order, so the first failing rung shows where to look.*
 
 Last story. A pod cannot reach a Service by name, or it can but the calls go nowhere. In Kubernetes there are more hops than on a plain host, so the half-split matters more. Each hop is a place where the request can be sent to the wrong address, dropped or rejected, and the error message seldom says which hop failed.
 
@@ -613,7 +617,7 @@ Every scenario below is a short broken system with its script in code/part20. Th
 
 ![A listener with backlog 5 that never calls accept admits six connections, shows LISTEN 6 5 in ss, and the four late clients sit in SYN-SENT while ListenOverflows and ListenDrops both read 8.](./img/p3-2006-accept-queue-numbers.svg)
 
-*Figure 20.6.14. Linux admits the backlog plus one connection and drops the SYNs of the rest, which the client retries about once a second.*
+*Figure 20.6.15. Linux admits the backlog plus one connection and drops the SYNs of the rest, which the client retries about once a second.*
 
 **Problem.** A gateway listens on port 8000. During bursts some clients wait seconds to connect and a few time out. CPU is low.
 

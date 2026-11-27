@@ -373,6 +373,10 @@ Wait until `cp1` reports Ready and the system pods are running before you go on.
 
 The control plane is ready, so the next step is to bring workers in. A worker needs two things before it can join. It needs a way to prove it is talking to the real API server, and it needs a credential that lets it ask for its own identity. The join token and the CA hash handle those two jobs. Think of the token as a one-time invitation and the hash as a fingerprint of the building's front door. The worker checks the fingerprint before it hands over the invitation.
 
+![A server from power on to a Ready Kubernetes node](./img/pre-s10-power-to-ready.jpg)
+
+*Figure 5.4.2. A node is Ready only after boot, runtime, kubelet and network are all up.*
+
 On `cp1`, create a join command. The token is valid for 24 h by default.
 
 ```bash

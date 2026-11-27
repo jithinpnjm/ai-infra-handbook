@@ -227,7 +227,7 @@ Decide: during a partial outage, reduce the number of attempts first, because mo
 
 ![An aggregate dashboard shows normal latency and green status, while a per-tenant gateway breakdown reveals that one tenant takes 68 percent of prompt tokens and starves others in the queue.](./img/p4-2018-noisy-tenant.svg)
 
-*Figure 20.0.0. Aggregate dashboards mask noisy tenant starvation, which is confirmed by breaking down prompt tokens and request rates by tenant at the gateway.*
+*Figure 20.18.12. Aggregate dashboards mask noisy tenant starvation, which is confirmed by breaking down prompt tokens and request rates by tenant at the gateway.*
 
 Picture a status page where the average looks healthy, but one customer keeps writing in to say their answers are slow. Symptom. One customer's p99 is fine, another's is awful, and aggregate dashboards look normal. A single tenant is sending large batches or long prompts.
 
@@ -241,7 +241,7 @@ Decide: if the damage is uneven across tenants, look at who sent the tokens befo
 
 ![Quality failures show green infrastructure while answers are cut off, with causes such as finish reason drift, NaN corruption, speculative decoding, quantisation and sampling defaults.](./img/p2-2018-quality-checks.svg)
 
-*Figure 20.18.12. Quality failures leave infrastructure green, so the design checks finish_reason shares, NaN corruption counts and the last configuration change.*
+*Figure 20.18.13. Quality failures leave infrastructure green, so the design checks finish_reason shares, NaN corruption counts and the last configuration change.*
 
 Symptom. Nothing errors, latency is fine, and users complain that answers are cut off, repetitive or odd. This is the hardest failure to see, because every infrastructure signal is green. A green dashboard can still hide a product that is failing its users. The Nebius case study lists alerts on finish_reason drift for this reason [vendor].
 
@@ -263,7 +263,7 @@ Decide: when infrastructure is green and users are unhappy, check finish_reason 
 
 ![A three-step deprecation timeline ending in a removed metric that looks like no data, with a version-pair checklist.](./img/p3-2018-metric-deprecation.svg)
 
-*Figure 20.18.13. Treat a missing series as a fault, not as a quiet system.*
+*Figure 20.18.14. Treat a missing series as a fault, not as a quiet system.*
 
 Picture a rollout that finished an hour ago, and then a support ticket about odd answers on one route only. Symptom. Errors or odd outputs begin right after a rollout, and only on some routes. One side was upgraded, the other was not.
 
@@ -279,13 +279,13 @@ Decide: after any rollout, check versions at every hop before you debug behaviou
 
 ![A table mapping eight alerts to ranked likely causes and the single first check that separates them.](./img/p3-2018-alert-to-cause.svg)
 
-*Figure 20.18.14. Use the tree to pick a family of causes, then the table to find the one number that separates them.*
+*Figure 20.18.15. Use the tree to pick a family of causes, then the table to find the one number that separates them.*
 
 During the incident you have three minutes to choose a direction, and a tree makes that possible. The tree uses only the signals above, so you can follow it without reopening every chapter. Start at the top and answer one yes or no question at each step.
 
 ![A decision tree, an alert-to-cause table and a classifier](./img/m20-18-2.svg)
 
-*Figure 20.18.15. A decision tree, an alert-to-cause table and a classifier, as a diagram.*
+*Figure 20.18.16. A decision tree, an alert-to-cause table and a classifier, as a diagram.*
 
 The table maps the alert you are most likely to receive to the causes to rank first and the one check that separates them. Use it after the tree, when the tree has pointed you to a family of causes and you need the one number that tells them apart.
 
@@ -434,7 +434,7 @@ Two of the scenarios below are worth working on paper before you read the answer
 
 ![A two-column comparison of the toy simulator at 10 GB and 34 GB of free cache, showing preemptions and step counts.](./img/p3-2018-burst-sim.svg)
 
-*Figure 20.18.16. The same 16 requests are calm with enough cache and crowded without it.*
+*Figure 20.18.17. The same 16 requests are calm with enough cache and crowded without it.*
 
 A 24 GB GPU serves Llama-2-7B in FP16. A batch job sends 16 requests, each with a 3,000-token prompt and 1,000 output tokens. Users report slow, uneven streaming. Notice that no single request is unusual. The trouble comes from all of them arriving together.
 
@@ -506,7 +506,7 @@ Answer. Relax the liveness timeout, raise the failure threshold, add a startup p
 
 ![Two timelines comparing eight replicas loading together for 80 seconds with small groups and staged weights.](./img/p3-2018-rolling-restart-gap.svg)
 
-*Figure 20.18.17. Restart in small groups and stage weights locally so some capacity always serves.*
+*Figure 20.18.18. Restart in small groups and stage weights locally so some capacity always serves.*
 
 A new image is rolled out, and all eight replicas restart together. This is the most common way to lose an endpoint by accident. The model is 70 billion parameters in FP16, loaded from a shared source that delivers 14 GB/s.
 

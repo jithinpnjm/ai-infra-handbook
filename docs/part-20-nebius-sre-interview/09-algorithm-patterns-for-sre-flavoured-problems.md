@@ -371,7 +371,7 @@ Decide: "best k" or "merge sorted inputs" means a heap, and you must say which e
 
 ![A timeline comparison showing how taking the maximum end time prevents nested intervals from shrinking merged ranges, and how a cursor identifies free gaps between busy intervals.](./img/p4-2009-interval-merge.svg)
 
-*Figure 20.0.0. Interval merging requires taking the maximum of the end boundaries so nested intervals do not truncate the merged range, while free slot detection advances a cursor through sorted gaps.*
+*Figure 20.9.6. Interval merging requires taking the maximum of the end boundaries so nested intervals do not truncate the merged range, while free slot detection advances a cursor through sorted gaps.*
 
 Platform teams book maintenance windows and GPU reservations. Two questions follow. Which windows overlap, and how many nodes do we need if each reservation needs a whole node? The idea is to sort by start time and sweep once, keeping only what you must remember about the past. Think of a single list of bookings on a shared whiteboard, read from the top, with a note of which rooms are still in use.
 
@@ -455,11 +455,11 @@ Decide: if time ranges appear, sort by start, then say whether the ends are incl
 
 ![A token bucket refills at a steady rate up to a cap, a burst can spend the saved tokens at once, and after that the client can only send as fast as the bucket refills.](./img/p3-2009-token-bucket.svg)
 
-*Figure 20.9.6. The token bucket enforces the long-run rate and permits a burst up to the bucket size, and refill is computed lazily so no background thread is needed.*
+*Figure 20.9.7. The token bucket enforces the long-run rate and permits a burst up to the bucket size, and refill is computed lazily so no background thread is needed.*
 
 ![A fixed window limit of 10 per second lets 20 requests through within 10 milliseconds when they straddle the window reset.](./img/x09-fixed-window-boundary-burst.svg)
 
-*Figure 20.9.7. A fixed window resets its counter at the boundary, so a client can send the full limit just before and just after it.*
+*Figure 20.9.8. A fixed window resets its counter at the boundary, so a client can send the full limit just before and just after it.*
 
 An API key should get 100 requests a minute. An attacker or a buggy client sends 1,000. The limiter must say yes or no in microseconds, using little memory per key. There are four standard answers, and each one trades accuracy, memory and burst behaviour differently. The question is not which algorithm is best in general. The question is which one fits the promise you made to the customer.
 
@@ -593,7 +593,7 @@ Decide: say "token bucket" for APIs and name the boundary burst of the fixed win
 
 ![An LRU cache built from a hash map that points at nodes of a doubly linked list, with sentinels at both ends and the least recent node evicted first.](./img/p2-2009-lru-links.svg)
 
-*Figure 20.9.8. An LRU cache pairs a hash map for lookup with a doubly linked list that keeps the most recent entry at the front and evicts from the back.*
+*Figure 20.9.9. An LRU cache pairs a hash map for lookup with a doubly linked list that keeps the most recent entry at the front and evicts from the back.*
 
 A router caches which replica holds a prompt prefix, and the table must not grow forever. When it is full, throw away the entry used longest ago. Systems Performance, chapter 2, defines LRU as an eviction policy that removes the least recently used object when space is needed. Picture a small desk with room for only a few open files. When a new file arrives, you put away the one you have not touched for the longest time.
 
@@ -699,7 +699,7 @@ Decide: start with `OrderedDict`, say it is enough in production, and then offer
 
 ![A hash ring where keys move clockwise to the first node, adding a node moves only one arc, and many virtual points flatten the load.](./img/p2-2009-hash-ring.svg)
 
-*Figure 20.9.9. On a consistent hash ring, a key belongs to the first node clockwise, and virtual points flatten load from a ratio of 1.935 to 1.035.*
+*Figure 20.9.10. On a consistent hash ring, a key belongs to the first node clockwise, and virtual points flatten load from a ratio of 1.935 to 1.035.*
 
 You want requests with the same session to land on the same replica, so its cache is warm. Taking the hash modulo the number of replicas works until you add one replica, and then almost every key moves. Distributed AI Systems, chapter 9, applies consistent hashing of the user id to give the same user the same model variant. This is the generic mechanism. Nebius has not published its router algorithm, so do not describe it as theirs.
 
@@ -775,7 +775,7 @@ Decide: always quote the balance number you measured as the reason for virtual n
 
 ![Clients that retry at the same instants create a spike, while full jitter spreads their retries across the wait window.](./img/x09-retry-jitter-herd.svg)
 
-*Figure 20.9.10. Full jitter chooses each retry delay at random up to the current ceiling, so clients that failed together do not all retry together.*
+*Figure 20.9.11. Full jitter chooses each retry delay at random up to the current ceiling, so clients that failed together do not all retry together.*
 
 A dependency returns 503 for ten seconds. Ten thousand clients retry immediately, again and again, and the dependency cannot recover. Picture a shop with a closed door, where every customer knocks at the same moment, every second, and nobody can get in while the door is shut. The idea is to wait longer after each failure, and to randomise the wait so that clients do not retry in lockstep.
 
@@ -837,7 +837,7 @@ Decide: say "capped exponential backoff with full jitter, a deadline and a retry
 
 ![Kahn's algorithm orders services so each starts after its dependencies, and leftover nodes reveal a cycle.](./img/x09-kahn-start-order.svg)
 
-*Figure 20.9.11. Kahn's algorithm starts services with no open dependencies and unlocks others as each one finishes, so any leftover node signals a cycle.*
+*Figure 20.9.12. Kahn's algorithm starts services with no open dependencies and unlocks others as each one finishes, so any leftover node signals a cycle.*
 
 You must start services in an order where each service's dependencies are up first. Or a Terraform-like tool must apply resources in dependency order. The graph has an edge from each service to the things it needs. A valid order exists exactly when there is no cycle. Picture a set of building blocks where each one rests on others, and you must place the base pieces before the pieces that rest on them.
 
@@ -963,7 +963,7 @@ Decide: ask "what should happen on a cycle", because the answer is an error nami
 
 ![Reversing dependency edges from a failed network component exposes the blast radius through breadth-first search rings, marking nodes on enqueue to prevent duplicate processing.](./img/p4-2009-blast-radius-bfs.svg)
 
-*Figure 20.0.0. Reversing service dependency edges turns an inward dependency graph into an outward blast radius search where breadth-first search identifies all downstream affected services.*
+*Figure 20.9.13. Reversing service dependency edges turns an inward dependency graph into an outward blast radius search where breadth-first search identifies all downstream affected services.*
 
 A database fails. Which services are affected? Or: what is the fewest hops between two network devices? Breadth-first search explores in rings of increasing distance, so the first time it reaches the target is the shortest route when every edge costs the same. Depth-first search follows one path as far as it goes and is the natural tool for "what is reachable". Both answers matter during an incident, and the question you are asked tells you which search to reach for.
 
@@ -981,7 +981,7 @@ Decide: if edges are unweighted and you want the fewest hops, say BFS. If they h
 
 ![Union by size attaches smaller root trees under larger ones, while path compression flattens deep parent pointers directly to the root during find operations.](./img/p4-2009-union-find.svg)
 
-*Figure 20.0.0. Union by size keeps disjoint trees shallow by attaching smaller clusters under larger roots, while path compression flattens parent chains directly to the root on each lookup.*
+*Figure 20.9.14. Union by size keeps disjoint trees shallow by attaching smaller clusters under larger roots, while path compression flattens parent chains directly to the root on each lookup.*
 
 Fifty nodes report errors. Some pairs are linked, for example by sharing a switch. How many separate failure clusters are there? Union-find answers "are these two in the same group" and "merge these two groups" in near-constant time. Each group has a root, `find` follows parents up to the root, and `union` points one root at the other. Think of it as a set of small teams, where each team has a leader and a merge means one leader reports to the other.
 
@@ -1052,7 +1052,7 @@ Decide: for a stream of "these two are connected" facts, use union-find. For a o
 
 ![A row of timeout values that go no, no, no, yes, yes, yes with the search halving the range until it finds the first yes, and returning hi plus 1 if nothing passes.](./img/p3-2009-binary-search-answer.svg)
 
-*Figure 20.9.12. When a bigger value never makes the check worse, the answers flip once and binary search finds the flip in a handful of checks.*
+*Figure 20.9.15. When a bigger value never makes the check worse, the answers flip once and binary search finds the flip in a handful of checks.*
 
 You do not know the right timeout. You do have a yes-or-no test: with this timeout, do at least 99 percent of requests succeed? Because a larger timeout can only help, the answers go no, no, no, yes, yes, yes. Binary search finds the flip point in a handful of checks, even if each check is expensive. The search does not need to know the shape of the curve, only that the answer flips once.
 
@@ -1136,11 +1136,11 @@ Decide: whenever a problem asks for "the minimum X such that something holds", a
 
 ![Three ways to keep a p99 for a stream, exact, a reservoir sample, and a bucket histogram, with measured bucket counts and errors against an exact p99 of 551.79.](./img/p3-2009-histogram-tradeoff.svg)
 
-*Figure 20.9.13. A finer bucket ratio costs more memory and gives a smaller error, and histograms from many servers add bucket by bucket.*
+*Figure 20.9.16. A finer bucket ratio costs more memory and gives a smaller error, and histograms from many servers add bucket by bucket.*
 
 ![Averaging the p99 of a quiet server and a busy server gives 55 ms, while merging their requests gives a true p99 of 12 ms.](./img/x09-averaged-p99-trap.svg)
 
-*Figure 20.9.14. Averaging per-server percentiles weights small servers as heavily as large ones, so the fleet percentile must come from merged samples or histograms.*
+*Figure 20.9.17. Averaging per-server percentiles weights small servers as heavily as large ones, so the fleet percentile must come from merged samples or histograms.*
 
 The latency SLI is p99. Servers handle millions of requests, so you cannot store every latency. Systems Performance, chapter 2, lists latency as an average or a percentile, and the percentile is the one that reveals the tail users feel. Three ideas follow, and each one answers a different part of the problem: what the percentile means, how to keep a sample of it, and how to keep a histogram of it.
 
@@ -1335,11 +1335,11 @@ Decide: for any parser, write the three bad inputs first: empty, truncated, and 
 
 ![A fetch_all coroutine runs several calls concurrently, each with its own timeout so a slow call fails alone, and an overall timeout that cancels whatever is still running.](./img/p3-2009-asyncio-two-timeouts.svg)
 
-*Figure 20.9.15. Wrap each call so it never raises, give it its own timeout, and put an overall timeout around the whole gather.*
+*Figure 20.9.18. Wrap each call so it never raises, give it its own timeout, and put an overall timeout around the whole gather.*
 
 ![Two threads each read the same counter value, add one and write back the same result, so two increments leave the count one lower, while a lock makes read, add and write one unit.](./img/p3-2009-lost-update.svg)
 
-*Figure 20.9.16. The increment is three steps, read, add and write, so without the lock two threads can overwrite each other.*
+*Figure 20.9.19. The increment is three steps, read, add and write, so without the lock two threads can overwrite each other.*
 
 An ingest service has a fast reader and slow writers. A counter is updated from many threads. A fan-out call asks five backends and must not wait for the slowest forever. These are the three concurrency questions an SRE round asks, and each one has a standard answer that is short to say and easy to get wrong.
 
@@ -1484,7 +1484,7 @@ Answer. Window rate plus a volume floor. Memory is the number of events in the w
 
 ![Three reservations from 0 to 4, 2 to 6 and 8 to 10 hours on a timeline need two nodes because the first two overlap during hours 2 to 4, and the third reuses a node.](./img/p3-2009-gpu-sweep.svg)
 
-*Figure 20.9.17. Sort by start and keep a min-heap of end times; if the earliest end is at or before the next start, reuse that node, otherwise open a new one.*
+*Figure 20.9.20. Sort by start and keep a min-heap of end times; if the earliest end is at or before the next start, reuse that node, otherwise open a new one.*
 
 A planner has two nodes, a stack of reservations and a job that must fit somewhere before a deadline. Problem. A node has reservations `(0, 4)` and `(2, 6)` hours, and a second node has `(8, 10)`. All are half-open. How many nodes do you need for all three, and where can a two-hour job run?
 

@@ -291,9 +291,13 @@ Which pattern you pick depends on whether the data must be replicated or simply 
 
 The Container Storage Interface, or CSI, is a gRPC specification between an orchestrator and a storage driver. Kubernetes uses sidecar containers around the driver. This means a driver author implements only the CSI services and leaves the Kubernetes wiring to the sidecars. Think of CSI as a standard power socket. Each storage vendor builds its own device, and the cluster offers one standard socket. The sidecars are the adapters that connect that socket to Kubernetes objects.
 
+![A claim becoming a volume mounted in a pod through the CSI driver](./img/pre-csi-volume.jpg)
+
+*Figure 5.17.2. A pod asks for storage with a claim. The CSI driver creates and mounts the volume.*
+
 ![The CSI architecture](./img/m5-17-2.svg)
 
-*Figure 5.17.2. The CSI architecture, as a diagram.*
+*Figure 5.17.3. The CSI architecture, as a diagram.*
 
 The controller runs as a Deployment on any node. The node service runs as a DaemonSet on every node. The diagram shows which sidecar watches which object and calls which driver function. Read the controller side first, then the node side. If you are tracing a failed volume, follow the steps in order until you find where it stops. Think of the sidecars as office staff on the Kubernetes side. They take requests from the API objects and pass them along. The driver is the crew on the storage side, and it does not need to understand Kubernetes objects at all.
 

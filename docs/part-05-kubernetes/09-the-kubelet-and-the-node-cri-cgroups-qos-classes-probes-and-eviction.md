@@ -62,7 +62,7 @@ Draining first is the same courtesy you would extend to a colleague before you s
 
 ![Functional decomposition of the production GPU KubeletConfiguration into six key operational blocks from security and hardening to NUMA topology and eviction.](./img/p4-0509-kubeletconfig-blocks.svg)
 
-*Figure 5.0.0. A production KubeletConfiguration organizes node parameters into six key operational domains for GPU stability and performance.*
+*Figure 5.9.2. A production KubeletConfiguration organizes node parameters into six key operational domains for GPU stability and performance.*
 
 The file below is the kind of configuration a GPU node needs. Several of its settings depend on other parts of the cluster, and the comments mark those spots. Read it as a starting point for your own nodes.
 
@@ -147,7 +147,7 @@ Get the cgroup driver and the kernel defaults right first, because those mismatc
 
 ![The kubelet places Guaranteed, Burstable and BestEffort pods in separate cgroup slices under kubepods.slice.](./img/k09-cgroup-tree.svg)
 
-*Figure 5.9.2. The kubelet places each pod under kubepods.slice in a slice that matches its QoS class, so the path shows the class.*
+*Figure 5.9.3. The kubelet places each pod under kubepods.slice in a slice that matches its QoS class, so the path shows the class.*
 
 ```text
 /sys/fs/cgroup/
@@ -170,7 +170,7 @@ Read the tree as the floor plan of a building. The top level holds the rooms for
 
 ![Breakdown of raw node capacity minus kube-reserved, system-reserved, and eviction thresholds to produce node allocatable used by the scheduler.](./img/p4-0509-node-allocatable-math.svg)
 
-*Figure 5.0.0. Node Allocatable is derived by subtracting kube-reserved, system-reserved, and eviction thresholds from raw node capacity.*
+*Figure 5.9.4. Node Allocatable is derived by subtracting kube-reserved, system-reserved, and eviction thresholds from raw node capacity.*
 
 The scheduler places pods against allocatable, not raw capacity. The kubelet gets allocatable by subtracting the reservations and the hard eviction threshold from capacity.
 
@@ -194,7 +194,7 @@ The distinction matters because enforcement is a hard wall. Reserved memory is n
 
 ![Comparison of Guaranteed, Burstable, and BestEffort QoS classes across cgroup paths, resource requests, oom scores, and eviction ranks.](./img/p4-0509-qos-comparison-matrix.svg)
 
-*Figure 5.0.0. The three QoS classes determine cgroup placement, kernel OOM scores, and the kubelet's eviction ranking under pressure.*
+*Figure 5.9.5. The three QoS classes determine cgroup placement, kernel OOM scores, and the kubelet's eviction ranking under pressure.*
 
 Guaranteed, Burstable and BestEffort decide three things: cgroup placement, OOM score and eviction order. The kernel OOM killer picks its victims by `oom_score`, which includes `oom_score_adj`. The kubelet sets -997 for Guaranteed pods and 1000 for BestEffort pods. Burstable pods land between those two values, in proportion to request and capacity. Critical kubelet and runtime processes have -999. System daemons without protection can still be killed if the node runs out of memory outside the pods cgroup.
 
@@ -208,7 +208,7 @@ A practical way to size reservations is to measure before you enforce. Run the n
 
 ![Five threads use up a 100 ms budget in 20 ms and the container waits 80 ms.](./img/p3-0509-cfs-throttle-threads.svg)
 
-*Figure 5.9.3. A CPU limit is a per-period budget, so many busy threads can exhaust it early and stall for the rest of the period.*
+*Figure 5.9.6. A CPU limit is a per-period budget, so many busy threads can exhaust it early and stall for the rest of the period.*
 
 CPU limits can behave in ways that surprise you. Take a container with a limit of 1 CPU. It gets 100 ms of CPU time in every 100 ms period, no matter how many threads it runs. A program with 5 busy threads can spend that whole 100 ms budget in its first 20 ms. The container is then throttled for the remaining 80 ms, even though the node may have idle CPU.
 
@@ -222,7 +222,7 @@ The effect shows up as latency that comes and goes. The application looks fine o
 
 ![Guaranteed pods with whole-core requests get exclusive cpusets while other pods share the remaining pool.](./img/p3-0509-cpu-manager-static.svg)
 
-*Figure 5.9.4. The static policy pins whole physical cores to Guaranteed pods and leaves everyone else on a shared pool.*
+*Figure 5.9.7. The static policy pins whole physical cores to Guaranteed pods and leaves everyone else on a shared pool.*
 
 The CPU Manager has two policies that matter for AI nodes. With `none`, the default, pods share all CPUs through CFS, and limits cause throttling.
 
@@ -240,7 +240,7 @@ The `Static` policy with `reservedMemory` lets Guaranteed pods get NUMA-pinned m
 
 ![A broker combines NUMA hints from CPU, memory and devices and applies one of four policies.](./img/p3-0509-topology-policies.svg)
 
-*Figure 5.9.5. Match the Topology Manager policy to the pod shape because a pod that spans sockets cannot meet single-numa-node.*
+*Figure 5.9.8. Match the Topology Manager policy to the pod shape because a pod that spans sockets cannot meet single-numa-node.*
 
 The Topology Manager acts as a broker. It collects NUMA hints from the CPU Manager, the Memory Manager and the Device Manager, then enforces a policy. Device plugins report topology, such as the NUMA node of a GPU or a NIC.
 
@@ -263,7 +263,7 @@ Here is the reasoning in plain terms. A pod that uses all the GPUs on a dual-soc
 
 ![A sequence of register, ListAndWatch, GetPreferredAllocation and Allocate between plugin and kubelet.](./img/p3-0509-device-plugin-calls.svg)
 
-*Figure 5.9.6. The device plugin registers, reports devices and health, hints at good subsets and hands back the allocation details.*
+*Figure 5.9.9. The device plugin registers, reports devices and health, hints at good subsets and hands back the allocation details.*
 
 A device plugin registers with the kubelet over gRPC at `/var/lib/kubelet/device-plugins/kubelet.sock`, and it exposes a socket. `ListAndWatch` streams devices and their health. `Allocate` returns the injection details covered in 5.8. `GetPreferredAllocation` lets plugins hint at better device sets, such as NVLink-connected GPUs. The kubelet checkpoints allocations to `/var/lib/kubelet/device-plugins/kubelet_internal_checkpoint`, so a restart keeps them.
 
@@ -275,7 +275,7 @@ For multi-GPU AI nodes, decide which pods need NUMA alignment before you pick a 
 
 ![The startup, readiness and liveness probes, each asking a different question and taking a different action on failure.](./img/p2-0509-probe-questions.svg)
 
-*Figure 5.9.7. The three probes ask whether the app has started, whether it can serve traffic, and whether it is stuck, with a different action for each.*
+*Figure 5.9.10. The three probes ask whether the app has started, whether it can serve traffic, and whether it is stuck, with a different action for each.*
 
 Picture a container that is up but still loading its model. Until it finishes, a check against its port tells you nothing useful. The kubelet runs three kinds of probe for each container, on a timer. Each one asks a different question, and each failure leads to a different action. The table shows what each probe asks and what happens when it fails.
 
@@ -307,7 +307,7 @@ Probe results appear in events, such as `Unhealthy: Readiness probe failed: ...`
 
 ![A startup probe gives a slow model server up to 300 seconds, while the liveness and readiness probes wait until it succeeds.](./img/k09-startup-gate.svg)
 
-*Figure 5.9.8. The startup probe gives a slow server a long window to start, and the liveness and readiness probes wait until it succeeds.*
+*Figure 5.9.11. The startup probe gives a slow server a long window to start, and the liveness and readiness probes wait until it succeeds.*
 
 Picture an inference server that needs about 300 seconds to load its weights. A liveness probe that waits 300 seconds before its first check would cover the load. It would also wait 300 seconds to notice a hang later in the container's life. A startup probe avoids that trade. It guards the start-up period alone, then steps aside.
 
@@ -353,7 +353,7 @@ The restart policy matters here. A failed liveness probe kills the container, an
 
 ![Decision flowchart detailing startup probe gating, readiness probe endpoint detachment, and liveness probe restart loops.](./img/p4-0509-probe-decision-flow.svg)
 
-*Figure 5.0.0. Startup probes gate execution until initialization completes, while readiness and liveness probes independently govern service traffic and process restarts.*
+*Figure 5.9.12. Startup probes gate execution until initialization completes, while readiness and liveness probes independently govern service traffic and process restarts.*
 
 Liveness and readiness have different consequences, so give them different endpoints. A failed liveness probe restarts the container. A failed readiness probe only removes the pod from Service endpoints until it passes again.
 
@@ -367,15 +367,15 @@ Use a startup probe when the container needs a long time to start, a readiness p
 
 ![Free memory in meminfo looks small while the kubelet working set calculation leaves out inactive file cache.](./img/p3-0509-memory-available.svg)
 
-*Figure 5.9.9. The kubelet subtracts only the working set, so reclaimable page cache does not count as pressure.*
+*Figure 5.9.13. The kubelet subtracts only the working set, so reclaimable page cache does not count as pressure.*
 
 ![A falling memory gauge with soft, hard and minimum reclaim thresholds marked.](./img/p3-0509-eviction-thresholds.svg)
 
-*Figure 5.9.10. Soft thresholds give time to checkpoint, hard thresholds act at once, and minimum reclaim stops oscillation.*
+*Figure 5.9.14. Soft thresholds give time to checkpoint, hard thresholds act at once, and minimum reclaim stops oscillation.*
 
 ![Under memory pressure the kubelet evicts pods above their requests first, and Guaranteed and critical pods last.](./img/k09-eviction-order.svg)
 
-*Figure 5.9.11. Under memory pressure the kubelet evicts pods that exceed their requests first, and Guaranteed and critical pods last.*
+*Figure 5.9.15. Under memory pressure the kubelet evicts pods that exceed their requests first, and Guaranteed and critical pods last.*
 
 Picture a node whose memory use creeps upward. Nothing has crashed yet, but the eviction manager is already watching. It reads node signals from cAdvisor and cgroup stats on the kubelet's housekeeping cycle, about every 10 seconds, and compares them with thresholds. The setting `evictionPressureTransitionPeriod`, 5 minutes by default, does not control sampling. It is how long the node waits after a signal recovers before it clears the pressure condition. The table lists those signals and what each one measures.
 
@@ -407,7 +407,7 @@ The reason to choose the value early is that the first OOM is the most expensive
 
 ![Steps for reading an OOMKilled container, from the memory limit being reached to the Reason and exit code shown by kubectl describe.](./img/p2-0509-oomkilled-read.svg)
 
-*Figure 5.9.12. An OOMKilled container shows Reason OOMKilled and exit code 137 in the Last State section of kubectl describe pod.*
+*Figure 5.9.16. An OOMKilled container shows Reason OOMKilled and exit code 137 in the Last State section of kubectl describe pod.*
 
 Memory cannot be throttled the way CPU can. When a container uses more memory than its limit, the kernel has to stop the process. The container then restarts under its restart policy, and the pod records why. You can see that record with `kubectl describe pod`, in the `Last State` section.
 
@@ -443,7 +443,7 @@ When you see this reason, compare the memory limit with what the workload really
 
 ![Image garbage collection starts at 85 percent usage and trims to 70 percent possibly deleting the next needed image.](./img/p3-0509-image-gc-example.svg)
 
-*Figure 5.9.13. High GC thresholds on a big disk let large ML images pile up and then evict the one you need next.*
+*Figure 5.9.17. High GC thresholds on a big disk let large ML images pile up and then evict the one you need next.*
 
 Disks on a GPU node fill up quietly. Old containers, unused images and chatty logs all take space, and the kubelet has to clean them up. Container GC removes exited containers beyond `maxPerPodContainer` or `maxContainers`, and older than `minimumContainerTTL`-like behaviour. The flags `--maximum-dead-containers*` were deprecated in favour of eviction-based cleaning. Dead containers keep consuming writable layer space until something removes them.
 
@@ -461,11 +461,11 @@ Size the disks and set the GC thresholds before you start pulling large ML image
 
 ![A 120 second shutdown budget is split into 90 seconds for regular pods and 30 seconds for critical pods.](./img/p3-0509-graceful-shutdown.svg)
 
-*Figure 5.9.14. The kubelet stops regular pods first and critical pods last inside the shutdown grace period.*
+*Figure 5.9.18. The kubelet stops regular pods first and critical pods last inside the shutdown grace period.*
 
 ![A kubelet renews its node lease every ten seconds and updates node status every five minutes, and the node is marked Unknown after the grace period once heartbeats stop.](./img/p2-0509-lease-heartbeat.svg)
 
-*Figure 5.9.15. The kubelet renews its node lease every 10 seconds and reports status every 5 minutes, and the node is marked Unknown after the grace period.*
+*Figure 5.9.19. The kubelet renews its node lease every 10 seconds and reports status every 5 minutes, and the node is marked Unknown after the grace period.*
 
 Picture a node that stops answering. The control plane has to decide whether the node is gone, and how long to wait before it moves the node's pods. Leases and status updates answer that question.
 
@@ -487,11 +487,11 @@ Decide how long each workload should tolerate a NotReady node before its pods mo
 
 ![The kubelet API with safe metrics roles versus the dangerous nodes proxy role.](./img/p3-0509-kubelet-api-trust.svg)
 
-*Figure 5.9.16. Grant monitoring tools only nodes metrics and stats, because nodes proxy is effectively exec on every pod.*
+*Figure 5.9.20. Grant monitoring tools only nodes metrics and stats, because nodes proxy is effectively exec on every pod.*
 
 ![A comparison of file-based static pods and API-managed DaemonSet pods.](./img/p3-0509-static-vs-daemonset.svg)
 
-*Figure 5.9.17. Static pods let the kubelet start the control plane from files, and DaemonSets manage node agents through the API.*
+*Figure 5.9.21. Static pods let the kubelet start the control plane from files, and DaemonSets manage node agents through the API.*
 
 Static pods are the pods the kubelet runs without the API server asking for them. Manifests in `staticPodPath` (`/etc/kubernetes/manifests`) are run directly by the kubelet. The kubelet also mirrors each one into the API as a read-only mirror pod, with the suffix `-<nodename>`. kubeadm uses static pods for the control-plane components, and node-critical agents use them too. Editing a file reconfigures the pod immediately, and deleting the file removes the pod. Static pods cannot use ConfigMaps or Secrets from the API, because they are file-based only. Controllers do not control them.
 
@@ -513,7 +513,7 @@ Review every role that holds `nodes/proxy`, and then work through the checklist 
 
 ![Architecture diagram of the kubelet metrics engine gathering data from cAdvisor, CRI, probes, and PLEG and exposing them on port 10250.](./img/p4-0509-kubelet-observability-pipeline.svg)
 
-*Figure 5.0.0. The kubelet gathers container, cgroup, probe, and lifecycle telemetry to expose distinct metric endpoints on port 10250.*
+*Figure 5.9.22. The kubelet gathers container, cgroup, probe, and lifecycle telemetry to expose distinct metric endpoints on port 10250.*
 
 The kubelet exposes metrics you can scrape at `:10250/metrics`, `/metrics/cadvisor` and `/metrics/probes`. The ones that tell you the most about a node are `kubelet_running_pods`, `kubelet_running_containers`, `kubelet_pod_start_duration_seconds`, `kubelet_runtime_operations_duration_seconds`, `kubelet_pleg_relist_duration_seconds`, `kubelet_pleg_relist_interval_seconds`, `kubelet_evictions`, `kubelet_node_name` and `kubelet_certificate_manager_client_ttl_seconds`. Volume usage shows up in `kubelet_volume_stats_*` for PVCs. Container-level signals include `container_cpu_cfs_throttled_periods_total`, `container_memory_working_set_bytes`, `container_oom_events_total`, `prober_probe_total` and `rest_client_requests_total`.
 
@@ -525,7 +525,7 @@ Use `journalctl -u kubelet -f` to follow kubelet logs. The default verbosity is 
 
 ![Triage flowchart mapping node NotReady, OOMKilled, Evicted, probe failure, and TopologyAffinityError symptoms to root causes and inspection commands.](./img/p4-0509-troubleshooting-flowchart.svg)
 
-*Figure 5.0.0. A diagnostic decision tree resolves common node failures by separating kubelet crashes, cgroup OOM kills, node-pressure evictions, and NUMA admission errors.*
+*Figure 5.9.23. A diagnostic decision tree resolves common node failures by separating kubelet crashes, cgroup OOM kills, node-pressure evictions, and NUMA admission errors.*
 
 Read the table from left to right. The first column is the symptom you see. The second is the most likely cause, and the third is the command or log that confirms it.
 
@@ -554,7 +554,7 @@ When a node turns NotReady, start with the kubelet journal. The probe and evicti
 
 ![A table contrasting kubelet settings for 8 GPU training nodes and 1 GPU inference nodes.](./img/p3-0509-training-vs-inference-node.svg)
 
-*Figure 5.9.18. Both node types use static CPU pinning, and the topology policy, PID limit and shutdown grace differ.*
+*Figure 5.9.24. Both node types use static CPU pinning, and the topology policy, PID limit and shutdown grace differ.*
 
 Start with the foundation. Use the systemd cgroup driver, cgroup v2, and a kernel and runtime that are up to date and consistent across nodes (4.17). Reserve CPU for kube and system daemons with dedicated cores through `reservedSystemCPUs`, and reserve memory and ephemeral-storage the same way. Set meaningful hard eviction thresholds.
 

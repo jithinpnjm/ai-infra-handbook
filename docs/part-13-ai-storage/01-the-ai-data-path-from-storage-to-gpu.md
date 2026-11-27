@@ -169,6 +169,10 @@ Picture a training job that slows down in the middle of the night, with nobody s
 
 Picture a storage array that can deliver 10 GB per second to the compute node's network card or local NVMe drive. The job can still crawl anyway. The path inside the node often chokes, and redundant memory copies and unpinned buffers are the usual reason. A bounce buffer is a temporary staging area in host memory that data passes through on its way somewhere else. Each extra stop costs time and memory bandwidth, so a fast disk can still deliver slow training.
 
+![Data path to the GPU through CPU memory compared with a direct path](./img/pre-gpudirect.jpg)
+
+*Figure 13.1.1. The old path copies data through CPU memory. GPUDirect Storage goes straight to the GPU.*
+
 ### 3.1 Anatomy of the POSIX CPU bounce-buffer path (3 to 4 copies)
 
 Start with the most common case, a standard POSIX read. Your code calls `read()`, builds a PyTorch tensor, and calls `.to('cuda')`. A tensor is a multidimensional array of numbers, the basic data type in PyTorch. In that sequence, the data cannot move straight from the storage controller into GPU memory. Instead, it bounces through host CPU memory up to four times. Here is what each bounce looks like.

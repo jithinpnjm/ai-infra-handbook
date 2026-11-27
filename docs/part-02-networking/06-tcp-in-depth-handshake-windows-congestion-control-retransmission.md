@@ -50,7 +50,7 @@ Use this list as a self-check when you reach the end of the chapter. Each line i
 
 ![Comparison of three marshaling grammars showing fixed-length headers, TLV option blocks, and shared dictionary schemas, alongside ARQ retransmission versus FEC forward error correction.](./img/p4-0206-marshaling.svg)
 
-*Figure 2.0.0. Fixed-length fields parse at constant offsets, TLV allows modular options, and shared schemas minimize payload overhead, while ARQ exchanges latency for bandwidth efficiency compared to FEC.*
+*Figure 2.6.1. Fixed-length fields parse at constant offsets, TLV allows modular options, and shared schemas minimize payload overhead, while ARQ exchanges latency for bandwidth efficiency compared to FEC.*
 
 Packets cross the network with no promises. They can be dropped, duplicated, reordered, corrupted or delayed, a bit like parcels sent through a postal system that sometimes loses them and sometimes delivers two copies. Applications want something much simpler: a pipe between two processes. The transport layer closes that gap, to varying degrees. The table shows which problems it covers and how TCP and UDP each handle them.
 
@@ -89,7 +89,7 @@ Flow control protects the receiver. Congestion control protects the network. The
 
 ![Diagram mapping the four DoD layers to the seven OSI layers and RINA recursive IPC scopes, contrasted with connection-oriented and connectionless state models.](./img/p4-0206-transport-models.svg)
 
-*Figure 2.0.0. DoD and OSI describe protocol stacks while RINA models networking as recursive IPC at expanding scopes, reflecting the fundamental trade-off between TCP connection state and UDP stateless datagrams.*
+*Figure 2.6.2. DoD and OSI describe protocol stacks while RINA models networking as recursive IPC at expanding scopes, reflecting the fundamental trade-off between TCP connection state and UDP stateless datagrams.*
 
 When engineers talk about layers, they usually have one of two models in mind. Two models describe the layers of a network stack. The DoD model, also called the TCP/IP model, has four layers: link, internet, transport and application. It grew out of running real protocols. The OSI model has seven layers, from physical to application, and it was designed by committee. Engineers still use OSI numbers as shorthand. L2 means a switch, L3 a router, L4 a load balancer and L7 a proxy. They use that vocabulary while implementing the DoD stack.
 
@@ -109,7 +109,7 @@ Every TCP segment carries this header, much like every parcel carries a label. T
 
 ![The TCP header and options](./img/m2-06-1.svg)
 
-*Figure 2.6.1. The TCP header and options, as a diagram.*
+*Figure 2.6.3. The TCP header and options, as a diagram.*
 
 The **sequence number** is the byte offset of the first payload byte in this direction's stream. SYN and FIN each use up one sequence number. The **acknowledgement number** is the next byte the receiver expects. It works as a cumulative ACK, which means "I have everything before this byte." If you have received everything up to byte 15 and say "I expect 16 next", the sender knows everything up to byte 15 arrived.
 
@@ -125,21 +125,21 @@ TCP is a byte stream, so it has no message boundaries. It is like water through 
 
 ![A table of connection refused, timed out, no route to host and reset by peer, with what happened on the wire and where to look for each, and SYN retries at 1, 2, 4 seconds.](./img/p3-0206-connect-errors.svg)
 
-*Figure 2.6.2. A refusal means a RST came back so look at the listener, while a timeout means silence so look at the route and firewall.*
+*Figure 2.6.4. A refusal means a RST came back so look at the listener, while a timeout means silence so look at the route and firewall.*
 
 ![A SYN queue and an accept queue behind listen with the final ACK dropped when the accept queue is full, the 1, 3 and 7 second retry spikes, SYN cookies and the fixes.](./img/p3-0206-listen-queues.svg)
 
-*Figure 2.6.3. A full accept queue drops the final ACK and the client retries after 1, 3 and 7 seconds, while SYN cookies protect the SYN queue.*
+*Figure 2.6.5. A full accept queue drops the final ACK and the client retries after 1, 3 and 7 seconds, while SYN cookies protect the SYN queue.*
 
 Every TCP connection starts with a three-packet exchange. If that exchange fails, the client sees a specific error. The error tells you where to look, so learn the exchange before you learn the errors.
 
 ![The TCP three-way handshake](./img/n06-fig1-handshake.jpg)
 
-*Figure 2.6.4. SYN, SYN-ACK, ACK: the three packets that open a TCP connection.*
+*Figure 2.6.6. SYN, SYN-ACK, ACK: the three packets that open a TCP connection.*
 
 ![The handshake, data transfer and teardown](./img/m2-06-2.svg)
 
-*Figure 2.6.5. The handshake, data transfer and teardown, as a diagram.*
+*Figure 2.6.7. The handshake, data transfer and teardown, as a diagram.*
 
 Why three packets? Each side has to prove it can both send and receive. Each side also has to agree on its starting sequence number. Think of two people on a bad phone line. One says "can you hear me?", the other says "yes, can you hear me?", and the first says "yes". Only then do both know the line works in both directions. Two messages cannot do both things in both directions, so TCP needs three. The initial sequence numbers, or ISNs, are unpredictable. RFC 6528 describes a hash of the 4-tuple plus a secret. That stops off-path attackers from injecting data or forging connections. It also stops stale segments from an older connection on the same 4-tuple from being taken as new data.
 
@@ -166,7 +166,7 @@ Closing also needs care, and it happens one direction at a time. This is a half-
 
 ![A table mapping many sockets in SYN-SENT, SYN-RECV, CLOSE-WAIT, FIN-WAIT-2 and TIME-WAIT to their likely meaning, with TIME_WAIT details.](./img/p3-0206-state-counts.svg)
 
-*Figure 2.6.6. The count of sockets in each TCP state is a symptom: SYN-SENT means unreachable, CLOSE-WAIT means an application leak, TIME-WAIT is normal churn.*
+*Figure 2.6.8. The count of sockets in each TCP state is a symptom: SYN-SENT means unreachable, CLOSE-WAIT means an application leak, TIME-WAIT is normal churn.*
 
 Use `ss -tan state <state>` to count sockets in each state, and treat the counts as symptoms. The states are `LISTEN`, `SYN-SENT`, `SYN-RECV`, `ESTAB`, `FIN-WAIT-1/2`, `CLOSE-WAIT`, `LAST-ACK`, `TIME-WAIT` and `CLOSING`. Many sockets in `SYN-SENT` mean you cannot reach the remote service. Many in `SYN-RECV` mean a SYN flood or a slow handshake. Many in `CLOSE-WAIT` mean a leak in your application. Many in `FIN-WAIT-2` mean the remote side is not closing its end. Many in `TIME-WAIT` are normal churn from short connections. If `CLOSE_WAIT` keeps climbing, look at the application code before you touch any kernel setting.
 
@@ -174,7 +174,7 @@ Use `ss -tan state <state>` to count sockets in each state, and treat the counts
 
 ![Three netstat connection lines annotated to show an ephemeral local port and a well-known remote port meaning the machine is the client, with the 4-tuple and client-side port exhaustion.](./img/p3-0206-direction-ports.svg)
 
-*Figure 2.6.7. An ephemeral local port with a well-known remote port means this machine started the connection, and port exhaustion happens on the client side.*
+*Figure 2.6.9. An ephemeral local port with a well-known remote port means this machine started the connection, and port exhaustion happens on the client side.*
 
 A single IP address can serve many programs at once. TCP solves this with ports, which are numbers used together with an IP address. Think of the IP address as a building's street address and the port as the mailbox number inside it.
 
@@ -211,15 +211,15 @@ Errors are another job for TCP. Packets can be lost or mangled on the internet, 
 
 ![Recovery with and without SACK, RACK and tail loss probe, and reordering that looks like loss, with the RTO versus fast retransmit costs.](./img/p3-0206-sack-reorder.svg)
 
-*Figure 2.6.8. SACK lets the sender resend only the missing segment, and reordering can look like loss because it also produces duplicate ACKs.*
+*Figure 2.6.10. SACK lets the sender resend only the missing segment, and reordering can look like loss because it also produces duplicate ACKs.*
 
 ![A sender with Nagle holding a 100 byte body while the receiver waits to send a delayed ACK, a circular wait that adds about 40 ms, with the three fixes.](./img/p3-0206-nagle-delayed-ack.svg)
 
-*Figure 2.6.9. Nagle waits for an ACK and the delayed ACK waits to send one, adding about 40 ms until TCP_NODELAY or a single write fixes it.*
+*Figure 2.6.11. Nagle waits for an ACK and the delayed ACK waits to send one, adding about 40 ms until TCP_NODELAY or a single write fixes it.*
 
 ![RTO and fast retransmit](./img/n06-loss.svg)
 
-*Figure 2.6.10. A lost segment is detected either by a timer expiring or by three duplicate ACKs.*
+*Figure 2.6.12. A lost segment is detected either by a timer expiring or by three duplicate ACKs.*
 
 TCP counts bytes, not packets. Receivers send cumulative ACKs that name the next byte they expect. Senders retransmit anything that is not acknowledged in time. This is the same idea as a courier asking for a signature on each delivery and sending again if none comes back. Two events trigger a retransmission.
 
@@ -241,11 +241,11 @@ Reordering looks like loss to TCP. Parallel paths, multi-queue NICs and ECMP fla
 
 ![The 65,535 byte limit of the 16 bit window field and the window-scale option, a 12.5 MB BDP needing shift 8, and the 4 MB over 70 ms limit of about 457 Mb/s.](./img/p3-0206-window-scale.svg)
 
-*Figure 2.6.11. Window scaling multiplies the 16 bit window field, and a 4 MB window over 70 ms limits a 10 Gb/s path to about 457 Mb/s.*
+*Figure 2.6.13. Window scaling multiplies the 16 bit window field, and a 4 MB window over 70 ms limits a 10 Gb/s path to about 457 Mb/s.*
 
 ![The sliding window](./img/n06-window.svg)
 
-*Figure 2.6.12. The window slides forward as ACKs arrive, letting the sender keep many segments in flight.*
+*Figure 2.6.14. The window slides forward as ACKs arrive, letting the sender keep many segments in flight.*
 
 Picture a receiver whose application is busy, with a buffer that is nearly full. The receiver cannot take much more data, so it has to say so. TCP does that with a receive window.
 
@@ -263,11 +263,11 @@ The window field is 16 bits, so it tops out at 65,535 bytes. That is far too sma
 
 ![Socket send and receive buffers with the tcp_rmem, tcp_wmem and rmem_max settings, what to raise on long fast paths, what to avoid, and the BDP for five path types.](./img/p3-0206-buffer-sizing.svg)
 
-*Figure 2.6.13. Raise the buffer maxima only for long fast paths sized from the BDP, and never set SO_RCVBUF, which disables autotuning.*
+*Figure 2.6.15. Raise the buffer maxima only for long fast paths sized from the BDP, and never set SO_RCVBUF, which disables autotuning.*
 
 ![Bandwidth-delay product](./img/n06-bdp.svg)
 
-*Figure 2.6.14. The amount of data needed in flight to fill a path grows with bandwidth and distance.*
+*Figure 2.6.16. The amount of data needed in flight to fill a path grows with bandwidth and distance.*
 
 Here is the idea behind the bandwidth-delay product. Imagine a pipe that you want to keep completely full of water. The amount of water in the pipe at any moment equals the pipe's flow rate times the time the water takes to travel its length. A network path is the same, with bandwidth as the flow rate and RTT as the travel time there and back. The maximum throughput of one connection is about `window / RTT`. To fill a path, the window must be at least the BDP, which is bandwidth times RTT. The table shows the BDP for five kinds of path.
 
@@ -301,23 +301,23 @@ The first lines show the current limits. The commented lines show the maxima to 
 
 ![Many ranks sending synchronized bursts into one shallow switch buffer, a dropped packet causing a 200 ms RTO that idles every GPU, and the mitigations.](./img/p3-0206-incast-rto.svg)
 
-*Figure 2.6.15. One dropped packet in an incast burst triggers a 200 ms RTO, and every GPU waits for the slowest one.*
+*Figure 2.6.17. One dropped packet in an incast burst triggers a 200 ms RTO, and every GPU waits for the slowest one.*
 
 ![A table comparing Tahoe, Reno, CUBIC, BBR and DCTCP by the signal each reacts to, its response on congestion, its strength and its caveat.](./img/p3-0206-cc-algorithms.svg)
 
-*Figure 2.6.16. Tahoe, Reno and CUBIC react to loss, BBR to a model of bandwidth and RTT, and DCTCP to the fraction of ECN-marked packets.*
+*Figure 2.6.18. Tahoe, Reno and CUBIC react to loss, BBR to a model of bandwidth and RTT, and DCTCP to the fraction of ECN-marked packets.*
 
 Flow control protects the receiver. But the network between two hosts can be the bottleneck too. Without a throttle, many senders would overload shared links together. That failure is called congestion collapse, and it was observed in 1986. Van Jacobson's answer, from 1988, is that each sender keeps a congestion window, `cwnd`, and probes for spare capacity. When it infers congestion, it backs off. Think of cars joining a motorway. Each driver eases forward until the traffic thickens, then slows down. The sender's usable window is the smaller of `cwnd` and `rwnd`. The `rwnd` value arrives in the header. `cwnd` stays private to the sender. If you have ever wondered why a fresh connection feels slow, slow start is the reason.
 
 ![How TCP finds its sending rate](./img/n06-fig2-cwnd.jpg)
 
-*Figure 2.6.17. Slow start, congestion avoidance and a loss event shape the congestion window.*
+*Figure 2.6.19. Slow start, congestion avoidance and a loss event shape the congestion window.*
 
 Several variables matter here. `cwnd` is the congestion window. `ssthresh` is the slow-start threshold. `rwnd` is the receive window. The initial window, IW10, is 10 segments on modern Linux, and you can set it per route with `initcwnd`. MSS is the segment size.
 
 ![Congestion control](./img/m2-06-3.svg)
 
-*Figure 2.6.18. Congestion control, as a diagram.*
+*Figure 2.6.20. Congestion control, as a diagram.*
 
 **Slow start** is anything but slow, despite its name. The window doubles each RTT, because TCP adds one MSS for every ACK, and each RTT brings back as many ACKs as segments sent. The window keeps growing from IW up to `ssthresh`. Short flows, such as a small HTTP response or an RPC, finish inside slow start and never reach line rate. For them, the initial window and the RTT decide the completion time. That is why IW10 matters, and why tricks that skip handshakes, such as QUIC, TLS 1.3 0-RTT and connection reuse, help.
 
@@ -346,7 +346,7 @@ When you run them, you see the algorithms available, switch to BBR, and show the
 
 ![A timeline of idle time with a load balancer timeout near 350 seconds before the default TCP keepalive of 7200 seconds, and related retry and idle knobs.](./img/p3-0206-idle-timeouts.svg)
 
-*Figure 2.6.19. A default TCP keepalive of 7200 seconds is later than many load balancer idle timeouts, so set keepalives below them to avoid silent resets.*
+*Figure 2.6.21. A default TCP keepalive of 7200 seconds is later than many load balancer idle timeouts, so set keepalives below them to avoid silent resets.*
 
 Once you know what TCP is doing, you can adjust it, but adjust with care, because a wrong setting can be worse than the default. Most of the knobs below are sysctl settings in the kernel. Use the table as a map of what each setting affects, not as a list to copy.
 
@@ -373,7 +373,7 @@ Every setting in this table has a reason behind it. Change one setting at a time
 
 ![An annotated ss -ti output line with rtt, mss, cwnd, ssthresh, retrans and rcv_space and a table of patterns mapping Send-Q, Recv-Q and cwnd to their causes.](./img/p3-0206-ss-read.svg)
 
-*Figure 2.6.20. Send-Q, Recv-Q, cwnd and retrans in ss -ti show whether the limit is loss, a stalled receiver, or a local application that is not reading.*
+*Figure 2.6.22. Send-Q, Recv-Q, cwnd and retrans in ss -ti show whether the limit is loss, a stalled receiver, or a local application that is not reading.*
 
 Start with `ss`. It is the tool you will reach for most often, because it asks the kernel directly instead of guessing from the outside. It lists each socket, and with `-ti` it also shows the internals of each connection.
 
@@ -392,7 +392,7 @@ Read the output with a few patterns in mind, like a doctor reading a chart. A pe
 
 ![A decoded tcpdump SYN line with flag letters and the patterns to watch, beside the nstat counters that show RTOs, accept queue overflow and receive-side drops.](./img/p3-0206-tcpdump-nstat.svg)
 
-*Figure 2.6.21. Read the tcpdump flags and patterns for what happened to one connection, and the nstat counters for how fast problems climb.*
+*Figure 2.6.23. Read the tcpdump flags and patterns for what happened to one connection, and the nstat counters for how fast problems climb.*
 
 Use `tcpdump` to see the packets themselves, when the summary from `ss` is not enough. Keep the capture narrow, so the output stays small enough to read.
 
@@ -424,7 +424,7 @@ When a TCP symptom appears, start with whether the connection succeeds, and foll
 
 ![A diagnostic flow](./img/m2-06-4.svg)
 
-*Figure 2.6.22. A diagnostic flow, as a diagram.*
+*Figure 2.6.24. A diagnostic flow, as a diagram.*
 
 Each branch names the first place to look. Confirm the branch with the commands above before you change any setting.
 
@@ -432,7 +432,7 @@ Each branch names the first place to look. Confirm the branch with the commands 
 
 ![A matrix of NCCL, data loading, inference serving, Kubernetes and incast against how each uses TCP, what limits it and the usual fixes.](./img/p3-0206-tcp-ai-matrix.svg)
 
-*Figure 2.6.23. Each AI workload meets a different TCP limit, from NCCL socket fallback and kernel copies to window limits, head-of-line blocking and incast.*
+*Figure 2.6.25. Each AI workload meets a different TCP limit, from NCCL socket fallback and kernel copies to window limits, head-of-line blocking and incast.*
 
 NCCL uses TCP sockets for its bootstrap, which is the rank exchange. It also uses them as a fallback transport when no IB/RoCE is available. Everything you have learned about TCP applies to those sockets. Socket performance depends on `NCCL_SOCKET_IFNAME`, on how many sockets you open per connection with `NCCL_SOCKET_NTHREADS` and `NCCL_NSOCKS_PERTHREAD`, and on `TCP_NODELAY`, buffer sizes, IRQ affinity and MTU. Throughput over TCP stays far below RDMA, because every byte passes through kernel copies and costs CPU. That gap is why GPUDirect RDMA exists, and Part 11 covers it.
 
@@ -448,7 +448,7 @@ Incast and tail latency come from many-to-one bursts and synchronized all-reduce
 
 ![A comparison of TCP plus TLS with QUIC across where it runs, setup round trips, head of line blocking, connection identity, encryption and congestion control, with QUIC's costs.](./img/p3-0206-quic-fixes.svg)
 
-*Figure 2.6.24. QUIC combines transport and TLS 1.3 for a 1 RTT setup, isolates streams from head-of-line blocking, and survives IP address changes, at the cost of CPU and observability.*
+*Figure 2.6.26. QUIC combines transport and TLS 1.3 for a 1 RTT setup, isolates streams from head-of-line blocking, and survives IP address changes, at the cost of CPU and observability.*
 
 QUIC, defined in RFC 9000, started at Google. It is now the transport under HTTP/3. It runs over UDP and implements the transport in user space, rather than in the kernel. That lets it fix several pain points of TCP, because changing a library is far easier than changing every operating system.
 

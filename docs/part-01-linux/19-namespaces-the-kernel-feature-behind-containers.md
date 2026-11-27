@@ -74,15 +74,19 @@ Before you debug a container, decide which of those four pieces is the likely ca
 
 ## 2. The namespace types
 
+![A container as namespaces, cgroups and a layered filesystem](./img/pre-container-three-parts.jpg)
+
+*Figure 1.19.2. A container is three kernel features: namespaces for what it sees, cgroups for what it can use, and layers for its files.*
+
 ![The clone, unshare and setns calls create or join namespaces.](./img/l19-ns-syscalls.svg)
 
-*Figure 1.19.2. Three system calls do all the namespace work: create with clone, move with unshare and join with setns.*
+*Figure 1.19.3. Three system calls do all the namespace work: create with clone, move with unshare and join with setns.*
 
 Two services on one host can both insist on port 80, and neither one notices the other. The network namespace is what makes that possible. A **namespace** wraps a global system resource, so that the processes inside it see their own isolated copy. Changes made inside are visible only to members of that namespace, never to anyone outside it. Every process always belongs to exactly one namespace of each type, starting with the host's initial namespaces, often called the "init" namespaces.
 
 ![The eight namespace types](./img/ch19-fig1-nstypes.jpg)
 
-*Figure 1.19.3. Each namespace type gives a process its own view of one kind of resource.*
+*Figure 1.19.4. Each namespace type gives a process its own view of one kind of resource.*
 
 | Namespace | Clone flag | Isolates | Notes |
 |---|---|---|---|
@@ -113,7 +117,7 @@ A namespace stays alive as long as something still refers to it. That can be a p
 
 ![A three step recipe to find a container's host PID, check its namespace links and run host tools inside its network namespace with nsenter.](./img/p3-0119-nsenter-recipe.svg)
 
-*Figure 1.19.4. Find the container's host PID and use nsenter to run host tools such as tcpdump inside its network namespace.*
+*Figure 1.19.5. Find the container's host PID and use nsenter to run host tools such as tcpdump inside its network namespace.*
 
 The commands below let you look at namespaces on a running system, and they work on any Linux host. Each `ns` symlink carries an inode number, and two processes that show the same number share a namespace.
 
@@ -137,13 +141,13 @@ Learn to read the `/proc/PID/ns` links before you need them during an incident.
 
 ![Two timelines comparing a shell script as PID 1 that ignores SIGTERM until SIGKILL with an exec'd program that handles it and checkpoints, plus the three PID 1 rules.](./img/p3-0119-pid1-sigterm.svg)
 
-*Figure 1.19.5. A shell script as PID 1 with no handler ignores SIGTERM until the grace period ends in SIGKILL, so exec the program to let it checkpoint.*
+*Figure 1.19.6. A shell script as PID 1 with no handler ignores SIGTERM until the grace period ends in SIGKILL, so exec the program to let it checkpoint.*
 
 Run `ps` inside a container and the list starts at PID 1. That surprise is a PID namespace at work. A PID namespace gives its members a private PID numbering, and the first process in it is always PID 1. Inside, the process sees only itself and its descendants in `/proc`, and only once `/proc` is mounted from inside that namespace. The same process can have a different PID in each namespace. PID 1 in a container may be PID 45982 on the host. PID namespaces also nest: a parent namespace sees all descendants, each with its own number, while a child sees nothing above it.
 
 ![PID namespaces](./img/ch19-d2-luna.svg)
 
-*Figure 1.19.6. PID namespaces.*
+*Figure 1.19.7. PID namespaces.*
 
 PID 1 is the init of its namespace, and it follows three special rules. The first rule is that PID 1 has no default signal actions. A signal sent from inside the namespace reaches PID 1 only if PID 1 installed a handler for it. `SIGKILL` and `SIGSTOP` from inside are ignored. From the parent namespace they still work, which is how `docker stop`, `kubectl delete pod` and the kubelet's `SIGTERM` followed by `SIGKILL` reach the process.
 
@@ -175,7 +179,7 @@ This is the PID namespace at work. It gives the container's processes their own 
 
 ![Mount propagation flags control whether mount events pass between namespaces.](./img/l19-mount-propagation.svg)
 
-*Figure 1.19.7. A shared mount can leak events back to the host, so runtimes make the root private or slave first.*
+*Figure 1.19.8. A shared mount can leak events back to the host, so runtimes make the root private or slave first.*
 
 A naive mount inside a new namespace can leak back to the host, which surprises people the first time they see it. To understand why, start with how a new mount namespace is built. It begins with a **copy** of its parent's mount table. Mounts and unmounts made later inside it do not affect the other namespace. Propagation flags on each mount point decide what may cross between them.
 
@@ -196,7 +200,7 @@ Before you set `mountPropagation` on a pod, decide which direction the mounts ne
 
 ![chroot only changes the visible root, while pivot_root swaps the root mount and detaches the old one.](./img/l19-chroot-pivot.svg)
 
-*Figure 1.19.8. Container runtimes use pivot_root because chroot is not a security boundary.*
+*Figure 1.19.9. Container runtimes use pivot_root because chroot is not a security boundary.*
 
 Here is why the difference matters. If a process can still reach the old root, `chroot` has not isolated it. `chroot(2)` changes a process's root directory, but the old root can stay reachable through open file descriptors, or through `fchdir` tricks if the process has root privilege. It is a convenience, not a security boundary.
 
@@ -210,7 +214,7 @@ When you build a container root, rely on `pivot_root`, because `chroot` is not a
 
 ![A decision tree showing writes to volumes bypass overlay while writes to existing image files trigger copy-up and deletes create whiteouts that leave lower data on disk.](./img/p3-0119-overlay-writes-land.svg)
 
-*Figure 1.19.9. Writes to a volume bypass overlay, while the first write to a lower-layer file copies the whole file up and a delete only hides it.*
+*Figure 1.19.10. Writes to a volume bypass overlay, while the first write to a lower-layer file copies the whole file up and a delete only hides it.*
 
 Write to a big file that came from an image, and the kernel may copy the whole file before your write even lands. That behaviour comes from OverlayFS, so it helps to know how the layers fit together. A container image is an ordered stack of **read-only layers**. Each layer is a tar of filesystem changes, named by its hash. To run a container, the runtime mounts those layers with **OverlayFS**, a union filesystem built into the kernel. It uses four settings:
 
@@ -234,7 +238,7 @@ Run these commands and watch where each change lands. The file in the top layer 
 
 ![OverlayFS: layers, copy-up and whiteouts](./img/ch19-d5-luna.svg)
 
-*Figure 1.19.10. OverlayFS layers, copy-up on write, and 0/0 whiteouts on delete.*
+*Figure 1.19.11. OverlayFS layers, copy-up on write, and 0/0 whiteouts on delete.*
 
 Four behaviours matter most in practice. The first is **copy-up**. The first write to a file that lives in a lower layer copies the entire file into the upper layer. Metadata-only changes copy only metadata, on modern kernels with `metacopy`. A training job that appends to a multi-GB file baked into an image therefore triggers a huge copy. A database stored in the image layer does the same. The copy doubles disk use and can fill the node's image storage, at `/var/lib/containerd` or `/var/lib/docker`. The result is evictions and `NodeNotReady`. Mutable and large data belongs in volumes, such as bind mounts, `emptyDir`, hostPath or PVCs, because volumes bypass overlay completely.
 
@@ -254,7 +258,7 @@ Before you size a node's disk, check whether your writes land in a volume or in 
 
 ![A three line Dockerfile mapped to its image layers with sizes and the overlay mount output showing lowerdir, upperdir and workdir.](./img/p3-0119-dockerfile-layers.svg)
 
-*Figure 1.19.11. Each Dockerfile step adds a read-only layer, and the running container writes only to the upper directory of the overlay mount.*
+*Figure 1.19.12. Each Dockerfile step adds a read-only layer, and the running container writes only to the upper directory of the overlay mount.*
 
 Run `mount` inside a container and the root filesystem appears as an overlay, not a device. The output looks something like this, with long directory names under `/var/lib/docker/overlay2/`:
 
@@ -272,7 +276,7 @@ Rootless Podman uses the FUSE version of overlay, so `mount` shows less detail. 
 
 ![A table comparing Docker bridge, host, none, container, macvlan, Kubernetes pod and hostNetwork, rootless Podman and SR-IOV networking by namespace and traffic path.](./img/p3-0119-net-modes.svg)
 
-*Figure 1.19.12. Each network mode differs in which namespace the container uses and how its traffic leaves the node.*
+*Figure 1.19.13. Each network mode differs in which namespace the container uses and how its traffic leaves the node.*
 
 When a pod's network misbehaves, start in its network namespace. The namespace decides which devices, addresses and routes the pod can use. A new network namespace contains only a loopback interface, and that interface is down. It has no other devices, no routes and no firewall rules. Each namespace has its own IP addresses, routing tables, ARP table, `iptables` or `nftables` rules, sockets and port space, plus its own `/proc/net`. That is why two containers can both listen on port 80. Moving a physical or virtual interface into a namespace removes it from the original one.
 
@@ -280,7 +284,7 @@ The standard way to connect a namespace is a **veth pair**. Think of it as a vir
 
 ![Network namespaces](./img/ch19-d3-luna.svg)
 
-*Figure 1.19.13. Network namespaces.*
+*Figure 1.19.14. Network namespaces.*
 
 The commands below build this wiring by hand. Run them in order on a disposable host, and you will see each step for yourself. Then ping in both directions to confirm the link works.
 
@@ -315,7 +319,7 @@ Inside the namespace, root has capabilities only over resources that the namespa
 
 ![User namespaces and UID mapping](./img/ch19-d6-luna.svg)
 
-*Figure 1.19.14. User namespace UID mapping via /proc/PID/uid_map and shared-storage caveats.*
+*Figure 1.19.15. User namespace UID mapping via /proc/PID/uid_map and shared-storage caveats.*
 
 ```bash
 unshare --user --map-root-user bash        # become "root" inside, mapped to your UID outside
@@ -335,7 +339,7 @@ Before you move a workload to rootless mode, check who owns its data on shared s
 
 ![A chain from a 64 MiB default dev shm in a container through DataLoader batches to a bus error, with three fixes: shm-size, ipc host and a memory backed emptyDir.](./img/p3-0119-shm-bus-error.svg)
 
-*Figure 1.19.15. Docker's 64 MiB default for dev shm is a classic cause of DataLoader bus errors, fixed by shm-size, ipc host or a memory emptyDir.*
+*Figure 1.19.16. Docker's 64 MiB default for dev shm is a classic cause of DataLoader bus errors, fixed by shm-size, ipc host or a memory emptyDir.*
 
 A PyTorch job crashes with a bus error, and its logs say nothing about memory. You may suspect the code, but a common cause is the IPC namespace and the size of `/dev/shm`. The four namespaces in this section are smaller than the ones before, but each one still changes what a process sees.
 
@@ -350,13 +354,13 @@ When a PyTorch job crashes on shared memory, check the size of `/dev/shm` before
 
 ![A table of Kubernetes pod settings such as shareProcessNamespace, hostPID, hostNetwork, hostIPC, hostUsers and mountPropagation with the namespace each affects and the risk.](./img/p3-0119-pod-namespace-knobs.svg)
 
-*Figure 1.19.16. Each host flag in a pod spec joins one host namespace, so add them only when a workload needs that view.*
+*Figure 1.19.17. Each host flag in a pod spec joins one host namespace, so add them only when a workload needs that view.*
 
 When you run `docker run` or the kubelet starts a pod, a chain of programs does the work. Knowing that chain tells you which step failed. The sequence below is simplified, but it shows which program makes each kernel call.
 
 ![Putting it together: what a runtime does](./img/ch19-d4-luna.svg)
 
-*Figure 1.19.17. Putting it together: what a runtime does.*
+*Figure 1.19.18. Putting it together: what a runtime does.*
 
 The OCI runtime spec, in `config.json`, lists every namespace, mount, capability, cgroup path and hook. `runc spec` generates a template for you. Reading a real container's `config.json` is the best way to learn what your platform configures. The shim keeps the container's stdio and exit status after `runc` exits, so containerd can restart without killing the containers.
 
@@ -366,7 +370,7 @@ When a container fails at start, look at the step that failed, not only at the f
 
 ![A comparison of VMs, containers, microVMs and gVisor on kernel, isolation, start time and GPU access.](./img/l19-isolation-compare.svg)
 
-*Figure 1.19.18. A container uses the native GPU driver through device nodes, while a VM needs passthrough or vGPU.*
+*Figure 1.19.19. A container uses the native GPU driver through device nodes, while a VM needs passthrough or vGPU.*
 
 Every choice here is a trade. Choosing between a container and a VM means trading isolation against start time and GPU access. The table compares four options.
 
@@ -390,7 +394,7 @@ For a multi-tenant GPU service, decide early whether the isolation needs a hardw
 
 ![Tools that show host numbers inside a container beside the cgroup files that show the container's real usage, plus traps around limits, tracing and noisy neighbours.](./img/p3-0119-observe-traps.svg)
 
-*Figure 1.19.19. Summary tools inside a container report the host, so read the container's cgroup files for its real usage and limits.*
+*Figure 1.19.20. Summary tools inside a container report the host, so read the container's cgroup files for its real usage and limits.*
 
 Run `top` inside a container and it may show busy CPUs and busy disks, even though your container is idle. Those numbers belong to the host and to other tenants. Containers hide some information and distort the rest. Five traps come up again and again.
 
@@ -407,7 +411,7 @@ Before you blame the hardware for a slow container, read its cgroup files and ch
 
 ![Three columns for giving a container a GPU: create the device nodes, allow them in the devices cgroup, and mount the matching host driver libraries, with the NVIDIA Container Toolkit and CDI automating them.](./img/p3-0119-gpu-three-steps.svg)
 
-*Figure 1.19.20. A runtime must create the device nodes, allow them in the devices cgroup and mount the host driver libraries, which the NVIDIA Container Toolkit automates.*
+*Figure 1.19.21. A runtime must create the device nodes, allow them in the devices cgroup and mount the host driver libraries, which the NVIDIA Container Toolkit automates.*
 
 A container can start cleanly and still fail to see a GPU. Namespaces and cgroups know nothing about GPUs, so the GPU layer has to supply the pieces itself. A GPU reaches a process in two forms: device nodes, and user-space libraries. The device nodes are `/dev/nvidia0..N`, `/dev/nvidiactl`, `/dev/nvidia-uvm`, `/dev/nvidia-uvm-tools` and `/dev/nvidia-modeset`. MIG adds `/dev/nvidia-caps/*`. The libraries, such as `libcuda.so` and NVML, must match the host kernel driver version.
 
@@ -423,7 +427,7 @@ Before you debug a GPU in a container, confirm which layer should supply the dev
 
 ![Comparison of language environments, HPC containers, application containers and system containers showing their isolation mechanisms and runtime models.](./img/p4-0119-virtual-flavors.svg)
 
-*Figure 1.19.21. From shell path overrides to full system containers, each flavor of virtualization trades kernel isolation depth against setup complexity and shared-storage compatibility.*
+*Figure 1.19.22. From shell path overrides to full system containers, each flavor of virtualization trades kernel isolation depth against setup complexity and shared-storage compatibility.*
 
 Not every isolation tool is a container. Some are tools for a shared host, and some are runtimes built for HPC. Knowing which one you are looking at saves confusion later.
 
@@ -440,7 +444,7 @@ Before you reach for a tool here, decide which kind of isolation the job needs: 
 
 ![A five question ladder for diagnosing a misbehaving container from startup through limits, the container view, the host view and shared resources, with symptom pointers.](./img/p3-0119-five-questions.svg)
 
-*Figure 1.19.22. Ask whether it starts, whether limits are hit, what the container and host each see, and what is shared, and stop at the first answer that fits.*
+*Figure 1.19.23. Ask whether it starts, whether limits are hit, what the container and host each see, and what is shared, and stop at the first answer that fits.*
 
 A container misbehaves during an on-call shift, and you need to get from symptom to cause quickly. This table is built for that moment. It maps common symptoms to their likely causes and fixes. Scan the symptom column first, then read the fix in the right-hand column.
 

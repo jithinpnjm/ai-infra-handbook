@@ -142,7 +142,7 @@ Picture the interviewer sliding a page across the table, with one drill on it. T
 
 ![Scheduler filtering divides six nodes into two untainted nodes rejected for insufficient GPUs and four GPU nodes rejected for untolerated taints, resolved by adding the matching toleration.](./img/p4-2023-drill1-scheduler-filter.svg)
 
-*Figure 20.0.0. A scheduler FailedScheduling event breaks down by node pool, showing how untolerated taints on GPU nodes and zero GPUs on CPU nodes leave no schedulable placement until a toleration is added.*
+*Figure 20.23.9. A scheduler FailedScheduling event breaks down by node pool, showing how untolerated taints on GPU nodes and zero GPUs on CPU nodes leave no schedulable placement until a toleration is added.*
 
 **Interviewer opens.** "The model pod `llama-gpu` has been Pending for ten minutes. The cluster has H100 nodes. Go."
 
@@ -180,7 +180,7 @@ Notice what this line does. It moves the check to the merge request, before a po
 
 ![Two columns compare an old node pool that pulls the image with a new pool blocked by missing egress and a pull secret.](./img/p3-2023-pull-by-pool.svg)
 
-*Figure 20.23.9. A failure that lines up with one pool points at what differs about that pool.*
+*Figure 20.23.10. A failure that lines up with one pool points at what differs about that pool.*
 
 **Interviewer opens.** "A new replica of the 40 GB engine image sits in ImagePullBackOff on three of ten new nodes. Go."
 
@@ -209,7 +209,7 @@ The line turns a vague worry into a number you can track. Pull time per pool is 
 
 ![A timeline shows a liveness probe firing at 5 seconds during a 90 second model load and a startup probe window of 300 seconds that fixes it.](./img/p3-2023-startup-probe-timeline.svg)
 
-*Figure 20.23.10. A liveness probe cannot tell a slow process from a stuck one, so a startup probe covers the load time.*
+*Figure 20.23.11. A liveness probe cannot tell a slow process from a stuck one, so a startup probe covers the load time.*
 
 **Interviewer opens.** "The `llm-server` pods restart every four minutes. Restart count is 40. Go."
 
@@ -240,7 +240,7 @@ A prevention line works best when it names the probe type. A reviewer can check 
 
 ![Four limiters on node eviction and an ordered fix list for a node that stopped posting status.](./img/p3-2023-eviction-limits.svg)
 
-*Figure 20.23.11. Eviction waits five minutes and is rate limited, so confirm capacity before touching the node object.*
+*Figure 20.23.12. Eviction waits five minutes and is rate limited, so confirm capacity before touching the node object.*
 
 **Interviewer opens.** "`kube-worker-1` went NotReady twelve minutes ago. Eight inference pods ran there. Go."
 
@@ -271,7 +271,7 @@ Notice the link between the alert and the eviction delay. An alert that fires be
 
 ![Two lanes contrast kubelet eviction under memory pressure with a kernel OOM kill and list the eviction order.](./img/p3-2023-eviction-vs-oom.svg)
 
-*Figure 20.23.12. Evicted pods do not restart by themselves while OOM-killed containers do, so recovery differs.*
+*Figure 20.23.13. Evicted pods do not restart by themselves while OOM-killed containers do, so recovery differs.*
 
 **Interviewer opens.** "Batch pods keep getting `Evicted` across the GPU pool. Latency on the inference pods is climbing too. Go."
 
@@ -304,7 +304,7 @@ The three parts of this line are three separate controls: request sizing, pool s
 
 ![Arithmetic showing three replicas minus minAvailable three gives zero allowed disruptions and the maxUnavailable fix.](./img/p3-2023-pdb-arithmetic.svg)
 
-*Figure 20.23.13. A budget equal to the replica count allows no voluntary eviction, so change the budget instead of deleting pods.*
+*Figure 20.23.14. A budget equal to the replica count allows no voluntary eviction, so change the budget instead of deleting pods.*
 
 **Interviewer opens.** "We are rolling GPU node upgrades. `kubectl drain` on `gpu-node-2` has hung for thirty minutes. Go."
 
@@ -335,7 +335,7 @@ A PDB line with a number in it is easy to audit. Anyone can list the PDBs and ch
 
 ![A gateway query splits with probability 0.5 across two CoreDNS replicas, one healthy and one slow on a loaded node.](./img/p3-2023-dns-half-slow.svg)
 
-*Figure 20.23.14. Intermittent failures often mean one bad backend, so query each replica by its IP.*
+*Figure 20.23.15. Intermittent failures often mean one bad backend, so query each replica by its IP.*
 
 **Interviewer opens.** "Gateway requests sometimes stall for five seconds, and only on the first call. Pods are healthy. Go."
 
@@ -364,7 +364,7 @@ The second half of the line is the check that catches a failure before users do.
 
 ![A Service selector with a one-letter typo is compared with pod labels, and a fork shows the readiness variant.](./img/p3-2023-no-endpoints.svg)
 
-*Figure 20.23.15. Healthy pods do not help when the selector selects nothing or the pods are not Ready.*
+*Figure 20.23.16. Healthy pods do not help when the selector selects nothing or the pods are not Ready.*
 
 **Interviewer opens.** "The gateway gets connection refused from the `llm-server` Service. All three pods are Running. Go."
 
@@ -395,7 +395,7 @@ Shared templates are the real fix here. When the label lives in one place, the S
 
 ![A utilisation fraction with an empty denominator shows why the HPA target reads unknown when CPU requests are missing.](./img/p3-2023-hpa-unknown.svg)
 
-*Figure 20.23.16. No CPU request means nothing to divide by, and CPU is the wrong signal for a GPU server anyway.*
+*Figure 20.23.17. No CPU request means nothing to divide by, and CPU is the wrong signal for a GPU server anyway.*
 
 **Interviewer opens.** "Load doubled. The HPA still shows three replicas. Go."
 
@@ -424,7 +424,7 @@ An alert on unknown targets catches the HPA problem while it is still small. A s
 
 ![A chain from the recreated tainted nodes to the missing device plugin pods to zero allocatable GPUs, with an upgrade gate.](./img/p3-2023-plugin-after-upgrade.svg)
 
-*Figure 20.23.17. Check Allocatable shows the GPU count before uncordoning an upgraded node.*
+*Figure 20.23.18. Check Allocatable shows the GPU count before uncordoning an upgraded node.*
 
 **Interviewer opens.** "We upgraded two GPU nodes last night. This morning new GPU pods are Pending on them. Old pods still run. Go."
 
@@ -455,7 +455,7 @@ This line names two checks. The toleration is a manifest rule. The Allocatable c
 
 ![One distant etcd member at 60 ms slows the control plane while serving pods continue to answer.](./img/p3-2023-etcd-split.svg)
 
-*Figure 20.23.18. A far-away etcd member slows deploys and kubectl while pods without API dependencies keep serving.*
+*Figure 20.23.19. A far-away etcd member slows deploys and kubectl while pods without API dependencies keep serving.*
 
 **Interviewer opens.** "kubectl commands take ten seconds. Deploys are slow. Running pods are fine. Go."
 
@@ -486,7 +486,7 @@ The odd count keeps a clear majority available for leader election. The latency 
 
 ![Loop showing a fail-closed admission webhook blocking the creation of its own replacement pods, and the three steps that break the loop](./img/x23-webhook-deadlock-loop.svg)
 
-*Figure 20.23.19. Webhook deadlock: a fail-closed webhook with wide scope rejects the pods it needs to restart, so the fix is to exclude system namespaces and set failurePolicy to Ignore.*
+*Figure 20.23.20. Webhook deadlock: a fail-closed webhook with wide scope rejects the pods it needs to restart, so the fix is to exclude system namespaces and set failurePolicy to Ignore.*
 
 **Interviewer opens.** "Every deploy fails. Even the CoreDNS pods cannot restart. Go."
 

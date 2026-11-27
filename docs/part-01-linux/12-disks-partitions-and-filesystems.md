@@ -59,9 +59,13 @@ After this chapter you can:
 
 Suppose a training job reads its dataset slowly, while the same read on another node flies. No error message points anywhere. The place to start is the path between the application and the disk. Every `read()` or `write()` call passes through many layers. Each layer can cache, reorder, merge, delay or fail the request. That is why "the disk is fine" and "the application is slow" can both be true.
 
+![A data fetch from page cache, local disk, network storage or a database](./img/pre-s7-data-fetch.jpg)
+
+*Figure 1.12.1. Where the time goes: cache, disk, network. Check them in that order.*
+
 ![The storage stack in one picture](./img/ch12-d1-luna.svg)
 
-*Figure 1.12.1. The storage stack in one picture.*
+*Figure 1.12.2. The storage stack in one picture.*
 
 Three principles carry through the rest of the chapter.
 
@@ -95,7 +99,7 @@ Watch out for the average. A disk returns a mix of cache hits in microseconds an
 
 ![A diagram comparing an aligned four-kilobyte write that takes a single operation against an unaligned 512-byte write on a 512e drive that forces a three-step read-modify-write cycle.](./img/p4-0112-512e-rmw.svg)
 
-*Figure 1.12.2. On 512e drives, any write smaller than four kilobytes or unaligned to a physical sector boundary forces the controller into a read-modify-write cycle that doubles physical I/O.*
+*Figure 1.12.3. On 512e drives, any write smaller than four kilobytes or unaligned to a physical sector boundary forces the controller into a read-modify-write cycle that doubles physical I/O.*
 
 Start with the smallest unit, because it decides where writes land. Disks present **logical blocks**, also called sectors. Traditionally a sector is 512 bytes. Today it is often 4 KiB, the "Advanced Format" size. Many drives emulate 512-byte logical sectors on top of 4 KiB physical sectors (**512e**). That emulation causes a **read-modify-write** whenever a write is smaller than, or not aligned to, 4 KiB. This is why alignment matters (section 3). To see what a drive reports, run `lsblk -t` (columns `LOG-SEC`, `PHY-SEC`, `MIN-IO`, `OPT-IO`, `ROTA`), `cat /sys/block/sda/queue/{logical_block_size,physical_block_size,rotational}`, `fdisk -l`, `smartctl -a`, or `nvme id-ns`.
 
@@ -123,7 +127,7 @@ An **interface** is the set of rules a disk uses to talk to the rest of the mach
 
 ![Five ways a disk can reach a system and what each one changes about what you can see.](./img/l12-attach-paths.svg)
 
-*Figure 1.12.3. How storage is attached decides what you can see and what you can control.*
+*Figure 1.12.4. How storage is attached decides what you can see and what you can control.*
 
 The same disk can reach your system by several different paths. How it is attached decides what you can see and what you can control. Each option has its own failure modes.
 
@@ -162,7 +166,7 @@ For anything new, use **GPT**. Keep MBR knowledge for old systems, USB sticks an
 
 ![MBR versus GPT on disk](./img/ch12-d7-luna.svg)
 
-*Figure 1.12.4. MBR versus GPT on-disk partition layout.*
+*Figure 1.12.5. MBR versus GPT on-disk partition layout.*
 
 ### Tools
 
@@ -358,7 +362,7 @@ Always verify the device name twice (`lsblk -o NAME,SIZE,MODEL,SERIAL`), and unm
 
 ![Flash pages split into eight sectors, showing a partition starting at sector 2048 aligned on a page edge and one at 1953126 landing inside a page.](./img/p3-0112-alignment-math.svg)
 
-*Figure 1.12.5. A start sector divisible by 8 sits on a 4 KiB page edge, while 1953126 leaves a remainder of 6 and so straddles two pages.*
+*Figure 1.12.6. A start sector divisible by 8 sits on a 4 KiB page edge, while 1953126 leaves a remainder of 6 and so straddles two pages.*
 
 Flash drives, meaning SSDs and NVMe, read and write data in **pages**. A page is commonly 4 KiB (4,096 bytes) or 8 KiB. Flash erases in much larger blocks. If a partition does not begin on a multiple of the flash page size, a single 4 KiB read or write can straddle two physical pages on the drive. That cuts throughput.
 
@@ -386,7 +390,7 @@ A **filesystem** turns a block device into named files and directories. A partit
 
 ![A comparison table of the common Linux filesystem types and where each fits.](./img/l12-fs-types.svg)
 
-*Figure 1.12.6. The VFS layer lets many different filesystems coexist under one directory tree.*
+*Figure 1.12.7. The VFS layer lets many different filesystems coexist under one directory tree.*
 
 Pick the filesystem for the job. The table lists the common types and what each means for AI work.
 
@@ -472,7 +476,7 @@ Picture a node that comes back from a reboot with `/data` missing. The boot log 
 
 ![Mounting attaches a filesystem to a directory](./img/ch12-fig1-mount.jpg)
 
-*Figure 1.12.7. Mounting makes a filesystem's files appear under a directory; what was there before is hidden until unmount.*
+*Figure 1.12.8. Mounting makes a filesystem's files appear under a directory; what was there before is hidden until unmount.*
 
 Start with `findmnt`. It shows the mount tree and answers the question you will ask most often: which filesystem holds this path?
 
@@ -572,7 +576,7 @@ Most desktops mount inserted media automatically now. The `user` option is most 
 
 ![An fstab line with its six fields labelled, next to the five step routine of backup, edit, verify, mount all and reload.](./img/p3-0112-fstab-anatomy.svg)
 
-*Figure 1.12.8. Each fstab line has six fields, and mount dash a catches mistakes now instead of at the next boot.*
+*Figure 1.12.9. Each fstab line has six fields, and mount dash a catches mistakes now instead of at the next boot.*
 
 `/etc/fstab` lists the filesystems to mount at boot. It also holds the shortcuts for commands such as `mount /data`. Each line describes one filesystem and has **six fields**.
 
@@ -608,7 +612,7 @@ Alternatives exist. Some systems keep files in `/etc/fstab.d`. You can also writ
 
 ![A table of seven causes of the no space left on device error, each with the command that proves it and the usual fix.](./img/p3-0112-disk-full-ladder.svg)
 
-*Figure 1.12.9. One ENOSPC error has at least seven possible causes, and each has its own check command and fix.*
+*Figure 1.12.10. One ENOSPC error has at least seven possible causes, and each has its own check command and fix.*
 
 Capacity has more than one dimension. Bytes and inodes are separate resources, and each can run out. Check both, along with the directory totals.
 
@@ -705,7 +709,7 @@ Running with no swap on a general-purpose machine is risky. When memory and swap
 
 ![A timeline where a log file is deleted while still open, so df still counts its blocks but du cannot see it, with the lsof command that finds it.](./img/p3-0112-deleted-open.svg)
 
-*Figure 1.12.10. Space is freed only when the link count is zero and no process holds the file open, so df and du can disagree.*
+*Figure 1.12.11. Space is freed only when the link count is zero and no process holds the file open, so df and du can disagree.*
 
 Open any directory on a Linux machine and you see file names. Underneath sits a structure that explains `df -i`, hard links, `fsck`, and many failure modes. It is worth knowing, because it turns up again in every storage incident. A Unix-style filesystem has two parts. The first is a **pool of data blocks**. The second is a **database** that manages those blocks, and it centres on the **inode**.
 
@@ -713,7 +717,7 @@ An **inode** is a record, found by a number in an inode table, that describes on
 
 ![Inside a traditional filesystem](./img/ch12-d2-luna.svg)
 
-*Figure 1.12.11. Inside a traditional filesystem.*
+*Figure 1.12.12. Inside a traditional filesystem.*
 
 Here is how the kernel opens `dir_1/file_2`. As you follow the steps, notice that the name never sits in the inode itself. You will need that fact when you read `ls -i`. It starts at the **root inode** (inode 2 on ext filesystems; the superblock says where it is). It reads that directory's data to find `dir_1`, which is inode 12. It confirms that inode 12 is a directory. Then it reads that directory's data to find `file_2`, which is inode 14. Finally it reads inode 14, a file, and learns where the data blocks are. The dentry and inode caches (section 9) make this nearly free for hot paths.
 
@@ -762,7 +766,7 @@ Before you fill any of these paths, ask what backing store sits behind them.
 
 ![A workflow diagram showing the five sequential passes of e2fsck alongside the emergency recovery procedure using mke2fs dry runs and backup superblocks.](./img/p4-0112-fsck-passes.svg)
 
-*Figure 1.12.12. The five verification passes of e2fsck validate filesystem consistency from inodes to bitmaps, while backup superblocks allow full recovery when primary metadata is corrupted.*
+*Figure 1.12.13. The five verification passes of e2fsck validate filesystem consistency from inodes to bitmaps, while backup superblocks allow full recovery when primary metadata is corrupted.*
 
 A power cut in the middle of a write leaves a filesystem in a state nobody planned. The kernel trusts a mounted filesystem to be consistent, and it trusts the hardware to store data reliably. Errors come from hardware faults and from **unclean shutdowns**, the term for power loss and crashes. A crash can leave the in-memory cache out of step with the disk. Journaling makes corruption rare, but you still need checks now and then.
 
@@ -841,7 +845,7 @@ The first two options still need a repair before the filesystem is mounted, unle
 
 ![A diagram illustrating the quota enforcement spectrum between soft and hard limits alongside the six-step Linux quota administrative setup workflow.](./img/p4-0112-quota-workflow.svg)
 
-*Figure 1.12.13. Quota enforcement uses soft limits with grace periods before hard rejection, requiring a six-step workflow from fstab configuration and read-only database generation to active enforcement.*
+*Figure 1.12.14. Quota enforcement uses soft limits with grace periods before hard rejection, requiring a six-step workflow from fstab configuration and read-only database generation to active enforcement.*
 
 Quotas limit space (blocks) and file count (inodes) per user, group or **project**, which is a directory tree. For ext4, mount with `usrquota,grpquota` and manage with `quota`, `edquota`, `repquota`, `quotacheck`, `quotaon` (or the journaled quota feature). For XFS, mount with `uquota,gquota,pquota` and manage with `xfs_quota -x -c 'limit bsoft=100g bhard=120g user' /data`. **Project quotas** (`pquota`) cap a directory tree, and they are the right tool to limit a team's dataset directory.
 
@@ -917,6 +921,10 @@ When a filesystem misbehaves, reach for the read-only check before any repair.
 
 When you see "Too many open files", do not reach for `df` first. A process reaches files, sockets, pipes and many kernel objects through integer **file descriptors**. The VFS offers one interface, and each filesystem implements the semantics underneath. So "Too many open files" is a **resource-limit or descriptor-leak** problem (chapter 1.8), not a disk-capacity problem. Inspect it with these commands:
 
+![A read call going through the VFS and page cache, down to the NVMe disk when the cache misses](./img/pre-read-path.jpg)
+
+*Figure 1.12.15. A read hits the page cache first. Only a miss goes down to the disk.*
+
 ```bash
 ls -l /proc/PID/fd | head            # each descriptor and what it points to; "(deleted)" marks the classic leak
 lsof -p PID | head
@@ -927,7 +935,7 @@ The diagram below shows what happens when an application calls `read()`. The pat
 
 ![Files, file descriptors and the read path](./img/ch12-d3-luna.svg)
 
-*Figure 1.12.14. Files, file descriptors and the read path.*
+*Figure 1.12.16. Files, file descriptors and the read path.*
 
 `read()` hides everything below the VFS. A profiler that traces only the application shows "this call took 400 ms", and nothing more. The call alone cannot tell you whether the cause is an overloaded NVMe drive, an overloaded NFS server or a cold cache. To find out, look at the block layer or the network RPC layer.
 
@@ -959,7 +967,7 @@ An I/O series is **sequential** if each request starts where the previous one en
 
 ![The four-step pattern for replacing a file atomically and durably.](./img/l12-atomic-replace.svg)
 
-*Figure 1.12.15. A normal write is not durable until flushed, so careful code writes, fsyncs, renames and fsyncs the directory.*
+*Figure 1.12.17. A normal write is not durable until flushed, so careful code writes, fsyncs, renames and fsyncs the directory.*
 
 A normal `write()` copies data into the page cache and returns. That data is **not durable yet**. Kernel **flusher threads** write dirty pages later. They do so when dirty data is older than about 30 seconds (`vm.dirty_expire_centisecs`). They also do so when the dirty amount passes a threshold. `vm.dirty_background_ratio` starts background flushing, and `vm.dirty_ratio` makes the **writer itself** block until the amount drops. Flushing also happens when memory is short, or when the application calls `sync`, `fsync`, `fdatasync` or `msync`.
 
@@ -967,7 +975,7 @@ The trade-off is reliability. Power loss loses unflushed data. A partial write c
 
 ![Write-back caching and durability](./img/ch12-d4-luna.svg)
 
-*Figure 1.12.16. Write-back caching and durability.*
+*Figure 1.12.18. Write-back caching and durability.*
 
 **Synchronous writes** complete only when the data, and the metadata needed to find it, is on persistent storage. You can request this for each write with the `O_SYNC` or `O_DSYNC` flags, or by mounting with `sync`. The efficient way is to **commit a group of earlier writes** with `fsync(fd)`. Databases and checkpointers batch their writes, then call `fsync` once. Closing a file does *not* guarantee durability. A long pause when unpacking an archive of many files over NFS is the cost of those implicit commits.
 
@@ -988,7 +996,7 @@ Some applications skip the cache, or skip waiting. The list below shows the main
 
 ![Logical I/O above physical I/O, with causes that deflate it on the left and causes that inflate it on the right, plus I/O not from the application.](./img/p3-0112-logical-physical.svg)
 
-*Figure 1.12.17. Cache hits and coalescing make physical I/O smaller than requested, while metadata, journaling and rounding make it larger.*
+*Figure 1.12.19. Cache hits and coalescing make physical I/O smaller than requested, while metadata, journaling and rounding make it larger.*
 
 **Logical metadata** is what applications read and write, such as `stat`, `create`, `unlink`, `mkdir`, `chmod` and timestamp updates. A **metadata-heavy** workload can saturate a filesystem, or the metadata servers of a parallel filesystem, while data bandwidth sits idle. Examples are millions of tiny files, storms of `open`, `stat` and `close` calls, and `ls` on huge directories. **Physical metadata** is the bookkeeping the filesystem must write itself: superblocks, inode tables, bitmaps, indirect blocks and the journal.
 
@@ -1045,7 +1053,7 @@ Change one knob at a time, so you know which one helped.
 
 ![An iostat sample line with column meanings and a decision tree that separates a busy drive from a single threaded I/O pattern and from queueing latency.](./img/p3-0112-iostat-read.svg)
 
-*Figure 1.12.18. A device at 100 percent util with a small queue and low bandwidth means the application I/O pattern is the limit, not the drive.*
+*Figure 1.12.20. A device at 100 percent util with a small queue and low bandwidth means the application I/O pattern is the limit, not the drive.*
 
 If you can measure only one thing, measure how long your application spends in file operations. **Start with latency analysis.** Measure the time of file operations at the layer you can reach. That can be the application's own metrics, system calls (`strace -T`, `perf trace`), or VFS and filesystem-level tracing. Prefer **distributions** (histograms) to averages, since cache hits dominate averages and hide outliers. **Transaction cost** shows the benefit. Suppose an operation takes 200 ms, and 180 ms of that is blocked in file I/O. Then the filesystem is 90% of the time, and removing its latency could give up to a 10x speedup. If only 2 ms is spent there, the filesystem is irrelevant, and you should look elsewhere.
 
@@ -1106,7 +1114,7 @@ Each fix has a trade-off. You can stagger writes across nodes. You can write to 
 
 ![AI-infrastructure patterns](./img/ch12-d5-luna.svg)
 
-*Figure 1.12.19. AI-infrastructure patterns.*
+*Figure 1.12.21. AI-infrastructure patterns.*
 
 **Data-loader storms.** You may see this on your first large run. The same fan-in happens at start-up, when thousands of processes open the same files. That is a **metadata storm**. You will see high `await` on compute nodes, even though raw storage bandwidth is idle. The remedies are to shard the dataset, cache it on local NVMe (copy once per node), stage it with a parallel copy (`mpifileutils dcp`), use client-side caches, and stagger start-up. `iostat` covers only local block devices. For NFS, use `nfsiostat` or `mountstats`.
 
@@ -1114,7 +1122,7 @@ Each fix has a trade-off. You can stagger writes across nodes. You can write to 
 
 ![AI-infrastructure patterns](./img/ch12-d6-luna.svg)
 
-*Figure 1.12.20. AI-infrastructure patterns.*
+*Figure 1.12.22. AI-infrastructure patterns.*
 
 **Inode exhaustion.** An ext4 volume at 40% bytes but 100% inodes returns `ENOSPC` on the next `open()` or `create`. `df -h` and `df -i` on the same filesystem tell different stories. Prevent this by creating the filesystem with enough inodes, or by using XFS. Avoid million-file datasets on one volume. The container image store and package caches are the other usual victims.
 
@@ -1273,7 +1281,7 @@ cd /; sudo umount /mnt/e /mnt/x 2>/dev/null; sudo losetup -d $LOOP; rm -f /tmp/d
 
 ![Two worked bars of a 200 millisecond request, one spending 180 milliseconds in file I/O for a possible tenfold speedup and one spending 2 milliseconds.](./img/p3-0112-transaction-cost.svg)
 
-*Figure 1.12.21. If 180 of 200 ms is blocked in file I/O the filesystem could give up to a 10x speedup, but at 2 ms it is irrelevant.*
+*Figure 1.12.23. If 180 of 200 ms is blocked in file I/O the filesystem could give up to a 10x speedup, but at 2 ms it is irrelevant.*
 
 Work these after the lab. Each one asks you to apply a single idea from the chapter.
 

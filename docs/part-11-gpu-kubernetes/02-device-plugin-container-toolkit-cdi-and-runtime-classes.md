@@ -243,6 +243,10 @@ When a Pod fails at sandbox creation, check the containerd handler stanza before
 
 Once the host kernel driver and container runtime are configured on a worker node, the Kubernetes control plane still has no idea that the machine owns eight healthy GPUs. Until a device plugin advertises those devices to kubelet, kube-scheduler leaves every GPU Pod stuck in Pending. This is the same gap that Chapter 11.1 describes, seen here from the plugin's side.
 
+![How a GPU is advertised by the device plugin and given to a pod](./img/pre-s9-pod-gets-gpu.jpg)
+
+*Figure 11.2.1. The device plugin advertises GPUs. The scheduler counts them. The kubelet hands one to the pod.*
+
 Kubernetes closes this gap through the Device Plugin Framework under `k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1`. Every major AI accelerator vendor implements the same four-function gRPC contract. That contract covers device discovery, resource allocation, health monitoring, and scheduler integration. Because every vendor uses the same contract, kubelet does not need to know anything special about NVIDIA, AMD or Google hardware. It only needs the plugin to speak the contract.
 
 The table pairs each vendor plugin with the extended resource name that Pods request, along with the facts the source notes for it. The name is the handle a Pod uses in `resources.limits`, and it is how kube-scheduler matches the Pod to a node.

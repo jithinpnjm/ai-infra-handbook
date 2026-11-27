@@ -88,7 +88,7 @@ Systems Performance gives the method in its USE appendix. USE stands for utilisa
 
 ![Diagnostic pipeline grouping /proc/PID/fd symlink targets into regular file leaks, socket leaks, unlinked open files, and epoll instances.](./img/p4-2004-proc-fd-triage.svg)
 
-*Figure 20.0.0. Inspecting and grouping /proc/PID/fd targets identifies whether a file descriptor leak stems from unclosed files, leaked sockets, or unlinked logs before attaching any tracer.*
+*Figure 20.4.4. Inspecting and grouping /proc/PID/fd targets identifies whether a file descriptor leak stems from unclosed files, leaked sockets, or unlinked logs before attaching any tracer.*
 
 The process is still alive, and that is good news. The cheapest evidence needs no tracer and does not slow the service. Read the limit, count the descriptors, and group them by what they point at. Each step takes a few seconds, and together they tell you whether you are looking at a leak or a limit that is simply too low.
 
@@ -115,11 +115,11 @@ A quick walk through the output helps. The first line of the grouped listing is 
 
 ![strace stops the program at the entry and exit of every system call and hands control to the tracer, which is why a dd run slowed by a factor of 73, so read proc and lsof first.](./img/p3-2004-ptrace-cost.svg)
 
-*Figure 20.4.4. strace uses ptrace breakpoints on every system call, so prefer proc, lsof and logs first and trace one process briefly.*
+*Figure 20.4.5. strace uses ptrace breakpoints on every system call, so prefer proc, lsof and logs first and trace one process briefly.*
 
 ![One strace line split into call name, arguments, equals sign, and the failing result with its errno.](./img/x04-strace-line-anatomy.svg)
 
-*Figure 20.4.5. Each strace line gives the call name, its arguments and a result, and a failure shows as minus one with an errno name.*
+*Figure 20.4.6. Each strace line gives the call name, its arguments and a result, and a failure shows as minus one with an errno name.*
 
 A process hangs on startup, or exits with a vague error, and the logs say nothing useful. `strace` shows every system call the program makes, in order, with its result. How Linux Works, chapter 8, presents it as the tool to reach for when logs fail, especially for missing files.
 
@@ -169,7 +169,7 @@ The helper `ch04_strace_errors.py` parses lines like these, counts failures by c
 
 ![A filesystem has a pool of data blocks and a pool of inodes, and df -h, df -i and du each count a different thing.](./img/x04-df-du-two-pools.svg)
 
-*Figure 20.4.6. Free bytes and free inodes are separate pools, and df and du answer different questions about them.*
+*Figure 20.4.7. Free bytes and free inodes are separate pools, and df and du answer different questions about them.*
 
 A disk alert fires at 95 percent. You run `du` and the numbers add up to far less than the alert claims. Or a create fails with `No space left on device` while `df -h` shows half the disk free. Both puzzles exist because a filesystem has two resources, not one. It has a pool of data blocks, and it has a database of inodes. Either pool can run out while the other still has room.
 
@@ -199,11 +199,11 @@ Log rotation is the usual way this happens. A tool renames or deletes the old lo
 
 ![A ladder of eight layers, path, identity, mode class, ACL, mount, inode flags, mandatory access control, and capabilities, each with the command that shows the evidence.](./img/p3-2004-permission-layers.svg)
 
-*Figure 20.4.7. The mode bits are one layer of eight; work down the ladder only when the layers above come back clean.*
+*Figure 20.4.8. The mode bits are one layer of eight; work down the ladder only when the layers above come back clean.*
 
 ![A file owned by the service user with owner bits r-- and group bits rw-, where the owner class is decided first so the write is denied.](./img/p2-2004-first-class-only.svg)
 
-*Figure 20.4.8. The first matching permission class decides the access, so an owner with r-- cannot write even when the group bits allow it.*
+*Figure 20.4.9. The first matching permission class decides the access, so an owner with r-- cannot write even when the group bits allow it.*
 
 Back to the opening question. The file is mode 666 and the service still cannot open it. The mode bits are one layer of several, and the errno narrows the list before you check anything. Treat the mode as the first of several layers, not as the whole answer.
 
@@ -213,7 +213,7 @@ Think of a path as a set of rooms. You need permission to pass through each room
 
 ![Permission checks beyond the mode bits](./img/m20-04-2.svg)
 
-*Figure 20.4.9. Permission checks beyond the mode bits, as a diagram.*
+*Figure 20.4.10. Permission checks beyond the mode bits, as a diagram.*
 
 Next is who the process really is. The mode bits use the effective user ID and the group IDs of the process, including supplementary groups. Look at the process, not at your shell. `/proc/PID/status` shows `Uid` and `Groups`. A service started by systemd has the groups its unit gave it. If you added the account to a group later, a running process probably keeps its old list. That is my reasoning from the credentials manual. I tested it in the container. A running `sleep` started as user `u` showed `Groups: 1001`, and after `usermod -aG g1 u`, `id u` listed two groups while the running process still showed only `1001`.
 
@@ -250,7 +250,7 @@ Both `namei -l` and `findmnt` ran in the container. Neither is quoted from a man
 
 ![Five ordered questions for a pod file failure: which errno, is the root read-only, which user and groups, does the volume owner match fsGroup, are capabilities dropped or a policy profile applied.](./img/p3-2004-pod-denied-ladder.svg)
 
-*Figure 20.4.10. Ask five questions in order when a pod fails to read or write a file.*
+*Figure 20.4.11. Ask five questions in order when a pod fails to read or write a file.*
 
 A pod that works on your laptop fails in the cluster with `Permission denied` or `Read-only file system`. The cause is almost always a setting, not a bug in the application. Four settings are worth knowing well enough to recite, and each one turns a familiar Linux rule into a container rule.
 
@@ -363,7 +363,7 @@ The process holds almost as many descriptors as its soft `RLIMIT_NOFILE`, and ne
 
 ![A deleted log stays on disk while a process holds it open, and truncating it through the descriptor frees the space.](./img/x04-deleted-open-rescue.svg)
 
-*Figure 20.4.11. A file removed while a process still has it open keeps using disk space until that descriptor is closed or the file is truncated.*
+*Figure 20.4.12. A file removed while a process still has it open keeps using disk space until that descriptor is closed or the file is truncated.*
 
 Problem. An alert says a filesystem is 92 percent used. `du -sh /var/log` shows 3 GB on a 100 GB volume, and someone deleted the big log an hour ago.
 
@@ -391,7 +391,7 @@ The inode pool is exhausted. Remove or archive the tiny files, find which direct
 
 ![Diagram contrasting direct execution failing on a noexec mount via execve with interpreter execution succeeding via openat read.](./img/p4-2004-noexec-bypass-mech.svg)
 
-*Figure 20.0.0. A noexec mount causes the kernel to fail execve with EACCES before inspecting file mode bits, whereas executing an interpreter reads the script file as plain data.*
+*Figure 20.4.13. A noexec mount causes the kernel to fail execve with EACCES before inspecting file mode bits, whereas executing an interpreter reads the script file as plain data.*
 
 Problem. An installer drops a script on a data volume. It is mode 755 and owned by the right user, yet running it prints `Permission denied`, and `chmod +x` changes nothing.
 
@@ -407,7 +407,7 @@ The filesystem is `noexec`, so `execve` fails with `EACCES` before the mode bits
 
 ![A named ACL entry says rw- but the mask became r-- after chmod 640, so the effective right is read-only until setfacl sets the mask to rw.](./img/p3-2004-acl-mask.svg)
 
-*Figure 20.4.12. The mask is the most any named entry can receive, so chmod 640 lowered the effective right to read-only.*
+*Figure 20.4.14. The mask is the most any named entry can receive, so chmod 640 lowered the effective right to read-only.*
 
 Problem. A deploy script gives the service account write access through an ACL. A hardening job later runs `chmod 640` on the file. The service can only read, though `getfacl` still shows `rw-`.
 
@@ -423,7 +423,7 @@ The named entry is intact but the mask is `r--`, so the effective right is read-
 
 ![A file with mode 644 cannot be opened because the directory above it has no search bit, so the walk stops at the directory.](./img/x04-path-walk-locked-directory.svg)
 
-*Figure 20.4.13. Opening a path needs search permission on every directory along the way, so a locked directory blocks a readable file.*
+*Figure 20.4.15. Opening a path needs search permission on every directory along the way, so a locked directory blocks a readable file.*
 
 Problem. A secrets file is mode 644 and the service, its owner, still gets `Permission denied`. A colleague already ran `chmod 777` on it.
 
