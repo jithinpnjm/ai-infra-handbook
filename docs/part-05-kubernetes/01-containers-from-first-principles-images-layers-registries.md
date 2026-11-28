@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Imagine a training job that sits for an hour while its image downloads. Nothing is broken in the code. The job simply waits, the GPUs sit idle and the cost keeps running. Every training job, inference server and platform component in this handbook ships as a container image, so any of them can hit this kind of delay. A PyTorch image is routinely 10 to 30 GB. If you pull it onto 500 nodes at once, you can saturate the registry and delay the job for that whole hour. A stale CUDA userspace inside an image can break against a newer host driver. A careless layer order can force a 20-minute dependency install on every code change. An image from an unverified registry is a supply-chain risk, which means you cannot be sure that the bytes you run are the bytes someone meant to publish.
 
+![A two-column table pairing four image problems with their effect on an AI job.](./img/g-193.jpg)
+*Figure 5.1.V. Image size, layer order, and trust decide how fast and safely a GPU job starts.*
+
+
 Kubernetes, the subject of the rest of Part 5, schedules containers. It decides which node runs which container, restarts them when they fail and rolls out new versions. It cannot fix any of the problems above on its own, because each of them starts inside the image or in the registry that serves it. You need to know what a container actually is, how an image is structured and distributed, and how to build images that are small, fast, reproducible and secure. Everything after this chapter rests on that foundation, so it is worth taking the time now.
 
 ## Prerequisites and outcomes

@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a Monday morning when a shared GPU cluster suddenly stops working. Nothing was deployed over the weekend, and no code changed. The dashboards are red, jobs fail to start, and the on-call engineer finds that the API server and the kubelets no longer trust each other. The cause is a certificate that expired quietly while everyone was away. The control plane did not crash because of a bug. It simply ran out of valid proof of who it is.
 
+![A central box labeled Shared GPU cluster with three surrounding boxes: badge, guard, and manual.](./img/g-251.jpg)
+*Figure 5.21.V. Identity, admission control, and policy each guard a different door, so a gap in one exposes the others.*
+
+
 A shared GPU cluster is also easy for users to misconfigure and attractive to attackers. A privileged container can read the host. A `hostPath` mount can expose model weights and credentials. Unbounded GPU requests can starve a team, and unsigned images can inject malware into training pipelines. Three mechanisms keep this under control.
 
 A useful picture is an office building with one shared entrance. Every visitor needs a badge, which is the certificate or token that says who they are. A guard at the door checks each badge against a list of house rules before anyone walks in. That guard is admission control. The building manual, which says which team may enter which room and with how much equipment, is policy as code. Each of the three mechanisms in the building does a different job, and a weakness in one of them lets trouble in through the others.
@@ -143,6 +147,10 @@ Keep webhook serving certificates renewed automatically, because an expired webh
 ## 2. Identity and authentication federation
 
 Suppose a new engineer asks for cluster access on the first day. Who vouches for that person, and how do you revoke access when they leave? Authentication answers the first question, which is who you are. Authorization is a separate step that answers what you may do, and it is covered in 5.16. Federation means you do not keep your own list of passwords. Instead, you trust an outside system, such as a company login provider, to vouch for people. In production, identity usually follows the patterns below.
+
+![A central box labeled Who is calling? with three surrounding boxes: humans via OIDC, machines via bound tokens and federation, and admins via audited impersonation.](./img/g-252.jpg)
+*Figure 5.21.V. Start with OIDC for people, then add workload identity once the platform is ready for it.*
+
 
 **OIDC for humans** works with Keycloak, Dex, Okta, Entra ID or Google. OIDC (OpenID Connect) is a login standard built on top of OAuth. The login provider signs a token that names the user and their groups, and the API server checks that signature. You configure the API server with `--oidc-issuer-url`, `--oidc-client-id`, `--oidc-username-claim`, `--oidc-groups-claim`, `--oidc-username-prefix=oidc:` and `--oidc-groups-prefix=oidc:`. A claim is one field inside the token, such as the user's name or the list of groups. The prefix flags add `oidc:` in front of names, so a user called `admin` from the login provider cannot be confused with a built-in system user of the same name. You can also use the structured `AuthenticationConfiguration` file instead. That file supports multiple issuers, claim validation rules written in CEL, and user validation rules. kubectl obtains and refreshes tokens through an exec plugin, such as kubelogin or oidc-login. Map IdP groups to RBAC bindings, and enforce MFA and short token lifetimes at the IdP. The API server must trust the IdP's CA and fetch its JWKS. The JWKS (JSON Web Key Set) is the public key list the API server uses to check token signatures.
 
@@ -917,6 +925,10 @@ Each check shows `PASS`, `WARN` or `FAIL`. The remediation section tells you wha
 
 Suppose a training Job starts without the queue label your platform expects, or two teams try to claim the same Ingress host. Policy engines catch these problems at admission time, before the object is stored. A policy engine is a component that holds your organisation's rules and checks every matching request against them. Kyverno and OPA Gatekeeper are the two engines this section compares, and the rest of the section looks at the alternatives.
 
+![A two-column table comparing Kyverno, OPA Gatekeeper, and ValidatingAdmissionPolicy by how their rules are written.](./img/g-253.jpg)
+*Figure 5.21.V. Choose a policy engine by the language your team can read, and layer them with runtime tools.*
+
+
 ### Kyverno
 
 Kyverno is a Kubernetes-native policy engine. Its policies are CRDs (custom resource definitions, which add new object types to the API) written in YAML, so you do not have to learn a new language. That makes it a comfortable choice for a team that already reads Kubernetes manifests every day. It can **validate** resources with patterns, CEL and deny conditions. It can **mutate** them with patchStrategicMerge, JSON6902 and foreach. It can **generate** resources when something happens, for example a default NetworkPolicy, quota or RBAC for each new namespace. It can **verifyImages** using cosign or Notary signatures and attestations, including SBOM and provenance checks. An attestation is a signed statement about an image, such as a list of its contents. Cleanup policies delete resources by TTL. Policy exceptions are written as `PolicyException` objects, background scanning produces `PolicyReport` results, and you can test policies in CI with `kyverno test` and `kyverno apply`.
@@ -1235,6 +1247,10 @@ Pick Kyverno or Gatekeeper for your organisation's rules, and set `failurePolicy
 
 A guardrail set is the list of rules that every tenant works under. Think of it as the railings on a walkway. Nobody notices them on a good day, and they matter most when someone stumbles. Each row below names one guardrail, the mechanism that enforces it, and an example rule.
 
+![A two-column table listing five tenant guardrails and an example rule for each.](./img/g-254.jpg)
+*Figure 5.21.V. Each guardrail blocks one kind of tenant risk, and you should roll them out in audit mode first.*
+
+
 | Guardrail | Mechanism | Example rule |
 |---|---|---|
 | No privileged/host access for tenants | PSA `baseline`/`restricted` per tenant namespace | Deny `hostNetwork`, `hostPath`, `privileged`, hostPID; allow exceptions in system namespaces only |
@@ -1260,6 +1276,10 @@ Roll the set out in stages. Keep the policies in Git with tests (4.13, 4.26), an
 ## 7. Troubleshooting
 
 When you see certificate or admission failures, they often look like general cluster trouble. A broken control plane, a failing kubectl call and a stuck node can all look alike at first. The symptom in the first column usually points to a specific cause, and the table below pairs each symptom with its likely cause and fix. Start from the symptom you see, not from the component you suspect.
+
+![A two-column table pairing five certificate and admission symptoms with their fixes.](./img/g-255.jpg)
+*Figure 5.21.V. Start from the symptom, because certificate and webhook failures often look like general cluster trouble.*
+
 
 | Symptom | Likely cause | Fix |
 |---|---|---|

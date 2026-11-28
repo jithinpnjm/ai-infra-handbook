@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a GPU cluster with hundreds of nearly identical Linux machines. Every one of them needs the same kernel parameters, the same driver and CUDA stack, the same container runtime, the same monitoring agents and the same NCCL environment. When a security advisory or a driver release arrives, you have to change all of them in a controlled way.
 
+![A three-row table listing Ansible's agentless, declarative, and idempotent properties.](./img/g-173.jpg)
+*Figure 4.3.V. Ansible's properties suit fleets where agents cannot run on switches or BMCs.*
+
+
 Doing that by SSH-ing into each machine is slow and error-prone. Writing bespoke shell scripts is brittle too. That is why Ansible has become the de facto tool for configuration management and fleet operations in HPC and AI environments. NVIDIA's DeepOps and many BCM/Slurm deployments are driven by Ansible, and Kubespray uses it to install Kubernetes.
 
 Ansible has a few properties that make it suit this work. It is **agentless**, so SSH is the only requirement on the targets, and that matters on bare metal and appliances. A switch or a BMC cannot host a background daemon the way a Linux server can, so a tool that needs nothing installed on the target reaches more of the hardware. It is **declarative and idempotent**, and operators who are not programmers can read it. Declarative means you describe the end state, not the steps. Idempotent means that describing it twice does no harm. It is also extensible.

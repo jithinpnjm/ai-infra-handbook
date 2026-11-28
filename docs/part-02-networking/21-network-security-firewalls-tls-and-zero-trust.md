@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 What would an attacker want from a GPU cluster? The answer is more than one thing, and that is why these clusters draw attention. Compute is valuable on its own, because it can be used for cryptomining or resold. Data is valuable too, including training sets, model weights and customer prompts. Privileged access paths such as BMCs, schedulers, registries and CI let an attacker reach everything else. A BMC is the small management computer inside each server, and anyone who controls it controls the machine underneath, even when the operating system is switched off.
 
+![A three-row table listing the targets attackers want in a GPU cluster and why.](./img/g-116.jpg)
+*Figure 2.21.V. Compute, data, and management access each give an attacker something valuable.*
+
+
 The networks are unusual as well. Flat, high-speed RDMA fabrics bypass the host kernel, so the usual host-level checks never see that traffic. Management planes use out-of-band controllers that run their own firmware. Multi-tenant environments let tenants share switches. Fast-moving software stacks, such as drivers, container runtimes and serving frameworks, bring a steady stream of CVEs, which are the public numbers given to known security flaws.
 
 Network security here is not only firewalls. It is also segmentation, identity, key management, least privilege and monitoring. The hard part is applying all of them without strangling performance. A control that halves the speed of an all-reduce will be switched off by someone in a hurry, and then it protects nothing.
@@ -41,6 +45,10 @@ Check these prerequisites first, because the SSH and threat-model sections assum
 ## 1. Vocabulary and threat modelling
 
 Picture a locked office with a cleaner who holds a key, a visitor with a badge, and a window left slightly open. Each is a different kind of risk, and each needs a different response. Security work becomes manageable when everyone uses the same words for these risks. This section gives those words, and it asks you to draw the building before you decide where the locks go.
+
+![Four boxes in a row linking vulnerability, exploit, attack, and risk.](./img/g-117.jpg)
+*Figure 2.21.V. The four security terms form a chain from a weakness to a likely loss.*
+
 
 Security conversations go wrong fast when people use words loosely. One engineer says "vulnerability" and means a break-in, and another means a missing patch. Before you can protect anything, you need to know who might attack, where the weak points are, and what is worth protecting. The table defines the terms this chapter uses.
 
@@ -84,6 +92,10 @@ When you review a design, count the layers an attacker must cross, not just the 
 
 Who gets in, and what can they do once they are in? Access control answers both questions. It checks that users and processes are who they claim to be (authentication). It checks that they may do what they request (authorisation). It records what they did (accounting). Together, these three are called AAA. A bank branch is a good picture: the clerk checks your identity, then checks that your account allows the withdrawal, and then the transaction goes into the ledger.
 
+![Three stacked questions covering authentication, authorisation, and accounting for access control.](./img/g-118.jpg)
+*Figure 2.21.V. Access control checks identity, permission, and then records what happened.*
+
+
 Access is checked at several points, and you should combine them. Before a device joins the network, port-based access control with 802.1X, Wi-Fi WPA-Enterprise or VPN login can check it. After it connects, network ACLs and segmentation limit where it can go. Before each service, application authentication or mTLS checks the caller. Before the most sensitive resources, privileged access management adds the strongest check. Use stronger factors for more sensitive resources.
 
 The protocols divide this work. RADIUS (UDP 1812 and 1813) handles network access. It uses a shared secret and encrypts only the password field, so protect it with IPsec or RadSec. TACACS+ (TCP 49) handles device administration. It encrypts the whole packet body and supports per-command authorisation and accounting. LDAP, Active Directory and Kerberos back directory-based identity. SAML, OIDC and OAuth2 handle web and API identity, and SPIFFE and SPIRE give workloads their own identity.
@@ -124,6 +136,10 @@ Before you open any port, decide which zone and which management network it belo
 
 Access controls and systems fail, and when they do, encryption is the last line of defense. If a stolen disk or a copied network capture shows only noise, the attacker has gained little. Use encryption in transit, meaning TLS and mTLS, SSH, IPsec, WireGuard and MACsec on links. Use encryption at rest for disks and volumes, object stores and databases. Keys need the same care. Generate them on the device or in an HSM or KMS, rotate them, separate duties, restrict access, never embed them in images or repositories, and audit their use. An HSM is a tamper-resistant hardware box that holds keys and performs cryptographic operations without ever letting the key out, and a KMS is the service that manages such keys.
 
+![A three-row table listing where encryption applies in transit, at rest, and for keys.](./img/g-119.jpg)
+*Figure 2.21.V. Encrypt data in transit and at rest, and keep keys out of images and repositories.*
+
+
 Model weights and datasets deserve the care you give source code and credentials. Sign your artifacts, control who can reach the registry, keep versions immutable, and record where each artifact came from. That last part is supply-chain security, and it uses a software bill of materials and signature checks on containers and packages.
 
 AI traffic is fast, so encrypting it has a cost. For RDMA fabrics you have three options: MACsec on links (line rate in hardware on some switches and NICs), IPsec offload on NICs and DPUs, or logical isolation combined with physical security. Do not assume TLS inside the fabric is feasible for GPUDirect traffic. Make that threat-model decision on purpose instead. Shared tenants need stronger isolation and encryption, while a single tenant in a locked cage can rely on segmentation and physical controls.
@@ -160,6 +176,10 @@ Set your rate limits and quotas before traffic spikes, not during an attack.
 ## 7. SSH in depth (and hardening)
 
 Picture a new engineer who logs in to a production server for the first time. The terminal asks whether to trust a key it has never seen, and the engineer types yes without reading the question. Later, a colleague's laptop shows a warning that the server's key has changed. Both moments are about trust, and SSH is built around making trust explicit. The paragraphs below explain the keys, the warnings, and the settings that make logins safer.
+
+![A four-row table listing key sshd_config directives and their hardened settings.](./img/g-120.jpg)
+*Figure 2.21.V. Hardened SSH settings protect the node, and a second session lets you recover.*
+
 
 SSH is the tool you reach for on a Linux fleet. It gives you an encrypted shell, command execution, file transfer with scp and sftp, port forwarding and tunnelling (including X11), and key-based authentication. It is the de facto remote-administration protocol, and it replaced telnet and rlogin for good reason. Infrastructure engineers cannot skip understanding it, and almost every cluster compromise story has an SSH key somewhere in it.
 
@@ -262,6 +282,10 @@ Replace cleartext services with SSH, SFTP or rsync wherever you can.
 
 Before an attacker finds an open port, you should find it yourself. An attacker's first move is nearly always a scan, and you can run the same scan first. `nmap` discovers hosts and ports, and it fingerprints the services behind them.
 
+![A three-row table showing what each scan vantage point reveals about a server's open ports.](./img/g-121.jpg)
+*Figure 2.21.V. Each vantage point shows a different view, and the gap between them hides surprises.*
+
+
 ```bash
 nmap -sn 10.0.0.0/24                  # host discovery only (ping/ARP sweep)
 nmap -p- -T4 10.0.0.45                # all TCP ports
@@ -283,6 +307,10 @@ Scan from outside, compare the result with `ss`, and close every port you cannot
 ## 9. Basic rules and how attacks reach AI clusters
 
 Most intrusions into a GPU cluster start with something small and ordinary. A forgotten dashboard, a stolen cloud key or an unpatched service gives the attacker a foothold. The rules below shrink that exposure, and the table shows the paths attackers use in practice.
+
+![A four-row table pairing common attack paths into GPU clusters with their main controls.](./img/g-122.jpg)
+*Figure 2.21.V. Most intrusions start with a small exposed service, so close what you do not need.*
+
 
 Picture a data scientist who starts a Jupyter notebook on a GPU node to test a model. The notebook listens on all interfaces, with a token that the scientist copied into a chat window. A week later the notebook is still running, the token is still valid, and a scanner finds the port open from outside the cluster. Nothing was broken on purpose, but the open service was the attacker's way in. A simple habit prevents this: bind the notebook to localhost, tunnel to it over SSH, and stop it when the work is done.
 
@@ -306,6 +334,10 @@ For advisories, read the CISA and national CERT advisories, the SANS newsletters
 ## 10. Securing routing and the control plane
 
 Strong data-plane security does not help if someone can hijack the control plane. Routing protocols decide where traffic goes, so they need protection of their own. If a stranger can whisper a better route into your router, your carefully filtered traffic will happily flow through the stranger's machine. Start by authenticating them. OSPF and IS-IS use HMAC-SHA, and BGP uses TCP-AO or MD5. For eBGP, use GTSM with TTL 255. GTSM is a trick that accepts a BGP packet only if its TTL is still at the maximum, which proves the sender is directly attached, because every router in between would have lowered it. Restrict BGP and OSPF to specific interfaces and peers, and make `passive-interface` the default.
+
+![A four-row table listing routing control plane protections and what each one purposes.](./img/g-123.jpg)
+*Figure 2.21.V. Filter routes at the edge, because that is the only moment you can stop a leak.*
+
 
 Picture a peer that announces, one afternoon, a set of routes it has never announced before. Its prefixes overlap with a block of your own addresses, and the new routes are more specific, so your routers prefer them. Traffic meant for your servers starts flowing to the peer. Without a prefix list, a max-prefix limit or RPKI origin validation, nothing stops that announcement. With them, the routes are rejected at the edge, and the traffic keeps flowing to your own network. The check happens on the way in, which is the only moment you can stop a leak before it spreads.
 
@@ -387,6 +419,10 @@ Test enforcement before you rely on the default-deny policy, because a policy do
 
 Picture a bare-metal GPU cluster that several tenants share. Their traffic crosses shared switches, and each node has a management controller. The sections below follow the attack paths from the management controller outward.
 
+![A four-row table pairing AI cluster security risks with their controls.](./img/g-124.jpg)
+*Figure 2.21.V. Each AI cluster risk has a specific control, and the tenancy decision comes first.*
+
+
 Picture a bare-metal GPU server that a tenant has rented for a week. When the tenant returns the machine, the provider reinstalls the operating system and assumes the box is clean. The BMC still holds the tenant's settings, and it may still accept the old password. Anyone who reaches that BMC can reinstall firmware or read memory, whatever the operating system does. The lesson for the provider is that the BMC needs its own credential rotation and its own firmware check at every handover, not just a fresh operating system.
 
 Start with the BMC. Out-of-band management, through IPMI, Redfish, iDRAC, iLO, XClarity or the DGX BMC, has a weak history. Default credentials, the old IPMI 2.0 cipher-zero, exposed web UIs and unauthenticated firmware vectors have all caused trouble. Put BMCs on an isolated management network with strict ACLs. Give each one a unique, strong credential, and disable IPMI-over-LAN if you do not use it. Keep firmware current, serve HTTPS with real certificates, and allow access only through jump hosts. Watch for Redfish events and firmware changes.
@@ -414,6 +450,10 @@ Decide which tenants may share each fabric, and write that decision down before 
 ## 14. The OODA loop for security operations
 
 Picture an alert at three in the morning that shows a GPU node sending unexpected traffic. The team has minutes to decide what to do, and the attacker is moving too. A structured loop helps, because it stops the team from reacting to the first noise and from waiting too long for certainty. The loop below is the one military pilots first used, and it fits security work well.
+
+![Four stacked steps of the OODA loop applied to security incident response.](./img/g-125.jpg)
+*Figure 2.21.V. A fast, repeatable loop shortens how long an attacker stays inside.*
+
 
 An alert fires, and the clock starts. Security work is a cycle you repeat, not a state you reach. Colonel John Boyd's OODA loop describes that cycle in four steps: Observe, Orient, Decide and Act. The side that completes the loop faster usually wins. Boyd first described it for fighter pilots, and it fits an incident well, because the attacker is also running a loop of their own.
 

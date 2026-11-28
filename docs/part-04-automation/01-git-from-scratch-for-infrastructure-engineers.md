@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture the on-call engineer at two in the morning. A training job has stopped reaching its storage network, and the engineer finds that an interface MTU changed earlier that day, from `9000` to `1500`. Nobody remembers who made the change, what else changed in the same session, or which value worked before the incident. The cluster is expensive and the training deadline is close, and all the engineer has is a few shell histories and an unreviewed terminal note.
 
+![A three-row table showing how Git answers what changed, who changed it, and how to go back.](./img/g-153.jpg)
+*Figure 4.1.V. Git turns a midnight guess into a record you can read in minutes.*
+
+
 That scene is worth slowing down on, because it is the exact problem Git was built to prevent. The engineer is not short of skill. The engineer is short of a record. The MTU (maximum transmission unit, the largest packet a network interface sends in one piece) is a small setting, but one wrong value on one interface can quietly slow a whole fabric. The cost then shows up hours later, far away from the change that caused it.
 
 In an AI factory, almost everything that matters is, or should be, text in a repository. That includes Terraform that creates networks and GPU VMs, Ansible roles that install drivers and tune kernels, Slurm configuration, Kubernetes manifests and Helm values, Dockerfiles for training images, CI pipelines and runbooks. Git is the evidence trail for all of it. It tells you who changed the NCCL settings, when the MTU went from 9000 to 1500, which commit introduced the regression that halved training throughput, and how to go back. A cluster that cannot be rebuilt from Git is a pet, and a change that did not pass through review is an incident waiting to happen.
@@ -45,6 +49,10 @@ You should already be comfortable at a shell (Part 1). You do not need to have u
 ## 1. Why version control (the infrastructure view)
 
 A colleague posts in the team channel that they changed something on a switch last night, but they are not sure what. Nobody can say what the switch looked like before, or whether the change is still there. Version control exists to stop that kind of conversation. It keeps a record of every change, so the answer is one command away.
+
+![Five boxes in a row listing what version control provides for infrastructure configuration.](./img/g-154.jpg)
+*Figure 4.1.V. Version control is the record that makes infrastructure reviewable and recoverable.*
+
 
 Suppose someone says, "I changed something on the switch last night." Version control turns that sentence into a reviewed, diffable, revertable commit. "Diffable" means you can compare the before and after side by side, the way you compare two photographs of the same rack taken a day apart. "Revertable" means you can go back to the earlier photograph in one step. The configuration file is the photograph, and Git keeps every version of it.
 
@@ -137,6 +145,10 @@ Once you know the three boundaries, the output of `status`, `diff`, `diff --stag
 
 Most mistakes that reach a shared repository happen in the last minute before a push. A stray debug line, a local key or a half-finished file sits in the working tree, and a quick `git add .` sweeps it into the commit. The routine below is built to make that moment boring. Each step asks one small question before anything is shared. Experienced engineers run the same routine on a two-line fix as on a large change, because the habit is what protects them on the day they are tired.
 
+![Five stacked steps for making a safe infrastructure change in Git, from fetch to commit.](./img/g-155.jpg)
+*Figure 4.1.V. Each step in the routine blocks one common mistake before the change is shared.*
+
+
 Set these options once on each machine. They control how Git merges, fetches, pushes and signs. You do not need to memorize them. Each line answers a question you would otherwise hit by accident. For example, `pull.rebase true` decides what happens when your local history and the remote history have both moved on, and it stops Git from creating a surprise merge commit at two in the morning.
 
 ```bash
@@ -199,6 +211,10 @@ To find out which change added a value, start with `git blame` for the line, the
 ## 4. Ignoring files and keeping the repo clean
 
 Picture a Terraform run on a laptop. It creates a `.terraform/` folder and a `terraform.tfstate` file that records the current infrastructure, including resource IDs and sometimes secrets. Run `git add .` and both files go into the commit, and then into every clone. The `.gitignore` file is how you tell Git which files belong to the machine and not to the project.
+
+![A four-row table listing file patterns that should stay out of an infrastructure repository and why.](./img/g-156.jpg)
+*Figure 4.1.V. A tracked file keeps being tracked even after you ignore it, so untrack it once.*
+
 
 Think of the repository as the shipping box and `.gitignore` as the packing list you tape to the inside of the lid. Anything on the list stays on the workbench. Terraform state and generated folders belong on the workbench, because they describe one machine at one moment. Source files belong in the box, because every engineer needs them.
 
@@ -295,6 +311,10 @@ Fetch first, read the incoming log, and only then decide how to combine the two 
 
 Imagine a team with three long-lived branches: `develop`, `staging` and `prod`. A hotfix lands on `prod`, and someone copies it to `staging`, but nobody copies it back to `develop`. Six weeks later the next release brings the bug back. Long-lived branches make the history lie about what is deployed. The strategies below try to keep one honest answer to "what is running now?"
 
+![Two side-by-side panels comparing GitFlow long-lived branches with trunk-based development.](./img/g-157.jpg)
+*Figure 4.1.V. Trunk-based development keeps the repository honest about what is deployed.*
+
+
 Notice how the drift happens. Nobody decided to break anything. Each branch was correct when it was last touched, and the copies simply stopped matching. Every extra branch is another copy that someone must remember to update, and people forget.
 
 GitFlow uses long-lived `develop` branches, plus release and hotfix branches. It suits versioned software that ships on a cadence, such as a desktop app with numbered releases that customers install. Infrastructure is different. Long-lived branches drift away from the live environment, merges grow huge, and the question "what is deployed?" has no single answer. A network change that lives on `develop` for a month may collide with three other changes that landed on `prod` in the meantime.
@@ -348,6 +368,10 @@ Generated files need different treatment. These include `.terraform.lock.hcl`, `
 
 Say you ran `git reset --hard` in the wrong terminal and lost a commit you had not pushed. The commit is not gone yet. Git keeps it in the object store until cleanup, so the reflog can still point you back to it. The table below pairs each situation with the safe command, so that you do not reach for the dangerous one in a hurry.
 
+![A four-row table pairing common undo situations with the safe Git command for each.](./img/g-158.jpg)
+*Figure 4.1.V. Choose the undo command by what has already happened and whether it was shared.*
+
+
 Pick the command by what has already happened, not by what you want to happen. Each of the commands below moves a pointer, rewrites part of the index, or discards files, and each one leaves a different trail. Before you run anything destructive, ask whether the thing you are about to change has been shared. If it has, prefer a command that adds a new commit. If it has not, you have more room, and the reflog is there as a backstop.
 
 The table covers the common cases.
@@ -388,6 +412,10 @@ When a regression has no obvious author, write a test for the symptom and let `g
 
 A platform team has a Terraform module for the GPU network, an Ansible role that installs drivers, and the environment definitions that call both. Should these live in one repository or three? The answer depends on who changes them and how often they must move together. A change that touches all three at once is easy in one repository and awkward across three.
 
+![A three-row table matching polyrepo and monorepo layouts to the infrastructure parts they suit.](./img/g-159.jpg)
+*Figure 4.1.V. Put reusable modules in their own repos and environments in one monorepo.*
+
+
 Think about the people involved. A network team that owns the module should not need to approve a change to a driver role, and a driver team should not wait on network reviews. Separate repositories give each team its own door. Yet a real change, such as a new NIC model, often touches the module, the role and the environment in one story. Splitting that story across three pull requests means three reviews, three merge times and a window where only one of the changes has landed. Either shape has a cost, and the table lays out both sides.
 
 | | Polyrepo (one repo per component/module/service) | Monorepo (many components in one repo) |
@@ -409,6 +437,10 @@ Keep reusable modules in their own repositories, and keep environments in one mo
 ## 10. Hooks and pre-commit: shifting left
 
 A developer pushes a Terraform file with an API token pasted into a variable, or a YAML file with a tab in the wrong place. The mistake is cheap to catch on the laptop, and expensive to catch later in CI or on the cluster. Hooks move the check to the moment of the commit. "Shifting left" simply means checking earlier in the workflow, closer to where the mistake is made. Picture a building inspector who checks the wiring while the wall is still open. Finding a fault then costs a few minutes with a screwdriver. Finding it after the walls are painted costs a crew and a delay.
+
+![A three-row table showing where each category of check runs, from pre-commit to server enforcement.](./img/g-160.jpg)
+*Figure 4.1.V. Fast checks run on the laptop, and the server enforces the same checks.*
+
 
 Git hooks run scripts at events such as `pre-commit`, `commit-msg` and `pre-push`. A hook is a small program that Git runs at one of those moments, and a failing hook stops the step. They live in `.git/hooks/*`, and that folder is not versioned. Git does not copy it when someone clones the repository, so a hook you wrote on your laptop never reaches a teammate. The pre-commit framework fixes this. It keeps the hook configuration in `.pre-commit-config.yaml`, which is a tracked file, and it installs the hooks for every contributor with `pre-commit install`. You can run every check across the repository with `pre-commit run --all-files`. That command is useful right after you add a new check, because it shows you every existing file the check would flag:
 
@@ -442,6 +474,10 @@ Put fast checks, such as format, syntax and secrets, in pre-commit. They finish 
 
 A developer pushes a branch with an AWS key inside a YAML file. The pipeline flags it an hour later. By then two CI runners and a colleague's laptop have cloned the branch, so the key has already left the building. Deleting the file in the next commit does nothing to those copies. That is why the order below starts with rotation, not with cleanup.
 
+![Four stacked steps for responding to a secret committed to Git, starting with rotation.](./img/g-161.jpg)
+*Figure 4.1.V. Rotate the credential first, because history rewriting cannot recall copies already made.*
+
+
 Git remembers everything. Deleting a secret in a later commit does not remove it from history, forks, clones, CI caches or backups. A useful picture is a photocopier. Once a copy of the page has gone out of the office, tearing up the original does not call back the copy. Treat any committed secret as **compromised**. Assume that someone has already read it, even if you have no evidence that they did.
 
 Work through these steps in order. Each step depends on the one before it, and skipping ahead wastes effort or leaves the door open.
@@ -456,6 +492,10 @@ Sign your commits and tags as well, with SSH or GPG. Set `git config gpg.format 
 ## 12. Governance: branch protection and CODEOWNERS
 
 A Slurm configuration change is merged on a Friday afternoon. The only approval came from a teammate who has never owned Slurm. Two days later the scheduler misbehaves, and nobody who understands the change had seen it. CODEOWNERS and branch protection exist so that the person who knows the domain sees the change before it lands, and so that a rushed merge cannot skip that step.
+
+![A three-row table mapping CODEOWNERS paths to the reviewer teams they route to.](./img/g-162.jpg)
+*Figure 4.1.V. CODEOWNERS sends each change to the people who know that part of the system.*
+
 
 Governance sounds like paperwork, but think of it as the rule that stops a junior engineer from approving their own change on a slow afternoon. The rule is not there because people cannot be trusted. It is there because a second pair of eyes finds the mistake that the first pair has read past a dozen times.
 
@@ -490,6 +530,10 @@ Blast radius is the amount of damage a change can do if it goes wrong. Review ef
 ## 13. Large files, binaries and LFS
 
 A model team commits a checkpoint by accident, and the repository now carries that file in its history. Every clone downloads it, and CI checkouts slow down. Removing it later is possible but painful, so the best time to decide where big files go is before the first one is added. The options below give you that choice.
+
+![A three-row table comparing Git LFS, object storage with a manifest, and artifact registries for large files.](./img/g-163.jpg)
+*Figure 4.1.V. Keep big binaries out of plain Git, and pick the storage option before the first commit.*
+
 
 Git stores whole snapshots, so large binary files bloat the repository forever. A binary file is one that is not plain text, such as a disk image or a trained model. Git can compress text well, but a model file is already dense and barely shrinks. Golden OS images, model checkpoints and datasets are the usual culprits. Every clone then gets slower, and every new engineer pays that cost on their first day.
 

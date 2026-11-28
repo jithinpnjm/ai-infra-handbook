@@ -41,6 +41,10 @@ This lab builds on chapters 5.1 to 5.3, on Linux administration from Part 1 and 
 
 Imagine the cluster is up and running, and a team asks for a bigger pod network. You look at the plan and find that the address range was too small from the start, and changing it means rebuilding. That is why planning comes first. Some settings are hard to change once the cluster exists, so the plan has to be right before you install anything. Start with the machines and the role each one plays. The table shows the minimum set for this lab.
 
+![A two-column table listing three cluster choices that are hard to change later: the pod and Service CIDRs, the control plane endpoint, and the zone layout.](./img/g-202.jpg)
+*Figure 5.4.V. Settle the network ranges, API endpoint, and zones before the first kubeadm init.*
+
+
 | Role | Hostname | Spec (lab) | Notes |
 |---|---|---|---|
 | Control plane | `cp1` (and `cp2`, `cp3` for HA) | 2 vCPU, 4 GB, 40 GB SSD | etcd stacked; static IPs |
@@ -344,6 +348,10 @@ Keep `kubeadm-config.yaml` under version control, so you can review the choices 
 
 After init, `cp1` is up but still reports NotReady. The missing piece is the network plugin. Think of it as building roads after the houses are finished. The houses exist, but nothing can move between them yet. Nodes stay NotReady until a CNI configures `/etc/cni/net.d`. This example uses Calico, which is operator-based. Cilium and Flannel are alternatives, covered in 5.13 to 5.14.
 
+![Four stacked boxes showing a node moving from NotReady to Ready after the CNI is installed, with arrows pointing down.](./img/g-204.jpg)
+*Figure 5.4.V. A node turns Ready only after the network plugin is installed and its pod range matches the cluster.*
+
+
 ```bash
 kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/tigera-operator.yaml
 cat <<EOF | kubectl create -f -
@@ -413,6 +421,10 @@ Approve the serving certificate requests and label each worker before you consid
 ## 6. Verify the cluster
 
 Before you call the cluster finished, run a set of checks that cover nodes, system pods, DNS and networking. Each check tests a different layer, so a failure in one points you at one part of the stack. The commands below deploy a small test workload and then probe it from several angles.
+
+![A two-column table listing four smoke tests and what each proves about the cluster.](./img/g-205.jpg)
+*Figure 5.4.V. Rerun a few basic checks after every change, because a broken DNS will not announce itself.*
+
 
 ```bash
 kubectl get nodes -o wide
@@ -532,6 +544,10 @@ Control-plane nodes carry a `NoSchedule` taint. That taint keeps ordinary worklo
 
 Kubeadm is not the only way to build a bare-metal cluster. It is the one that teaches you the most, because it exposes each step. Other tools hide the steps behind a bigger install. Each one trades control for convenience. The table lists the main alternatives and the situation each one suits.
 
+![A two-column table listing five ways to build a cluster on bare metal and when each suits.](./img/g-206.jpg)
+*Figure 5.4.V. Choose the tool your team can actually operate, not just the one with the most features.*
+
+
 | Tool | Approach | When |
 |---|---|---|
 | **kubeadm** | Minimal bootstrapper, you assemble everything else | Learning, custom builds, clear control; basis for others |
@@ -643,6 +659,10 @@ Taint the GPU node with `kubectl taint node gpu1 nvidia.com/gpu=present:NoSchedu
 
 A fresh cluster can schedule pods and serve traffic, but it cannot yet show you its own health, store data or accept outside traffic on a real address. Those features come from add-ons. Think of them as furniture delivered after the house is built. The house works without them, and it is much harder to live in without them. The commands below add metrics, a storage provisioner and an ingress path to the lab cluster. Each one is a lab choice, as the comments explain.
 
+![A two-column table comparing a CD pipeline, an operator, and Git-based GitOps for installing cluster add-ons.](./img/g-207.jpg)
+*Figure 5.4.V. Pick the install method your team can run and repeat, and version add-ons with the cluster.*
+
+
 ```bash
 # metrics-server (kubectl top, HPA); on kubeadm labs add --kubelet-insecure-tls only if you did not approve kubelet serving CSRs
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
@@ -678,6 +698,10 @@ Use an operator for add-ons only when your engineers know the operator pattern w
 
 When a kubeadm cluster misbehaves, start with the symptom, not with the fix you have in mind. Most symptoms point to one layer, and the table below maps each one to its likely cause and to the commands to check first. The most common causes are the kubelet, the CNI, DNS, certificates, time and etcd. Read the table as a set of starting points. You will often need one more check to be sure.
 
+![A two-column table pairing five kubeadm symptoms with the first check for each.](./img/g-208.jpg)
+*Figure 5.4.V. Check the lowest layer first, because a failure underneath makes every layer above look broken.*
+
+
 | Symptom | Likely cause | Commands |
 |---|---|---|
 | `kubeadm init` hangs at "waiting for the kubelet to boot up the control plane" | Kubelet crash-looping: swap on, cgroup driver mismatch, runtime not running, wrong CRI socket, images not pulled | `journalctl -u kubelet -f`, `crictl ps -a`, `systemctl status containerd`, `swapon --show` |
@@ -710,6 +734,10 @@ Run the reset only on a lab node, because it removes the cluster state on that m
 ## 12. Automation and reproducibility
 
 Building a cluster by hand is a good way to learn, and a poor way to repeat the work. The second time you do it, you will forget a sysctl. The tenth time, you will type a version wrong. Automation fixes that. It turns each step into code that runs the same way every time. For repeatable clusters, work through these six steps.
+
+![Two side-by-side panels: configuration management installs packages during the node join, while a prebuilt machine image has packages ready at boot.](./img/g-209.jpg)
+*Figure 5.4.V. Prebuilt images make nodes join faster and more reliably than installing packages at join time.*
+
 
 1. Bake the preparation steps into an Ansible role or image, as covered in 4.11 and 4.17.
 2. Keep your `kubeadm` config files in Git.

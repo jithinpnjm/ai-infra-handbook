@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE."
 
 Picture a researcher who logs in on a Monday morning and starts a heavy preprocessing script on the head node, the machine that is supposed to be quietly running the scheduler. By lunchtime the scheduler stops answering, and nobody can submit a job. Or picture a remote IDE plugin that opens a session on the shared login server, and within an hour every other user on that server sees their terminal freeze. Neither problem is a bug in the scheduler or in the code. Both are a workload running on the wrong machine.
 
+![Two side-by-side panels: the head node runs the scheduler and must stay quiet, while the login node is shared by all users.](./img/g-271.jpg)
+*Figure 6.2.V. Heavy work on a shared node can stall the scheduler or every other user's session, so run it on compute nodes.*
+
+
 Most production incidents on a cluster come from that same kind of mistake, either the wrong workload on the wrong node or traffic on the wrong network. An NFS file server that shares a physical box with a compute node takes CPU time and network time away from the parallel job running there. A parallel job depends on steady, fast exchanges between its ranks, so even a small stall can hold up a whole collective operation, such as the AllReduce that combines gradients across GPUs. A management network that shares a switch with heavy compute traffic causes the same kind of trouble, because the two kinds of traffic fight for the same ports.
 
 Every AI cluster, whether it runs Slurm, Kubernetes, or both, is built from the same handful of node roles and networks. Once you know that standard anatomy, you can read an architecture diagram in one pass. You can ask the right questions in a design review, and you can decide where a new service should live. The same anatomy also gives you the working vocabulary of NVIDIA Base Command Manager, Slurm, and cluster procurement specifications. Chapters 6.7 onwards and Part 8 build on that vocabulary.
@@ -37,6 +41,10 @@ The chapter walks through the parts of a cluster in the order you would meet the
 ## 1. Anatomy of a supercomputer: four layers
 
 Imagine you have been handed the budget to build a new supercomputer cluster from scratch. The purchase order is about to go out. What do you buy first, how do the pieces connect, and which teams need to be in the room? The easiest way to answer that is to split the supercomputer into four big layers. Each layer depends on the one below it, and each one has its own people and its own failure modes.
+
+![Four stacked boxes listing the layers of a supercomputer from hardware at the bottom to software at the top, with arrows pointing down.](./img/g-272.jpg)
+*Figure 6.2.V. Design all four layers together, because a weak power, cooling, storage, or software layer limits the GPUs.*
+
 
 1. Hardware infrastructure is the physical layer. It covers the power supply, the cooling systems, physical security and the room itself. Power systems include transformers, UPS units (uninterruptible power supplies, which carry the load for a short time during an outage), PDUs (power distribution units inside the racks), and backup generators. Physical security includes cameras, door access cards, and rack locks. A facilities team may own this layer, but the cluster administrator must still know its exact limits. You need to verify the available kilowatts, the cooling reserve, the floor loading, the unloading routes, and at least 5 to 10 percent power headroom, as discussed in Chapter 6.30.
 2. Compute nodes form the compute field. These are the workhorse servers and the compute networks where parallel tasks actually run. Before you choose a server configuration, gather requirements from your users and from the software packages they run. Ask whether performance depends on a low-latency interconnect, on GPUs, on a large memory, or on storage IOPS (input and output operations per second). Once you define the best compute node and the trade-offs you can accept, size the compute field in modular topology blocks, so you can add more blocks later without redesigning the whole thing.
@@ -113,6 +121,10 @@ Keep compute nodes stripped down to their essential daemons, never co-locate an 
 
 Picture a storage backup running at the same time as a parallel job that needs microsecond-level exchanges between its nodes. If both traffic streams share one wire, the backup pushes packets into the same queues that the parallel job needs, and the job slows down for no reason you can see in its own logs. A modern HPC or GPU cluster avoids that clash by running several physically or logically separate networks. The separation keeps a storage backup or a management scan from disturbing the collective communication that the compute jobs depend on.
 
+![A two-column table listing four supercomputer networks and the job each does: compute, control, storage and out-of-band, and external.](./img/g-273.jpg)
+*Figure 6.2.V. Give parallel traffic its own network so that storage backups and scans cannot disturb it.*
+
+
 The table lists the networks you will design. Each row gives the job the network does, the technology usually used for it, and the operational facts you need to remember.
 
 | Network | Purpose | Typical technology | Operational characteristics |
@@ -172,6 +184,10 @@ Isolate the compute, storage, control, and BMC networks from one another, and si
 
 Every cluster has to keep the shared software, the home directories, and the scratch space somewhere. Those three things are what users see every day, and when they slow down, everyone complains at once. Two hardware questions decide how that storage is attached and protected, and how the memory and threads inside each machine appear to the scheduler. The first question is how the external storage is attached and protected. The second is how the processors and memory inside a multiprocessor server are exposed to the scheduler.
 
+![A two-column table comparing RAID-0, RAID-1, RAID-5, and RAID-6 by their speed and fault tolerance.](./img/g-274.jpg)
+*Figure 6.2.V. Each RAID level trades write speed against how many disk failures it survives, so pick the one your data needs.*
+
+
 ### DAS, NAS, SAN, and RAID levels
 
 External storage holds the shared software packages, the home directories, and the scratch space. Direct Attached Storage, or DAS, looks like a local disk to the operating system, because the array is cabled straight into one server. Network Attached Storage, or NAS, gives file-level access over a network through protocols such as NFS, so many clients can share the same files. A parallel file system such as Lustre spreads data across several storage nodes in a similar way, but it does so for many clients at once and at much higher speed. A Storage Area Network, or SAN, exports block devices over duplicate switches with multipath, so a failed route switches to a backup path without the application noticing. Because a SAN exports blocks rather than a file system, never mount one SAN block device on more than one node at once, or the nodes will overwrite each other's data. Chapter 6.18 covers shared and parallel storage in detail.
@@ -208,6 +224,10 @@ Bind every parallel rank to its local NUMA cores and memory, and declare only ph
 ## 5. Planning, hardware consistency, documentation, and post-build verification
 
 Suppose your vendor quote arrives with a 5-year support contract attached, and the sales team says the hard part is over. It is not. Planning is the work that happens before the first rack is powered on, and the mistakes you make on paper are the cheapest ones you will ever make. Four planning rules prevent expensive mistakes when you move from requirements to quotes and contracts.
+
+![Four stacked boxes listing the planning rules: support after warranty, identical hardware, power and cooling headroom, and colocation access.](./img/g-275.jpg)
+*Figure 6.2.V. Settle support, hardware consistency, power, and access on paper before anything is powered on.*
+
 
 1. Plan for support after the warranty. Ask management, before you sign, how the complex will be supported once the initial 5-year vendor support contract expires. A manager may answer, "we have 5 years support, don't worry, and then we'll see." Write a formal memo instead, noting that even a small hardware break can stop the entire service. State clearly that you do not approve operating the cluster without an active service contract.
 2. Insist on strict hardware and firmware consistency. Specify in the contract, and verify on delivery, that all memory modules, motherboards, firmware, BIOS versions, network cards and GPUs are identical across similar servers. That includes the exact GPU part numbers and the VBIOS versions. Do not accept a salesperson's claim that "this is the same model, just a bit modern part number, it is even better." Mixed hardware causes different driver and application behavior, and that wastes weeks of debugging, because the same job behaves differently on two nodes that look identical on the purchase order.
@@ -295,6 +315,10 @@ Never open a new cluster to users until all 11 post-build checks, the baseline b
 
 Think of a user who logs in in the morning, submits a job, and goes home for the night. That user never sees the rest of the machine. The physical anatomy you have studied so far connects to a software stack, and the job passes through that stack on its way to the GPUs. The stack includes the operating system, the hardware and network file system drivers, the system control and monitoring software, the task queuing system, the parallel libraries such as MPI and CUDA, and the compilers and math libraries such as BLAS and FFT. When users develop code or run packages such as VASP or NAMD, compiling directly on the target architecture lets the compiler apply hardware-specific optimizations, and those optimizations are what maximize performance.
 
+![Five stacked boxes showing a job's path: connect, queue, prologue, run, and epilogue, with arrows pointing down.](./img/g-276.jpg)
+*Figure 6.2.V. Knowing the order of a job's steps tells you where in the chain a failure sits.*
+
+
 ### A typical user session and the job life cycle
 
 Follow one job from start to finish. Each step has an owner, and each step can fail in a different way, so knowing the order helps you find the failure faster.
@@ -318,6 +342,10 @@ Make the health checks, the time sync, the quotas, the monitoring and the epilog
 ## 7. Merging roles in small clusters and mapping to Kubernetes
 
 How much you can merge depends on the size of the cluster. A lab with four nodes can run the head node, the login node and the NFS server on one box without much harm. A 100-node system cannot, because a single failure would take everything down with it. The table below shows what to combine at each scale, and what to avoid.
+
+![A two-column table showing how many roles to merge at lab, small, and large cluster scales.](./img/g-277.jpg)
+*Figure 6.2.V. Merge roles only as far as the cluster size allows, because a single shared box becomes a single point of failure.*
+
 
 | Cluster scale | Reasonable role consolidation | Dangerous anti-pattern to avoid |
 |---|---|---|

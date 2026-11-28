@@ -226,6 +226,10 @@ To verify the distribution, look at per-interface counters on the switch with `s
 
 Before you wire anything, you need a map of which machine plays which role on which network. A cluster is not a pile of identical servers, and the cabling differs by role. HPC and AI clusters use a stable set of node roles and networks. Those roles and networks decide where aggregation, ECMP and bonding appear.
 
+![A four-row table listing the compute, control, management, and storage networks and their jobs.](./img/g-113.jpg)
+*Figure 2.12.V. Each cluster network has its own job, so map them before you bond anything.*
+
+
 Start with the nodes. Compute nodes are the ones you count when you size a cluster, so keep them homogeneous and lean. They need sshd, a network file-system client, a monitoring agent and the scheduler daemon. Minimise services such as cron, mail or NetworkManager where practical.
 
 Control and management nodes run the cluster manager, the scheduler controller, provisioning and the databases. Have at least two of them for resilience. Login and access nodes face users, so they are strictly resource-limited. IDE remote plugins and heavy interactive use can paralyse them.
@@ -251,6 +255,10 @@ The storage attachment options, DAS, NAS, SAN, RAID levels and multipath, belong
 ## 7. Failure behaviour and troubleshooting
 
 When you debug a bond or an ECMP path, most problems show up as one of a few symptoms. The table maps each symptom to its likely cause and the check to run next. Use it as a lookup, and still confirm the cause with the check before you change anything.
+
+![A four-row table pairing bond and ECMP symptoms with the check to run.](./img/g-114.jpg)
+*Figure 2.12.V. A bond that looks broken may just have the wrong hash, so check before changing.*
+
 
 | Symptom | Likely cause | Check |
 |---|---|---|

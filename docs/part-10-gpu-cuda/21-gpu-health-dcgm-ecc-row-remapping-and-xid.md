@@ -25,6 +25,10 @@ lab_venue: "Nebius GPU"
 
 Picture a training run across 1,000 GPUs in the middle of the night. One card starts logging a fault, the synchronous job waits for it, and every rank falls back to the last checkpoint. A single degraded GPU can halt a synchronous training run across 1,000 GPUs and force every rank back to the last checkpoint. Synchronous means every GPU must finish its step before any of them can move on, so one slow or dead card stalls the whole group. Platform teams feel this pain whenever an unhandled hardware fault stalls an expensive cluster or an overly aggressive alert pages an engineer at 3 AM for a benign event. Reliable operations require separating harmless self-healing events from fatal silicon failures in seconds. The answer is not a longer dashboard. It is a small set of rules that tells automation what to do with each signal.
 
+![Three stacked boxes: Tier 1 self-healing or early warnings, Tier 2 app-recoverable faults, and Tier 3 hardware that must leave the cluster, with arrows pointing down.](./img/g-296.jpg)
+*Figure 10.21.V. Sort each GPU fault into a tier, because the right response depends on whether the job, the process, or the hardware must change.*
+
+
 We group GPU fault signals into three operational tiers so automation can act immediately without human guesswork. Each tier answers one question: does the job survive, can one process recover, or must the hardware leave the cluster. Tier 1 covers self-healing hardware events and early precursor warnings. Single-Bit Error events in HBM are fixed on the fly by Error-Correcting Code hardware, and Ampere, Hopper, and Blackwell GPUs remap degraded rows to spare rows in the same memory bank. No job crashes on a single event, yet a steep weekly climb in Single-Bit Error rate is the primary leading indicator of an imminent bus disconnect or Double-Bit Error crash. The trend is the signal, not the single count.
 
 Tier 2 covers application-recoverable faults such as out-of-bounds kernel pointers or an uncorrectable ECC error that hardware successfully contained to one user process. A pointer that points outside its allocation is usually a bug in the user's kernel, so the fault belongs to that user's process. In these cases, the orchestrator only needs to restart the affected pod. However, if the same physical GPU repeats the same Tier 2 fault across unrelated user workloads, automation must escalate that GPU to Tier 3 hardware suspicion. Unrelated workloads failing the same way point at the card, not at the code.
@@ -207,6 +211,10 @@ Page retirement deserves a note of its own, because it looks similar from the ou
 
 ## 3. The Authoritative 15-Code Xid Encyclopedia and 3-Tier Triage Framework
 
+![A two-column table listing the three GPU fault tiers with one example Xid code and action for each.](./img/g-299.jpg)
+*Figure 10.21.V. Match each Xid code to its tier, so a precursor is watched, an app fault is restarted, and bad hardware leaves the cluster.*
+
+
 ### 3.1 The 15-code Xid reference table
 
 A job dies at 3 AM, and the only clue is one line in the kernel log. The line says `NVRM: Xid` followed by a number. When a GPU encounters a hardware or driver exception, the kernel module writes an `NVRM: Xid` line to `dmesg` and `journalctl -k`. Xid is NVIDIA's name for these error reports, and each one carries a numeric code. NVRM is the name of the NVIDIA kernel module, and `dmesg` and `journalctl -k` are the two places the kernel log can be read. Treating every Xid as a fatal hardware crash drains healthy nodes for user pointer bugs, while ignoring Xids allows corrupted HBM to poison model checkpoints. The skill is to read the code, look up its tier, and then decide whether to restart a pod or take a node out of service. Every on-call engineer and automated node-problem-detector rule should classify Xids using the 15-code, 3-Tier framework below. A node-problem-detector is a Kubernetes add-on that reads node logs and reports problems back to the cluster.
@@ -359,6 +367,10 @@ dmesg -T | grep -B5 -A5 "Xid" | tail -n 60
 ## 6. How It Fails: Six DCGM, ECC, Row Remapper, MIG, and Xid Operational Failure Modes
 
 In production clusters, observability blind spots and misconfigured sharing modes often masquerade as mysterious application crashes. The application looks like the culprit, because its logs show the failure. The real cause sits one layer below, in the driver, the sharing setup or the hardware. The table below summarizes the six most common operational failure modes across DCGM, MIG, ECC thermal correlation and Xid triage, along with their root causes and fixes. Use the symptom column first, because it is the thing you see before you know the cause.
+
+![A two-column table pairing six GPU symptoms with their likely hardware or monitoring causes.](./img/g-302.jpg)
+*Figure 10.21.V. Many GPU failures look like application crashes, so check the driver, sharing setup, and hardware one layer below.*
+
 
 | # | Failure Mode | Production / Telemetry Symptom | Root Cause | Fix |
 |---|---|---|---|---|

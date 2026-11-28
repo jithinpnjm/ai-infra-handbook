@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a 64-node training job that takes 12 minutes to start, instead of 90 seconds. Or picture one pod that sits in `ContainerCreating` and never moves on. In both cases you need to know what happens between the YAML and the first line of your training script, and where the time goes. The stages include scheduling, image pull and unpack, CNI attachment, CSI mounts, device plugin allocation, the RDMA and InfiniBand plumbing, cgroup creation, and the probes that gate readiness.
 
+![Five boxes in a row with right arrows: Scheduling, Image pull and unpack, CNI attachment, CSI mounts, and Probes gate readiness.](./img/g-212.jpg)
+*Figure 5.8.V. A pod starts only as fast as its slowest stage, so find which stage is holding it up.*
+
+
 Knowing the kernel objects at each stage also lets you debug from the node. Those objects are namespaces, veth pairs, mounts, cgroups and device nodes. They matter most when Kubernetes' own abstractions are not enough. This chapter is the end-to-end trace. It ties together Part 1 on Linux and Part 2 on networking with 5.1 to 5.7.
 
 Read the rest of this chapter as one trace, and use each stage as a place to look when a pod stalls.

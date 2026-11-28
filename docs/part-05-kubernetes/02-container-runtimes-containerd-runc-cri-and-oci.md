@@ -214,6 +214,10 @@ If `ctr` shows nothing on a Kubernetes node, check the namespace you passed firs
 
 Which runtime should your platform team pick? The answer depends on a few trade-offs, and the CRI is what makes the choice possible. Because every runtime speaks the same interface, the kubelet does not care which one answers. The choice is about operations, support and isolation, not about compatibility with Kubernetes.
 
+![A central box labeled Choose a runtime with four surrounding boxes: Experience, Support, Conformance tests, and Isolation.](./img/g-194.jpg)
+*Figure 5.2.V. Pick a runtime based on team experience, vendor support, test coverage, and isolation needs.*
+
+
 ### Choosing a runtime
 
 Because the CRI exists, platform teams can pick the container runtime that suits them. Over the last couple of years, though, the container runtime has become an implementation detail. If you use a Kubernetes distribution or a managed service, the runtime is most likely chosen for you. That holds even for Cluster API, which ships prebaked node images with a container runtime included. Picking a runtime yourself makes sense only when the vendor leaves the choice open, or when you have a specific requirement that the default cannot meet.
@@ -307,6 +311,10 @@ If your distribution ships a runtime, stick with it unless you have an extremely
 ## 4. OCI runtimes and RuntimeClass
 
 Suppose notebooks from many users run on the same cluster as your training jobs. A user's notebook can run arbitrary code, so it should not be able to reach the training data of another team. Before you pick a runtime, you need to know how much isolation each one gives, and what each one costs.
+
+![A three-column table comparing runc, gVisor, and Kata Containers by isolation model and trade-off.](./img/g-195.jpg)
+*Figure 5.2.V. More kernel isolation costs speed, so match the runtime to how much you trust the code.*
+
 
 The OCI Runtime Spec defines a **bundle**, which is a directory holding `config.json` and a `rootfs/`. It also defines a CLI contract with `create`, `start`, `state`, `kill` and `delete`. A runtime reads the bundle and creates the isolated process. Because the contract is the same for every runtime, the layer above does not need to know which one is underneath. That is the same idea as the CRI, applied one level lower.
 
@@ -454,6 +462,10 @@ Kata Containers is a niche choice and is rarely seen in the field. Still, if you
 
 A GPU pod starts, but the GPU is not visible inside it. The runtime configuration is one place to look, and this section shows how the toolkit hooks into containerd. The question to ask is whether the container's OCI spec received the device mounts. If it did not, the problem is in the runtime. If it did, the problem is in the driver or the image.
 
+![Two side-by-side panels comparing the wrapper runtime with a prestart hook against CDI, where a spec lists the GPU devices.](./img/g-196.jpg)
+*Figure 5.2.V. Both methods expose GPUs, so use a RuntimeClass to keep the GPU path away from CPU-only pods.*
+
+
 There are two ways to connect the NVIDIA Container Toolkit to containerd.
 
 1. **The `nvidia-container-runtime` wrapper** is a runtime shim. It adds a prestart hook, `nvidia-container-runtime-hook`, to the OCI spec, so `libnvidia-container` mounts the devices and driver libraries. A prestart hook is a program that runs after the container's spec is prepared but before the process starts, so it can add the mounts in time. You configure it with `nvidia-ctk runtime configure --runtime=containerd --set-as-default`, which edits `config.toml` to add the `nvidia` runtime. Then restart containerd. With the GPU Operator, the toolkit DaemonSet does this for you and writes a drop-in config.
@@ -477,6 +489,10 @@ Pick the default runtime deliberately. On mixed nodes, keep it as runc and let G
 ## 6. Node-level tools
 
 When an on-call page lands on a node, you need the right tool for the layer that is failing. Each tool talks to a different part of the stack, and the table shows which one to reach for. Start at the top of the table and move down only when the tool above it cannot answer your question.
+
+![A two-column table listing node debugging tools, with journalctl first, then crictl, ctr, nerdctl, and runc.](./img/g-197.jpg)
+*Figure 5.2.V. Start with logs, then pick the tool for the layer that is failing.*
+
 
 | Tool | Talks to | Use |
 |---|---|---|
@@ -539,6 +555,10 @@ Pick systemd on systemd hosts, and set the same value in both the kubelet and co
 
 Suppose you must upgrade containerd on a busy GPU node. The upgrade itself is only part of the work. The day-to-day care of images, logs and security matters just as much. In practice, many node problems come from those areas, so do not treat the upgrade command as the whole job.
 
+![A two-column table listing five containerd node care areas: logs, image GC, disk, reserve, and socket, with the action for each.](./img/g-198.jpg)
+*Figure 5.2.V. Most node trouble comes from logs, images, disk, reserved resources, and socket access, not the upgrade itself.*
+
+
 Upgrades start with a drain of the node, covered in 5.20. Draining means moving the running pods to other nodes before you touch this one. Then upgrade the containerd, runc and crictl packages, restart containerd and the kubelet, and uncordon the node. Uncordon means marking the node schedulable again. A containerd restart keeps containers running, because the shims are independent. A runtime upgrade with config schema changes can leave the CRI plugin failing, though, so test it on a canary node first. A canary is one machine that receives the change before the rest of the fleet, so a bad change hurts one node instead of all of them. Pin versions, and track CVEs for runc, containerd and the NVIDIA toolkit, since container escape CVEs have affected the toolkit.
 
 Container stdout and stderr are written by the runtime to `/var/log/pods/<ns>_<pod>_<uid>/<container>/<n>.log`, in CRI log format. Symlinks in `/var/log/containers/` point to those files, so tools that expect the older layout still find the logs. The kubelet rotates them according to `containerLogMaxSize` and `containerLogMaxFiles`. Rotation keeps a chatty training job from filling the disk with one enormous file. Log shippers such as Fluent Bit and Vector tail these files, covered in 5.24.
@@ -560,6 +580,10 @@ Treat every containerd upgrade as a change to test on a canary node first.
 ## 9. Failure modes and diagnostics
 
 When a pod has sat in `ContainerCreating` for a long time, the table below tells you which layer to check first. Each row pairs a symptom with the layer behind it and the check that proves it. Use the table as a map. You do not need to memorise it, but you should know where to look when a particular message appears.
+
+![A two-column table pairing five container symptoms with the first check to run for each.](./img/g-199.jpg)
+*Figure 5.2.V. Match the symptom to its layer, then run the check beside it before restarting anything.*
+
 
 | Symptom | Layer | Check |
 |---|---|---|

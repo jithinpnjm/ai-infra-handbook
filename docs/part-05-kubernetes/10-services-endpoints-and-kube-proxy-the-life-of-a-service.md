@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 A user reports that the inference API works from one node and times out from another. The pod behind it is healthy. Pods come and go all day and their IP addresses change with every replacement, yet inference servers, vector databases, feature stores and metrics endpoints all need an address that stays put. A Service provides that address.
 
+![Three boxes in a row with right arrows: Client calls the ClusterIP, Kernel rules pick a pod IP, and A pod answers.](./img/g-214.jpg)
+*Figure 5.10.V. A Service gives clients one stable address, and the cluster picks a pod behind it.*
+
+
 At small scale a Service looks like plain load balancing. At large scale it gets harder. With thousands of Services and tens of thousands of endpoints, iptables rule updates take seconds and burn CPU. Conntrack tables fill during bursts from training clients or inference gateways. Long-lived gRPC streams pin to a single backend, and `externalTrafficPolicy` decides whether your LLM gateway sees client IPs and balances evenly.
 
 To debug latency spikes, connection resets and uneven load, you need to know how a ClusterIP becomes a pod IP inside the kernel. This chapter follows that translation step by step.

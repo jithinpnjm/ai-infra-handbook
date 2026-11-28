@@ -24,6 +24,10 @@ lab_venue: "Mac"
 
 Sooner or later, almost every platform component grows an HTTP API, and that is usually a good sign. An inventory service sits in front of NetBox and Redfish. A job-submission gateway fronts Slurm or Kubernetes. A webhook receiver takes alerts from Alertmanager. A model-serving front end handles authentication, batching and streaming before it calls Triton or vLLM. An internal control plane manages GPU quotas, and an "agent" exposes health and metrics.
 
+![A central FastAPI microservices box with four platform services arranged around it.](./img/g-146.jpg)
+*Figure 3.7.V. Many platform components are small HTTP services, and FastAPI fits that role.*
+
+
 Each of those is a microservice: one small program that owns one job and talks to everything else over HTTP. FastAPI is the dominant Python framework for building them. It is asynchronous, built on ASGI, and type-driven. Request validation and OpenAPI documentation come from Python type hints and pydantic models. If you run control-plane services, it is fast enough for most of them, and for many data-plane services too.
 
 The framework also does a great deal on your behalf, and that is the reason to read this chapter rather than skim a quickstart. A tool that writes your validation, your documentation and your error responses for you is worth understanding properly. Its mistakes are quiet ones.
@@ -87,6 +91,10 @@ Decide for each endpoint whether it truly awaits async work, because that choice
 ## 2. A first application
 
 Your first task is usually small and specific. A rack of nodes arrived, and the spreadsheet that tracks them is already behind. You want a service you can reach with `curl`, so that the next question about that rack goes to the API instead of to you.
+
+![Four boxes in a row showing a FastAPI request passing validation, a route function, and a JSON response.](./img/g-147.jpg)
+*Figure 3.7.V. Validation and docs come from type hints, so the framework does real work for you.*
+
 
 The app below is a Fleet API. A dictionary stands in for a database, so you can focus on the framework.
 
@@ -357,6 +365,10 @@ This middleware reuses an incoming `x-request-id` header or generates one when i
 
 Six weeks in, `main.py` has become the whole application. Several people are editing it, the merge conflicts land in the same import block every time, and no test can import a service without starting the app.
 
+![Three stacked layers for a FastAPI service: routes, services, and repositories.](./img/g-148.jpg)
+*Figure 3.7.V. Separate the layers early, so the business logic can be tested without HTTP.*
+
+
 As an application grows, a single `main.py` becomes hard to test and hard to change. Splitting it into layers keeps HTTP code apart from business logic. The tree below shows one way to organize a fleet service.
 
 ```text
@@ -393,6 +405,10 @@ Keep your routes thin from the start, so the services and repositories stay easy
 ## 7. Authentication and security
 
 Suppose a user with a valid token edits a job that belongs to someone else. The request is authenticated, but it is still wrong. Authentication answers who is calling. Authorisation decides what that caller may touch, and the two are separate questions.
+
+![A three-row table separating authentication, authorisation, and object ownership checks.](./img/g-149.jpg)
+*Figure 3.7.V. A valid token still needs an ownership check before the API changes someone else's data.*
+
 
 That gap is where an API can be authenticated and still wrong, and the second check is the one that gets forgotten. Keep the pair in mind through this section.
 
@@ -439,6 +455,10 @@ Treat every route that takes an `{id}` as a place to check ownership first.
 ## 8. Databases
 
 The service is comfortable in staging, where a handful of people use it. On the first day of real traffic, PostgreSQL starts refusing connections, and the CPU and memory graphs stay calm the whole time. Nothing in the application looks wrong, which is the difficult part of this section.
+
+![A three-row table listing database pool sizing, migration, and driver rules for FastAPI services.](./img/g-150.jpg)
+*Figure 3.7.V. Pool size is a multiplication of workers, so a rollout can exhaust the database.*
+
 
 Every request that reads or writes data needs a database session. A session is one conversation with the database, and a pool is a fixed set of those conversations that the application reuses instead of opening a new one every time. The pool decides how many of those sessions run at once.
 
@@ -576,6 +596,10 @@ Set the timeouts and per-tenant limits before you put the gateway in front of us
 
 The first version of the suite needs a live database, a Redis and a GPU. Nobody runs it locally, so it only ever runs in CI, and when it fails nobody is sure whether the code broke or the environment did.
 
+![Four stacked test layers for a FastAPI service, from unit tests to contract tests.](./img/g-151.jpg)
+*Figure 3.7.V. Each test layer covers a different risk, and the cheap layers run most often.*
+
+
 Tests for an API are mostly about taking dependencies away, and FastAPI is built for exactly that. The fixture below does the removing. A fixture is a named piece of preparation that pytest hands to a test, and this one builds an app with a `sqlite+aiosqlite://` URL and the key `k`, then replaces the database dependency with `fake_db`. You can run tests like these without a real database.
 
 ```python
@@ -625,6 +649,10 @@ Run the whole suite in CI with coverage, as chapter 3.9 describes.
 ## 11. Deployment and operations
 
 You ship version 1.4.2 on a Tuesday afternoon. During the rolling update, a user's `POST /jobs` reaches a pod that is already shutting down. The request disappears with no error at all, the job never exists, and the rollout reports success.
+
+![A four-row table listing the Kubernetes probes and shutdown settings that keep rollouts safe.](./img/g-152.jpg)
+*Figure 3.7.V. Probes and shutdown settings decide whether a rolling update drops requests.*
+
 
 When you ship the API, the container image is what runs in production. A careless build can copy secrets or local environments into that image. The Dockerfile below keeps the image small and runs the app as a non-root user.
 

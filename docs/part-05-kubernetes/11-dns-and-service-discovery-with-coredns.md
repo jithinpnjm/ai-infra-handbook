@@ -364,6 +364,10 @@ Choose the discovery method that matches how far your workloads must reach, whet
 
 DNS problems rarely announce themselves. Applications report timeouts, and the pods look healthy. Metrics show the problem before the users do.
 
+![A two-column table listing four CoreDNS signals and the alert threshold or meaning for each.](./img/g-215.jpg)
+*Figure 5.11.V. Watch a few DNS signals closely, because DNS problems rarely announce themselves.*
+
+
 CoreDNS exposes its metrics on port 9153. Watch `coredns_dns_requests_total{type,proto,zone}` for traffic, and `coredns_dns_responses_total{rcode}` for the NXDOMAIN and SERVFAIL rates. Latency shows up in `coredns_dns_request_duration_seconds_bucket`. Think of these metrics as a car dashboard. Requests are the speedometer, the response codes are the warning lights, and latency is the engine temperature. The cache is visible in `coredns_cache_hits_total` and `coredns_cache_misses_total`, and forwarding in `coredns_forward_requests_total`.
 
 Also watch `coredns_forward_healthcheck_failures_total`, `coredns_panics_total`, `coredns_health_request_failures_total` and `coredns_kubernetes_rest_client_requests_total`. In plain words, the first one says the upstream resolvers are failing their checks, the second says CoreDNS itself crashed while handling a query, and the last two say the health endpoint or the API client is struggling.

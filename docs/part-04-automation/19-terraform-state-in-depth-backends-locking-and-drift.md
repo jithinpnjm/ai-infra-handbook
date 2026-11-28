@@ -43,6 +43,10 @@ You need 4.18 first, because this chapter assumes you already know the plan and 
 
 Terraform keeps its memory in one JSON document, `terraform.tfstate`. Open that file and you can see what Terraform believes it manages, which is a useful exercise the first time you inherit a stack. The top level holds a `version`, a `lineage` (a unique id for this state's history), a `serial` (incremented on each write), the Terraform version, the outputs and a list of resources. The lineage tells Terraform that two state files come from the same history, and the serial tells it which version is newer. Each resource instance records its address, provider, attributes, dependencies and schema version. Its attributes include values the provider computed, such as IDs, IPs and ARNs. Those computed values are the reason state exists at all, because your code rarely contains them.
 
+![A three-row table listing why Terraform needs state and what breaks without it.](./img/g-184.jpg)
+*Figure 4.19.V. State is Terraform's memory, and its sensitive values need the same care as secrets.*
+
+
 Here is a small example with one GPU instance.
 
 ```json
@@ -94,6 +98,10 @@ Read the diagram from top to bottom, so you see the order of each step. The runn
 ## 3. Remote backends
 
 A backend tells Terraform two things: where state is stored, and whether operations run locally or remotely. Most backends store state and run operations on your machine or CI runner. HCP Terraform can also run them remotely, which means the plan and apply happen on the platform's machines. Choose the backend first, because the backend decides which locking and encryption features you get for free.
+
+![A four-row table comparing remote Terraform backends by locking and encryption features.](./img/g-185.jpg)
+*Figure 4.19.V. A backend without locking lets two people overwrite each other's state.*
+
 
 ### Amazon S3 (with locking)
 
@@ -200,6 +208,10 @@ Pass the file for the environment you want, and the same code base serves it. Ha
 
 Picture a CI job that starts an `apply` while a teammate's run is still going. Two applies against the same state can each read the old serial, write their own changes, and leave a state that matches neither run. Terraform guards against that with a lock. Any command that may write state first acquires a lock through the backend. Those commands include `plan` with refresh, `apply`, `destroy`, `import` and the `state` subcommands. A plan with refresh reads the state and may write it back, so it takes the lock too.
 
+![A three-row table listing habits for handling a held Terraform state lock safely.](./img/g-186.jpg)
+*Figure 4.19.V. A held lock usually means a live apply, so wait for it rather than forcing past it.*
+
+
 If another process already holds the lock, you see `Error acquiring the state lock`. The message gives you the lock ID, who holds it and when. Read that message before you act, because the holder may be a live apply that will finish in two minutes. Handle it with these habits.
 
 - Wait rather than fail at once in CI, using `-lock-timeout=5m`. The timeout lets a short apply finish before the next run gives up.
@@ -212,6 +224,10 @@ In CI, wait with a lock timeout, and never switch locking off to get past a held
 ## 5. State layout: how to split
 
 Splitting state is a design choice, and you can get it wrong in two directions. Put the whole company in one state, and every plan refreshes thousands of resources, so plans become slow, while any change can touch anything. Split into many tiny states, and you end up with dependency tangles, where a network change needs three other states to be applied first. The usual rule is to split along blast radius, change frequency and ownership. A state that changes weekly should not share a file with a state that changes hourly, and a state that holds production data should not share a lock with a lab.
+
+![A central box labeled Split state with three surrounding boxes: Blast radius, Change frequency, and Ownership.](./img/g-187.jpg)
+*Figure 4.19.V. Split Terraform state by blast radius, change speed, and who owns it.*
+
 
 A layout like this one keeps each layer in its own state, so you can change one without touching the rest. The folders map directly to the state keys, so the path on disk tells you where the state lives.
 
@@ -269,6 +285,10 @@ Workspaces share configuration and backend credentials, so the isolation is only
 For production, choose separate directories, accounts or backends rather than workspaces. Production deserves a boundary that a wrong keystroke cannot cross.
 
 ## 7. Migrating and restructuring state
+
+![Four stacked boxes showing the steps to move a resource from one Terraform state to another, with arrows pointing down.](./img/g-188.jpg)
+*Figure 4.19.V. Add the new owner before removing the old one, so the real resource is never destroyed.*
+
 
 ### Move between backends
 
@@ -332,6 +352,10 @@ Follow the same procedure for any surgery. Announce it, take a backup copy and m
 
 State will eventually go wrong, and the question is which path you take next. A calm decision now saves a long rebuild later. The table lists common failures and the first action for each, and it is worth printing for the team's on-call binder.
 
+![A two-column table pairing common Terraform state failures with the first action to take for each.](./img/g-189.jpg)
+*Figure 4.19.V. Know the first move for each state failure before it happens.*
+
+
 | Scenario | Action |
 |---|---|
 | **State file deleted/lost** (no versioning) | Restore from backup/versioned bucket or `.backup`; otherwise rebuild state by `import` of every resource (use import blocks and `-generate-config-out`), carefully verifying plans show no changes; costly, hence versioning and replication |
@@ -350,6 +374,10 @@ Build backups in layers. A single copy in a single place is one mistake away fro
 ## 9. Drift
 
 Suppose someone hotfixes a setting in the console during an incident at 3 a.m. Nothing in your code says so, and the state still holds the old value. That gap between state and config on one side, and the real world on the other, is drift. It comes from console edits, autoscalers or controllers changing fields, other automation, provider-side defaults and manual hotfixes during incidents. Drift is not always a mistake. The hotfix may have been the right fix, and the question is whether the code should learn about it.
+
+![A three-column table listing revert, adopt, and tolerate, with when to use each and the action for each.](./img/g-190.jpg)
+*Figure 4.19.V. Every drift item needs a decision: undo it, accept it, or let another tool own it.*
+
 
 Start with the plan. `terraform plan` refreshes by default and shows drift as the changes needed to revert it. `terraform plan -refresh-only` shows only the real-world differences from state, without proposing any change to the infrastructure, and `terraform apply -refresh-only` writes those differences into state so the record catches up with reality.
 
@@ -377,6 +405,10 @@ Decide, for each drift item, whether to revert, adopt or tolerate it before the 
 
 Assume that **anyone with state access can read every secret in it**. That assumption shapes every access decision that follows. As you set up access, control it with IAM. Separate read from write, use one bucket per environment, use KMS keys with audit trails, and allow no human access in production except break-glass. Break-glass means a documented emergency path that is logged and reviewed afterward, so the normal path stays closed.
 
+![Two side-by-side panels: the left says sensitive equals true only hides CLI output, the right shows the state file keeps the plaintext secret.](./img/g-191.jpg)
+*Figure 4.19.V. Treat state as a secret store: anyone who can read it can read every secret in it.*
+
+
 `sensitive = true` only redacts CLI output. It does not encrypt state. Secrets get into state through `random_password`, `tls_private_key`, `aws_db_instance.password`, `aws_iam_access_key`, data sources that read from Vault or Secrets Manager, and provisioner outputs. Each of those writes the value to the file in full, even when the code never prints it.
 
 The best fix is to avoid creating secrets in Terraform at all. Let the service generate them, store them in a secret manager, and reference them by ID. A reference holds only the ID, so the secret itself never enters state. Where your version supports them, use write-only or ephemeral arguments and ephemeral resources, which newer Terraform and OpenTofu releases offer, because those values exist during a run and are never saved. Use IAM database auth, OIDC or workload identity instead of passwords, and rotate secrets outside Terraform, so a rotation does not require a plan and apply.
@@ -392,6 +424,10 @@ Keep secrets out of Terraform wherever a secret manager can hold them.
 ## 11. State in CI/CD
 
 Your pipelines touch state on every run, so give each job the access it needs and no more. A pipeline that holds more access than its job needs turns one leaked token into a much larger incident.
+
+![Four stacked boxes showing a CI flow from the plan job to uploading the artefact, review, and applying the saved plan, with arrows pointing down.](./img/g-192.jpg)
+*Figure 4.19.V. Apply the exact plan a reviewer read, and only from protected branches.*
+
 
 Plan and apply jobs use the same backend, but with different permissions. The plan identity needs read access to state, and it needs lock write access only if refresh locking is needed. The apply identity gets read and write access only on protected branches (4.2), so a feature branch cannot change production state.
 

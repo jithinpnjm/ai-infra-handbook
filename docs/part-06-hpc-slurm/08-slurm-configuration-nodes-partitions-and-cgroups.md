@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE."
 
 Most of the tickets that say "my GPU job is behaving strangely" on an AI cluster can be traced back to a handful of lines in `slurm.conf` and `cgroup.conf`. Picture a researcher who asks for 2 GPUs on an 8-GPU node. They run `nvidia-smi` inside the job and see every GPU in the box. They assume the scheduler is broken. The scheduler is actually doing what it was told. Nobody set `ConstrainDevices=yes`, so the kernel never hid the GPUs the job did not ask for, and the job could see all of them.
 
+![Two side-by-side panels: without ConstrainDevices a 2-GPU job sees all 8 GPUs, while with it the job sees only the 2 it requested.](./img/g-279.jpg)
+*Figure 6.8.V. A job sees only the GPUs its cgroup allows, so enable device constraints or the job will see the whole node.*
+
+
 Here is a second case. A job grows past the memory it requested, and the node's kernel OOM killer (the out-of-memory killer, the part of Linux that stops processes when RAM runs out) picks a victim. Three neighboring jobs on the same server die with it. The reason is that `SelectTypeParameters` omitted `_Memory`, so Slurm never treated RAM as something jobs must share. The jobs were packed onto one machine without anyone counting their memory.
 
 The third case shows up on a newly provisioned DGX node. It registers with the controller and flips straight to `drain` (`invalid`). The machine is healthy. Its configuration is the problem, because `RealMemory` in `slurm.conf` was set higher than the memory the kernel reports after BIOS reservations. The config claims more RAM than the box really has, so Slurm refuses to trust the node.
@@ -61,6 +65,10 @@ Slurm uses compact bracket ranges everywhere, such as `node[1-10]`, `gpu[01-04,0
 ## 2. Nodes: hardware discovery (`slurmd -C`), `DEFAULT`, `NodeSet`, and states
 
 A rack of new GPU servers arrives, and the vendor's sheet lists the RAM as a tidy round number. You are about to type that number into `slurm.conf`. This is the moment to stop and measure instead, because the number on the sheet is not the number the kernel will report.
+
+![Three stacked boxes: the datasheet lists installed RAM, the kernel reserves some of it, and slurmd -C reports the usable amount, with arrows pointing down.](./img/g-280.jpg)
+*Figure 6.8.V. Measure usable RAM with slurmd -C, because the datasheet number is always higher than what the kernel reports.*
+
 
 ### Describing node hardware (`slurmd -C` and *Supercomputers for Linux Sysadmins* Chapter 15 attributes)
 
@@ -179,6 +187,10 @@ Watch the second command. Its `partition` and `name=new` are separate arguments,
 ## 4. Resource selection (`select/cons_tres`) and cgroup containment
 
 A shared GPU node is only safe when two halves work together. Imagine two jobs on the same server, each one sure that it owns the RAM and the cores it was given. If only one half of the system knows about the limits, the other job pays for the mistake. Resource selection happens in `slurmctld`, which decides which job gets which resources. Cgroup containment happens in `slurmstepd`, which is the process that starts the job on the node and then fences it in with kernel limits.
+
+![Three stacked boxes: select/cons_tres allocates resources, cgroup containment hides other devices, and the job sees only what it asked for, with arrows pointing down.](./img/g-282.jpg)
+*Figure 6.8.V. Scheduling allocates the GPUs and cgroups enforce it, so a job cannot reach devices it did not get.*
+
 
 Here is what happens when a job starts. `slurmctld` picks the nodes and the cores, and it records that choice. On the node, `slurmstepd` creates the job's cgroup, writes the RAM and device limits into it, and only then starts the user's tasks. The tasks cannot step outside the fence, because the kernel checks every access against the limits. The controller's choice is a promise, and the cgroup is what keeps the promise.
 

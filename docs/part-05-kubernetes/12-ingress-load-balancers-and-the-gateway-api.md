@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Suppose your team has just put a model behind an endpoint, and users report that long answers stop halfway through. The cause often sits at the edge, the point where traffic first enters the cluster. Inference endpoints, notebooks, experiment trackers, dashboards, model registries and internal tools all need a controlled entry point. That entry point handles TLS and authentication. It routes requests by hostname, path or header, for example by model name or tenant.
 
+![A central box labeled Inference edge with four surrounding boxes: TLS and authentication, Routing by host or path, Canary traffic splits, and Rate limiting per API key.](./img/g-216.jpg)
+*Figure 5.12.V. The edge handles security, routing, and limits, and its timeouts must allow long answers.*
+
+
 It also splits traffic between model versions for canary and A/B tests. Long-running answers need long timeouts and streaming. Token streaming can use Server-Sent Events, WebSockets or gRPC. The edge also applies rate limiting per API key and exposes metrics.
 
 The edge is also where AI-specific problems appear. A default 60-second proxy timeout can kill a long generation. Request buffering can break token streaming. Body size limits can reject large prompts or image batches. HTTP/2 connection reuse can produce uneven load. Cache-/KV-aware routing needs go beyond what classic L7 balancers can meet. Put simply, a balancer that only counts requests cannot tell that one backend already holds the context for a prompt, and that knowledge can save a lot of recomputation.
@@ -575,6 +579,10 @@ Integration suits platforms that need many domain names. It has trade-offs, thou
 
 The Gateway API is the successor to Ingress. Think of it as the Ingress idea split into roles, so that each team edits only its own part. It is role-oriented, expressive, portable and extensible. It covers L4 and L7 traffic, and it also covers gateways for service meshes, which the project calls GAMMA. Its HTTP features reached GA in v1. The table lists each resource and the person who usually owns it. Put simply, the GatewayClass is the template, the Gateway is the building, and the routes are the signs that point visitors to rooms inside it.
 
+![A two-column table listing four Gateway API resources and the owner of each: GatewayClass, Gateway, HTTPRoute, and ReferenceGrant.](./img/g-217.jpg)
+*Figure 5.12.V. Splitting Gateway API resources by owner lets each team change only its own part.*
+
+
 | Resource | Owner persona | Purpose |
 |---|---|---|
 | **GatewayClass** | Infrastructure provider | Names a controller implementation (like StorageClass/IngressClass) |
@@ -647,6 +655,10 @@ Before you migrate, list the annotations your Ingresses use and map each one to 
 
 Suppose a certificate expires on a Friday night and the site goes down. Think of cert-manager as the reminder system that prevents that night from happening. cert-manager prevents that. It automates certificate issuance and renewal through custom resources. An `Issuer` or `ClusterIssuer` says where certificates come from, such as ACME and Let's Encrypt, Vault PKI, an internal CA, Venafi, or self-signed. A `Certificate` describes the certificate you want, and cert-manager stores the result in a Secret. Think of the Certificate as an order form and the Issuer as the shop. cert-manager fills in the form, collects the goods and puts them in the Secret. An annotation on an Ingress or Gateway, like `cert-manager.io/cluster-issuer`, creates the Certificate for you.
 
+![Three stacked boxes showing a Certificate request, then an Issuer, then the Secret that stores the result, with arrows pointing down.](./img/g-218.jpg)
+*Figure 5.12.V. cert-manager turns a certificate request into a stored Secret and renews it before it expires.*
+
+
 ACME gives you two ways to prove that you control a domain. HTTP-01 needs public reachability on port 80, works per host, and cannot issue wildcards. DNS-01 needs API credentials for your DNS provider. It supports wildcards and private clusters. Put simply, HTTP-01 proves control by serving a file on port 80, while DNS-01 proves control by writing a record in the domain's DNS.
 
 Renewal starts at about 2/3 of the lifetime by default. Think of the renewal window as an early reminder before a passport expires, so you never travel with an expired document. For 90-day certificates, that means renewal 30 days before expiry.
@@ -683,6 +695,10 @@ Choose HTTP-01 or DNS-01 for each domain before creating the issuer.
 
 Without a cloud provider, a `type: LoadBalancer` Service stays `<pending>` until you install a controller. Think of a bare-metal cluster as a building with no front desk. A `LoadBalancer` Service asks for a front desk, and nothing answers until you hire one, which is what MetalLB or kube-vip does.
 
+![Two side-by-side panels: L2 mode has one node answering for the IP, while BGP mode has speakers advertising routes so traffic spreads across nodes.](./img/g-219.jpg)
+*Figure 5.12.V. L2 mode is simple but funnels traffic through one node, while BGP spreads it across nodes.*
+
+
 MetalLB assigns IP addresses from pools you configure. In L2 mode, one node answers ARP or NDP for the IP. Failover takes seconds, but that single node is a bandwidth bottleneck, and all nodes must share one L2 domain. Think of it as one doorman who answers the phone for the whole building, so every call passes through that one person. If you run kube-proxy in IPVS mode, set `strictARP`. In BGP mode, the speakers peer with the ToR switches or routers and advertise /32 routes. Put simply, L2 mode is one doorman who answers for the address, while BGP mode is many doormen who each announce it to the router, so the router can share visitors among them. Traffic then spreads across nodes with ECMP, which helps at scale. BGP needs router configuration, and it fits the leaf-spine fabrics covered in 2.15 to 2.16. You configure MetalLB with the `IPAddressPool`, `L2Advertisement`, `BGPPeer` and `BGPAdvertisement` CRDs. Service annotations such as `metallb.universe.tf/address-pool` and `loadBalancerIPs` select the pool and the address.
 
 kube-vip provides a VIP for the control plane and for Services, using ARP or BGP, and it is lightweight. Cilium LB IPAM, with its BGP Control Plane or with L2 announcements, is integrated with the CNI. It can use Maglev hashing and DSR with an eBPF datapath. Calico advertises Service and cluster IPs through BGP.
@@ -696,6 +712,10 @@ Raise the idle timeouts on any load balancer that fronts streaming endpoints bef
 ## 6. Designing the edge for AI/LLM traffic
 
 An LLM edge fails in different ways from a web edge. Think of a web request as a letter that arrives in a second. A generation is closer to a phone call that lasts several minutes, and the line stays busy the whole time. Generations run for minutes, prompts can be large, and one slow backend can hold many requests. The table covers each concern, and you can read the guidance on the same row.
+
+![A two-column table listing five LLM edge concerns: timeouts, streaming, request size, retries, and backpressure, with the guidance for each.](./img/g-220.jpg)
+*Figure 5.12.V. LLM traffic runs for minutes, so the edge needs longer timeouts, streaming, and no blind retries.*
+
 
 | Concern | Guidance |
 |---|---|
@@ -757,6 +777,10 @@ Set the timeouts and body size on the edge before you tune anything else.
 ## 7. Operating and debugging
 
 When an on-call page says users see errors, start with the status code. Think of a request as a parcel on a route with several stops. The status code tells you which stop reported the problem. Each code points at a different layer of the request path. A request travels from DNS to an LB IP, through a node or load balancer, into a gateway pod, then to a Service and its endpoints, and finally to an app pod.
+
+![A two-column table mapping HTTP status codes from the gateway to their meaning: 404, 502, 503, 504, and 429.](./img/g-221.jpg)
+*Figure 5.12.V. Read a status code as a pointer to the layer that failed, then check that layer.*
+
 
 The table maps each status to its likely meaning and to the first thing you should check. Read the status code as a pointer to a layer, not as a diagnosis. A 502 says the backend answered badly, and it says nothing yet about why.
 

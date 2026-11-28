@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture an application engineer who submits a training Pod. The Pod requests a single GPU, on a cluster where every node reports eight allocatable GPUs. The scheduler binds the Pod at once, and the container starts running. Everything looks right in the dashboard. Seconds later, PyTorch crashes with `CUDA_ERROR_NO_DEVICE`, because `/etc/containerd/config.toml` lost its NVIDIA runtime handler during an OS image update. The scheduler did its job, and the container runtime quietly lost the piece that gives the container a GPU.
 
+![Three stacked boxes: a pod requests one GPU and the scheduler binds it, three software contracts must each hold, and otherwise PyTorch fails with CUDA_ERROR_NO_DEVICE.](./img/g-303.jpg)
+*Figure 11.2.V. A GPU shows as allocatable to Kubernetes, but the container still needs several layers to work before CUDA can use it.*
+
+
 That story is the core of this chapter. Scheduling a GPU in Kubernetes is not the same operation as giving a Linux container process a usable GPU. Three distinct software contracts stand between a Pod manifest and a working CUDA context. A CUDA context is the state that CUDA creates before any kernel can run on a GPU. Each contract runs across a different infrastructure boundary, and each one can fail on its own. Confusing those boundaries is the single largest source of wasted incident-response hours on Kubernetes GPU platforms, because people fix the layer that looks guilty instead of the layer that actually broke.
 
 The first contract sits on the inventory and scheduling boundary. The NVIDIA Device Plugin queries the host driver through the NVIDIA Management Library. It opens a gRPC stream to the local kubelet and advertises healthy devices as the extended resource `nvidia.com/gpu`. Only after kubelet patches the Node status object in the API server can kube-scheduler bind a GPU Pod to that machine. Think of this contract as the list of parking spaces the node claims to have. It says how many spaces exist and whether they are usable, but it does not say which car sits in which space.
@@ -535,6 +539,10 @@ Use this one-GPU check as a last step, after the host and plugin checks above. R
 ## How it fails
 
 A live outage is the worst moment to start restarting things. Picture a GPU node that drops its allocatable GPUs during a busy afternoon, with jobs queued behind it and a manager asking for an update every ten minutes. The reflex is to restart the device plugin DaemonSet and hope. When a node drops its allocatable GPUs, or containers fail at startup, resist that urge until you have preserved evidence. A restart erases the logs and the Pod state that would have told you which boundary broke. Follow the dependency-ordered decision tree instead. It helps you isolate the exact failing boundary, working from the bottom up.
+
+![Three stacked boxes: check that lspci shows the NVIDIA device, check that host nvidia-smi succeeds, and if not check the driver and kernel logs, with arrows pointing down.](./img/g-305.jpg)
+*Figure 11.2.V. Check each layer in order and stop at the first one that fails, so you fix the real layer and not the plugin.*
+
 
 The tree starts with the hardware and moves upward, one question at a time. Each question has a yes branch that goes further up the stack and a no branch that stops at the layer that is broken. Because the layers depend on each other, a failure low in the tree makes everything above it look broken too.
 

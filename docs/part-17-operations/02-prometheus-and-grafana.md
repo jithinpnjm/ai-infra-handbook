@@ -26,6 +26,10 @@ lab_venue: "GCP / GKE"
 
 Imagine you are the on-call engineer at two in the morning. The inference service has slowed down, and you have a few minutes to find out why. You open the metrics first, because metrics show how much of something is happening over time. Chapter 17.1 named the three pillars of observability. This chapter covers the first one, metrics, which answer the question of how much and how fast.
 
+![Three stacked boxes: metrics show how much over time, Prometheus collects them, and Grafana draws the dashboards, with arrows pointing down.](./img/g-312.jpg)
+*Figure 17.2.V. Metrics come first in an incident because they show how much is happening over time, and Prometheus and Grafana make them readable.*
+
+
 Prometheus is the de facto standard for collecting AI infrastructure metrics. "De facto standard" means that most of the industry uses it, even though no official body chose it. Grafana is the de facto standard for the dashboards that read them. Together, they support every other operational chapter in this part. You can think of Prometheus as the collector and storage, and Grafana as the window you look through.
 
 The Prometheus and Grafana stack sits on the critical path of every alert, every SLO, and every capacity model. A misconfigured stack either pages the on-call at the wrong moment or stays silent while the cluster is down. That is why the platform team runs the stack as a production service, with SLOs, observability, and a runbook.

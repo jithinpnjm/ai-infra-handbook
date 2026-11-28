@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE."
 
 Imagine a training run that was fast last week and crawls tonight. Nothing has crashed, and no alert has fired. Every GPU dashboard looks fine when you check it one at a time. The slowdown is spread across thousands of accelerators, and the cause is one slow link or one throttled node somewhere in the fabric. To find it, you have to think about the whole machine, not one server at a time.
 
+![Three stacked boxes: a training run gets slow overnight, no single server alert fires, and one slow link somewhere in the fabric is the cause, with arrows pointing down.](./img/g-270.jpg)
+*Figure 6.1.V. A slowdown spread across many accelerators must be traced through the whole system, not one server at a time.*
+
+
 If you come from DevOps, your instincts were shaped by web services. A web tier with one unhealthy instance can often be drained and replaced while users barely notice. A training job works differently. Its GPUs stop and wait for each other at nearly every step, so one sick machine can hold back the whole job. That changes the first question you ask on a slow run. It is no longer which server is broken. It is which part of the whole machine is slowing everyone down.
 
 That is the core idea of this chapter. If you walk onto the data center floor where a large language model is training, you are standing inside a supercomputer. Thousands of GPUs run in liquid-cooled racks, linked by a dedicated InfiniBand or RoCE fabric. The accelerators read training data from a parallel file system, and they take their orders from a central batch scheduler. Nearly every tool and habit that keeps such a cluster productive came from high-performance computing, or HPC. Slurm queues, collective communication, environment modules, pre-job health checks, node draining, and fair-share accounting were all built by HPC engineers over several decades. When you understand what HPC measures and why a supercomputer behaves like one synchronized machine, you can diagnose cluster-wide slowdowns. You can also explain what you found to people in a production war room.

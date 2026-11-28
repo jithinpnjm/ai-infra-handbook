@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 A GPU platform is only as reliable as your ability to see inside it. Picture a training job that silently runs at 40% of its expected throughput. Nothing crashes, and the loss curve looks normal. The cause turns out to be one node's NIC, which negotiated a lower link speed than the others. The job still finishes, but it takes far longer and costs far more than it should. Other failures hide in the same way. An inference service's p99 latency can double when its KV-cache fills. A node's GPU can throw Xid errors for days before the job finally fails. A runaway controller can slow the whole control plane, and every team blames its own code.
 
+![A central box labeled Platform instrument panel with four surrounding boxes: metrics, logs, traces, and dashboards.](./img/g-264.jpg)
+*Figure 5.24.V. No single signal tells the whole story, so combine metrics, logs, traces, and dashboards.*
+
+
 Observability turns these mysteries into dashboards and alerts. Think of it as the instrument panel of a car. A speedometer alone does not tell you the engine is overheating. You need the temperature gauge, the oil light and the fuel level, and each one answers a different question. A platform needs the same mix of instruments, so that a problem is visible from more than one angle.
 
 The Kubernetes ecosystem has now largely converged on a common toolkit. It uses Prometheus-compatible metrics, structured logs shipped to a central store, OpenTelemetry for traces, and Grafana for visualisation. This chapter walks through the architecture and the exporters that matter. It then shows how to design alerts you can act on, and how to scale and secure the stack. GPU-specific signals appear along the way, and Part 17 covers them in more depth.
@@ -436,6 +440,10 @@ Read a PromQL line in three steps. Find the metric name. Find the filters in the
 
 An alert is a promise that a human will act. Every alert you add spends some of that promise. A platform with a hundred noisy alerts teaches its on-call engineers to ignore all of them. Treat each alert as a small, expensive interruption, and make sure it earns its place.
 
+![A two-column table listing four alerting principles and the rule of thumb for each.](./img/g-265.jpg)
+*Figure 5.24.V. Page people for symptoms users feel, and send causes to a ticket, so alerts stay actionable.*
+
+
 ### Principles
 
 1. **Page on symptoms, ticket on causes.** Page someone when users or SLOs are affected, such as API errors, inference latency or availability problems, jobs that fail to start, or many nodes lost. Notify through a ticket or chat for causes and capacity warnings, such as a disk 80% full or a certificate that expires in 14 days. A symptom is what the user feels. A cause is what might produce the symptom later. The page should wake someone for the symptom, and the ticket can wait for the cause.
@@ -502,6 +510,10 @@ On the network side, watch for IB or RoCE link-down events, symbol errors, PFC s
 Start with the node hardware alerts, because one bad GPU can hold back an entire job. A single failing GPU in a large training run can make the whole run crawl, and the job's own logs may only say that it is slow. The hardware alert is the one that explains why.
 
 ## 4. Logs
+
+![Stacked boxes: apps write to stdout and stderr, the platform ships logs to a central store, and teams search every replica at once.](./img/g-266.jpg)
+*Figure 5.24.V. Ship logs off the pod as they are written, because a deleted pod takes its local logs with it.*
+
 
 ### Why logs need a central place
 
@@ -611,6 +623,10 @@ Because Events live in the API, you could write automation that watches for spec
 ## 5. Traces and OpenTelemetry
 
 **OpenTelemetry (OTel)** standardises how telemetry is produced. SDKs and auto-instrumentation create traces, metrics and logs. The **OpenTelemetry Collector** receives that data over OTLP, through an agent DaemonSet, a gateway Deployment or both. It processes the data with steps such as batching, a memory limiter, attributes, tail sampling and k8sattributes enrichment. Then it exports the data to backends such as Tempo, Jaeger, Prometheus remote write, Loki or cloud APIs. The **OpenTelemetry Operator** manages Collector instances, and it auto-instruments workloads through annotations such as `instrumentation.opentelemetry.io/inject-python: "true"`. OTLP is the standard wire format that OpenTelemetry uses to send data between its parts.
+
+![Stacked boxes: a service sends spans over OTLP, the OpenTelemetry Collector processes them, and a backend stores the trace, with arrows pointing down.](./img/g-267.jpg)
+*Figure 5.24.V. Apps hand their trace data to a collector, which sends it to storage, and the trace ID must survive every hop.*
+
 
 Think of the Collector as a sorting office in a postal network. Letters arrive from many senders in many formats. The office stamps them, groups them, drops the duplicates and sends each bundle to the right destination. Your apps do not need to know where the traces are finally stored. They only need to hand their letters to the office.
 
@@ -738,6 +754,10 @@ The `ext.SpanKindRPCClient.Set` call tags the span as the client side of a servi
 
 If you provision Grafana from Git, keep dashboards as code with Jsonnet, Grafonnet or Terraform. Dashboards in Git can be reviewed, rolled back and rebuilt after a failure. A dashboard edited by hand in the browser disappears on the next upgrade. The recommended set has eight dashboards that show you what to watch.
 
+![Stacked boxes showing how to read a dashboard: start at the SLO panel, pick the matching panel, then use the drill-down link.](./img/g-268.jpg)
+*Figure 5.24.V. Read dashboards the way you read alerts: start at the SLO, then drill into the symptom.*
+
+
 1. **Cluster overview** shows node readiness, pod phases, pending and unschedulable pods, API latency and errors, etcd health, the scheduler queue, certificate expiry and GitOps sync status.
 2. **Capacity and allocation** compares allocatable, requested and used CPU, memory and GPU per pool and namespace. It also tracks fragmentation through the largest free GPU block, quota usage, and queue depth and wait time from Kueue metrics. Fragmentation here means free GPUs that are scattered across nodes, so no single job can use them.
 3. **Node and GPU health** shows per-node GPU utilisation, memory, power, temperature and clocks. It adds throttle reasons, an ECC and Xid timeline, NVLink and PCIe errors, NIC throughput and errors, and disk and inode use. Heatmaps across the fleet make outliers stand out, since one hot or one slow GPU shows up clearly. A heatmap colours each cell by its value, so the bad node is visible at a glance.
@@ -754,6 +774,10 @@ Read a dashboard from the top down, the same way you read an alert. Start with t
 ## 7. Scaling, retention and cost
 
 **Cardinality** is the main scaling problem. Every unique label set becomes a series, and each series costs memory, roughly a few KB. Avoid unbounded labels such as user IDs, request IDs, full URLs and pod UIDs in app metrics. Use `metricRelabelings` to drop heavy series, and check the largest offenders with `topk(10, count by (__name__)({__name__=~".+"}))`. Per-pod histograms with many buckets multiply the problem. DCGM exports many fields per GPU, so restrict the counters CSV to the fields you actually use. Cardinality is multiplicative, so each new label multiplies the total instead of adding to it. That is why one careless label can turn a small system into a large one overnight.
+
+![A two-column table listing retention and cardinality rules for metrics, logs, and traces.](./img/g-269.jpg)
+*Figure 5.24.V. Cardinality is the main scaling risk, so find the largest series before you size storage.*
+
 
 **Prometheus sizing** depends on two things. On disk, expect roughly 1–2 bytes per sample. In memory, the head series dominate, so 1M series take several GB. The head is the part of the database that holds the newest series in memory before they are written to disk. To spread the load, shard by scrape target with the Operator's `shards` setting, or split by function, with separate Prometheus servers for infrastructure, GPU and applications. Edge clusters can use `agent` mode with remote write. Agent mode collects and forwards data without keeping a local history, which saves disk on small clusters.
 

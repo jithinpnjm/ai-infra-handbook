@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Consider a notebook that carries one token. Whether that token can read every team's checkpoints depends on how you injected it and how far you scoped it. AI platforms collect a lot of sensitive material. They hold object-store credentials for datasets and checkpoints, model hub tokens and API keys for LLM providers. They also hold registry credentials, database passwords for metadata stores, signing keys, and service tokens that operators use to reach the API. Configuration matters just as much: model parameters, tokenizer paths, NCCL environment, scheduler settings and feature flags all live there too.
 
+![A three-column table: configuration is like door signage, secrets are keys to the server room, and RBAC is the lock system, each with its risk if wrong.](./img/g-233.jpg)
+*Figure 5.16.V. Configuration mistakes confuse people, but secret and access mistakes expose data, so guard the keys and locks first.*
+
+
 How you inject, rotate and scope these values decides how far a single failure can reach. A leaked notebook can read every team's checkpoints, and a compromised job can create GPU pods without limit. RBAC is the authorisation layer for the Kubernetes API itself. A mistaken ClusterRoleBinding to `system:authenticated`, or a broad `nodes/proxy` grant, is a cluster-wide compromise. This chapter covers configuration objects, secret handling practices and RBAC design.
 
 A useful picture is a research building with keycards. Configuration is the signage on the doors. It helps people find their way, and nobody is hurt if a sign is read by a visitor. Secrets are the keys to the server room. RBAC is the lock system that decides which keycard opens which door. A mistake with the signage costs you a confusing afternoon. A mistake with the keys or the locks can let someone walk into rooms they should never see. The chapter takes these in order, starting with the signage and moving toward the locks.
@@ -1325,6 +1329,10 @@ $ kubectl auth reconcile -f some-rbac-config.yaml
 To see changes before they happen, add `--dry-run`. The command then prints what it would change, but it does not apply the changes. Run this check in your pipeline before any RBAC change merges.
 
 ## 6. Configuration management patterns for AI workloads
+
+![Four boxes in a row with right arrows: image defaults, ConfigMap at environment level, per-job env or args, and secrets for credentials.](./img/g-234.jpg)
+*Figure 5.16.V. A setting can come from several layers, so check each layer when a run behaves oddly.*
+
 
 ## 6. Configuration management patterns for AI workloads
 

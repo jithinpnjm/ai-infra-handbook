@@ -43,6 +43,10 @@ This chapter builds on 5.3, 5.4, 5.9, 5.18 and Part 4 (automation, GitOps). Befo
 
 The first decision is who runs the cluster. Suppose your manager asks for a GPU cluster by the end of the month. The tool you install matters less than who will run the control plane and who will answer the pager when it fails. The table below lists the common models, what each one gives you and the price you pay for it. Read the Cons and Fits columns closely, because they tell you where each model starts to break down.
 
+![A two-column table matching six cluster deployment models to the situations they fit.](./img/g-239.jpg)
+*Figure 5.19.V. Pick the deployment model by who runs the control plane and who answers the pager.*
+
+
 | Model | Control plane | Nodes | Pros | Cons | Fits |
 |---|---|---|---|---|---|
 | **Managed (GKE, EKS, AKS, OKE)** | Provider operates API server/etcd/upgrades | You or provider (node pools, autopilot) | Fast start, HA control plane, integrated IAM/LB/storage, SLAs | Less control (flags, admission, etcd tuning), limits on cluster size/features, provider cadence, egress/cost, GPU capacity tied to provider | Cloud-first teams; elastic GPU in hyperscalers |
@@ -124,6 +128,10 @@ Start from your platform requirements. Those should come mostly from your app de
 ## 2. Cluster topology choices
 
 Once you know who runs the cluster, you still have to decide how many clusters to run and where. Picture a platform team asked to host training, inference and research workloads. Should they share one big cluster, or split it up? The table below shows the trade-offs. Notice that each gain, such as better utilisation, comes with a matching cost, such as a larger blast radius.
+
+![A two-column table listing five cluster topologies and the trade-off of each.](./img/g-240.jpg)
+*Figure 5.19.V. Every gain in utilisation or isolation has a matching cost, so choose the cost you can live with.*
+
 
 | Topology | Description | Pros | Cons |
 |---|---|---|---|
@@ -253,6 +261,10 @@ Roll out kernel, driver and OS changes by pool, by rack and by percentage. Start
 
 Picture a queue of jobs waiting for GPUs while some GPUs sit idle. That usually means the capacity exists but is poorly allocated. A useful way to see it is to compare three numbers. The first is what the nodes can offer. The second is what has been requested. The third is what is actually used. Each pair of numbers tells you a different story.
 
+![Three stacked boxes: allocatable capacity, requested capacity, and used capacity, with arrows pointing down.](./img/g-241.jpg)
+*Figure 5.19.V. Compare allocatable, requested, and used GPUs together, because each pair tells a different story.*
+
+
 Compare allocatable capacity, requested capacity and used capacity, using `kube_node_status_allocatable`, `kube_pod_container_resource_requests`, DCGM utilisation (`DCGM_FI_DEV_GPU_UTIL`, SM activity and memory), and node-exporter CPU and memory. Compute **GPU allocation efficiency** (requested GPU-hours against available GPU-hours) and **GPU utilisation** (the busy fraction). Low utilisation with high allocation means idle reservations, such as notebooks or stuck jobs. High pending work alongside idle GPUs points to fragmentation or a quota misconfiguration.
 
 Read the three numbers together. Suppose the nodes can offer a large number of GPUs, the scheduler has granted most of them, but the GPUs are barely busy. Then the cluster is full on paper and empty in practice. The reverse case is a cluster where the GPUs are busy but a long queue waits for them. That usually means the work is fine, and the capacity model is the thing to fix. Each pair of numbers points you to a different action.
@@ -277,6 +289,10 @@ Use queue wait times and utilisation trends to justify the next purchase. Look a
 
 Platform components such as the CNI, CSI, CoreDNS, ingress or gateway, cert-manager, the GPU Operator, the Network Operator, Kueue, monitoring, policy engines and Argo CD form a **versioned dependency graph**. A change to one piece can break another, so you manage the whole graph together. Think of it like a sports team. One player changing position affects the others, so the coach plans the whole lineup rather than one player at a time.
 
+![Four stacked boxes: control plane first, then CNI, CSI, and CoreDNS, then node pools, then add-ons, with arrows pointing down.](./img/g-242.jpg)
+*Figure 5.19.V. Upgrade the control plane first, then the components that depend on it, then nodes, then add-ons.*
+
+
 Before you change any component, write down what depends on it. Ask which other pieces read its objects, which pieces call its API and which pieces run on the same nodes. That short list tells you which tests to run in staging, and it tells you what to check first when a change goes wrong in production.
 
 Here is a concrete case. Suppose you upgrade the kernel on a GPU node to pick up a security fix. The NVIDIA driver is built against the old kernel headers, so the driver module must be rebuilt for the new kernel. If the new kernel is not on the compatibility matrix, the driver may fail to load after the reboot. The node then looks healthy to Kubernetes, because the kubelet is up, but no GPU is visible to the device plugin. The matrix exists to stop that surprise before it reaches a job.
@@ -298,6 +314,10 @@ Keep the documentation in the repository as well: runbooks, architecture decisio
 ## 6. Observability, SLOs and on-call
 
 Your on-call engineer gets paged at night because training jobs have stopped starting. Good observability tells them, in minutes, whether the fault is in the control plane, a node, the GPUs or the network. The table below lists the minimum signals to watch at each layer. Scan it by layer, and check that each layer has at least one signal you can alert on.
+
+![A two-column table listing the minimum signals to watch for the control plane, nodes, GPUs, network, and workloads.](./img/g-243.jpg)
+*Figure 5.19.V. Each layer needs at least one alertable signal, so an on-call engineer can find the failing layer fast.*
+
 
 ### What to monitor (minimum viable)
 
@@ -353,6 +373,10 @@ Think of a namespace as a separate room inside one building. Each team gets its 
 ## 8. Cluster API and fleet operations (brief)
 
 Once you run many clusters, you need a way to create, upgrade and repair them the same way every time. **Cluster API** does this by modeling clusters as Kubernetes objects. The main ones are `Cluster`, `KubeadmControlPlane` (control-plane nodes, with rolling upgrades), and `MachineDeployment`, `MachineSet` and `Machine` for the workers. Each provider has its own infrastructure templates, such as `AWSMachineTemplate`, or `Metal3MachineTemplate` for bare metal through Ironic and BMC. A `MachineHealthCheck` remediates unhealthy nodes by deleting and reprovisioning them. A `ClusterClass` gives you templates for many clusters, and `ClusterResourceSet` and add-on providers (Helm, Argo) install what each cluster needs. A management cluster runs the controllers, and the workload clusters are treated as cattle.
+
+![Three stacked boxes: declare clusters as objects, controllers provision machines, and health checks replace unhealthy nodes, with arrows pointing down.](./img/g-244.jpg)
+*Figure 5.19.V. Cluster API treats clusters as Kubernetes objects, so fleet upgrades and repairs follow one repeatable pattern.*
+
 
 For GPU bare metal, CAPI with Metal3 (or Tinkerbell or MAAS) automates provisioning from start to finish. Ansible and image pipelines (4.2, 4.17) still define what sits on each node. The benefits are a uniform lifecycle, rolling node image upgrades, and health-based remediation. The costs are that you must run the management plane yourself, and GPU-specific readiness gates are not built in. You add those through hooks or operators.
 

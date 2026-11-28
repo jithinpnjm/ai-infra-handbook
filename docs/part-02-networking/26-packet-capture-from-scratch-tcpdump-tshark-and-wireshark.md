@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Counters tell you *that* something is wrong. Packets tell you *what*. Think of the counters as the smoke alarm and the capture as the security camera: the alarm says there is a fire somewhere, and the footage shows who dropped the match. When a connection resets or a rail goes quiet, you can settle the argument with a capture. Did the SYN leave the host? Did the reply come back? Was the MSS clamped, and did a middlebox strip window scaling? Who sent the RST? You can also check whether PFC pause frames are flooding a rail, whether RoCE traffic carries the right DSCP, and whether the CNP was generated.
 
+![Two side-by-side panels comparing interface counters with packet captures.](./img/g-138.jpg)
+*Figure 2.26.V. Counters tell you a problem exists; a capture shows exactly what the packets did.*
+
+
 Consider a Tuesday afternoon. A checkpoint upload from one GPU node to the storage cluster has slowed to a crawl, and the job log says only that a write timed out. The interface counters look calm. Nothing is dropped, and the error counts have not moved. Those counters have answered one narrow question, which is whether the NIC itself is struggling. They cannot say whether the storage server ever received the write, or whether the reply was lost on the way back. Only a capture can answer that, and it answers packet by packet.
 
 GPU clusters make this harder. You cannot take a capture on a 100 or 400 Gb/s link with a naive `tcpdump`. RDMA traffic bypasses the kernel entirely. Containers hide their interfaces in namespaces, and overlays wrap each packet twice. The story below starts with the question of how a capture works at all, where the kernel hands a copy of each packet to the tool, and why that copy sometimes lies. Then it moves through `tcpdump` and its filters, `tshark` and Wireshark with TLS decryption and VXLAN and RoCE decoding, and capture at scale, from containers and from switches. It ends with eBPF tools such as BCC and bpftrace, which complement captures by tracing the view that the kernel has of packets and sockets.

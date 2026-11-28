@@ -200,6 +200,10 @@ Before you force-delete a pod, check whether it belongs to a StatefulSet or uses
 
 A namespace disappears overnight. Who deleted it? Audit logs and the auth debugging tools answer that. When something changes that nobody remembers changing, the audit log is the record of who asked for what, and when.
 
+![Three stacked boxes showing audit levels from Metadata to Request to RequestResponse, with arrows pointing down.](./img/g-210.jpg)
+*Figure 5.5.V. Audit logs record more detail at each level, so use the most detailed level only where it is safe.*
+
+
 Audit logging uses a policy file. The policy selects which events to record for each resource and user, at one of three levels: Metadata, Request or RequestResponse. Metadata records who did what. Request also records the body of the request. RequestResponse records the response too. The backends are a file with rotation, or a webhook. Audit logs help with forensics, compliance and noisy clients. Tune the policy so that it does not record high-volume reads of secrets at RequestResponse level, because that floods the log and exposes the data it records.
 
 To debug authentication and authorisation, run `kubectl auth can-i create pods --as=system:serviceaccount:team-a:trainer -n team-a`. This asks the server to answer the question for another identity, so you do not need to log in as that account. Run `kubectl auth whoami` to see who you are, and add `--v=8` to see the raw requests. The API server logs at `--v=2` by default. Its audit events record the reason for each 401 or 403. A 401 means the server did not know who you were. A 403 means it knew, and the answer was no.

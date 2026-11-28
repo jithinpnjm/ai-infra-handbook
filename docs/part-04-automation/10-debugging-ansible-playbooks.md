@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a rollout that has been running for twenty minutes. The first few dozen nodes came back green, and then one node stops with a message you have never seen before. The rest of the fleet is waiting in the queue. Nobody in the room wants to rerun the whole playbook, because nobody knows yet whether a rerun will repeat the damage or fix it. Automation failures tend to arrive at the worst moments. A driver rollout stops halfway through 200 GPU nodes. A maintenance window has a deadline. Or the run happens in CI, where there is no person sitting at a terminal to attach a debugger.
 
+![A three-row table listing common Ansible failure situations and the reflex to avoid in each.](./img/g-176.jpg)
+*Figure 4.10.V. Fast diagnosis follows a fixed order, and the two reflexes make failures harder to fix.*
+
+
 In each case, fast diagnosis decides how the day goes. Think of a doctor facing a patient who has just collapsed. The doctor checks whether the patient can breathe before anything else, because every other check depends on that. The equivalent questions in Ansible come in a fixed order. Does the file parse? Can we connect? Can we become the right user? Do the variables hold the values we expect? Does the application itself work? Asking them in order saves hours. It also keeps you away from two dangerous reflexes. The first is "just rerun it," which can repeat half-finished changes on hosts that were already partly updated. The second is "just add `ignore_errors`," which hides the failure rather than explaining it. The layers below give you that order, with the exact tool for each one.
 
 ## Prerequisites and outcomes
@@ -394,6 +398,10 @@ Make the playbook stop at the canary, so that you keep a failure small. A canary
 ## 10. Prevention habits
 
 The best debugging session is the one you never need. These habits catch most failures before a run reaches production, and each one is cheap compared with an outage at 4 PM. Think of them as the checks a pilot runs before takeoff. Nobody expects an engine to fail on a calm day, but the checklist exists because the cost of one missed item is high, and the checklist costs almost nothing.
+
+![Four stacked prevention habits for Ansible runs, from linting to pinned versions.](./img/g-177.jpg)
+*Figure 4.10.V. Cheap checks before a run catch most failures before any host is touched.*
+
 
 Many of these bugs can be caught before a run starts. The habits below move the checks earlier, so a problem shows up on your laptop instead of on a production host. Each habit also has a reason behind it. Lint catches the mistakes that look harmless until a later version of Ansible reads them differently. A canary and `--check --diff` show you the change before it lands. Pinned versions mean that a fleet built today behaves the same as one built next month.
 

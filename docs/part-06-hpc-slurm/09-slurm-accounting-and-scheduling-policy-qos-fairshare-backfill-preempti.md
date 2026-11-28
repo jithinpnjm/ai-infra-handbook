@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a shared GPU cluster on a Monday morning. Many people want the same hardware, and one of them has a deadline on Friday. Someone has to decide who runs next. A GPU cluster is shared and expensive, so that decision matters. It is the scheduler's policy, and it is the place where organisational choices become code. The policy decides who gets priority before a deadline. It decides how a team that bought 64 GPUs is guaranteed them, and whether idle capacity can be borrowed. It also decides how one user is stopped from queueing 10,000 jobs, and how much each group is charged.
 
+![A central box labeled Scheduler policy with three surrounding boxes: who the job is from and recent share, how urgent it is, and how long it has waited.](./img/g-286.jpg)
+*Figure 6.9.V. The scheduler ranks each pending job by who submitted it, how urgent it is, and how long it has waited.*
+
+
 Poor policy produces two classic failures. Large or low-priority jobs can starve and never run. Or limits and reservations are set wrongly, so GPUs sit idle while jobs wait and utilisation drops. From the user's side both failures look the same, because nothing seems to be happening. From your side they have different causes and different fixes, so you need to tell them apart.
 
 Think of the policy as three questions the scheduler asks about every pending job. Who is this job from, and how much of the cluster has that group been given recently? How urgent is the job? How long has it been waiting? The rest of the chapter takes those questions one at a time, and then shows how Slurm combines the answers into a single number. Once you can follow that path, you can explain to a user why their job is pending, and you can design a policy that behaves the way your organisation expects. The same path also helps when a policy change has side effects. If a new rule makes one team's jobs wait longer, you can trace the change to the question it altered, and you can judge whether that was the intent.
@@ -153,6 +157,10 @@ When a limit surprises you, work down this list to find the level that set it. S
 
 Suppose two jobs are both waiting, and you need to know which one starts first. Your user asks, and the honest answer is a sum. With `PriorityType=priority/multifactor`, each pending job gets an integer priority. Higher numbers run sooner, and the range runs from 0 to 4,294,967,295. The multifactor documentation gives the formula.
 
+![A central box labeled Job priority with four surrounding boxes: age factor, fair-share factor, job size factor, and QOS factor.](./img/g-288.jpg)
+*Figure 6.9.V. Each priority factor is scaled to 0 to 1 and multiplied by its weight, and the weighted factors are summed.*
+
+
 ```text
 Job_priority = site_factor
              + PriorityWeightAge       * age_factor
@@ -254,6 +262,10 @@ Match the shares to what each group bought, and pick a half-life that matches ho
 
 Picture a large job that needs every node in the cluster, waiting behind small jobs that are still running. Each small job that finishes frees a few nodes, and the scheduler has to decide what to do with that gap. Backfill is the mechanism that fills the gap without moving the large job back in line. The main scheduling pass walks the pending queue in priority order and starts whatever fits. The large job cannot fit yet, so it waits in line. Backfill (`SchedulerType=sched/backfill`) adds a look-ahead to help with that wait. It plans a start time for each high-priority job that cannot start now. Lower-priority jobs may then start immediately, but only if they finish before they delay any planned job, or if they fit in resources the plan does not need. That raises utilisation without starving big jobs.
 
+![Three stacked boxes: a big job waits for nodes, small jobs that fit the gap run first, and accurate time limits let more jobs backfill, with arrows pointing down.](./img/g-290.jpg)
+*Figure 6.9.V. Backfill lets short jobs use idle gaps, but only when every job asks for an accurate time limit.*
+
+
 Backfill depends on time limits. A job's `--time` is its promised maximum, and the scheduler plans with it. Three consequences follow for you.
 
 - Why do accurate limits matter? Accurate, tight limits let more jobs backfill. A user who requests the 2-day maximum for a 2-hour job blocks backfill windows for others, and delays their own job's planning.
@@ -282,6 +294,10 @@ Tighten the time limits your users request first, because accurate limits are th
 ## 6. Preemption
 
 An urgent job arrives on a Friday afternoon, and every GPU in the cluster is busy. The urgent job cannot wait for a training run to finish. Here is the sequence that preemption follows. The scheduler sees that the urgent job cannot start. It finds lower-priority jobs whose resources would satisfy the request. It sends those jobs the grace signals described below. When the grace time ends, the preempted jobs are cancelled, requeued or suspended, depending on the mode. The urgent job then starts on the freed GPUs. When a high-priority job arrives and the cluster is full, preemption stops lower-priority jobs so the new one can run, according to the documentation. You control it with four settings, and each one answers a different question.
+
+![Three stacked boxes: an urgent job cannot start, lower-priority jobs are picked for preemption, and the preempted job is canceled, requeued, or suspended, with arrows pointing down.](./img/g-291.jpg)
+*Figure 6.9.V. Preemption frees GPUs for urgent work, and the settings decide whether the preempted job is canceled, requeued, or suspended.*
+
 
 - How is preemption decided? `PreemptType` chooses that. `preempt/none` is the default. `preempt/partition_prio` decides by partition `PriorityTier`, and `preempt/qos` decides by the QOS `Preempt` list.
 - What does the preempted job experience? `PreemptMode` answers that. It can be set cluster-wide, per partition when you use `partition_prio`, or per QOS when you use `qos`. Its values are `OFF` (the default), `CANCEL`, `REQUEUE`, and `SUSPEND`, which requires `GANG`. The modifier `GANG` enables gang scheduling (time-slicing) per partition. `PRIORITY` limits preemption to cases where the preemptor's job priority is higher. `WITHIN` lets jobs in the same QOS preempt each other.
@@ -347,6 +363,10 @@ If you choose hard partitions, accept that they are simple and that they waste c
 ## 8. Why is my job pending: a decision list
 
 A job has been pending for hours, and the user is asking you what is wrong. Read the reason first, then run only the checks for that reason. Each reason points at a different part of the system, so guessing wastes time.
+
+![Three stacked boxes: read the pending reason, follow only that reason's branch, and accept that most jobs are simply waiting, with arrows pointing down.](./img/g-293.jpg)
+*Figure 6.9.V. Read the pending reason first, because each reason points to a different part of the system.*
+
 
 Work through the list in order. Start with the `squeue` line, because it names the reason. Then follow the branch for that reason. Most pending jobs are simply waiting their turn, and the list helps you say so with evidence instead of a shrug. When the reason points to a request that no node can satisfy, the fix is in the job script, not in the scheduler.
 

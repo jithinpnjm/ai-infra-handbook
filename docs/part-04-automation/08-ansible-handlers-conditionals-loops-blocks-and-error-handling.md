@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a fleet change that goes wrong halfway. A config file changes on a GPU node, a later step fails, and the node is left half-configured. Nobody on the team notices until a job that should have run on that node stalls, and by then the logs no longer show what happened first. Real fleet changes are not straight lines. A service should restart only if its file actually changed. A GPU task should run only on nodes that have a GPU. A node should be drained before you change it, and if the driver install fails, the node must be left in a known state with a clear message.
 
+![A four-row table matching control-flow questions in a playbook to the Ansible feature that answers each.](./img/g-174.jpg)
+*Figure 4.8.V. Each control-flow feature answers one question a real change raises.*
+
+
 Think of a surgical team with a checklist. Some steps happen only for certain patients, some steps must be repeated until the vital signs settle, and one step must happen even when something went wrong. Ansible's control-flow features give a playbook the same kind of structure. These features are handlers, `when`, loops, `block`/`rescue`/`always`, failure keywords and retries. Each one answers a question a real change raises. Did anything change? Does this apply to this host? Should I repeat this step? What do I do when it fails?
 
 Subtle bugs also hide in these features. Handlers that never fire, conditions that evaluate strings instead of booleans, rescue blocks that hide errors and loops that quietly skip are all easy to write and hard to spot. The rest of this chapter takes each feature in turn, shows the situation it was built for, and names the trap that comes with it.

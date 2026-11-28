@@ -52,6 +52,10 @@ By the end of this chapter, you should be able to:
 
 Picture a team that needs a few servers for one week. Instead of ordering hardware, the team asks a portal or an API for them, and software fulfils the request. In this chapter, **cloud** means virtualised infrastructure or services consumed through that kind of self-service.
 
+![A four-row table showing what the customer manages in IaaS, PaaS, FaaS, and SaaS.](./img/g-141.jpg)
+*Figure 2.32.V. The less the provider runs for you, the more of the stack you are responsible for.*
+
+
 The service models differ in how much you manage yourself. The less the provider runs for you, the more of the stack you are responsible for.
 
 | Model | You manage | Examples |
@@ -68,6 +72,10 @@ Deployment models describe where the infrastructure lives. A public cloud is inf
 APIs sit at the centre of all of this. Cloud resources, network resources included, are created and changed through APIs, usually with infrastructure as code such as Terraform, Pulumi, Deployment Manager or CloudFormation. That makes programming and automation part of the network engineer's job. This is where chapters 2.28 and 2.29 come in.
 
 ## 2. Business drivers and trade-offs
+
+![A four-row table listing the cloud drivers and the hidden costs that surprise teams.](./img/g-142.jpg)
+*Figure 2.32.V. Cloud saves on hardware, but egress and idle GPUs can cost more than expected.*
+
 
 ### Drivers
 
@@ -98,6 +106,10 @@ Cost surprises come from egress, inter-AZ traffic, NAT gateway processing, load 
 ## 3. Technical challenges of cloud networking
 
 Seven challenges come up again and again in cloud networking. Each one changes how you design, so take them in turn.
+
+![A four-row table pairing cloud networking challenges with the design response to each.](./img/g-143.jpg)
+*Figure 2.32.V. Each cloud networking challenge changes the design, so choose the one that bites first.*
+
 
 1. Latency comes down to physics and path. The distance to the nearest region or zone matters, and so does the route your traffic takes, whether it crosses the public Internet or the provider's private backbone. Both affect interactive and chatty workloads most. Collocate compute with data, use regional or global load balancing and CDNs for users, and measure with probes (chapter 2.31).
 
@@ -284,6 +296,10 @@ Run the test again after each rule change, because the output names the blocking
 ## 6. GKE and Kubernetes networking on GCP
 
 The ranges you choose for a GKE cluster on day one decide how far the cluster can grow. Pod range sizing limits the cluster's size and node count, so plan generously.
+
+![A three-row table listing GKE network range decisions and their rules.](./img/g-144.jpg)
+*Figure 2.32.V. Range sizing on GKE is a day-one decision that is hard to reverse later.*
+
 
 VPC-native clusters, which use alias IPs, are the standard. Nodes take IPs from the subnet's primary range. Pods take IPs from a secondary range, and each node gets a `/24` from that range by default, which you can tune with the maximum pods per node. Services (ClusterIPs) come from another secondary range. Pod IPs are routable inside the VPC and in peered networks. There is no overlay and no NAT inside the VPC, so pods work with VPC firewall rules and flow logs. Pods appear on-prem only if you advertise the pod range through Cloud Router with a custom advertisement. Keep the ranges non-overlapping with on-prem.
 

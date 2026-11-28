@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 A GPU server is a multi-homed machine. It has several NICs, and each one sits on a different network: management, front end, storage and compute rails. The hardware can reach a 100 to 800 Gb/s capability, but a default Linux configuration will not deliver it. Collective communication, checkpoint writes and dataset reads then expose every inefficiency in the packet path. It is like buying a racing car and finding that the first gear is stuck: the engine is fine, and something in the transmission is losing the power.
 
+![A three-row table matching multi-NIC packet-path symptoms to where to look for each.](./img/g-131.jpg)
+*Figure 2.24.V. Each packet-path failure sits at one stage, so find the stage first.*
+
+
 Getting the last 50% of bandwidth and the last 50 microseconds of latency means understanding how packets leave and enter the host. You need to know which routing table applies to which source address. You also need to know how interrupts and queues map to cores and NUMA nodes, which offloads are on, how big the rings and buffers are, what the MTU is end to end, and which TCP knobs matter.
 
 The same knowledge explains the classic failures. Replies can leave the wrong NIC. A single core can get pegged in softirq. Drops at the NIC ring may never reach `tcpdump`. A 100G link can deliver only 25G to one flow. A stack tuned for the wrong round-trip time will also disappoint. The chapter follows those failures one at a time. First comes how a server with several NICs decides which one to answer on, then how bonding and MTU should be run, then the long journey of a packet through the NIC, the kernel queues and the TCP stack, with the knobs at each stage. It closes with the paths that bypass the kernel, and a method for changing any of this safely. Keep the failures above in mind as you read the sections below.
@@ -172,6 +176,10 @@ VRFs come with three caveats. Services must start inside the VRF or be VRF-aware
 ## 3. Bonding operations
 
 Picture two network cables tied together so that they behave like one thicker cable. Traffic flows along both cables, and if one breaks, the other keeps the link alive. That is a bond. The operating questions are practical ones. Are both cables really in the same bundle? Does the switch on the far end agree? Does one busy flow stay on one cable, or does it spread? The walkthrough below asks those questions in order, so that a bond that looks healthy is also a bond that is working.
+
+![A three-row table listing the host-side checks that confirm a bond is working.](./img/g-132.jpg)
+*Figure 2.24.V. A bond that shows up may still be carrying traffic on one link, so check each member.*
+
 
 How do you know a bond is really working? A bond can show "up" and still use only one of its links, or hold two links that are bundled to different partners. Mode choices and hashing are covered in chapter 2.12. This section covers the operational view: what to read on the host, what to test, and what to confirm on the switch.
 
@@ -335,6 +343,10 @@ Low latency also needs quiet cores. Isolate cores with `isolcpus`, `nohz_full` a
 
 Most TCP defaults are sane, because the stack autotunes buffers for you. That is why copying a long list of settings from a blog rarely helps and sometimes hurts. Measure first, and change a setting only when a number tells you to. Tune the stack for your bandwidth-delay product, your connection rates and your memory. The bandwidth-delay product is the amount of data that fits on the wire between two hosts, which is the speed multiplied by the round-trip time, and the buffers must be at least that large to keep a fast long path full. Chapter 2.6 explains the mechanisms behind each setting.
 
+![A four-row table listing TCP tuning goals and their starting settings.](./img/g-133.jpg)
+*Figure 2.24.V. Start TCP tuning from measured goals, not from a copied list of settings.*
+
+
 The table maps each goal to the settings to start from. Treat every value as a starting point, and validate it on your own traffic.
 
 | Goal | Settings (starting points; validate) |
@@ -398,6 +410,10 @@ The default `fq_codel` or `mq` qdisc is fine for most hosts. The `fq` qdisc give
 
 Picture a city where every vehicle, from a bicycle to a lorry, uses the same roads and traffic lights. Sometimes that is fine. Sometimes a lorry carrying a fixed load needs its own lane with no lights at all. The alternatives in this section are those private lanes. Each one takes a class of work away from the general road, and each one gives something up in return, such as flexibility or the familiar tools of the kernel.
 
+![A four-row table comparing XDP, SR-IOV, DPDK, and RDMA as alternatives to the kernel stack.](./img/g-134.jpg)
+*Figure 2.24.V. Each alternative to the kernel stack gains speed by giving something up.*
+
+
 Sometimes the kernel stack is the wrong place for the work. It is a general-purpose road, with traffic lights and speed limits for everyone, and some jobs want a private track. The table compares the main alternatives, and the paragraph after it covers the cost of containers.
 
 | Technology | Idea | When |
@@ -418,6 +434,10 @@ The veth cost is worth knowing. Container traffic that crosses a veth pair and a
 
 Imagine a colleague who changes six kernel settings on Monday and says the cluster is faster on Tuesday. Nobody knows which setting helped, one of them may have hurt, and the next kernel upgrade may quietly undo the lot. The method in this section exists to prevent that story. It asks you to name the goal first, measure a baseline, change one thing, measure again, and roll out only what the numbers justify. Each step is small, and together they make tuning something you can explain to someone else.
 
+![Five stacked steps for tuning a Linux network stack safely, from goal to audited rollout.](./img/g-135.jpg)
+*Figure 2.24.V. Change one thing at a time, and keep only what the numbers justify.*
+
+
 You need a method that shows which change helped. Without one, tuning becomes a pile of settings that nobody can explain, and the next kernel upgrade quietly undoes half of them. The seven steps below build on each other.
 
 1. Define the goal and the metric first. An example is 8×400G all-reduce bandwidth ≥ 90% of line rate. Others are p99 RPC latency, and zero drops at the 99th percentile load.
@@ -435,6 +455,10 @@ Write the metric down before you touch any setting.
 ## 9. Scenarios
 
 Read each scenario below as a short story. The story starts with a symptom that a user or a dashboard reports, and then it walks through what the engineer checks, in the order they check it. Try to guess the cause before reading the rest of each story. The guess is good practice, and when it is wrong, the reason it was wrong is usually the most useful lesson.
+
+![A four-row table pairing network scenarios with the first check to make.](./img/g-136.jpg)
+*Figure 2.24.V. Guess the cause from the symptom first, then check it.*
+
 
 Each scenario below starts with a symptom you might see on a live host. It then tells you what to check and how to fix it. Read the symptom, guess the cause, and only then read on.
 

@@ -71,6 +71,10 @@ flowchart LR
 
 It is the middle of the night, and a page arrives. A training job stopped making progress some time ago, and the GPU dashboard shows nothing obvious. An on-call engineer who knows the failure modes can name the likely cause from the symptom and start the right fix. An engineer who does not know them spends the first minutes searching the wiki, while the cluster stays stuck and the job keeps losing time.
 
+![Three stacked boxes: name the likely cause from the symptom, know the failure catalogue, and start the right fix, with arrows pointing down.](./img/g-332.jpg)
+*Figure 17.7.V. Learn the failure catalogue so that a page points you to a likely cause and a fix quickly.*
+
+
 The earlier chapters in this part show how to detect failures, one tool at a time. This chapter is the catalogue of the failures themselves. An AI infrastructure failure mode is a specific way the cluster can stop meeting its service-level objectives, which are the targets the team has promised for speed and availability. The range is wide. At one end, a single GPU reports a memory error that the DCGM exporter picks up. DCGM is the NVIDIA tool that reads GPU health counters, and the DCGM exporter publishes those counters so Prometheus can store them. At the other end, a network partition splits the cluster, and the Prometheus blackbox exporter is the detector.
 
 Every failure mode needs three things. It needs a detection signal, an alert built on that signal, and a runbook the alert links to. A runbook is a written set of steps for one kind of problem. Without all three, the failure is either invisible or unhandled. Think of a smoke alarm that rings with nobody assigned to answer it. The tables in this chapter use the symptom, detect and first action columns for that reason, so you can check each row for all three parts.
@@ -239,6 +243,10 @@ When the ping fails, alert, investigate the fabric, restart the affected workloa
 ---
 
 ## 3. Storage failures
+
+![Two side-by-side panels: a failing read stops the job at once, while a slow read lets the job limp along with idle GPUs.](./img/g-333.jpg)
+*Figure 17.7.V. A failed read and a slow read need different responses, so find out which one you have first.*
+
 
 ### 3.1 The storage failure catalogue
 

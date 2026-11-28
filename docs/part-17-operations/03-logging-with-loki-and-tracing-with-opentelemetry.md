@@ -26,6 +26,10 @@ lab_venue: "GCP / GKE"
 
 It is 3 a.m., and a model endpoint has started returning errors. The on-call engineer needs three answers fast: what broke, what the system was doing at that moment, and where the time went. Chapter 17.1 named the three pillars, and Chapter 17.2 covered metrics, which answer the first question. This chapter covers the other two, logs and traces, using Loki and OpenTelemetry. Logs record what happened, and traces record how one request moved through the system.
 
+![Three stacked boxes: logs answer what broke, metrics answer what the system was doing, and traces answer where the time went, with arrows pointing down.](./img/g-319.jpg)
+*Figure 17.3.V. An outage needs three answers, and logs, metrics, and traces each supply one of them.*
+
+
 Without logs, an engineer has to open a shell in each pod and read text by hand. That works for one pod and fails badly for a whole fleet. Without traces, an engineer who sees 500 ms of latency cannot tell which step is slow, such as a 100 ms feature fetch hiding inside it. Each tool answers a question the other cannot, and the on-call usually needs all of them within the same few minutes.
 
 ```text

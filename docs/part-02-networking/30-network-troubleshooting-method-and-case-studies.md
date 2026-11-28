@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 At 2 a.m. a training job has been running on 4,000 GPUs for nine days, and then it stops making progress. The scheduler says the nodes are healthy. The GPUs say they are idle. NCCL logs show a timeout, so everyone suspects the network. People start to type commands into terminals, and each person has a different theory. The gap between a fifteen-minute fix and a six-hour outage is rarely knowledge of one command. It is a **method**. You need to know what the system should do, build the right mental models, and choose the next question with care. You also measure instead of guessing, change one thing at a time, and record what you learn.
 
+![Four stacked steps of a troubleshooting method, from knowing the target behaviour to recording results.](./img/g-139.jpg)
+*Figure 2.30.V. A steady method finishes a stuck outage faster than guessing from the loudest log line.*
+
+
 A stopped job with no clear error is the hardest kind of trouble. Nobody can tell whether the network failed, the storage failed, or a process inside a GPU hung. The method in this chapter starts from that uncertainty, and narrows it one test at a time, instead of guessing from the most alarming log line on the screen.
 
 Troubleshooting is rarely taught, yet senior infrastructure interviews probe it hard. A typical question is "walk me through how you would debug...". Behind that question is a simple worry: can this person stay calm and systematic when nothing makes sense? The method in this chapter starts from the purpose of the system and the models in your head. It then adds half-split, manipulation and simplification, and finishes with fixing, technical debt and learning. After that you get a practical data-collection kit and decision trees for the most common failure classes. Finally, there are fourteen case studies. They run from a Linux host through overlays and load balancers to AI fabrics, and each one walks through symptoms, investigation, diagnosis and resolution.

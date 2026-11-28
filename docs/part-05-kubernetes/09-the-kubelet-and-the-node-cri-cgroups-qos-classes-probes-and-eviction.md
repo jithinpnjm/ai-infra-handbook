@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a GPU server with 8 GPUs, dual-socket CPUs, multiple NICs and NVMe drives. The kubelet is the node agent on that machine, and its settings decide how the hardware behaves. Cluster policy reaches the hardware through the kubelet. It decides how many pods a node accepts, and whether a training pod gets exclusive CPU cores aligned with its GPUs' NUMA node. It also decides how much memory the system and Kubernetes daemons keep for themselves, and what gets evicted when memory or disk runs low.
 
+![A central box labeled Kubelet settings with four surrounding boxes: Pods per node, CPU cores aligned to GPUs, Memory kept for the system, and Eviction under pressure.](./img/g-213.jpg)
+*Figure 5.9.V. The kubelet sets how a GPU node behaves under load and failure, so tune it instead of trusting defaults.*
+
+
 Two more decisions sit with the kubelet: how long a node can lose connectivity before its pods are rescheduled, and how containers are killed on shutdown. Left at defaults, these settings leave a lot of performance and reliability on the table. You will see the symptoms as cross-NUMA traffic, CPU throttling, noisy neighbours, nodes that die from OOM because nothing was reserved for the OS, and long recovery times after failures. This chapter explains the kubelet's responsibilities and how to tune them for AI nodes.
 
 Put simply, these are the settings that decide how the node behaves when the world goes wrong. A node that loses its network, or that runs out of memory, is not the exception on a large GPU fleet. It is a regular event, and the settings in this chapter decide whether the event is a short inconvenience or a long outage. Reading the settings with that in mind makes each one easier to justify.

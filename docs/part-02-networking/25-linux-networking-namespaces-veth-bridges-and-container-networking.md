@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a training pod that cannot reach the parameter server. Or picture a job that runs, but where NCCL keeps choosing `eth0` instead of the RDMA interface. Both failures come from the networking that Kubernetes builds around each container, and neither shows up in the application logs in a form anyone can act on. The job says "timeout", and the real story lives in a part of the kernel that the job has never heard of.
 
+![A four-row table listing the kernel primitives behind container networking and their roles.](./img/g-137.jpg)
+*Figure 2.25.V. Container networking is built from a few kernel primitives, so learn them once.*
+
+
 Every containerised GPU workload gets its networking from a handful of kernel primitives. These are a network namespace per pod or container, a veth pair into the host, a bridge or routed path, and NAT or an overlay between nodes. When a training pod cannot reach the parameter server, or when a CNI upgrade breaks pod-to-pod traffic, you debug these primitives. CNI is the plugin system that wires up pod networking.
 
 GPU clusters add a twist. Their pods often need several NICs, which means secondary RDMA interfaces from Multus, SR-IOV or macvlan. They also use host networking for collective libraries, and they choose CNIs for performance rather than convenience. A pod that gets only a fraction of the throughput of the host is another case where you debug these primitives.

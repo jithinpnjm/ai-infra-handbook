@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture eight 8-GPU training pods waiting to be placed. The default scheduler handles them one at a time, and it can start seven and leave the eighth with nowhere to go. Those seven pods then hold their GPUs and wait, and nothing finishes. GPUs are scarce, expensive and tied to hardware topology, so each placement decision costs real money. Think of a restaurant host who seats each party the moment it walks in, without checking the reservation book for the whole evening. Two large parties can each take the last table the other one needs.
 
+![Stacked boxes: the scheduler places pods one at a time, seven pods start and hold GPUs, and the eighth pod has nowhere to go.](./img/g-238.jpg)
+*Figure 5.18.V. Placing pods one at a time can leave a whole multi-pod job stuck while its GPUs sit idle.*
+
+
 Other failures are just as costly. The default scheduler can put a latency-sensitive inference service onto the same failing node. It can fragment the cluster so that no node has 8 free GPUs, even though 40 are free. It can let background jobs hold GPUs that production inference needs. It can also put two GPUs of one pod across NUMA nodes, which halves their bandwidth.
 
 Doing this well means understanding the built-in scheduler first: filters, scores, affinity, taints, priority and preemption. You also need to know where it falls short for batch and gang workloads. Queueing systems such as Kueue and Volcano, and device allocation through device plugins and DRA, complete the picture. Think of the built-in scheduler as a seating planner who knows the tables, their sizes and which seats are taken. It does not know which guests arrive together, and that gap is where the batch problems start.

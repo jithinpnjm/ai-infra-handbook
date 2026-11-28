@@ -41,6 +41,10 @@ Read the list as a set of questions you should be able to answer by the end. Eac
 
 Every pod needs a place to put its files, and the volume type decides how long that place lasts. If you are choosing a type for a new workload, decide first how long your data must live. Pick the wrong type and your data disappears when the pod moves. Think of the volume types as different kinds of storage. One is a shelf in the room, which gets cleared when the room is cleared. Another is a locker rented in your name, which stays rented after you leave the building. The table below compares the main types by lifetime and typical use.
 
+![A two-column table showing four volume types and how long each one lasts: emptyDir with the pod, hostPath with the node, local PV bound to one node, and persistentVolumeClaim independent of the pod.](./img/g-235.jpg)
+*Figure 5.17.V. Only a PersistentVolumeClaim outlives the pod, so durable data belongs there.*
+
+
 | Type | Lifetime | Typical use | Notes |
 |---|---|---|---|
 | `emptyDir` | Pod | Scratch, caches, sharing between containers; `medium: Memory` for tmpfs | On node disk by default; counts toward ephemeral-storage; lost on pod removal (survives container restarts) |
@@ -427,6 +431,10 @@ Suppose a pod starts, reports that its data folder is missing, and nobody can sa
 
 Different AI workloads read and write data in very different ways. A training job reads the same dataset many times. A checkpoint writes hundreds of gigabytes in one burst. An inference replica reads the same weights once at startup. The table matches each need to a storage pattern.
 
+![Two side-by-side panels: 16 separate pulls move 140 GB across the network 16 times, while one shared copy moves it once.](./img/g-236.jpg)
+*Figure 5.17.V. Sharing one cached copy of model weights moves the bytes once instead of once per replica.*
+
+
 | Need | Preferred pattern | Notes |
 |---|---|---|
 | **Training datasets** (TB, many reads) | RWX shared parallel filesystem (Lustre/WEKA/VAST/BeeGFS/GPFS) mounted read-only; or sharded files on object storage streamed with a data loader (WebDataset, Mosaic Streaming); node-local NVMe cache (Alluxio/Fluid/JuiceFS/`emptyDir` on NVMe) for hot shards | Metadata-heavy small files hurt; pre-pack into large shards; align reads with filesystem stripe size |
@@ -447,6 +455,10 @@ For a worked example, take the cold-start case. A model with 140 GB of weights, 
 Before you commit to a pattern, do the division for your own checkpoint size and your target stall time.
 
 ## 6. Operations and failure modes
+
+![A two-column table pairing five storage symptoms with the first check to run for each.](./img/g-237.jpg)
+*Figure 5.17.V. Start with the event log, then check the layer it names, such as the volume, inodes, IOPS, or volume type.*
+
 
 ### Capacity and monitoring
 

@@ -323,6 +323,10 @@ The first thing to decide: before sizing a host-memory limit, add up pinned buff
 
 Rehearse these five. The pattern is the same each time: say the three-question frame, name the first command, give the number you expect to see, then say what you would change. The interviewer is listening for the order of your thinking more than for the flag names, so practise saying the sequence before you practise typing it.
 
+![Four stacked boxes: say the three-question frame, name the first command, give the number you expect, then say what you would change, with arrows pointing down.](./img/g-347.jpg)
+*Figure 20.5.V. Answer in a fixed order: frame the question, name the command, state the expected number, then state the change.*
+
+
 **Question 1. Load average is 30 and CPU is 40 percent. What do you do?**
 Order to speak: say that on Linux load includes tasks in uninterruptible sleep, so this may be I/O and not CPU. Run `uptime` to see the trend, then `/proc/pressure/cpu`, `memory` and `io`. Run `vmstat 1` and look at `r`, `b`, `wa` and `st`. List D state tasks with `ps`. Then `iostat -sxz 1` for `await`. Numbers to state: pressure percentages and `b` count. Trade-off: load is cheap to read but ambiguous. Follow-ups: a container, a VM, a kernel without PSI. When you are asked about a kernel without PSI, say that `vmstat` and `iostat` still give you the blocked count and the wait time.
 

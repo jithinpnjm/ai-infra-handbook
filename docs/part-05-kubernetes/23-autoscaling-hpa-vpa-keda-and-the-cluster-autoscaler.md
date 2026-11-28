@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture an inference endpoint that suddenly gets a burst of traffic. Requests pile up, and the answers start arriving late. The on-call engineer wants more replicas right now. The trouble is that each replica of a 70B model occupies several GPUs and takes minutes to start, so you cannot add replicas in a hurry. Scale too late and you break your latency SLOs (service level objectives, the targets that say how fast and how reliable the service must be). Scale too early, or never scale down, and you burn thousands of dollars per day on GPUs that sit idle.
 
+![Two side-by-side panels: for web servers CPU use tracks load, while for GPU model servers the CPU stays low while the GPU saturates.](./img/g-263.jpg)
+*Figure 5.23.V. For GPU model servers, CPU load hides the real bottleneck, so scale on queue and cache signals instead.*
+
+
 Traditional autoscaling was built for web servers that start in seconds and use CPU in a predictable way. GPU model servers break both assumptions. CPU utilisation is nearly useless for them. The CPU stays low while the GPU saturates, because the work happens on the GPU and the CPU mostly waits. Throughput depends on request queues, batch sizes and KV-cache pressure (the memory that holds the attention state for each active request), and none of those show up in CPU load.
 
 Batch and training workloads need different scaling again. Queue-driven worker pools, elastic jobs and node pools that appear when jobs are admitted each solve a different part of the problem. A batch job does not need to answer a user in half a second, but it does need to finish before the deadline and not waste money while it waits.

@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a team that builds a GPU cluster by clicking through a cloud console and running a few one-off scripts. The cluster works, and everyone is pleased. A month later, a new engineer is asked to build a second cluster for a staging environment, and nobody can say which console settings were changed on purpose. The bill has a line item nobody recognizes. Infrastructure built by hand leaves you with environments you cannot reproduce, reviews that cannot see the real change, and costs nobody can trace.
 
+![A three-row table listing the plan, state, and providers that make Terraform work.](./img/g-178.jpg)
+*Figure 4.18.V. Read the plan before any change, because the plan is the change order.*
+
+
 Terraform, and its open-source fork OpenTofu, takes a different approach. You describe the infrastructure as code, a set of text files that say what should exist. Then the tool shows you what it will change before it changes anything. Think of it like an architect's drawing plus a builder's change order. The drawing is the code, and the change order is the plan that you read before anyone picks up a tool. Three pieces make that work. The plan step shows exactly what will change. The state records what exists today. The providers speak to hundreds of platforms, including all major clouds, Kubernetes, Helm, GitHub, DNS, Vault, Nebius, CoreWeave and bare-metal tooling.
 
 Before you go further, it helps to know what this chapter covers. You will see the model, the architecture, the language, the workflow and the commands you reach for under pressure. It is a refresher with the reasons attached, so each command has a situation behind it. Later chapters go deeper into specific parts. State is in 4.19, modules in 4.20, loops and lifecycle in 4.21, secrets and multiple providers in 4.22, team workflows in 4.23, GPU clouds in 4.24 and Kubernetes in 4.25.
@@ -110,6 +114,10 @@ Registries and modules package reusable configuration with versions (4.20). A mo
 OpenTofu is the Linux Foundation fork, created after HashiCorp changed Terraform's licence to BUSL. A fork is a copy of the project that continues on its own path. The CLI and HCL are largely compatible, and you run OpenTofu with the `tofu` command. The two tools are diverging over time. OpenTofu offers state encryption, for example. Choose by licence, support and feature needs. Both tools read the same configuration for the common subset, so a team can start on one and move later with fewer surprises than you might expect.
 
 ## 3. HCL language essentials
+
+![A two-row table showing which provider versions the pessimistic operator allows.](./img/g-179.jpg)
+*Figure 4.18.V. The pessimistic operator lets minor updates in and blocks major jumps.*
+
 
 ### Files and blocks
 
@@ -332,6 +340,10 @@ A handful of environment variables change how Terraform behaves. `TF_VAR_*` sets
 
 Infrastructure changes when nobody is watching. Sometimes an engineer clicks a setting in the console during an incident, and sometimes an autoscaler changes a count. Those changes are real, and they are invisible to your code until something compares the two. The three tasks in this section are how you find those changes, bring existing objects under Terraform, and reorganise code without destroying anything.
 
+![Three stacked Terraform tasks for finding drift, importing objects, and refactoring safely.](./img/g-180.jpg)
+*Figure 4.18.V. Declared moves and imports leave a reviewed trail that hand-edited state never does.*
+
+
 ### Detecting and handling drift
 
 `terraform plan` refreshes by default, which means it asks the provider for the current state of each object before it compares. With `-refresh-only`, you accept the real-world changes into state without changing the infrastructure. Without it, the plan shows the changes needed to revert reality to match the configuration. Decide each drift on its merits, because the right answer depends on why the change happened. You can revert it with an apply, if the change was a mistake. You can codify it by editing the configuration to match, if the change was the new intent. Or you can ignore an attribute that changes legitimately outside Terraform with `lifecycle { ignore_changes = [...] }` (4.21), such as a node count that an autoscaler owns. Schedule a nightly plan (4.2), so drift shows up as a report rather than a surprise during the next change.
@@ -383,6 +395,10 @@ The commands `state list`, `state show`, `state mv`, `state rm`, `state pull` an
 
 Before a plan can reach a cloud, a provider has to be declared and given credentials. Without both, the plan fails at its first API call, usually with an authentication error that looks unrelated to the code you changed.
 
+![A three-row table listing Terraform provider and authentication practices and why each matters.](./img/g-181.jpg)
+*Figure 4.18.V. Providers need declared versions and short-lived credentials before any plan runs.*
+
+
 Declare providers in `required_providers`, and configure them in `provider` blocks. If you need more than one configuration of the same provider, for example one per region, use `alias` (4.22).
 
 Authenticate without static keys. A static key is a long-lived secret copied into a file, and it stays valid long after the person who made it has left. You can use credentials provided by the environment, workload identity, instance profiles, or OIDC from CI (4.2). Each of these issues short-lived credentials on demand. Never put keys in `.tf` files, or in `.tfvars` files committed to Git, because Git keeps the history even after you delete the file.
@@ -405,6 +421,10 @@ Many teams prefer a directory for each environment. Each root module, such as `e
 
 You have three main ways to run this stack, plus several alternatives. The choice usually depends on who has to operate the system, how much you want a vendor to run, and which licence your company accepts. The table sets out the strengths and the considerations of each, so you can compare them side by side.
 
+![A three-row table comparing Terraform OSS, HCP Terraform, and OpenTofu by trade-off.](./img/g-182.jpg)
+*Figure 4.18.V. Each way of running Terraform trades control against vendor dependence.*
+
+
 | Option | Strengths | Considerations |
 |---|---|---|
 | Terraform OSS CLI (BUSL licence) | Ubiquitous, mature, largest provider ecosystem | Licence terms for building competing products; you operate remote state, locking, CI and policy yourself |
@@ -417,6 +437,10 @@ Whichever option you choose, pin the CLI version in CI, using `required_version`
 ## 9. A small end-to-end example
 
 The example below uses only local providers, so you can try it on any machine without a cloud account. It creates a random cluster name and renders an inventory file from a list of nodes. Nothing in it costs money, and every idea from the chapter appears in a small form: variables, a resource with a generated value, a template, an output, and the plan-apply loop.
+
+![Four boxes in a row showing a small Terraform example from variables to rendered inventory output.](./img/g-183.jpg)
+*Figure 4.18.V. A local-only example shows every core Terraform idea without a cloud account.*
+
 
 ```hcl
 # main.tf: local-only providers, safe to try anywhere

@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a shared GPU cluster on a busy morning. One team's job floods the API server with object writes, and the storage system slows down for everyone else. The other teams' notebooks stop responding. Nobody can say who is holding which GPUs, and nobody knows what any of it costs. The cluster is not broken. It is simply being shared by people who never agreed on the rules.
 
+![Stacked boxes listing three failures of a shared cluster with no tenancy model, with arrows pointing down.](./img/g-256.jpg)
+*Figure 5.22.V. Without a deliberate tenancy model, fairness, security, and cost control all fail at once.*
+
+
 A GPU cluster is rarely built for one team. Research groups, product teams, external customers and platform engineers all share the same scarce, expensive hardware. Each of them expects fairness, security, performance isolation and self-service. Those four expectations are easy to state and hard to deliver at the same time.
 
 Without a deliberate tenancy model, the expectations collide. Noisy neighbours appear when one job floods the API or the storage. Cross-tenant data access becomes a security incident, because one team's checkpoints can end up readable by another team. One team squats on GPUs that others need, and the support load grows beyond what you can handle. There is also no cost visibility at all, so nobody has a reason to release idle hardware.
@@ -101,6 +105,10 @@ A useful way to read the table is to imagine one tenant who wants to cause troub
 ## 2. Namespace-level building blocks
 
 Picture two teams on the same cluster. One team's job reserves every GPU it can reach, and the other team's notebook never starts. Nobody did anything malicious. The first job simply asked for everything it could see. Quotas and RBAC exist to prevent that kind of squatting. The building blocks in this section keep each tenant inside its own namespace.
+
+![A two-column table listing five namespace building blocks and the job each does for a tenant.](./img/g-257.jpg)
+*Figure 5.22.V. Namespace isolation is built from quotas, RBAC, priority, GPU sharing, and node pools, each with its own job.*
+
 
 A namespace is a label on a set of objects. It is not a wall by itself. Pods in one namespace can still reach pods in another unless you add a NetworkPolicy. Quotas and RBAC then add the limits and permissions that a namespace alone does not give you.
 
@@ -218,6 +226,10 @@ Wiping local NVMe between tenants is harder than it sounds. A simple init contai
 
 Picture a team lead who needs a new namespace for a training run that starts on Monday. Without delegation, the request is a ticket to the platform team. The ticket waits in a queue, and the training run waits with it. Delegation gives the team lead a bounded amount of power. Hierarchical Namespace Controller (HNC) and Capsule let you hand that power to the team, and virtual clusters go further by giving each tenant an API of its own.
 
+![Two side-by-side panels: a namespace tenant shares the API server and CRDs, while a virtual cluster has its own API server, CRDs, and RBAC.](./img/g-258.jpg)
+*Figure 5.22.V. A virtual cluster gives a tenant cluster-admin-like control without giving it its own physical cluster.*
+
+
 HNC uses the `hnc.x-k8s.io` group to build parent and child namespaces. Children inherit RBAC, NetworkPolicies and quotas, which HNC propagates as objects. Team leads create sub-namespaces through `SubnamespaceAnchor`. The project is in maintenance mode, so evaluate alternatives first.
 
 A parent and child namespace work like a building and its floors. A rule set on the building applies to every floor. A floor can add its own rules, but it cannot remove the building's rules. That is the main benefit, because the platform team sets the rules once at the top.
@@ -237,6 +249,10 @@ Virtual clusters cost you extra control-plane overhead and syncing complexity. I
 ## 4. Self-service and onboarding
 
 A common mistake is to build a cluster first and hope developers will come. That approach carries real risk. It often misses the needs of development, security and networking teams, and the result is rework. A cluster that nobody can use is an expensive lesson. Bring those groups in early, so the platform fits its purpose.
+
+![Four stacked boxes showing the stages from raw kubectl to Kubernetes made invisible, with arrows pointing down.](./img/g-259.jpg)
+*Figure 5.22.V. Each stage hides more of Kubernetes, so match the level of abstraction to what your users can handle.*
+
 
 Early on, the platform team usually provisions and configures every cluster by hand. Manual work does not scale. It creates repetitive toil for the platform team and leaves developers waiting. Once a team reaches a basic level of maturity, self-service is the next step. A CI/CD tool such as Jenkins or GitLab can offer it, because both allow pipelines with custom inputs at run time.
 
@@ -545,6 +561,10 @@ Even custom resources and operators expose some core mechanics. Developers must 
 
 Kubernetes alone does not give your AI teams a platform. You also need shared services around the cluster, and those services turn raw GPUs into something people can use. Think of the cluster as the power grid and the platform services as the roads, shops and banks that make a town livable. Each service carries tenancy implications, so the table below names the service, its purpose and the detail you must design for.
 
+![A central box labeled Application platform with three surrounding boxes: building blocks, deciding what it owns, and operating it as a product.](./img/g-260.jpg)
+*Figure 5.22.V. An application platform needs clear building blocks, clear ownership, and product-style operation.*
+
+
 | Service | Purpose | Tenancy/ops notes |
 |---|---|---|
 | **Identity & access** (OIDC, SSO, groups) | Authenticate humans and machines | Group sync from IdP; short tokens; machine identities |
@@ -655,6 +675,10 @@ Run the platform the way you would run a product. Publish the customers' expecta
 
 Cost tools can only attribute spend if the labels reach the pods. Policy copies labels from namespaces to pods, and then tools do the rest. A label is a small tag such as `team=vision`. Without it, a pod's cost has nowhere to go, and the bill ends up in a shared bucket that nobody owns. **OpenCost** or **Kubecost** break CPU, memory, GPU, storage and network cost down by namespace or label. Cloud billing exports work as well, using resource labels such as GCP labels or AWS tags. For GPUs, DCGM-based accounting gives you GPU-hours per pod, using the pod-resources mapping and joins on `DCGM_FI_DEV_*` metrics.
 
+![A two-column table comparing requests-based and consumption-based showback.](./img/g-261.jpg)
+*Figure 5.22.V. Requests charge for what a team reserves, while consumption charges for the higher of reserved or used.*
+
+
 Allocation can follow requests (what a team reserved), usage (what it used), or a hybrid that spreads idle cost across tenants. For GPUs, allocating by requested GPU-hours is usually fair, and it encourages teams to release idle resources. Pair it with utilisation reports to coach teams. Share the costs of the control plane, storage, networking and the platform team in proportion to use. Report weekly to team leads and alert when budgets cross their thresholds. Automate idle detection too. A GPU that is allocated but under 5% utilised for hours should trigger a notification, and idle notebooks should be culled automatically.
 
 The following PromQL queries show the core numbers. The first counts GPUs allocated per namespace, the second averages utilisation per namespace, and the third totals CPU-hours per day. Each query answers one question about cost. The first asks how many GPUs a namespace holds. The second asks how busy those GPUs are. The third asks how much CPU time the namespace used in a day.
@@ -693,6 +717,10 @@ Pick the method before you publish the first report, because requests and consum
 ## 7. Failure modes and troubleshooting
 
 Start from the symptom you see, then work toward the cause. The table maps each symptom to its likely cause and to the fix. Suppose a team reports that its GPUs sit idle while another team waits in the queue. The row for idle GPUs points you to notebooks left running and to jobs stuck in the queue. That is a symptom you can check in about two minutes, which is faster than debating the policy in a meeting.
+
+![A two-column table pairing five multi-tenant symptoms with their fixes.](./img/g-262.jpg)
+*Figure 5.22.V. Check the cause before you change a quota or a setting, or the problem comes back worse.*
+
 
 | Symptom | Likely cause | Fix |
 |---|---|---|

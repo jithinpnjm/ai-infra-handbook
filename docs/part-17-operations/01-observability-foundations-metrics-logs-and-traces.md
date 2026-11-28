@@ -63,6 +63,10 @@ The diagram also shows something easy to miss. A single HTTP handler sends its d
 
 Imagine an on-call engineer paged at night because a training job has slowed down. The dashboard is blank, the logs are spread across dozens of pods, and nobody knows which component changed. Without an observability foundation, the first hour of that incident goes to guessing.
 
+![Three stacked boxes: alerting without metrics is guessing, SLOs without traces cannot be checked, and capacity planning without logs rests on assumptions, with arrows pointing down.](./img/g-306.jpg)
+*Figure 17.1.V. Metrics, traces, and logs must exist before alerts, SLOs, and capacity plans can be trusted.*
+
+
 Every chapter in this part depends on this one. Alerting without metrics is guessing. SLOs without traces cannot be checked against real requests. Capacity planning without logs rests on assumptions you cannot test. An SLO here means a service level objective, which is the target a service promises to meet, such as a share of requests that must succeed.
 
 An AI platform emits the same kinds of signals as a web service: requests, errors, and durations. It also emits GPU utilisation, KV cache occupancy (the memory that holds attention state for each active request), collective communication timing, data-loading throughput, and model quality. The three pillars stay the same. The label budget is tighter, and the shape of the data is different.
@@ -184,6 +188,10 @@ A model can be unhealthy while every operational metric stays green. The model q
 ---
 
 ## 2. The cardinality budget
+
+![Stacked boxes: method has 10 values, status has 10 values, and path has 100 values, which multiply to 10,000 series, with arrows pointing down.](./img/g-307.jpg)
+*Figure 17.1.V. Every label multiplies the number of time series, so one unbounded label such as user_id can explode your metric count.*
+
 
 ### 2.1 What cardinality is
 

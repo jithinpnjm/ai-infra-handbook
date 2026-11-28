@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Suppose a training job has been running for an hour, and then one of its workers is evicted for no obvious reason. Nothing in the training code failed. The node came under memory pressure, and the pod was the thing that gave way. Or suppose an inference server sits in a restart loop. Each time it starts, it begins loading a large model, and then something stops it before the model is ready. Neither problem is really about the model or the code. Both trace back to the pod.
 
+![A central box labeled Pod spec with four surrounding boxes: Requests and limits, Volumes and shared memory, Probes for slow model loads, and Scheduling constraints.](./img/g-211.jpg)
+*Figure 5.7.V. Each pod spec field exists to handle a real workload situation, so learn the situation first.*
+
+
 Every AI workload in this handbook ends up as one or more pods. A training worker that uses eight GPUs needs a large shared-memory volume, or its data loaders will crash. An inference server needs probes that allow for a slow model load, because a probe that gives up too early will restart a server that was doing exactly what it should. A data-preparation Job and a node agent DaemonSet also run as pods, so the same settings apply to them too.
 
 It helps to think of the pod spec as a list of decisions. Some decisions make a job fast. Others make it fail in a way that looks random, get it evicted under memory pressure, or leave expensive GPUs sitting idle. You make those decisions in the resource requests and limits, the QoS class, the security context, the volumes, the lifecycle hooks, the termination grace period and the scheduling constraints. The workload controllers add the rest: replica management, stable identity, one-pod-per-node placement and run-to-completion behavior. Those controllers are Deployment, StatefulSet, DaemonSet, Job and CronJob. This chapter is a working reference for writing those objects correctly, so that when something goes wrong you already know which field to read first.

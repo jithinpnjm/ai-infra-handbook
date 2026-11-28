@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture an upgrade that stalls halfway through. The API server is down, and a training run is waiting on cluster state that nobody can read. Your phone is ringing, and the team is standing around a terminal waiting for someone to decide what to do next. Kubernetes releases a minor version about three times a year, and it supports each one for roughly a year. So a GPU platform is always one or two upgrades away from running a version that no longer gets fixes. Falling behind is not a single event. It is a slow slide that ends with an emergency upgrade you did not plan.
 
+![Three stacked boxes: a minor release about every four months, three recent minors supported, and falling behind ending in an emergency upgrade.](./img/g-245.jpg)
+*Figure 5.20.V. Upgrades on a fixed schedule are safer than an emergency upgrade forced by an expired version.*
+
+
 Every upgrade touches the control plane, the container runtime, CNI and CSI, the GPU Operator and driver stack, kernels, and sometimes API versions that your operators still use. At the same time, training clusters hold state you cannot easily replace. That includes etcd, which holds all object state. It also includes PersistentVolumes, which hold datasets, checkpoints, registries and metadata DBs. Secrets, keys and the knowledge stored in your GitOps repos belong on that list too. If any one of those is gone, the cluster may still run, but nobody can tell you what it is supposed to look like.
 
 A botched upgrade or a lost etcd can strand thousand-GPU jobs. A regional outage can idle the whole fleet. Mature teams practise upgrades routinely, test their restores, and know their recovery objectives. They treat an upgrade as a rehearsed change, not as a leap of faith.
@@ -42,6 +46,10 @@ You should have read chapters 5.4, 5.5 and 5.19 first. Before you move on, check
 ## 1. Versioning and skew
 
 A cluster whose components have drifted out of step fails in quiet ways. A controller may call an API field that the server does not know yet. A kubelet may report a state that the new API server reads differently. Before you upgrade anything, know which version each part runs and which versions it is allowed to mix. That knowledge is the difference between a routine upgrade and a surprise.
+
+![Stacked boxes: upgrade the control plane first, then nodes one minor at a time, then clients and operators last, with arrows pointing down.](./img/g-246.jpg)
+*Figure 5.20.V. The API server must move first, because no component may run ahead of it.*
+
 
 Versions follow the form `v1.<minor>.<patch>`. A new minor release arrives roughly every 4 months, and a patch release roughly every month. The project supports the three most recent minor releases, which gives you about 14 months of patches. Think of the minor number as the big version, which can change behaviour, and the patch number as the small fix that should not.
 
@@ -228,6 +236,10 @@ Test the GPU driver version that is bundled with each node image. GKE installs d
 
 Before you touch the GPU stack, fix the order of the layers. The typical order is below, and you should check each step against the vendor docs. Each step depends on the one before it, so do not skip ahead.
 
+![Five stacked boxes listing the GPU stack upgrade steps, from compatibility checks through batch validation, with arrows pointing down.](./img/g-247.jpg)
+*Figure 5.20.V. Upgrade the GPU stack in layers, one node at a time, and validate each batch before moving on.*
+
+
 1. Review the compatibility of the NVIDIA GPU Operator, driver, toolkit, device plugin, DCGM and MIG manager with the target Kubernetes version, the OS and the kernel.
 2. Upgrade the operators and CRDs that work with both the old and the new Kubernetes first. Use Helm chart upgrades through GitOps, and handle CRDs as described in 4.25.
 3. Upgrade the control plane, then the node pools.
@@ -338,6 +350,10 @@ A useful check is to list what the restored cluster could touch before you start
 
 Suppose a team deletes a namespace that holds the model registry and its volumes. Whether you can recover depends on which layers of protection were in place. The table lists the layers. Each row covers a different kind of loss, so a gap in one row is not fixed by another.
 
+![A two-column table pairing four kinds of cluster data with the backup tools for each.](./img/g-248.jpg)
+*Figure 5.20.V. Back up each kind of data with its own tool, because one layer cannot cover for another.*
+
+
 | Layer | What | Tools |
 |---|---|---|
 | **Declarative config** | Manifests, Helm values, policies, CRDs | Git + GitOps (4.26); the primary way to recreate cluster state |
@@ -374,6 +390,10 @@ Decide which artefacts are irreplaceable first, and give those the strongest pro
 
 Picture a regional outage that takes the whole training fleet offline. How quickly you recover depends on the strategy you chose before the outage. Start by setting an objective for each tier.
 
+![A two-column table listing four disaster recovery strategies and their recovery time objective.](./img/g-249.jpg)
+*Figure 5.20.V. Faster recovery means paying for standby capacity while nothing is broken.*
+
+
 The RPO is the maximum tolerable data loss, and the RTO is the maximum tolerable downtime. An inference gateway has an RTO of 15 min and an RPO of 0. It is stateless, so you redeploy it from Git. A metadata DB, backed by replicated Postgres, has an RTO of 1 h and an RPO of 5 min. Training in progress has an RTO measured in hours, and its RPO is the last checkpoint, so the checkpoint cadence sets the RPO in GPU time. Datasets have an RTO of days and an RPO of 0, because their objects are replicated. Read these as a pair. The RPO asks how much work you can afford to redo, and the RTO asks how long the service can be dark.
 
 The table compares four common strategies by recovery time and cost.
@@ -398,6 +418,10 @@ Runbook the order: networking/DNS → identity/secrets → storage → control p
 ## 8. Failure scenarios and responses
 
 When something breaks, start with the impact and the first response. The table pairs each scenario with both, so you can find the row that matches your symptom before you change anything. Read the impact column first. It tells you whether users are already affected, which decides how fast you need to move.
+
+![A two-column table pairing five cluster failure scenarios with their first responses.](./img/g-250.jpg)
+*Figure 5.20.V. Know the first response to each failure, and confirm the snapshot or Git backup it depends on in advance.*
+
 
 | Scenario | Impact | Response |
 |---|---|---|

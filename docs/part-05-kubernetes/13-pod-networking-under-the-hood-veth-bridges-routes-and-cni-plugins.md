@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 A distributed training job is only as fast as its network. Collective operations move gigabytes on every step. How each pod attaches to the network decides whether it gets line rate or only a fraction of it.
 
+![Three stacked boxes: GPUs finish their math, GPUs exchange results in the collective, and the slowest link makes every GPU wait, with arrows pointing down.](./img/g-222.jpg)
+*Figure 5.13.V. One slow network path holds back every GPU at the end of each training step.*
+
+
 Think about what happens inside one training step. Each GPU finishes its share of the math, and then the GPUs trade their results so that all of them end up with the same updated weights. That exchange is the collective. If one GPU's network path is slow, every other GPU waits for it at the end of the step. The fast GPUs sit idle while the slow link finishes, so one weak path slows the whole job. That is why a pod's network path is a training question, and not only a platform question.
 
 The default pod network relies on veth, bridge or overlay devices, and on iptables or eBPF. It is built for general microservices connectivity and policy, not for 400 Gb/s RDMA. So GPU clusters use a layered design. A CNI handles the control and general traffic. Secondary high-performance interfaces, such as SR-IOV VFs, macvlan on RDMA NICs or host networking, carry the NCCL traffic.
@@ -195,6 +199,10 @@ When a pod fails to start, check the config files and the IPAM state first.
 
 Suppose you are building a bare-metal GPU cluster on a leaf-spine fabric that your team controls. Nobody on the team has run a CNI before, and the network team wants to know which option to choose. The table below is the starting point for that conversation.
 
+![A two-column table listing four CNI families and what each is best known for.](./img/g-223.jpg)
+*Figure 5.13.V. Pick a CNI by what it gives you: simplicity, BGP routing, eBPF features, or extra interfaces.*
+
+
 Every CNI makes different trade-offs, and the table compares them. Read across a row to see what a plugin gives you and what it leaves to you. Flannel is the simplest option and has no policy of its own. Calico and Cilium add rich policy, and Cilium needs a modern kernel to run.
 
 | CNI | Data plane | Cross-node | Policy | Notes |
@@ -213,6 +221,10 @@ The next chapter, 5.14, goes deeper on overlay and routed designs and on eBPF. C
 ## 5. MTU, performance and offloads
 
 A common surprise goes like this. Pods can ping each other, and short API calls succeed, but a large image pull or a `git clone` hangs halfway through. The cause is almost always MTU.
+
+![Three stacked boxes: underlay MTU 1500 bytes, subtract VXLAN overhead of 50 bytes, pod MTU 1450 bytes, with arrows pointing down.](./img/g-224.jpg)
+*Figure 5.13.V. A tunnel shrinks the usable packet size, so pods must use a smaller MTU than the underlay.*
+
 
 MTU, the maximum transmission unit, is the largest packet a link can carry. Think of it as the width of a doorway. A tunnel wraps each parcel in an extra layer of packaging, so a parcel that fits through an empty doorway may no longer fit once it is boxed. An encapsulated pod packet needs room for its outer headers. So the inner pod MTU equals the underlay MTU minus the encapsulation overhead. The overhead depends on the tunnel: VXLAN 50 bytes, Geneve about 50 or more, IPIP 20, WireGuard 60, and IPsec ESP about 50 to 70.
 
@@ -235,6 +247,10 @@ Think of the traffic on a node as a road system. Control traffic is like the amb
 ## 6. Secondary networks, SR-IOV and RDMA for AI
 
 Picture a training pod that must send gradients to its peers many times a minute. The general-purpose network is built for ordinary service traffic, so the pod needs a second, faster path for its NCCL traffic. Kubernetes gives you that through Multus and a few related pieces.
+
+![A central box labeled Pod with three surrounding boxes: eth0 from the primary CNI, net1 for RDMA network A, and net2 for RDMA network B.](./img/g-225.jpg)
+*Figure 5.13.V. Multus keeps ordinary traffic on the primary network and gives training pods a faster secondary path.*
+
 
 ### Multus and NetworkAttachmentDefinition
 
@@ -335,6 +351,10 @@ If you run Cilium, check its state with `cilium status`, `cilium endpoint list`,
 ## 8. Troubleshooting matrix
 
 Pod networking problems look alike from the outside, so start from the symptom you can see. Find the row that matches it, then run the check in the last column. A single symptom can have more than one cause, so the last column gives you the first check to run, not the only one. Work through the row, and if the check comes back clean, move to the next likely cause. Find the row that matches it, then run the check in the last column. The rows below cover the failures you are most likely to meet.
+
+![A two-column table pairing five pod networking symptoms with the first check to run for each.](./img/g-227.jpg)
+*Figure 5.13.V. Match the visible symptom to its likely layer, then run that layer's first check.*
+
 
 | Symptom | Likely cause | Check |
 |---|---|---|

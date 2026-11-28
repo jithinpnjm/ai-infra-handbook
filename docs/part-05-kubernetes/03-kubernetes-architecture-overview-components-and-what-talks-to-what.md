@@ -444,6 +444,10 @@ Some organizations adopt a "Kubernetes strategy" and expect it to force moderniz
 
 You build a fresh cluster, the control plane looks healthy, and the nodes stay NotReady. The cause is usually a missing add-on, not a broken core component. A bare control plane with kubelets is not enough. Your cluster needs these add-ons:
 
+![A central box labeled Working cluster with four surrounding boxes: CNI, CoreDNS, kube-proxy, and CSI drivers.](./img/g-200.jpg)
+*Figure 5.3.V. A new cluster that looks broken often just lacks a network plugin or another add-on.*
+
+
 1. **CNI**: Without it, nodes remain NotReady.
 2. **CoreDNS**, which provides cluster DNS (section 5.11).
 3. **kube-proxy**, or an eBPF replacement, which handles Services.

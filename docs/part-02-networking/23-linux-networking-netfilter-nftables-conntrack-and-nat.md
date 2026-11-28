@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Imagine a node that looks healthy. Its CPUs are idle, its bandwidth is spare, and yet new connections simply stop working. Dashboards are green, the pods are running, and users are still getting timeouts. The cause is often in netfilter, the kernel framework that inspects and filters packets. Almost every packet on a Kubernetes node passes through it.
 
+![A three-row table linking netfilter symptoms on Kubernetes nodes to their likely causes.](./img/g-126.jpg)
+*Figure 2.23.V. Netfilter faults hide behind healthy dashboards, so know the hooks and chains.*
+
+
 Many components add rules to that same path, and none of them knows about the others. kube-proxy installs thousands of NAT rules, and container runtimes add masquerade and port-publish rules. CNIs add policy chains, cloud agents add their own, and the host firewall sits underneath all of them. It is like a building where every tenant has been allowed to hang their own barrier across the same corridor.
 
 Small mistakes in this layer have large effects. When the connection-tracking table fills, new connections fail silently on a node that looks idle. A rule ordering mistake that drops health-check traffic can stall a whole rollout. When 5,000 pods share one SNAT address, outbound connections to a database can time out.
@@ -323,6 +327,10 @@ Before you change a NAT rule on a live gateway, decide whether existing flows mu
 
 Picture a host where three different tools all believe they own the firewall. The container runtime wrote its rules first, the cluster's proxy added thousands more, and the administrator added a few of their own. A packet now passes through all of them, and the order is not obvious from any one file. This section explains which tool writes which chain, and how to read the combined result without breaking the parts that the other tools depend on.
 
+![A three-row table listing which component writes which firewall chains on a container host.](./img/g-127.jpg)
+*Figure 2.23.V. Several tools share one firewall on a container host, so check before you flush.*
+
+
 Container hosts are where most surprises happen, because the runtime writes firewall rules that you did not. You install a firewall, test it, and later find that a port you never opened is reachable. Docker creates the `docker0` bridge. It adds a `DOCKER` nat chain for DNAT of published ports, and a `DOCKER-USER` chain for your own rules, which is evaluated first in FORWARD. It also adds `DOCKER-ISOLATION-*` chains and a masquerade rule for the bridge subnet. Docker sets the FORWARD policy to DROP and enables `ip_forward`. Because Docker inserts its rules ahead of them, it bypasses ufw and firewalld rules for published ports. Put restrictions in `DOCKER-USER`, or bind published ports to a specific address, such as `-p 127.0.0.1:8080:80`. Check the result with `iptables -t nat -S DOCKER`.
 
 kube-proxy in iptables mode programs `KUBE-SERVICES`, `KUBE-NODEPORTS`, `KUBE-SVC-*`, `KUBE-SEP-*`, `KUBE-MARK-MASQ`, `KUBE-POSTROUTING` and `KUBE-FORWARD`. Each `KUBE-SVC-*` chain belongs to one Service and uses probabilistic jumps to balance load. Each `KUBE-SEP-*` chain performs the DNAT for one endpoint. Every packet sent to a ClusterIP walks these chains. With thousands of Services, you get thousands of rules, slow rule updates that need a full resync, and rising CPU at scale. IPVS mode uses kernel hash tables with real schedulers instead. The Cilium eBPF kube-proxy replacement programs maps instead. To debug one Service, run `iptables-save | grep KUBE-SVC-xxx`, `ipvsadm -Ln`, `conntrack -L | grep <clusterIP>` and `kubectl get endpointslices`.
@@ -338,6 +346,10 @@ On a Kubernetes node, put your own rules in their own nftables table, and leave 
 ## 5. Firewall design strategies
 
 Imagine a team that has grown its firewall one emergency rule at a time for five years. Nobody knows why half the rules exist, and every change feels risky. The strategies below are the habits that stop that growth. They ask you to design the zones first, decide the policy, keep the rules in version control, and test every change on a copy. The practice is slower in the first week and far faster in the second year.
+
+![A four-row table listing firewall design strategies and why each one matters.](./img/g-128.jpg)
+*Figure 2.23.V. A designed firewall stays safe to change, while an accumulated one does not.*
+
 
 A firewall is easiest to keep safe when it is designed, not accumulated. Start with the policy. Deny inbound and forwarded traffic by default, then allow only the services you need, from the sources that need them. On sensitive hosts, allow outbound traffic selectively too. GPU nodes, for example, need egress allow-lists for package mirrors, registries, NTP, DNS and monitoring.
 
@@ -434,6 +446,10 @@ Each chain also has a default policy for packets that no rule matches. ACCEPT le
 
 Picture a packet that reaches the host, is accepted by the network card, and never appears in the application log. Somewhere between the wire and the socket, a rule discarded it. The work in this section is a search for that rule. Counters tell you which rules matched at all. The trace tells you which rule made the decision for one packet. Read the three stories below first, so the commands feel like tools you have already seen used.
 
+![Four stacked steps for finding the firewall rule that dropped a packet.](./img/g-129.jpg)
+*Figure 2.23.V. Counters find the matching rule, and a trace shows the decision for one packet.*
+
+
 When a packet goes missing, your job is to find the rule that touched it. Start with counters, which show which rules matched. Then trace one packet through the hooks. The commands below follow that order.
 
 ```bash
@@ -464,6 +480,10 @@ In the third, new connections stalled while `conntrack -C` equalled `nf_conntrac
 ## 7. Performance notes for large nodes
 
 Picture a large node where the dashboards show the processors busy, but the work seems to move slowly. The cause is often the path every packet must walk. Each packet is compared against the rules in order, and each lookup in the connection table takes a lock. When the rule list is long and the connection rate is high, the cost grows with both. The notes below explain where the time goes, and which change moves the cost off the hot path.
+
+![A three-row table pairing netfilter performance costs on large nodes with their fixes.](./img/g-130.jpg)
+*Figure 2.23.V. Netfilter costs grow with rule count and connection rate, so measure before you choose.*
+
 
 Rule evaluation in iptables is linear, so its cost grows with the number of rules. 20,000 rules cost real microseconds per packet. They also make updates slow, because kube-proxy rewrites the whole table. Use nftables sets and maps, IPVS, or eBPF datapaths instead.
 

@@ -143,6 +143,10 @@ Because each line is an import, Ansible reads all five files before the run star
 
 A deploy is only as reproducible as its inputs. The variables in this section are the knobs you turn for each environment: the version, the port, the domain name. Keeping them in one place means a production run and a staging run differ only in those knobs, which is what makes a staging test meaningful. If staging and production were written in two different files, a test on staging would prove very little about production. A shared file makes the test honest.
 
+![A three-row table listing Ansible variable rules that keep staging and production comparable.](./img/g-175.jpg)
+*Figure 4.9.V. Shared variables make a staging test meaningful for production.*
+
+
 Every shared value sits in one file, so you change it once. The file below is read by every play, so a change to the version or the port reaches the whole deployment on the next run:
 
 ```yaml

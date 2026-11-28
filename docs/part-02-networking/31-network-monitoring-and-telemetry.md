@@ -384,6 +384,10 @@ Decide which corrective actions automation may take on its own before you connec
 
 Running the monitoring system is a job of its own. Label combinations multiply fast. Device times interface times queue times priority times tenant can reach very large counts. Estimate your series count as devices times metrics times labels. Then drop the metrics you do not need at the collector, avoid per-flow labels, and use recording rules for expensive aggregates.
 
+![A four-row table listing practices for running a network monitoring system and why each matters.](./img/g-140.jpg)
+*Figure 2.31.V. A monitoring system needs its own discipline, so keep it lean and independent.*
+
+
 Retention decides what you can look back at. Keep raw 10 s data for days, 1-minute data for weeks and 5-minute data for a year. Use Thanos, Mimir or VictoriaMetrics for this downsampling. Trigger high-resolution capture around incidents.
 
 The monitoring path must not share fate with what it monitors. Put it on an out-of-band management network, run redundant Prometheus pairs, and remote-write to a second site. Add a watchdog alert that always fires, which proves the alert pipeline works. Then monitor the monitors.

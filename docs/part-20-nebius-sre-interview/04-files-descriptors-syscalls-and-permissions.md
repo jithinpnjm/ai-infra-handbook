@@ -307,6 +307,10 @@ Dropped capabilities and policy modules. A manifest with `capabilities: drop: ["
 
 Rehearse the order of speech. The interviewer is not only listening for the right command. They want to hear the sequence of reasoning you would follow on a real box, one step at a time, with a reason before each command.
 
+![Three stacked boxes: say what you suspect, say what the next command should show, then run it and compare with what you expected, with arrows pointing down.](./img/g-345.jpg)
+*Figure 20.4.V. A strong debugging answer reasons out loud, one command at a time, and checks each result against an expectation.*
+
+
 A good answer sounds like a colleague thinking out loud. Say what you suspect, say what the next command should show, then run it and compare the result with what you expected. Nobody expects you to remember every flag. They do expect you to know which question each command answers.
 
 ### Question 1. "A service logs Too many open files. What do you do?"

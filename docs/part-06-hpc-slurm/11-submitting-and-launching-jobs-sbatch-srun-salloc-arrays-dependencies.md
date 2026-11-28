@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a researcher who submits a training job on Friday evening, goes home, and comes back on Monday to an empty log file. The job either ran for hours and left nothing useful behind, or it never ran at all. Nothing in the training code was wrong. The mistake was in how the job was asked for, and the cluster did exactly what the script said.
 
+![Three stacked boxes listing small submit mistakes: a multi-node script on one node, an unthrottled array of 1,000 jobs, and a requeued job that overwrites output.](./img/g-295.jpg)
+*Figure 6.11.V. Small mistakes in the submit command can waste a whole run, so check the launcher, throttle, and output paths.*
+
+
 The user-facing side of a GPU cluster is a handful of commands, so most of the expensive mistakes are small. A multi-node script runs everything on one node, because one line is missing its launcher. An array of 1,000 jobs has no throttle, so it floods the shared file system with reads at the same moment. A requeued job overwrites its own log, and that erases the only evidence of the crash. A training run is killed at its time limit without a checkpoint, so the GPUs spent the night and left nothing behind. And `mpirun` is launched inside a batch script without binding, so the processes may land on cores in a way the scheduler did not plan for.
 
 Operators write the documentation, the templates, the `job_submit` plugins and the wrapper scripts that prevent these mistakes. They also answer the tickets when the mistakes happen anyway. A `job_submit` plugin is a small hook in the scheduler that can check or change a job at the moment it is submitted. This chapter gives you the working vocabulary for both sides, so you can write the script yourself and read the support ticket from the other end.

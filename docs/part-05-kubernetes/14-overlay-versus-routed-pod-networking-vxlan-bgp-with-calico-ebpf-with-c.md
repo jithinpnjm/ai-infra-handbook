@@ -177,6 +177,10 @@ The provider's IP limits decide whether this design fits your cluster.
 
 Picture a Service with many pods behind it, and a firewall rule that lists each pod's IP. Every time a pod restarts, its IP changes, and the rule has to change with it. Cilium's approach avoids that churn by naming the workload instead of its address.
 
+![Two side-by-side panels: an IP address changes when a pod moves, while an identity badge stays the same wherever the pod runs.](./img/g-228.jpg)
+*Figure 5.14.V. Cilium policy follows labels, so rules keep working when pod addresses change.*
+
+
 Cilium does most of its networking through eBPF programs attached to kernel hooks. eBPF lets small, verified programs run inside the kernel. Cilium uses them to implement the CNI itself, along with Services, NetworkPolicy, observability and encryption. It can also provide a service mesh and multi-cluster networking, all through the same mechanism.
 
 ### Concepts
@@ -267,6 +271,10 @@ API versions differ across releases. Newer releases use `CiliumBGPClusterConfig`
 
 The table below sets the five data-plane options side by side. Use it to rule a mode out quickly, then read the sections above for the detail.
 
+![A two-column table listing four pod networking modes and their main cost: VXLAN overlay, Calico routed BGP, Cilium native routing, and Cilium tunnel.](./img/g-229.jpg)
+*Figure 5.14.V. Overlays cost MTU and CPU, while routed designs avoid that cost but need the network to know the pod routes.*
+
+
 | Aspect | VXLAN/Geneve overlay | Calico routed BGP (iptables dataplane) | Calico eBPF dataplane | Cilium native routing (eBPF) | Cilium tunnel (eBPF) |
 |---|---|---|---|---|---|
 | Underlay requirements | Node-to-node UDP | BGP/fabric learns pod CIDRs | Same as Calico routed | Fabric/cloud routes or BGP | Node-to-node UDP |
@@ -295,6 +303,10 @@ Benchmark on your hardware before you commit to a mode.
 
 Picture a GPU node as a building with several doors. The front door is the primary network, which carries control and ordinary traffic. The loading dock is the RDMA network, which carries the heavy collective traffic. Choosing the front door's lock is a different job from choosing the loading dock's, and this section is about the front door. The primary network carries control and ordinary traffic, while collectives run on secondary RDMA networks. Those secondary networks use SR-IOV, macvlan or host devices, attached through Multus. Because of that split, you should choose the primary CNI for reliability, policy, observability and operability, not for peak throughput.
 
+![A central box labeled Primary CNI choice with three surrounding boxes: routed Calico or Cilium for your own BGP fabric, VXLAN or WireGuard for mixed environments, and the provider default for managed clusters.](./img/g-230.jpg)
+*Figure 5.14.V. Pick the primary CNI by how much of the network you control, and favor reliability over raw speed.*
+
+
 On bare metal with a BGP fabric, such as NVIDIA Spectrum or Cumulus, Arista or Cisco, Calico BGP or Cilium native routing with BGP integrates cleanly. Avoid overlays there, because they would hide the fabric's ECMP and visibility. Align your ASN scheme with the fabric design in 2.16 and Part 12.
 
 Walk through the choice with three questions. Do you control the fabric? If you do, and it can run BGP, choose routed Calico or Cilium native routing. If you do not, or if the environment is mixed, use VXLAN with jumbo MTU or WireGuard-encrypted tunnels. If the cluster is managed, accept the provider's default unless you have a specific feature to win.
@@ -322,6 +334,10 @@ A quick check before you sign off on a design is to ask who gets paged. If a rou
 ## 7. Verification and benchmarking
 
 Suppose a pod on one node cannot reach a pod on another, and the routes look correct on paper. The commands below check routing, encapsulation and cluster health, so you can see what the datapath actually did.
+
+![Three stacked boxes: check routes and BGP peers, then check MTU with a jumbo ping, then measure performance, with arrows pointing down.](./img/g-231.jpg)
+*Figure 5.14.V. Check routing before MTU and MTU before speed, because a broken route makes benchmarks meaningless.*
+
 
 ```bash
 # Routing and encapsulation
@@ -358,6 +374,10 @@ Read the results with the matrix in mind. A single good number is not a result, 
 ## 8. Migration and operations
 
 Suppose your cluster runs fine, and someone proposes a new CNI. Changing the CNI on a live cluster is disruptive, because pods need new networking. You have two methods. You can drain nodes one at a time while you remove the old CNI and install the new one, which is a rolling change. Or you can build a new cluster and move workloads across, which the chapter prefers for large changes.
+
+![Two side-by-side panels: a rolling change drains nodes one at a time, while a new cluster moves workloads across.](./img/g-232.jpg)
+*Figure 5.14.V. A CNI swap disrupts pods, so choose between a careful rolling change and a clean cluster move.*
+
 
 Changing a CNI in place is like replacing the plumbing in an occupied building one floor at a time. Each floor is a little disruptive, and for a while the building has a mix of old and new pipes. Building a new block and moving the tenants across takes longer, but nobody lives with the mixed plumbing. Cilium and Calico both publish migration guides. Cilium's guide covers a dual-overlay migration that uses node labels and `CiliumNodeConfig`.
 

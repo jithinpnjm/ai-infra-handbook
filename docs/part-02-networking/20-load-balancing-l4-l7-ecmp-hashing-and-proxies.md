@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Suppose an inference endpoint is slow while most of its GPUs sit idle. The dashboard says the cluster is only lightly used, and yet users are waiting. The cause can sit in the load balancer, the layer that spreads requests across the GPUs. A generic round-robin balancer in front of long-lived gRPC or Server-Sent-Event token streams can leave one GPU at 100% and nine idle. Round robin deals requests in turn, like a dealer handing out cards, and it ignores how long each one runs. One card might be a one-line question and the next a book-length generation, and the dealer treats them the same.
 
+![Two side-by-side panels comparing round robin balancing with balancing that uses work information.](./img/g-115.jpg)
+*Figure 2.20.V. Round robin treats a one-line question and a book-length generation the same.*
+
+
 Other failures look different but share the same root. A proxy reload can sever hour-long generations. An HTTP/2 connection pinned to one backend turns a balanced cluster into a hot spot. A health check that only tests TCP routes traffic to a server whose GPU has an Xid error. In each case the balancer made a decision with too little information about the work or the worker.
 
 Load balancing is not only an inference problem. It shows up across the platform: ECMP and anycast VIPs at the fabric edge, Kubernetes Services built on kube-proxy, IPVS or eBPF, ingress and gateways, cloud load balancers, DNS-based steering and service meshes. Each of them decides where work goes. The story here starts with the simplest version, one address in front of many servers, and then adds the questions that real systems force: what counts as one piece of work, how failures are noticed, how the balancer itself scales, and why LLM serving breaks the habits of ordinary web traffic. Decide which layer you are working on first, because each layer sees a different unit of work.

@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Suppose a job asks for one GPU and then sees all 8 GPUs on the node. Or two jobs land on the same GPU, and both slow to a crawl. These are the symptoms that make GPU scheduling a separate topic from ordinary HPC scheduling. Users must get exactly the GPUs they asked for, close to the right CPU cores and memory, isolated from other jobs, and counted in accounting. When any of these fails, the symptoms are easy to miss. Training can run 30 percent slower because its CPU threads sit on the wrong NUMA node, which is the part of the server that owns a group of CPU cores and the memory attached to them. Nothing crashes, and the training log looks normal. A 4-GPU job can also wait forever, because no node can satisfy its request, and the queue shows only a vague pending reason.
 
+![Three stacked boxes: exactly the GPUs asked for, close CPU cores and memory, and isolation from other jobs, with arrows pointing down.](./img/g-294.jpg)
+*Figure 6.10.V. GPU scheduling must give each job exactly its GPUs, nearby CPUs and memory, and isolation from others.*
+
+
 GPU scheduling is also where the cost shows up most clearly. An idle GPU that a job reserved but never used is money spent on nothing. A GPU that two jobs share by accident can corrupt the timing of both. The fixes live in a few configuration files and in the batch script, so the work is less about deep GPU knowledge and more about being precise about what you ask for.
 
 This chapter builds on the `Gres` and `ConstrainDevices` settings from 6.8 and goes deeper into them. It then covers request syntax, binding and sharing, and diagnosis.

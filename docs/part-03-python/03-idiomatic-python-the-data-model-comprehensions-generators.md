@@ -24,6 +24,10 @@ lab_venue: "Mac"
 
 Picture a script that has to stream several gigabytes of logs before it can tell you anything. Your first version loads the whole file into memory. The job starts, grows for a few minutes, and dies with a memory error before it prints a single result. That failure is what this chapter is built to prevent.
 
+![A three-row table matching Python streaming tasks to comprehensions and generators.](./img/g-145.jpg)
+*Figure 3.3.V. Generators and comprehensions keep memory flat and keep code small and testable.*
+
+
 It has a quieter failure mode too, and you have probably met it. A teammate opens a comprehension you wrote last month and cannot work out what it does. It runs correctly, but nobody dares change it, so the script that depends on it never improves. Code that works but cannot be read is code nobody can safely build on.
 
 "Pythonic" is not decoration. It is how the language and its libraries expect you to behave, and it is why frameworks such as pandas, PyTorch, FastAPI and the Kubernetes clients all feel consistent once you know the pattern. The pattern is the data model: the set of special methods, such as `__len__`, `__getitem__`, `__iter__` and `__enter__`, that decide how your own objects work with `len()`, `for`, `with`, `sorted` and slicing.

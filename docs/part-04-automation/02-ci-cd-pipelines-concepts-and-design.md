@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a Friday afternoon change advisory board (CAB) meeting. An engineer has filled out a change ticket for a BGP peering and kernel sysctl update across the GPU cluster. She spends forty minutes on a conference call reading a rehearsed summary to managers who have never seen the switch configuration. She gets a verbal thumbs-up. Then she opens twenty SSH windows at midnight and pastes the commands by hand. One typo later, a missing colon in a YAML file or a BGP route leak takes the storage fabric offline, and a thousand GPUs sit idle.
 
+![A three-row table contrasting manual change tickets with reviewed pipeline changes.](./img/g-164.jpg)
+*Figure 4.2.V. A pipeline reviews the exact change that reaches the device, not the prose about it.*
+
+
 As Christian Adell, Scott Lowe, Matt Oswalt, and Jason Edelman observe in *Network Programmability and Automation*, Chapter 13, keeping humans in the direct manual execution path is what they call **Change Management Theater**. The process is slow and exhausting. It also gives only an illusion of safety, because the prose in the ticket is not the change that actually gets typed onto the machine.
 
 Look closely at what the meeting actually checked. The managers approved a paragraph. Nobody approved the forty commands that were pasted at midnight, and nobody could check that they matched the paragraph. The ritual felt rigorous, yet the one thing that could be verified, the text that reaches the device, was never reviewed at all. That gap between the description and the executed change is what the pipeline is designed to close.
@@ -52,6 +56,10 @@ This chapter builds on 4.1 (Git workflow), so the repository habits from that ch
 ## 1. Application CI/CD versus infrastructure CI/CD
 
 A junior engineer opens a pull request that changes a shared template. The diff looks small, but the template also renders the storage fabric's switch configs, and the engineer does not know it. An application pipeline would have shipped that change in minutes and rolled it back in seconds. A fabric has no such undo button, so the pipeline has to show the impact before the change is merged.
+
+![A three-row table comparing application and infrastructure pipelines on artefact, failure cost, and credentials.](./img/g-165.jpg)
+*Figure 4.2.V. Infrastructure changes cannot be rolled back as easily, so the pipeline must show impact first.*
+
 
 Notice the hidden link in that story. The diff showed one template, but that template fed several devices. A good pipeline does not rely on the author to know every consumer. It renders the outputs and shows which devices change, so the impact is visible to everyone who reviews the change.
 
@@ -88,6 +96,10 @@ Before you write any YAML workflow files, two mental models from *Network Progra
 ## 2. Core principles
 
 Rules like these look obvious on a calm afternoon. They matter most at 11 PM, when someone is tempted to paste a fix straight into production. Each principle below answers a specific way that a pipeline has gone wrong before, and the first one is the one to remember if you forget the rest.
+
+![Two side-by-side panels comparing a hand-configured snowflake device with a repeatable cookie-cutter design.](./img/g-166.jpg)
+*Figure 4.2.V. Standard designs make infrastructure testable, which snowflakes never are.*
+
 
 Principles sound obvious until a pipeline applies a change nobody reviewed. These eight rules keep a pipeline honest, and each one prevents a specific kind of failure.
 
@@ -136,6 +148,10 @@ For stateful systems, prefer a roll-forward with a prepared fix, backed by teste
 
 A reviewer wants to know what a Terraform change will do before approving it. In many teams that answer used to live in one engineer's terminal, which the reviewer could not see. Pull request tools move the plan into the review itself, so the comment on the pull request becomes the record of what was approved. The control plane is simply the place where those decisions are made and written down.
 
+![A three-row table comparing tools that run Terraform plans on pull requests and who applies them.](./img/g-167.jpg)
+*Figure 4.2.V. The plan lives on the pull request, and only a merge may apply it.*
+
+
 For Terraform, the most common pattern is to plan on the pull request and apply on merge, or apply when an approved comment is posted. The pull request then becomes the audit trail. Picture the pull request as a shared logbook at a control tower. Each plan is written in it, each approval is signed in it, and the apply is recorded beside them. Anyone who later asks "who allowed this?" finds the answer in the same place.
 
 Several tools support this pattern. They differ mainly in who runs the work and where the credentials live. Ask two questions of any tool. Who runs the plan and apply? Where do the cloud keys sit while it runs?
@@ -155,6 +171,10 @@ Only a merge to the protected branch may apply, so the tool you choose has to en
 ## 5. Authentication: OIDC instead of stored keys
 
 A long-lived cloud key copied into CI secrets is like a house key hidden under the doormat. It works for anyone who finds it, and it keeps working until someone remembers to rotate it. OIDC gives each job a credential that expires when the job ends, and that opens only the doors its branch is allowed to open. Nothing sits in the repository waiting to be stolen.
+
+![Four stacked steps showing how a CI job gets short-lived cloud credentials through OIDC.](./img/g-168.jpg)
+*Figure 4.2.V. OIDC gives each job credentials that expire, so no long-lived key sits in CI.*
+
 
 Long-lived cloud keys stored in CI secrets are a classic path into a breach. **OpenID Connect federation** removes the need to store them at all. The CI provider mints a short-lived, signed identity token for each job. The cloud trusts that issuer and swaps the token for temporary credentials. The scope of those credentials depends on claims such as the repository, the branch and the environment. A claim is a statement inside the token, such as "this job runs on the main branch of this repository."
 
@@ -270,6 +290,10 @@ The six stages run in sequence, so a failure at one stage stops the stages after
 
 A tired reviewer on a Thursday afternoon might miss that a plan creates twenty GPU instances when the author meant two. A policy engine has no bad afternoons. It reads the plan as structured data and applies the same rule every single time, and it reports the exact resource that broke the rule.
 
+![A four-row table listing policy domains for AI infrastructure with an example rule for each.](./img/g-169.jpg)
+*Figure 4.2.V. Policies stop bad plans in the pipeline, before a reviewer has to catch them.*
+
+
 Humans miss things, but policies do not get tired. Evaluate the **machine-readable plans or manifests** against your rules before a merge or an apply, so a bad change is stopped by the pipeline and not by a reviewer who happened to be distracted. Machine-readable means the plan is data, such as JSON, that a program can walk through field by field. A rule can then say "for each resource that is being created, check its instance type," which a human skimming a long plan would never do consistently.
 
 Think of a policy as a bouncer at the door of the cloud. The bouncer does not care who the author is or how senior they are. The bouncer checks the guest list, and it checks the same list every time. Policies work best when they are written as rules about outcomes, such as "no public bucket," rather than as rules about people.
@@ -357,6 +381,10 @@ Set the failure thresholds before you start the rollout, so the pipeline stops o
 
 A team changes a BGP timer, and every static check passes. The change only breaks when two routers try to form a session and the timers disagree. Only a test that runs a live topology can show that. This is why infrastructure tests come in layers. Think of them as a ladder. The bottom rungs are fast and catch most typos. The top rungs cost real time and hardware, and they catch the surprises that only a running network can show.
 
+![A four-row table listing infrastructure test levels from static checks to end-to-end runs.](./img/g-170.jpg)
+*Figure 4.2.V. Cheap tests run on every commit, and expensive tests run only when the risk justifies them.*
+
+
 Infrastructure tests come in layers, and each layer costs a different amount to run. Static checks are cheap enough to run on every commit. Full end-to-end runs on a real slice are expensive, so they run only before production or at night. The table shows where each level fits. Notice that the cost rises as you go down the table, and the coverage rises with it. A static check cannot tell you whether two routers will peer. A live topology can, but it takes time and hardware to run. Good teams keep the expensive rows for the changes that deserve them, and let the cheap rows catch the everyday typos.
 
 | Level | What | Tools | When |
@@ -375,6 +403,10 @@ Match each test's cost to the risk it covers, and let the cheap rows run on ever
 ## 11. Drift detection and self-healing
 
 A storage engineer raises the MTU on a few hosts by hand to fix a slow transfer. The fix works, and nobody writes it down. Three weeks later a rebuild restores the old value from Git, and the transfers slow down again, with no obvious cause. Drift is what happens when reality and the code quietly disagree. The checks below are how you notice it before a rebuild does.
+
+![A three-row table deciding whether drift should be auto-healed or only alerted, by resource class.](./img/g-171.jpg)
+*Figure 4.2.V. Auto-heal is safe only where reverting holds no data written since the last apply.*
+
 
 Drift is the gap between your code and reality. A console edit, an autoscaler, a manual hotfix, a failed partial apply, or a hardware replacement can each open that gap. You find drift by checking on a **schedule**, and the checks come in three forms. A schedule matters because drift does not announce itself. It sits quietly until the next apply or the next rebuild, and then it surprises somebody.
 
@@ -408,6 +440,10 @@ Before you turn on auto-heal for a resource, confirm that reverting it cannot de
 ## 12. Operating the pipeline itself
 
 A pipeline holds the keys to production, so a compromised pipeline means a compromised production. Treat it like any other critical service. It needs its own monitoring, its own patching, and its own access rules. The sections below cover the parts that most often go unwatched.
+
+![A four-row table listing practices for operating a CI/CD pipeline safely.](./img/g-172.jpg)
+*Figure 4.2.V. A pipeline with production access needs the same care as any critical service.*
+
 
 A pipeline is software that runs with production access, so you have to operate it like any other critical system. You should start with its runners. Runners should be ephemeral and isolated. A self-hosted runner that can reach private infrastructure is a high-value target, so run it in a restricted network zone. Rebuild it for every job using containers or VMs, keep no shared state, store no persistent credentials, and filter egress. Egress filtering means you allow only the outbound connections the job really needs, so a compromised job cannot quietly send data anywhere it likes. Give GPU runners a label, and reserve them for GPU tests. A label is a tag that tells the scheduler which runners have GPUs, so an ordinary lint job does not occupy a machine that a training test is waiting for.
 

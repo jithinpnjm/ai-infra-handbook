@@ -26,6 +26,10 @@ lab_venue: "GCP / GKE"
 
 Picture the phone on your nightstand lighting up at four in the morning because a token API has started returning errors. The first question is whether this is a real outage or a blip that will clear by itself. The earlier chapters in this part collected the signals that answer that question. This chapter is about acting on them. Alerting turns metrics and traces into pages for the on-call engineer. SLOs turn the same metrics into commitments the business can read. Health checks let Kubernetes decide whether a workload is alive and able to serve traffic.
 
+![Three stacked boxes: alerting tells you when to act, SLOs say which alerts matter most, and health checks stop traffic to broken pods, with arrows pointing down.](./img/g-325.jpg)
+*Figure 17.6.V. Alerting, SLOs, and health checks each prevent a different kind of late or wrong response.*
+
+
 Imagine each piece is missing. Without alerting, the on-call learns about an outage from a customer. Without SLOs, nobody can say which alerts the business cares about most. Without health checks, Kubernetes keeps sending requests to a pod that cannot answer them.
 
 Here is the failure this chapter prevents. A token API starts returning errors for two percent of requests at four in the morning. A threshold alert on the error rate pages the on-call for every one-minute blip all week, so by Thursday the pager is muted. This time the errors last all night, and the first person to notice is a customer. The fix has two parts. Alert on how fast the error budget is burning, which is what separates a blip from an outage, and send every alert to a route that matches how urgent it is.
@@ -55,6 +59,10 @@ Think of this chapter as the path from a number on a dashboard to a page that he
 ---
 
 ## 1. The SLOs
+
+![Three stacked boxes: pick a customer-facing SLI, set an SLO target on it, and track the error budget, with arrows pointing down.](./img/g-326.jpg)
+*Figure 17.6.V. Choose the measure the customer feels, set a target on it, and track how much failure the target allows.*
+
 
 ### 1.1 What an SLO is
 
