@@ -257,6 +257,10 @@ AI back-end fabrics are routed or InfiniBand. STP still matters in campus, manag
 
 Every control plane must answer three questions, and the answers are the raw material of all routing. What is the topology? Who are my neighbours? What is reachable through whom?
 
+![Three stacked questions every routing control plane must answer, from topology to reachability.](./img/g-112.jpg)
+*Figure 2.11.8. Every routing decision rests on these three answers.*
+
+
 A transit node, such as a router or switch, forwards packets between interfaces. A leaf node, which is a host, originates and terminates traffic. An edge is a connection over which packets are forwarded. Point-to-point links are edges, and so are multipoint segments modelled as sets of point-to-point links. A reachable destination can be a host, a node, or a service. A service may be anycast, running on several hosts. A reachable destination can also be a link with all the hosts attached to it, which is a prefix, or an aggregate of several prefixes.
 
 The topology is the graph of nodes and edges. You can summarise it by hiding detail behind an aggregate. Network diagrams hide information too. They draw bundles as one line, and they hide multiplexed links and service complexity. Control planes cannot hide that detail.

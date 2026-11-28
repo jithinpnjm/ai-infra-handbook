@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Start with a scene from a real on-call shift. A GPU node comes back from a reboot reporting seven GPUs instead of eight, and the scheduler keeps placing jobs on it anyway. Another job runs at half speed because its NIC and its GPU sit on different NUMA nodes. Neither problem is a mystery once you know how Linux presents hardware to the rest of the system, and that knowledge is what this chapter gives you.
 
+![A central box for the Linux hardware view with four boxes around it for dev, sys, proc, and udev.](./img/g-26.jpg)
+*Figure 1.10.1. Each interface shows hardware a different way, and udev sets them up.*
+
+
 An AI node is a pile of devices. It has eight GPUs, several InfiniBand or RoCE NICs, NVMe drives, NVSwitch chips, a BMC, a PCIe switch tree, sensors, and the CPUs and memory banks they hang off. Almost every operational question about such a node is a device question:
 
 - "Which `/dev/nvidia*` files should this container get, and why did it not see them?"
@@ -62,7 +66,7 @@ Think about what a program must do to talk to a hard disk. One option is to lear
 
 ![/dev, /sys and /proc](./img/ch10-fig2-vfs.jpg)
 
-*Figure 1.10.1. Three kernel-backed views of the machine: device files, the device tree and process and kernel state.*
+*Figure 1.10.2. Three kernel-backed views of the machine: device files, the device tree and process and kernel state.*
 
 Unix exposes most hardware through the same file interface you use for ordinary files, and that is one of its oldest and most useful tricks. A device file lives in `/dev` and looks like any other file. You can list it, read it, write to it, and check who may use it. When you open it, though, the kernel hands your reads and writes to a device driver instead of a disk filesystem. The file is a doorway, and the driver is the room behind it.
 
@@ -80,7 +84,7 @@ A device file is a convenience, and a big one. Any program that can read and wri
 
 ![How the first letter and the major and minor numbers of an ls -l line identify a device.](./img/l10-device-types.svg)
 
-*Figure 1.10.2. The type letter and the major and minor numbers tell you what kind of device a file is.*
+*Figure 1.10.3. The type letter and the major and minor numbers tell you what kind of device a file is.*
 
 Run `ls -l` on a few device files and look at the first character of the mode. That one letter tells you what kind of file you have:
 
@@ -113,7 +117,7 @@ Network interfaces are the notable exception. `eth0`, `ens3` and `ib0` have no d
 
 ![Kernel disk names can shift between boots, so persistent configuration should use stable identifiers.](./img/l10-name-shift.svg)
 
-*Figure 1.10.3. Names like sdb depend on discovery order, so use a UUID or a /dev/disk link instead.*
+*Figure 1.10.4. Names like sdb depend on discovery order, so use a UUID or a /dev/disk link instead.*
 
 Here is a story you will hear on almost every storage team. A server has three data disks, and the kernel names them `sda`, `sdb` and `sdc`. One morning `sdb` fails. The machine reboots, and the old `sdc` comes back as `sdb`. An `fstab` entry that said `/dev/sdb1` now mounts the wrong disk, or none at all.
 
@@ -188,6 +192,10 @@ Servers use the same idea as a **serial console**, set with `console=ttyS0,11520
 
 `dd` is the tool people reach for when they want to move raw bytes. It is simple, old, and completely unforgiving. It copies bytes from an input to an output in fixed-size blocks. Unlike most tools, it can start and stop at arbitrary points, which is what makes it useful for devices.
 
+![Three stacked boxes listing safety checks to run before using dd, from top to bottom.](./img/g-28.jpg)
+*Figure 1.10.5. dd never asks for confirmation, so the safety checks come before the command.*
+
+
 Its syntax is unusual, because it follows an old IBM job-control style. You write `option=value` where other tools use `-option`. The table lists the options you will use most. Each one controls where data comes from, how large each block is, or how the copy behaves.
 
 | Option | Meaning |
@@ -224,7 +232,7 @@ Open `/sys/class/net/eth0/speed` on a healthy server and you get a number. That 
 
 ![sysfs: the kernel's device model as a tree](./img/ch10-d1-luna.svg)
 
-*Figure 1.10.4. sysfs: the kernel's device model as a tree.*
+*Figure 1.10.6. sysfs: the kernel's device model as a tree.*
 
 Start reading at the top of the tree. Most of what you need lives under `/sys/devices`.
 
@@ -280,7 +288,7 @@ Where do you look for a machine's pulse? The load average, the memory counters, 
 
 ![What lives in /proc and /proc/sys and how sysctl reads and writes kernel settings](./img/pre-procfs-sysctl.jpg)
 
-*Figure 1.10.5. /proc shows live kernel and process state. sysctl changes kernel settings under /proc/sys.*
+*Figure 1.10.7. /proc shows live kernel and process state. sysctl changes kernel settings under /proc/sys.*
 
 `/proc` is the older virtual filesystem of the two. It began with process information and later grew to hold everything else. The numeric directories hold per-process information, which chapter 1.8 covers. The rest of `/proc` holds system-wide state, as the table shows.
 
@@ -347,7 +355,7 @@ The kernel also notifies udev. udev does not create the nodes. It adjusts them b
 
 ![The problem and the design](./img/ch10-d2-luna.svg)
 
-*Figure 1.10.6. The problem and the design.*
+*Figure 1.10.8. The problem and the design.*
 
 When you read the diagram, start at the top and work down. The hardware and the kernel act first. udev and its rules then decide the final state of the node. Subscribers react last.
 
@@ -519,7 +527,7 @@ SATA disks connect through **libata**, which runs inside the kernel. libata tran
 
 ![Storage device stacks: SCSI vs NVMe](./img/ch10-d3-luna.svg)
 
-*Figure 1.10.7. Storage device stacks: the three-layer Linux SCSI subsystem and the separate NVMe stack.*
+*Figure 1.10.9. Storage device stacks: the three-layer Linux SCSI subsystem and the separate NVMe stack.*
 
 **Generic SCSI nodes and multiple access methods.** User processes can bypass the top-level class drivers, `sd` and `sr`. They send SCSI protocol commands straight to the device through its generic character device, `/dev/sg*`. Tools from `sg3_utils`, such as `sg_inq` and `sg_map`, do this for you. Run `lsscsi -g` to see the generic node beside each device. It appends the node on the right, as in `/dev/sda /dev/sg0`, `/dev/sr0 /dev/sg1`, and so on up to `/dev/sde /dev/sg5`. The generic nodes use major number `21`.
 
@@ -537,7 +545,7 @@ Someone hands you a node and asks a simple question: what is in this machine? Yo
 
 ![Which command shows which hardware: lscpu, lsblk, lspci, free, dmidecode](./img/pre-hw-inventory.jpg)
 
-*Figure 1.10.8. One command per question about the hardware.*
+*Figure 1.10.10. One command per question about the hardware.*
 
 | Tool | Shows |
 |---|---|
@@ -575,7 +583,7 @@ Before you place a process, check the matrix, so the job uses the fastest path b
 
 ![A device is matched to a driver by its ID tables, and sysfs can unbind it and hand it to vfio-pci.](./img/l10-driver-bind.svg)
 
-*Figure 1.10.9. Drivers claim devices by ID, and the bind and unbind files in sysfs let you swap the driver.*
+*Figure 1.10.11. Drivers claim devices by ID, and the bind and unbind files in sysfs let you swap the driver.*
 
 Every device in a machine needs code that understands it. That code is the driver, and the kernel has to decide which driver owns which device, often within milliseconds of boot.
 
@@ -607,6 +615,10 @@ Drain the node before you run any of these operations.
 ## 10. AI-infrastructure patterns
 
 **What a GPU node looks like to Linux.** After the NVIDIA kernel module loads, `/dev` contains `nvidia0..N-1`, one character device per GPU. It also contains `nvidiactl` for control, `nvidia-uvm` and `nvidia-uvm-tools` for unified virtual memory, and `nvidia-modeset`. With MIG or the fabric manager, you also get `/dev/nvidia-caps/*`.
+
+![Five stacked steps for diagnosing a failing nvidia-smi, from module loading to version match.](./img/g-29.jpg)
+*Figure 1.10.12. Checking the layers in order finds the broken one faster than guessing.*
+
 
 Programs open these files and talk to the driver with `ioctl`. The user-space CUDA libraries, such as `libcuda.so`, sit above that layer. Check the state with `ls -l /dev/nvidia*`, `lsmod | grep nvidia`, `cat /proc/driver/nvidia/version` and `nvidia-smi`.
 
@@ -645,6 +657,10 @@ Before you trust a node, compare its link speed, NUMA node and driver version ag
 ## How it fails
 
 Use this list when something breaks. Find the symptom you are seeing, read the cause it names, and check that cause before you change anything. Pattern matching is the fastest route to a diagnosis, and it is also the fastest route to the wrong one if you skip the check.
+
+![A four-row table pairing common device symptoms with the first check to make.](./img/g-30.jpg)
+*Figure 1.10.13. Read the cause each symptom names before you change anything.*
+
 
 1. **A disk name changed after reboot, and `fstab` mounted the wrong disk.** The `sdX` names depend on order. Use UUIDs, labels, `by-id` links or LVM names instead.
 2. **`/dev/nvidia*` is missing, or it exists but `nvidia-smi` fails.** The module may not be loaded, or it may have failed. Secure boot, a kernel and driver mismatch, or a missing DKMS build can cause that. The nodes may not have been created, or the driver and library versions may disagree. Check `lsmod`, `dmesg`, `ls -l /dev/nvidia*` and `journalctl -k`.

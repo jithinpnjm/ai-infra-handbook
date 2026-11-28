@@ -633,6 +633,10 @@ You now have `server.crt` and the key for the webhook's HTTPS server. Serve them
 
 Suppose a training Pod runs in a namespace with no security settings at all. What can that Pod do to the node it lands on? The Pod Security Standards answer that question with three profiles. Each profile is cumulative, so every level includes the rules of the one before it.
 
+![The three Pod Security Standards levels: privileged, baseline and restricted](./img/pre-pss.jpg)
+
+*Figure 5.21.3. Three levels. Restricted is the strictest and is the target for normal workloads.*
+
 | Profile | Meaning | Blocks (selection) |
 |---|---|---|
 | **Privileged** | Unrestricted | Nothing |

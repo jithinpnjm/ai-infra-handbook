@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a GPU node that comes back from maintenance. It boots, it accepts your login, and it has no GPUs at all. You look twice before you believe it. Nothing on that node is as fragile as the four-way pairing it depends on: **running kernel ↔ NVIDIA kernel modules ↔ user-space driver libraries ↔ CUDA in the container**. Each link must match the others, and each one can move without warning. A routine `apt upgrade` can install a new kernel, a reboot can follow maintenance, or a driver version can drift. Any one of these breaks the chain. Slurm then drains the node, Kubernetes shows `nvidia.com/gpu: 0`, and `nvidia-smi` reports that it "couldn't communicate with the NVIDIA driver". Fleet operators therefore treat the kernel and the GPU and NIC drivers as one versioned artefact, and so should you.
 
+![Four boxes in a row, kernel, NVIDIA modules, driver libraries, and CUDA, each linked to the next.](./img/g-61.jpg)
+*Figure 1.22.1. Each link in the driver chain must match the others, so upgrade them together.*
+
+
 The modules are not the whole story. A node's behaviour is also shaped by a few hundred **kernel parameters**, which you reach through a tool called `sysctl`, and by **boot parameters** handed to the kernel at startup. Wrong values cause memory allocation stalls, dropped connections, failing `mmap` calls in data loaders, or swap thrashing. Right values are cheap, repeatable and testable, which is why this chapter spends time on them.
 
 Here are the incidents this chapter prepares you to handle.
@@ -61,7 +65,7 @@ The Linux kernel is **monolithic**. That means it runs as one program in one add
 
 ![What a kernel module is](./img/ch22-d1-luna.svg)
 
-*Figure 1.22.1. What a kernel module is.*
+*Figure 1.22.2. What a kernel module is.*
 
 The following facts explain how modules fail, and why.
 
@@ -99,7 +103,7 @@ cat /proc/sys/kernel/tainted ; cat /proc/modules | head -3
 
 ![One file chooses which modules load at boot and another sets their options and blacklist.](./img/l22-module-config.svg)
 
-*Figure 1.22.2. modules-load.d lists what to load, and modprobe.d sets how and whether it loads.*
+*Figure 1.22.3. modules-load.d lists what to load, and modprobe.d sets how and whether it loads.*
 
 Two kinds of file keep a module loaded at boot and set its options. The first lists what to load. The second sets how it loads.
 
@@ -166,7 +170,7 @@ Six groups cover most DKMS failures. They are listed roughly in the order they h
 
 ![A comparison of precompiled packages, golden images, the GPU Operator driver container and DKMS on nodes.](./img/l22-driver-delivery.svg)
 
-*Figure 1.22.3. Large fleets compile once in CI against a pinned kernel instead of compiling on compute nodes.*
+*Figure 1.22.4. Large fleets compile once in CI against a pinned kernel instead of compiling on compute nodes.*
 
 Large fleets work to a single rule. Compile the driver **once** in CI, against a **pinned kernel**. Ship the result, and never compile on a compute node. The table compares the four common ways to deliver it.
 
@@ -191,7 +195,7 @@ A GPU node runs several NVIDIA pieces, and each one depends on the others. When 
 
 ![The NVIDIA driver stack on a node](./img/ch22-fig1-nvidia.jpg)
 
-*Figure 1.22.4. The layers of the NVIDIA stack, from user-space libraries to kernel modules and the GPU.*
+*Figure 1.22.5. The layers of the NVIDIA stack, from user-space libraries to kernel modules and the GPU.*
 
 ### Kernel modules and device nodes
 
@@ -232,7 +236,7 @@ You choose the flavour at install time, with `nvidia-driver-XXX-open` on Ubuntu,
 
 ![Seven steps to upgrade a GPU driver on one node before touching the fleet.](./img/l22-upgrade-steps.svg)
 
-*Figure 1.22.5. Cordon, upgrade, verify the build for the target kernel, reboot, validate, then uncordon and roll out in waves.*
+*Figure 1.22.6. Cordon, upgrade, verify the build for the target kernel, reboot, validate, then uncordon and roll out in waves.*
 
 Run these seven steps on one node first, before the change goes anywhere near the fleet.
 
@@ -249,6 +253,10 @@ Keep the previous image or packages until the new driver passes validation on ev
 ## 5. Module signing, Secure Boot and lockdown
 
 A node with Secure Boot turned on can refuse a driver that loads fine on another node. The driver file is the same one that works next door, and this node still rejects it. To see why, you need to know how the firmware and the kernel decide what is trusted.
+
+![Four stacked steps for signing an out-of-tree NVIDIA module under Secure Boot.](./img/g-62.jpg)
+*Figure 1.22.7. Signing the driver is a repeatable image-build step, not a reason to disable Secure Boot.*
+
 
 With **Secure Boot**, the firmware starts only signed boot loaders. The signed kernel then restricts what can be loaded. This restriction is called kernel **lockdown**, and it can require **signed modules**, either through `CONFIG_MODULE_SIG_FORCE` or through lockdown "integrity" mode. The kernel's trusted keyrings come from three places. They are the built-in keys, the firmware `db` reached through `shim`, and the **Machine Owner Key (MOK)** list, which you manage with `mokutil`.
 
@@ -280,7 +288,7 @@ Two situations catch people out here. In the first, a node was tuned by hand las
 
 ![A sysctl -w change is runtime only, while a file under /etc/sysctl.d persists across reboots.](./img/l22-sysctl-persist.svg)
 
-*Figure 1.22.6. Use sysctl -w to test and a sysctl.d file to make the setting survive a reboot.*
+*Figure 1.22.8. Use sysctl -w to test and a sysctl.d file to make the setting survive a reboot.*
 
 `sysctl` reads and writes **kernel parameters** exposed under `/proc/sys`. The dotted name maps to a path, so `vm.swappiness` ↔ `/proc/sys/vm/swappiness`. Changes made with `sysctl -w` are **runtime only**, and that is the trap. The new value works until the next reboot, then it quietly disappears. To keep a change, write it to a file in `/etc/sysctl.d/NN-name.conf`. Those files are read in lexical order by `systemd-sysctl.service`, and later files win. `/etc/sysctl.conf` is also read, and the distribution defaults live in `/usr/lib/sysctl.d`.
 
@@ -382,7 +390,7 @@ Picture the ticket that reads: "Node 17 has no GPUs." Use this flow when `nvidia
 
 ![Troubleshooting flow: the node has no GPUs](./img/ch22-d2-luna.svg)
 
-*Figure 1.22.7. Troubleshooting flow: "the node has no GPUs".*
+*Figure 1.22.9. Troubleshooting flow: "the node has no GPUs".*
 
 Some symptoms do not fit neatly into the flow. The table lists them with their cause and their fix. If you see one of them, jump straight to its row.
 

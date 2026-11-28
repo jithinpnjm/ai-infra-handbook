@@ -91,6 +91,10 @@ A GPU hides its queues from the host. Thousands of threads are scheduled inside 
 
 An on-call engineer who reads GPU percentages the way they read CPU percentages will get every diagnosis wrong. A deadlocked job can show 100 percent utilization. A healthy job can show 95 percent memory from the first batch. A throttled card can look fully busy while it runs slowly. The three sections below take the three numbers one at a time, and each one starts with the trap it sets.
 
+![Why GPU-Util of 85 percent can mean three different things](./img/pre-gpu-util-lie.jpg)
+
+*Figure 10.8.1. GPU-Util only says a kernel was running, so the same number can hide very different jobs.*
+
 ```mermaid
 flowchart TD
     subgraph Lie1["The Utilization Lie: GPU-Util = 85%"]
@@ -188,6 +192,10 @@ The three rows form a simple ladder. The peak row is what the card can do when n
 ## 3. Clocks, power caps and throttle reasons
 
 When a GPU slows down, guessing between a hot room, a power cap and an idle workload wastes recovery time. A hot room needs facilities work, a power cap needs someone to find the setting, and an idle workload needs a change in the code. Each fix is different, so the diagnosis has to come first. The GPU records the cause of every clock reduction in a bitmask register that you can read, and that register is the fastest way to skip the guesswork.
+
+![Common GPU throttle reasons with the severity and action for each](./img/pre-throttle-reasons.jpg)
+
+*Figure 10.8.2. Read the throttle mask to tell a hot room from a power cap or an idle workload.*
 
 ### 3.1 Decoding the throttle bitmask
 
@@ -374,7 +382,7 @@ When a node logs kernel errors in the middle of the night, or a job slows withou
 
 ![A checklist of causes for a slow GPU job with the command for each](./img/pre-s11-slow-gpu-job.jpg)
 
-*Figure 10.8.1. A slow GPU job is usually not the GPU. Check placement, data, network and CPU.*
+*Figure 10.8.3. A slow GPU job is usually not the GPU. Check placement, data, network and CPU.*
 
 ### 5.1 Xid errors: three tiers
 

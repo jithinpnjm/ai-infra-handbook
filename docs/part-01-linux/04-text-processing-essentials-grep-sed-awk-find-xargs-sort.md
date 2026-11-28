@@ -411,6 +411,10 @@ Check the man page for a machine-readable mode before you write any parser.
 
 Your script runs on a Linux server and fails on a Mac. Or two hosts sort the same file in a different order, and nobody touched the file. These surprises come from a small set of well-known traps, and each of them is easy to recognise once you have met it.
 
+![A four-row table listing common portability traps and their fixes.](./img/g-8.jpg)
+*Figure 1.4.12. Most surprises across machines come from a few known traps you can recognise.*
+
+
 GNU versus BSD. Linux servers carry the GNU versions of these tools, and macOS carries the BSD versions. The differences break scripts. `sed -i` needs an empty suffix argument on macOS. `grep -P` and some `-o` behaviours are absent. `sort`, `date`, `xargs -r`, `readlink -f`, and some `awk` features also differ. For this book, use a Linux machine for labs. When a script must run on both systems, you have two options: stick to POSIX options and test on both, or install the GNU tools on the Mac with `brew install gnu-sed grep coreutils findutils gawk`, which provides `gsed`, `ggrep` and so on.
 
 Locale. A **locale** is the bundle of language, encoding and sorting rules a program borrows from your environment. The settings `LANG` and `LC_ALL` from chapter 1.2 choose it, and they affect sorting order, character classes such as `[a-z]`, and speed. In a UTF-8 locale, `sort` compares using language rules, so `a` and `B` may interleave. Many scripts set `LC_ALL=C` in front of `sort`, `grep`, and `awk`. That gives plain byte order and a large speed-up, as in `LC_ALL=C sort file`. When two machines give different sort orders for the same file, check the locale first.
@@ -425,7 +429,7 @@ Before you run a pipeline on a large file, filter it with `grep` first.
 
 ![A five stage pipeline of grep, sed, sort, uniq and sort that masks numbers in error lines so two NCCL timeout messages are counted together.](./img/p3-0104-mask-rank-errors.svg)
 
-*Figure 1.4.12. After the numbers are masked to N, the two NCCL timeout lines become identical, sort puts them side by side, and uniq -c counts them as 2.*
+*Figure 1.4.13. After the numbers are masked to N, the two NCCL timeout lines become identical, sort puts them side by side, and uniq -c counts them as 2.*
 
 You are on call, and a user asks which GPU is running hot. Then someone asks which node is down, and someone else asks why their job is still queued. Questions like these come up again and again on a GPU cluster, and the ten recipes below are the short answers. They are patterns you will adapt to your own cluster, not commands to paste blindly. Before you trust any of them, run its first stage alone and look at the data it produces.
 
@@ -466,6 +470,10 @@ Pick the recipe closest to your problem, change the names to match your system, 
 ## How it fails
 
 Most text-pipeline failures look like the tools are lying to you. They are not. Each failure below has a common cause, and each has a fix you can apply in a minute.
+
+![A four-row table pairing common text pipeline symptoms with their fixes.](./img/g-9.jpg)
+*Figure 1.4.14. Before you change the logic, check the environment the tool runs in.*
+
 
 ### 1. Different sort order or "wrong" results on two machines: locale
 

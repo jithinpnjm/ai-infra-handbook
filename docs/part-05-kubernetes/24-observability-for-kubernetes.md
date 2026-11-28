@@ -44,6 +44,10 @@ This chapter builds on 5.3, 5.9 and 5.19, so read those first. The list below is
 
 Each signal answers a different question, so you rarely get the whole story from one. A metric tells you that something is changing. A log tells you what happened at one moment. A trace tells you where the time went. Use the table to see which signal to reach for first, and where its data comes from.
 
+![Six observability signals and the question each one answers](./img/pre-obs-signals.jpg)
+
+*Figure 5.24.1. Each signal answers a different question, so you rarely get the whole story from one.*
+
 | Signal | Question answered | Kubernetes sources |
 |---|---|---|
 | **Metrics** | How is the system behaving over time? (rates, errors, durations, saturation) | Prometheus scraping `/metrics` endpoints |
@@ -65,7 +69,7 @@ The diagram shows the pipeline on a GPU worker node. Exporters and application e
 
 ![Prometheus and the Operator](./img/m5-24-1.svg)
 
-*Figure 5.24.1. Prometheus and the Operator, as a diagram.*
+*Figure 5.24.2. Prometheus and the Operator, as a diagram.*
 
 ### Why Prometheus became the default
 

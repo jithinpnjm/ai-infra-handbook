@@ -241,6 +241,10 @@ When a write fails even though the free space looks fine, check the inode usage 
 
 Two names can point at the same file, or one name can point at another name. Picture the record card from section 4, because the two kinds of link are easy to tell apart in that picture. A hard link is a second label on the same card. A symbolic link is a note in a drawer that says where to find the card. Which one you choose decides what happens when you delete or move things later.
 
+![A hard link sharing an inode compared with a symbolic link pointing at a path](./img/pre-links-hard-soft.jpg)
+
+*Figure 1.3.7. A hard link is another name for the same inode. A symbolic link is a small file that stores a path.*
+
 ### Hard links
 
 A **hard link** is simply another directory entry pointing at the same inode. After `ln a.txt b.txt`, both names are equal. The link count is 2. Editing through either name changes the one set of underlying data blocks. Deleting one name leaves the file intact under the other, and there is no "original".
@@ -264,7 +268,7 @@ Hard links are widely used for space-efficient deduplication, with tools such as
 
 ![Side by side comparison showing a hard link sharing an inode record and a symbolic link containing a target path string with dangling behavior on deletion.](./img/p4-0103-hard-vs-symlink.svg)
 
-*Figure 1.3.7. Hard links create multiple directory entries for a single inode that survive deletion of other names, whereas symbolic links store path strings that become dangling if the target is moved or deleted.*
+*Figure 1.3.8. Hard links create multiple directory entries for a single inode that survive deletion of other names, whereas symbolic links store path strings that become dangling if the target is moved or deleted.*
 
 A **symbolic link**, or symlink, is a tiny file of type `l`. Its content is a path, and the system resolves that path each time you use the link. Think of it as a signpost rather than a copy: the sign is cheap, and it is only useful while the place it names still exists. It can point anywhere: to another directory, to another filesystem, or even to a path that does not exist.
 
@@ -299,13 +303,13 @@ Notice the row for a deleted original, because it decides most real incidents. A
 
 ![A hard link is a second name for one inode, and a symbolic link is a small file that names a path.](./img/ch03-fig2-links.jpg)
 
-*Figure 1.3.8. Deleting one hard-linked name leaves the data; deleting a symlink's target leaves a dangling link.*
+*Figure 1.3.9. Deleting one hard-linked name leaves the data; deleting a symlink's target leaves a dangling link.*
 
 ### The atomic "latest" pattern
 
 ![Two-step sequence diagram illustrating creation of latest.tmp pointing to new checkpoint step followed by atomic rename over latest to prevent reader race conditions.](./img/p4-0103-atomic-symlink-swap.svg)
 
-*Figure 1.3.9. Creating latest.tmp before executing an atomic rename over latest ensures continuous resolution for reader processes with zero downtime window.*
+*Figure 1.3.10. Creating latest.tmp before executing an atomic rename over latest ensures continuous resolution for reader processes with zero downtime window.*
 
 A common AI-infrastructure pattern keeps a `latest` symlink that points at the newest checkpoint. Readers can switch to a new checkpoint without ever seeing a half-written state. The trick is that renaming a symlink over another one is atomic on a filesystem. Atomic here means all or nothing: a reader sees the old link or the new one, never a moment in between.
 
@@ -318,7 +322,7 @@ The `-f` flag replaces an existing link. `-n` treats an existing directory symli
 
 ![A temporary symlink is created, then renamed over latest in one atomic step.](./img/ch03-fig3-atomic-latest.jpg)
 
-*Figure 1.3.10. Create latest.tmp first, then rename it over latest; readers see the old target or the new one.*
+*Figure 1.3.11. Create latest.tmp first, then rename it over latest; readers see the old target or the new one.*
 
 Before you point a `latest` link at a new checkpoint, use this two-step swap so readers never find it missing.
 
@@ -326,7 +330,7 @@ Before you point a `latest` link at a new checkpoint, use this two-step swap so 
 
 ![A matrix of five file actions against the three timestamps mtime, ctime and atime, showing which ones change for each action.](./img/p3-0103-timestamps-matrix.svg)
 
-*Figure 1.3.11. Writing changes mtime and ctime, changing permissions changes only ctime, and reading changes atime only occasionally because of relatime.*
+*Figure 1.3.12. Writing changes mtime and ctime, changing permissions changes only ctime, and reading changes atime only occasionally because of relatime.*
 
 You ask what changed recently, and Linux gives you three different answers depending on which time you read. That is not a trick. Every inode records three times, and `stat` shows all of them.
 
@@ -347,6 +351,10 @@ Decide which of the three times you actually mean before you search for recent c
 ## 7. Names, extensions and finding things
 
 A job fails because it cannot find a config file. You know the file exists somewhere on this node, and you have no idea where. You will search for files far more often than you create them, so it pays to know the tools and to keep names you can trust.
+
+![Two side-by-side panels comparing find, which walks the directory tree, with locate, which searches a prebuilt index.](./img/g-5.jpg)
+*Figure 1.3.13. locate is fast but can be out of date, while find always tells the truth.*
+
 
 Linux does not care about extensions, but tools and humans do. Stick to lowercase letters, digits, `-`, `_` and `.`. Avoid spaces and leading dashes, and never put a newline in a name. A name that starts with `.` is hidden from plain `ls`, which needs `ls -a` to show it, and from the `*` glob. Common conventions include `.sh` for scripts, `.py` for Python, `.conf`, `.cfg`, `.ini` and `.yaml` for configuration, `.log` for logs, `.tar.gz` for archives, `.so` for shared libraries, `.service` for systemd units, and `.pt` or `.safetensors` for model weights. Executability comes from the permission bit and a `#!` first line, not from the extension. Chapter 1.9 covers that.
 
@@ -389,7 +397,7 @@ Before you search the whole disk, check whether a `find` with a simple `-name` t
 
 ![Flow diagram of two-stage tar archiving and compression pipeline with a comparison matrix of gzip, bzip2, xz, and zstd compressors.](./img/p4-0103-tar-compression-pipeline.svg)
 
-*Figure 1.3.12. Archiving bundles files and metadata into a stream while compression shrinks the bytes, with zstd and pigz providing modern speed and ratio trade-offs for AI workloads.*
+*Figure 1.3.14. Archiving bundles files and metadata into a stream while compression shrinks the bytes, with zstd and pigz providing modern speed and ratio trade-offs for AI workloads.*
 
 You need to move a whole directory tree as one object, with its permissions and timestamps intact. A directory full of loose files is painful to copy, count and verify. What you need is an **archive**.
 
@@ -449,6 +457,10 @@ Before you extract any archive you did not create, list its contents first.
 
 A PyTorch data loader crashes inside a container, and the error gives no obvious cause. Most of the time, the clues sit in places this chapter has already covered. Gather them here, and the next crash is faster to read.
 
+![A four-row table pairing common AI data problems with their fixes.](./img/g-6.jpg)
+*Figure 1.3.15. Most data-loading crashes come from file layout or shared memory size, not the framework.*
+
+
 Datasets of millions of small files stress inode counts, directory lookup time and metadata servers on network filesystems. Pack small files into shards instead, using tar-based formats such as WebDataset, Parquet or TFRecord, and read them sequentially. Chapter 13.6 covers this topic in depth.
 
 Checkpoints are huge sequential files. Write them to a temporary name, then rename when the write completes. A rename within one filesystem is atomic, so a crash mid-write never leaves a corrupt "latest". Use the symlink pattern from section 5 to point readers at the result.
@@ -469,7 +481,7 @@ Most filesystem failures look like something other than a filesystem problem. Th
 
 ![A troubleshooting ladder for a disk that looks full, branching to out of inodes, a deleted but open file, or a quota or container layer limit.](./img/p3-0103-disk-full-ladder.svg)
 
-*Figure 1.3.13. Run df -h and df -i first, then compare du with df to find deleted-but-open files, then check quotas.*
+*Figure 1.3.16. Run df -h and df -i first, then compare du with df to find deleted-but-open files, then check quotas.*
 
 **Symptom:** writes fail with ENOSPC, yet `df -h` shows free space. You may be sure the disk has room, and that is the trap. **Cause:** the filesystem ran out of **inodes**, not bytes. That is typically millions of tiny files. Or a per-user or project quota has been reached, or a container's writable layer is full. **Diagnose:** run `df -h` **and** `df -i` on the path. Then run `find /dir -xdev -type f | wc -l`, and `quota -s` where quotas are used. **Fix:** delete or pack the small files. Or recreate the filesystem with more inodes, using `mkfs.ext4 -N`, or choose a different filesystem such as XFS, which allocates inodes dynamically. You can also move the data. **Prevention:** shard your datasets.
 
@@ -485,7 +497,7 @@ Most filesystem failures look like something other than a filesystem problem. Th
 
 ![A deleted file that a process still holds open keeps using disk space that du cannot see.](./img/l03-deleted-open.svg)
 
-*Figure 1.3.14. df counts the space while a process holds the file open, but du no longer finds the name.*
+*Figure 1.3.17. df counts the space while a process holds the file open, but du no longer finds the name.*
 
 **Symptom:** `df` shows 95% used, but `du -sh /*` totals much less. **Cause:** a large log or temporary file was deleted while a process still had it open. The data is kept until that process closes the file or exits. The name is gone, but the space is not. **Diagnose:** run `sudo lsof +L1`, which lists open files with a link count below 1. Or run `ls -l /proc/<pid>/fd | grep deleted`. **Fix:** restart the process, or signal it to reopen its log. `logrotate` with `copytruncate` or `postrotate` handles this properly. You can also truncate the file through its descriptor with `: > /proc/<pid>/fd/<n>`.
 

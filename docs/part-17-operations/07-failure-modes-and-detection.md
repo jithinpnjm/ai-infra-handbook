@@ -105,6 +105,10 @@ This chapter walks through the six groups of failure that matter most for AI inf
 
 ## 1. GPU hardware failures
 
+![GPU hardware failures with the signal to watch and the first action for each](./img/pre-gpu-failures.jpg)
+
+*Figure 17.7.1. Each GPU failure has a signal that detects it and a first action. Most start with cordon and drain.*
+
 ### 1.1 The GPU failure catalogue
 
 GPU hardware causes a large share of training interruptions, and one published record makes that concrete. Meta recorded 419 unexpected interruptions in 54 days of Llama 3 405B pretraining. Faulty GPUs caused 148 of them, which is 35.3 percent. GPU HBM3 memory caused 72 more, which is 17.2 percent. HBM3 is the high-bandwidth memory that sits on the GPU package, next to the compute cores. Together those two causes are more than half of the unexpected stops, so GPU faults deserve the first place in the catalogue. Chapter 17.13 uses the full table for fleet reliability numbers.
@@ -167,6 +171,10 @@ Write the three steps into the runbook, along with the signs that tell the on-ca
 ---
 
 ## 2. Network failures
+
+![Network failures in a training cluster with the first action for each](./img/pre-network-failures.jpg)
+
+*Figure 17.7.2. Read the first error, not the last, because healthy ranks often print the timeout.*
 
 ### 2.1 The network failure catalogue
 

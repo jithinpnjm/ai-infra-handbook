@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a 1,500-byte piece of a training checkpoint leaving one GPU server for another. Inside the sending program it is just bytes. Before it reaches the wire, three wrappers get added. A transport header tells the far side which program should receive the data. An IP header lets switches and routers steer it. An Ethernet header makes the next device accept it. Each wrapper is called a **header**, and the act of adding it is **encapsulation**. A different **layer** adds each wrapper, and a layer is simply a group of related jobs with a fixed interface to the groups above and below it.
 
+![Three stacked header boxes for transport, IP, and Ethernet wrapped around a payload.](./img/g-105.jpg)
+*Figure 2.2.1. Each layer wraps the data with its own header, which the next device reads.*
+
+
 Once you can say which layer a performance or reliability problem lives at, and what that layer is responsible for, the problem becomes manageable. The names you will meet later in an AI cluster, such as RoCE, VXLAN, ECMP, PFC, MTU and CNI, each sit at one particular place in that stack. This chapter gives you the map, and later chapters take each layer in depth.
 
 Layers are also the shared language of network engineers. A switch engineer says "that's an L2 problem" and a platform engineer says "the pod can't reach the service". You will often have to translate between the two in your head.
@@ -52,7 +56,7 @@ After this chapter you can:
 
 ![Circuit switching versus packet switching](./img/n02-switching.svg)
 
-*Figure 2.2.1. Circuit switching reserves a path, while packet switching shares links and forwards each packet by its header.*
+*Figure 2.2.2. Circuit switching reserves a path, while packet switching shares links and forwards each packet by its header.*
 
 Suppose you need to send a file to a server on the other side of the country. The network has to decide how to carry your bytes, and that decision shapes everything else in this chapter. Compare two ways of moving a crowd of people across a city. You could book a whole train for them, which nobody else may use, or you could let everyone take buses that share the same roads. There are two basic designs in networks as well. One reserves a path before any data moves. The other chops the data into pieces and lets those pieces share the wires.
 
@@ -86,7 +90,7 @@ When you read about a network, first ask whether it reserves a path or shares on
 
 ![A grid of Ethernet, IP, UDP, TCP, QUIC and RoCE v2 against the four protocol jobs of transport, multiplexing, error control and flow control, grouped by scope.](./img/p3-0202-four-jobs.svg)
 
-*Figure 2.2.2. Each protocol does some of the four jobs at its own scope: one link, the whole path, or end to end.*
+*Figure 2.2.3. Each protocol does some of the four jobs at its own scope: one link, the whole path, or end to end.*
 
 When a transfer stalls or a connection breaks, you need to know what each protocol in the path is supposed to do. Every protocol that carries data does some combination of four things. Once you know the four, you can ask the same questions about any protocol, including ones you have never seen before. Read the four jobs slowly, because the rest of the chapter keeps coming back to them.
 
@@ -121,7 +125,7 @@ A web page loads slowly, and you need to know which part of the stack to blame. 
 
 ![The DoD / TCP/IP model (4 layers)](./img/m2-02-1.svg)
 
-*Figure 2.2.3. The DoD / TCP/IP model (4 layers), as a diagram.*
+*Figure 2.2.4. The DoD / TCP/IP model (4 layers), as a diagram.*
 
 The DoD model was developed in the 1960s to 1980s under DARPA sponsorship. It was not built to survive nuclear war. Its goal was much more practical. It aimed to let incompatible computers at universities and labs communicate. The model split the problem into four layers: link for frames on one network, internet for datagrams across networks, transport for end-to-end conversations, and application for user-visible protocols.
 
@@ -133,7 +137,7 @@ On a Linux host, the practical question is where each layer lives. Start by chec
 
 ![The OSI model (7 layers)](./img/m2-02-2.svg)
 
-*Figure 2.2.4. The OSI model (7 layers), as a diagram.*
+*Figure 2.2.5. The OSI model (7 layers), as a diagram.*
 
 ISO proposed the OSI model in 1977 as an alternative to the DoD stack. It tried to blend circuit-oriented and packet-oriented thinking, and telecom and database interests drove it. The full OSI protocol suite never won. Its specifications were slow, complex and sold in paper form to members, while the TCP/IP specifications and implementations were free. When two designs are both reasonable, the one that people can download and try tends to win.
 
@@ -176,7 +180,7 @@ In Linux, the kernel mostly handles the transport layer and everything below it.
 
 ![Comparison of a stateful core where link failures break circuit state against the end-to-end model where a stateless IP core reroutes datagrams while endpoints preserve connection state.](./img/p4-0202-connection-model.svg)
 
-*Figure 2.2.5. In the end-to-end model, intermediate routers hold only prefix forwarding tables, allowing traffic to reroute around link failures without disrupting endpoint connection state.*
+*Figure 2.2.6. In the end-to-end model, intermediate routers hold only prefix forwarding tables, allowing traffic to reroute around link failures without disrupting endpoint connection state.*
 
 A connection-oriented service sets up state before it sends data. Often it also reserves resources and a path. It is like a phone call, where you dial, wait for an answer and then talk. After that, data flows with little overhead for each packet. TCP at the edge works this way, and so do ATM, MPLS LSPs, InfiniBand queue pairs and RDMA reliable connections.
 
@@ -192,15 +196,15 @@ Think about one HTTP request leaving your laptop. The request text is not sent a
 
 ![Data wrapped by TCP, then IP, then Ethernet headers on its way out](./img/pre-encapsulation.jpg)
 
-*Figure 2.2.6. Each layer adds its own header: ports, then addresses, then MAC.*
+*Figure 2.2.7. Each layer adds its own header: ports, then addresses, then MAC.*
 
 ![Encapsulation: each layer adds a header](./img/n02-fig1-encap.jpg)
 
-*Figure 2.2.7. Each layer wraps the data from the layer above with its own header; the receiver strips them in reverse.*
+*Figure 2.2.8. Each layer wraps the data from the layer above with its own header; the receiver strips them in reverse.*
 
 ![Encapsulation and decapsulation](./img/m2-02-3.svg)
 
-*Figure 2.2.8. Encapsulation and decapsulation, as a diagram.*
+*Figure 2.2.9. Encapsulation and decapsulation, as a diagram.*
 
 The headers are small, but they add up, and you will use these numbers constantly. A typical Ethernet header is 14 B, and an 802.1Q VLAN tag adds 4 B more. The FCS adds 4 B at the end of the frame. An IPv4 header is 20 B, while an IPv6 header is 40 B. A TCP header is 20 B, and it can grow to 60 B with options. Timestamps add 12 B of that. A UDP header is 8 B.
 
@@ -210,11 +214,11 @@ On the wire, the preamble and SFD add 8 B, and the inter-frame gap adds 12 B. To
 
 ![A 64-byte minimum frame counted as 84 byte times on the wire giving 148.8 million frames per second at 100 Gb/s and 595.2 million at 400 Gb/s.](./img/p3-0202-small-frame-pps.svg)
 
-*Figure 2.2.9. A minimum frame costs 84 byte times, so a 100 Gb/s link tops out near 148.8 million frames per second.*
+*Figure 2.2.10. A minimum frame costs 84 byte times, so a 100 Gb/s link tops out near 148.8 million frames per second.*
 
 ![Goodput of a TCP segment](./img/n02-goodput.svg)
 
-*Figure 2.2.10. Headers and gaps cost about 5 percent at 1500 bytes MTU and under 1 percent with jumbo frames.*
+*Figure 2.2.11. Headers and gaps cost about 5 percent at 1500 bytes MTU and under 1 percent with jumbo frames.*
 
 How much of the link carries your data, and how much carries wrapping? Work it out for one ordinary case. Start with a standard 1500-byte MTU, the largest IP packet on ordinary Ethernet. A TCP/IPv4 segment can carry at most 1500 bytes minus 20 bytes of IP header and 20 bytes of TCP header. That leaves a maximum segment size, or MSS, of 1460 bytes of data. With the TCP timestamp option, the payload drops to 1448 bytes.
 
@@ -246,7 +250,7 @@ Keep offloads in mind when you read these outputs, because they change what tcpd
 
 ![Demultiplexing by protocol keys](./img/n02-demux.svg)
 
-*Figure 2.2.11. Each layer carries a key field that tells the receiver which code should get the payload next.*
+*Figure 2.2.12. Each layer carries a key field that tells the receiver which code should get the payload next.*
 
 A frame arrives at the NIC. How does it end up in the right process? The network card does not know which program wants it, and neither does the cable. Each layer includes a field that tells the receiver which protocol should get the payload, a bit like the department name on an internal mail label. Three fields do this job.
 
@@ -262,7 +266,7 @@ If a key matches no handler, the packet is dropped. Or the sender gets an error 
 
 ![VXLAN's 14, 20, 8 and 8 byte outer headers add 50 bytes, cutting a 1500 byte MTU to a 1410 byte MSS, with the black hole failure when neither is adjusted.](./img/p3-0202-vxlan-mtu.svg)
 
-*Figure 2.2.12. VXLAN adds 50 bytes, so a 1500 byte underlay leaves a 1410 byte MSS, and without clamping large packets are dropped.*
+*Figure 2.2.13. VXLAN adds 50 bytes, so a 1500 byte underlay leaves a 1410 byte MSS, and without clamping large packets are dropped.*
 
 The MTU, or maximum transmission unit, is the largest IP packet a link can carry. It is 1500 on standard Ethernet, commonly 9000 on storage and AI fabrics, and 1460 on some cloud networks. The MSS is the largest TCP payload per segment. It is announced in SYN options, and for IPv4 it equals the MTU minus 40 bytes. In plain words, the MTU is the size of the pipe and the MSS is how much cargo TCP loads so it fits through.
 
@@ -276,7 +280,7 @@ Before you deploy an overlay, measure the end-to-end MTU across it.
 
 ![Management, control and data planes](./img/n02-planes.svg)
 
-*Figure 2.2.13. The data plane moves packets, the control plane builds the tables it uses, and the management plane configures and monitors.*
+*Figure 2.2.14. The data plane moves packets, the control plane builds the tables it uses, and the management plane configures and monitors.*
 
 What should keep working when the routing software fails? A router that stops forwarding the moment its routing process crashes would be a fragile router. The answer depends on which plane does which job. Network devices and networks are organised into functional planes, and the table lists them.
 
@@ -296,7 +300,7 @@ Where a function sits is partly a matter of definition. Is manual static route c
 
 ![Three columns comparing distance vector, link state and path vector routing as three ways to avoid loops, with the reason loops are worse at layer 2.](./img/p3-0202-loop-free-families.svg)
 
-*Figure 2.2.14. Distance vector, link state and path vector are three different ways to keep forwarding loop free.*
+*Figure 2.2.15. Distance vector, link state and path vector are three different ways to keep forwarding loop free.*
 
 Whatever the protocol, the control plane must produce loop-free forwarding paths. If traffic can circle, IP packets eventually die when their TTL runs out. L2 has no TTL, so a loop is worse there. Packets multiply and can melt the network in broadcast storms, which chapter 2.11 covers.
 
@@ -308,7 +312,7 @@ Chapters 2.13 to 2.16 develop these families in depth. One design insight matter
 
 ![Packets are classified by DSCP or PCP label into separate queues, with a lossless RDMA class, then a scheduler such as strict priority or weighted round robin sends them to the link.](./img/p3-0202-qos-lanes.svg)
 
-*Figure 2.2.15. QoS labels each packet, gives each class its own queue, and lets a scheduler decide which queue sends next.*
+*Figure 2.2.16. QoS labels each packet, gives each class its own queue, and lets a scheduler decide which queue sends next.*
 
 A voice call stutters when a large transfer shares the same link. That is the problem QoS solves. Real-time traffic cares about delay and jitter, the variation in delay. That includes voice, video, and now tightly synchronised distributed training and RDMA. Early thinking said such traffic could never share a packet network. The solution that emerged was marking, classification and queueing.
 
@@ -326,7 +330,7 @@ Picture the Internet with many applications on top and many kinds of link undern
 
 ![The hourglass (wasp waist)](./img/m2-02-4.svg)
 
-*Figure 2.2.16. The hourglass (wasp waist), as a diagram.*
+*Figure 2.2.17. The hourglass (wasp waist), as a diagram.*
 
 Protocols are numerous at the top, where the applications are, and at the bottom, where the physical media are. At the narrow waist there is essentially one protocol, IP. Think of the electrical plug in a country. There are thousands of appliances and several power sources, but one socket shape in the wall means they all work together.
 
@@ -340,7 +344,7 @@ AI fabrics are a deliberate, controlled violation of layering. RDMA transport ha
 
 ![A triangle with State, Optimisation and Surface at its corners and the rule that pushing one corner strains another, with stretch and cluster examples.](./img/p3-0202-sos-triangle.svg)
 
-*Figure 2.2.17. Pushing one corner of the State, Optimisation, Surface triangle strains another, and every special case adds state and surface.*
+*Figure 2.2.18. Pushing one corner of the State, Optimisation, Surface triangle strains another, and every special case adds state and surface.*
 
 Every network design involves a trade. You cannot get everything at once, and the useful skill is to see what you are paying. More capability usually means more to store, or more ways for parts to interact. A useful trade-off model for any network design decision has three corners:
 
@@ -366,7 +370,7 @@ Suppose a packet from your training job disappears somewhere between an applicat
 
 ![The Linux stack](./img/m2-02-5.svg)
 
-*Figure 2.2.18. The Linux stack, as a diagram.*
+*Figure 2.2.19. The Linux stack, as a diagram.*
 
 The unit of data inside the kernel is the `sk_buff`, or socket buffer. It is a descriptor with pointers into the packet data and metadata, such as headers, device, timestamps and checksum state. Layers add and remove headers by moving pointers, which is cheap, instead of copying the bytes. It is like sliding a stack of papers into a different folder instead of retyping each page.
 
@@ -390,7 +394,7 @@ sudo bpftool net list 2>/dev/null | head                       # XDP / tc eBPF p
 
 ![A grid of Ethernet with TCP, RoCE v2, InfiniBand, NVLink and PCIe against layers one to four, with the NCCL hierarchy of NVLink, NIC and TCP fallback.](./img/p3-0202-fabric-layers.svg)
 
-*Figure 2.2.19. AI clusters run several fabrics at once, each doing its work at different layers, and NCCL uses them as a hierarchy.*
+*Figure 2.2.20. AI clusters run several fabrics at once, each doing its work at different layers, and NCCL uses them as a hierarchy.*
 
 AI clusters use several fabrics at once, and a new engineer often assumes there is only one network. Each fabric puts its work at different layers. The table compares them.
 
@@ -410,7 +414,7 @@ When a collective runs slowly, first find out which link in this hierarchy it is
 
 ![A decoded SYN capture line split into layer 2 MAC and EtherType, layer 3 IP with TTL and protocol 6, and layer 4 ports, SYN flag and TCP options.](./img/p3-0202-syn-decode.svg)
 
-*Figure 2.2.20. Read a capture bottom up: EtherType and MACs at L2, addresses and protocol 6 at L3, then ports, the SYN flag and options at L4.*
+*Figure 2.2.21. Read a capture bottom up: EtherType and MACs at L2, addresses and protocol 6 at L3, then ports, the SYN flag and options at L4.*
 
 Suppose a server's capture shows a SYN packet heading to port 443. You can read the frame one layer at a time, and each layer tells you what the next one is, like opening a set of nested boxes. The frame below is illustrative. It is decoded by `tcpdump -nn -e -v`.
 

@@ -52,6 +52,10 @@ The chapter walks through five threats to a shared GPU node and the control that
 
 Your manager asks on a Monday morning which of the risks in the shared GPU pool you are actually covering. A list of worries does not answer that question well. A table that pairs each threat with its control does.
 
+![Five GPU sharing threats paired with the control that stops each one](./img/pre-five-threats.jpg)
+
+*Figure 18.5.1. Each threat has one control. The control depends on which memory is under attack.*
+
 A threat table is the fastest way to see the whole problem. Read each row as a story: who the attacker is, what they try, and what actually stops them. The sections after the table explain the rows. Use the last column to check your own work. If a threat you care about appears there with nothing to stop it, you have a gap.
 
 ```mermaid

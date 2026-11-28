@@ -207,6 +207,10 @@ Keep this difference in mind when you decide where data should live. Sequential 
 
 Suppose your team runs a Linux file server, and the Windows laptops need to open its folders. That is the job SMB does. **SMB (Server Message Block)** is the standard Windows file and printer sharing protocol, and macOS can speak it too. Samba is the standard suite that implements SMB on Unix. It lets Windows machines use files and printers on your Linux system, and it lets you reach Windows shares from Linux.
 
+![A three-row table listing the Samba daemons and the guest setting with their roles.](./img/g-99.jpg)
+*Figure 1.30.5. Get a small Samba setup working and verified before you add more shares.*
+
+
 The client filesystem has been called CIFS, which stands for Common Internet File System. On modern systems, SMB 3 is used. Samba is a large topic, so this section covers what you need for a working server and a working client, and it stops there.
 
 A Samba server needs two things. The first is a configuration file, `smb.conf`, usually at `/etc/samba/smb.conf`. It has a `[global]` section and one section per share. The second is two daemons. `smbd` handles share requests, and `nmbd` is a NetBIOS name server, which is how a machine is found by name on a small network.
@@ -344,6 +348,10 @@ Put `username=` and `password=` in a root-only credentials file, not on the comm
 
 ## 6. SSHFS and NFS: sharing between Linux machines
 
+![A three-row table comparing SSHFS and NFS for Linux file sharing.](./img/g-100.jpg)
+*Figure 1.30.6. Pick the sharing method by effort and security, not by habit.*
+
+
 ### SSHFS
 
 Picture a laptop that needs a dataset from a Linux server, and you do not want to set up anything on the network first. `SSHFS` is a user-space filesystem (`FUSE`). It opens an SSH connection and presents the remote files at a local mount point. That makes it the easiest way to try sharing between Linux machines.
@@ -378,6 +386,10 @@ Before you run an NFS server yourself, weigh that effort against buying a NAS.
 
 ## 7. Cloud storage, and the state of network file sharing
 
+![A three-row table comparing object storage, cloud FUSE mounts, and Kerberos-based sharing.](./img/g-101.jpg)
+*Figure 1.30.7. Object storage and cluster filesystems solve different problems, so decide early.*
+
+
 ### Setting up a cloud client
 
 Cloud storage has no single setup procedure. Each provider has its own client, its own credentials and its own mount tool, so this chapter describes only the general behaviour. Contemporary tools make mounting possible, but the specifics differ from one service to the next. Read your provider's documentation before you mount anything. Early file sharing protocols gave security little regard, so check the credentials and encryption options first.
@@ -403,6 +415,10 @@ There is also a technical reason. Network filesystem clients have traditionally 
 Cloud storage changed the picture. Its access methods are built on security mechanisms such as TLS, which work without a Kerberos-style infrastructure. The many `FUSE` clients show that authentication, encryption and file handling can all live in user space. Future designs may well add flexibility in security and in filename translation. For now, Linux and Unix have no truly standard network file-sharing system, unless you are a large site or willing to do significant work. That gap is what cluster filesystems (Part 6) and object storage (Part 13) address. Decide early whether your data needs one of those, rather than stretching NFS or CIFS past what they do well.
 
 ## 8. Giving users remote access
+
+![A four-row table listing ways users reach a cluster and the guidance for each.](./img/g-102.jpg)
+*Figure 1.30.8. Each remote access method has a safe use, and the password path is the weakest.*
+
 
 ### SSH, for users
 
@@ -444,7 +460,7 @@ Desktop components also rely on D-Bus (How Linux Works, section 14.5), an interp
 
 ![The X Window System](./img/ch30-d1-luna.svg)
 
-*Figure 1.30.5. The X Window System.*
+*Figure 1.30.9. The X Window System.*
 
 X uses a client/server architecture, but the names run the opposite way from what you might expect, and this trips up almost everyone the first time. The X server is the program on your machine. It owns the screen, keyboard and mouse. The clients are the graphical applications. They may run on a different machine, and they talk to your server over the X protocol (version 11), through Unix sockets or network sockets. The server consists of drivers for input and output devices, plus the part that talks to applications.
 
@@ -559,7 +575,7 @@ Authorisation is the next concern. Without forwarding, you must tell the X serve
 
 ![Remote display alternatives to X compared by their key limits.](./img/l30-remote-display.svg)
 
-*Figure 1.30.6. The alternatives send compressed screen images, and web UIs usually need only an SSH tunnel.*
+*Figure 1.30.10. The alternatives send compressed screen images, and web UIs usually need only an SSH tunnel.*
 
 X's weakness is speed. With rich graphics over a narrow or high-latency link, it can become unusable. The alternatives send compressed images of the screen instead of drawing commands. The table below lists them, and its notes column matters as much as the names.
 
@@ -578,6 +594,10 @@ Read the notes before you pick one, because the limits differ. For notebooks and
 "The less access, the better," yet users must not feel boxed in. SSH with SCP and SFTP usually suffices. Publish clear instructions for the common tasks. Keep the access paths few and well monitored, and treat remote access as the face of the system for users, because it is what they will use almost all the time.
 
 ## How it fails
+
+![A three-row table pairing rsync and NFS failures with the first check to make.](./img/g-103.jpg)
+*Figure 1.30.11. Dry-run and checksum before trusting a copy, and fix the server before the client.*
+
 
 ### 1. `rsync --delete` removes the wrong files
 

@@ -1,0 +1,2613 @@
+[
+{
+"f": "docs/part-01-linux/01-the-linux-big-picture-kernel-userspace-distributions.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 438,
+"ch": "01-01",
+"id": 0
+},
+{
+"f": "docs/part-01-linux/01-the-linux-big-picture-kernel-userspace-distributions.md",
+"h": "## 5. Seeing it with your own eyes",
+"w": 769,
+"ch": "01-01",
+"id": 1
+},
+{
+"f": "docs/part-01-linux/02-the-command-line-shells-commands-pipes-and-redirection.md",
+"h": "## 4. Getting help without leaving the terminal",
+"w": 864,
+"ch": "01-02",
+"id": 2
+},
+{
+"f": "docs/part-01-linux/02-the-command-line-shells-commands-pipes-and-redirection.md",
+"h": "## 11. Mac or Linux? The differences that bite",
+"w": 301,
+"ch": "01-02",
+"id": 3
+},
+{
+"f": "docs/part-01-linux/02-the-command-line-shells-commands-pipes-and-redirection.md",
+"h": "## How it fails",
+"w": 664,
+"ch": "01-02",
+"id": 4
+},
+{
+"f": "docs/part-01-linux/03-files-and-the-directory-hierarchy-paths-links-inodes.md",
+"h": "## 7. Names, extensions and finding things",
+"w": 735,
+"ch": "01-03",
+"id": 5
+},
+{
+"f": "docs/part-01-linux/03-files-and-the-directory-hierarchy-paths-links-inodes.md",
+"h": "## 9. AI-infrastructure patterns, in one place",
+"w": 292,
+"ch": "01-03",
+"id": 6
+},
+{
+"f": "docs/part-01-linux/04-text-processing-essentials-grep-sed-awk-find-xargs-sort.md",
+"h": "## 3. `grep`: filter lines",
+"w": 381,
+"ch": "01-04",
+"id": 7
+},
+{
+"f": "docs/part-01-linux/04-text-processing-essentials-grep-sed-awk-find-xargs-sort.md",
+"h": "## 9. Portability, locale and other traps",
+"w": 406,
+"ch": "01-04",
+"id": 8
+},
+{
+"f": "docs/part-01-linux/04-text-processing-essentials-grep-sed-awk-find-xargs-sort.md",
+"h": "## How it fails",
+"w": 488,
+"ch": "01-04",
+"id": 9
+},
+{
+"f": "docs/part-01-linux/05-working-remotely-ssh-keys-file-transfer-tmux-and-editors.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 323,
+"ch": "01-05",
+"id": 10
+},
+{
+"f": "docs/part-01-linux/06-users-groups-permissions-acls-sudo-and-user-environments.md",
+"h": "## 2. Managing users and groups",
+"w": 744,
+"ch": "01-06",
+"id": 11
+},
+{
+"f": "docs/part-01-linux/06-users-groups-permissions-acls-sudo-and-user-environments.md",
+"h": "## 7. Limits and quotas (an introduction)",
+"w": 464,
+"ch": "01-06",
+"id": 12
+},
+{
+"f": "docs/part-01-linux/06-users-groups-permissions-acls-sudo-and-user-environments.md",
+"h": "## 9. AI-infrastructure patterns",
+"w": 381,
+"ch": "01-06",
+"id": 13
+},
+{
+"f": "docs/part-01-linux/07-packages-repositories-and-software-installation.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 361,
+"ch": "01-07",
+"id": 14
+},
+{
+"f": "docs/part-01-linux/07-packages-repositories-and-software-installation.md",
+"h": "## 3. The low-level tools",
+"w": 656,
+"ch": "01-07",
+"id": 15
+},
+{
+"f": "docs/part-01-linux/07-packages-repositories-and-software-installation.md",
+"h": "## 5. Finding the package you need",
+"w": 358,
+"ch": "01-07",
+"id": 16
+},
+{
+"f": "docs/part-01-linux/07-packages-repositories-and-software-installation.md",
+"h": "## 9. Interpreters, shebang lines, scripting languages, and Java (*How Linux Works* Sections 15.4\u201315.6)",
+"w": 910,
+"ch": "01-07",
+"id": 17
+},
+{
+"f": "docs/part-01-linux/07-packages-repositories-and-software-installation.md",
+"h": "## 10. Software installation on a cluster",
+"w": 2626,
+"ch": "01-07",
+"id": 18
+},
+{
+"f": "docs/part-01-linux/07-packages-repositories-and-software-installation.md",
+"h": "## 11. AI-infrastructure patterns",
+"w": 568,
+"ch": "01-07",
+"id": 19
+},
+{
+"f": "docs/part-01-linux/07-packages-repositories-and-software-installation.md",
+"h": "## How it fails",
+"w": 603,
+"ch": "01-07",
+"id": 20
+},
+{
+"f": "docs/part-01-linux/08-processes-signals-and-job-control.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 377,
+"ch": "01-08",
+"id": 21
+},
+{
+"f": "docs/part-01-linux/08-processes-signals-and-job-control.md",
+"h": "## How it fails",
+"w": 485,
+"ch": "01-08",
+"id": 22
+},
+{
+"f": "docs/part-01-linux/09-shell-scripting-that-survives-production.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 284,
+"ch": "01-09",
+"id": 23
+},
+{
+"f": "docs/part-01-linux/09-shell-scripting-that-survives-production.md",
+"h": "## 9. Important shell script utilities (*How Linux Works* Section 11.10)",
+"w": 595,
+"ch": "01-09",
+"id": 24
+},
+{
+"f": "docs/part-01-linux/09-shell-scripting-that-survives-production.md",
+"h": "## How it fails",
+"w": 415,
+"ch": "01-09",
+"id": 25
+},
+{
+"f": "docs/part-01-linux/10-devices-udev-sysfs-and-procfs.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 441,
+"ch": "01-10",
+"id": 26
+},
+{
+"f": "docs/part-01-linux/10-devices-udev-sysfs-and-procfs.md",
+"h": "## 2. The common device files",
+"w": 942,
+"ch": "01-10",
+"id": 27
+},
+{
+"f": "docs/part-01-linux/10-devices-udev-sysfs-and-procfs.md",
+"h": "## 3. `dd` and devices",
+"w": 418,
+"ch": "01-10",
+"id": 28
+},
+{
+"f": "docs/part-01-linux/10-devices-udev-sysfs-and-procfs.md",
+"h": "## 10. AI-infrastructure patterns",
+"w": 868,
+"ch": "01-10",
+"id": 29
+},
+{
+"f": "docs/part-01-linux/10-devices-udev-sysfs-and-procfs.md",
+"h": "## How it fails",
+"w": 645,
+"ch": "01-10",
+"id": 30
+},
+{
+"f": "docs/part-01-linux/11-how-a-program-runs-system-calls-libraries-elf-strace-and-ldd.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 331,
+"ch": "01-11",
+"id": 31
+},
+{
+"f": "docs/part-01-linux/12-disks-partitions-and-filesystems.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 361,
+"ch": "01-12",
+"id": 32
+},
+{
+"f": "docs/part-01-linux/12-disks-partitions-and-filesystems.md",
+"h": "## 10. Choosing and tuning filesystems",
+"w": 641,
+"ch": "01-12",
+"id": 33
+},
+{
+"f": "docs/part-01-linux/12-disks-partitions-and-filesystems.md",
+"h": "## How it fails",
+"w": 469,
+"ch": "01-12",
+"id": 34
+},
+{
+"f": "docs/part-01-linux/13-lvm-raid-and-nvme.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 469,
+"ch": "01-13",
+"id": 35
+},
+{
+"f": "docs/part-01-linux/13-lvm-raid-and-nvme.md",
+"h": "## 5. Disk performance: the method",
+"w": 1298,
+"ch": "01-13",
+"id": 36
+},
+{
+"f": "docs/part-01-linux/13-lvm-raid-and-nvme.md",
+"h": "## 6. Tools for the block layer",
+"w": 914,
+"ch": "01-13",
+"id": 37
+},
+{
+"f": "docs/part-01-linux/13-lvm-raid-and-nvme.md",
+"h": "## How it fails",
+"w": 592,
+"ch": "01-13",
+"id": 38
+},
+{
+"f": "docs/part-01-linux/14-boot-firmware-grub-kernel-initramfs.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 377,
+"ch": "01-14",
+"id": 39
+},
+{
+"f": "docs/part-01-linux/14-boot-firmware-grub-kernel-initramfs.md",
+"h": "## 4. The kernel starts",
+"w": 1303,
+"ch": "01-14",
+"id": 40
+},
+{
+"f": "docs/part-01-linux/14-boot-firmware-grub-kernel-initramfs.md",
+"h": "## 11. AI-infrastructure patterns",
+"w": 484,
+"ch": "01-14",
+"id": 41
+},
+{
+"f": "docs/part-01-linux/14-boot-firmware-grub-kernel-initramfs.md",
+"h": "## How it fails",
+"w": 540,
+"ch": "01-14",
+"id": 42
+},
+{
+"f": "docs/part-01-linux/15-systemd-units-targets-timers-journald.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 392,
+"ch": "01-15",
+"id": 43
+},
+{
+"f": "docs/part-01-linux/15-systemd-units-targets-timers-journald.md",
+"h": "## 1. What systemd is",
+"w": 586,
+"ch": "01-15",
+"id": 44
+},
+{
+"f": "docs/part-01-linux/15-systemd-units-targets-timers-journald.md",
+"h": "## How it fails",
+"w": 545,
+"ch": "01-15",
+"id": 45
+},
+{
+"f": "docs/part-01-linux/16-logging-time-synchronisation-cron-and-batch-jobs.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 341,
+"ch": "01-16",
+"id": 46
+},
+{
+"f": "docs/part-01-linux/16-logging-time-synchronisation-cron-and-batch-jobs.md",
+"h": "## 8. One-time tasks: `at`, `batch` and `systemd-run`",
+"w": 290,
+"ch": "01-16",
+"id": 47
+},
+{
+"f": "docs/part-01-linux/16-logging-time-synchronisation-cron-and-batch-jobs.md",
+"h": "## How it fails",
+"w": 399,
+"ch": "01-16",
+"id": 48
+},
+{
+"f": "docs/part-01-linux/17-memory-management-virtual-memory-numa-huge-pages-oom.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 481,
+"ch": "01-17",
+"id": 49
+},
+{
+"f": "docs/part-01-linux/17-memory-management-virtual-memory-numa-huge-pages-oom.md",
+"h": "## 10. Tuning parameters",
+"w": 431,
+"ch": "01-17",
+"id": 50
+},
+{
+"f": "docs/part-01-linux/18-cpu-scheduling-and-cgroups-v1-and-v2.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 515,
+"ch": "01-18",
+"id": 51
+},
+{
+"f": "docs/part-01-linux/19-namespaces-the-kernel-feature-behind-containers.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 286,
+"ch": "01-19",
+"id": 52
+},
+{
+"f": "docs/part-01-linux/20-lab-build-a-container-by-hand-with-unshare-chroot-cgroups-and-overlayf.md",
+"h": "## Step 5. Put it in a cgroup (CPU, memory, PIDs)",
+"w": 277,
+"ch": "01-20",
+"id": 53
+},
+{
+"f": "docs/part-01-linux/21-linux-security-capabilities-selinux-apparmor-seccomp-pam-ssh-hardening.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 360,
+"ch": "01-21",
+"id": 54
+},
+{
+"f": "docs/part-01-linux/21-linux-security-capabilities-selinux-apparmor-seccomp-pam-ssh-hardening.md",
+"h": "## 2. Users, groups and the superuser",
+"w": 924,
+"ch": "01-21",
+"id": 55
+},
+{
+"f": "docs/part-01-linux/21-linux-security-capabilities-selinux-apparmor-seccomp-pam-ssh-hardening.md",
+"h": "## 8. Auditing, logging and integrity",
+"w": 316,
+"ch": "01-21",
+"id": 56
+},
+{
+"f": "docs/part-01-linux/21-linux-security-capabilities-selinux-apparmor-seccomp-pam-ssh-hardening.md",
+"h": "## 9. Kernel and system hardening",
+"w": 579,
+"ch": "01-21",
+"id": 57
+},
+{
+"f": "docs/part-01-linux/21-linux-security-capabilities-selinux-apparmor-seccomp-pam-ssh-hardening.md",
+"h": "## 10. Hardening AI/HPC nodes without breaking them",
+"w": 498,
+"ch": "01-21",
+"id": 58
+},
+{
+"f": "docs/part-01-linux/21-linux-security-capabilities-selinux-apparmor-seccomp-pam-ssh-hardening.md",
+"h": "## 12. Kubernetes admission control and Pod Security (cluster-side)",
+"w": 502,
+"ch": "01-21",
+"id": 59
+},
+{
+"f": "docs/part-01-linux/21-linux-security-capabilities-selinux-apparmor-seccomp-pam-ssh-hardening.md",
+"h": "## 13. Failure modes and troubleshooting",
+"w": 388,
+"ch": "01-21",
+"id": 60
+},
+{
+"f": "docs/part-01-linux/22-kernel-modules-dkms-and-sysctl-tuning-for-gpu-nodes.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 389,
+"ch": "01-22",
+"id": 61
+},
+{
+"f": "docs/part-01-linux/22-kernel-modules-dkms-and-sysctl-tuning-for-gpu-nodes.md",
+"h": "## 5. Module signing, Secure Boot and lockdown",
+"w": 448,
+"ch": "01-22",
+"id": 62
+},
+{
+"f": "docs/part-01-linux/23-performance-methodology-use-workload-characterisation-drill-down.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 377,
+"ch": "01-23",
+"id": 63
+},
+{
+"f": "docs/part-01-linux/24-observability-tools-perf-ftrace-bpf-and-bpftrace.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 391,
+"ch": "01-24",
+"id": 64
+},
+{
+"f": "docs/part-01-linux/24-observability-tools-perf-ftrace-bpf-and-bpftrace.md",
+"h": "## 5. Observing the observability",
+"w": 290,
+"ch": "01-24",
+"id": 65
+},
+{
+"f": "docs/part-01-linux/24-observability-tools-perf-ftrace-bpf-and-bpftrace.md",
+"h": "## 7. Ftrace",
+"w": 1671,
+"ch": "01-24",
+"id": 66
+},
+{
+"f": "docs/part-01-linux/24-observability-tools-perf-ftrace-bpf-and-bpftrace.md",
+"h": "## 9. Joining the host tools to the GPU tools",
+"w": 651,
+"ch": "01-24",
+"id": 67
+},
+{
+"f": "docs/part-01-linux/24-observability-tools-perf-ftrace-bpf-and-bpftrace.md",
+"h": "## 11. Worked examples",
+"w": 478,
+"ch": "01-24",
+"id": 68
+},
+{
+"f": "docs/part-01-linux/25-benchmarking-correctly.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 399,
+"ch": "01-25",
+"id": 69
+},
+{
+"f": "docs/part-01-linux/25-benchmarking-correctly.md",
+"h": "## 1. Why benchmark, and what makes a good benchmark",
+"w": 544,
+"ch": "01-25",
+"id": 70
+},
+{
+"f": "docs/part-01-linux/25-benchmarking-correctly.md",
+"h": "## 2. The failures (and the cures)",
+"w": 646,
+"ch": "01-25",
+"id": 71
+},
+{
+"f": "docs/part-01-linux/25-benchmarking-correctly.md",
+"h": "## 6. The AI-infrastructure benchmark toolkit",
+"w": 3310,
+"ch": "01-25",
+"id": 72
+},
+{
+"f": "docs/part-01-linux/25-benchmarking-correctly.md",
+"h": "## 8. Worked examples",
+"w": 627,
+"ch": "01-25",
+"id": 73
+},
+{
+"f": "docs/part-01-linux/26-kvm-qemu-and-libvirt-basics.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 322,
+"ch": "01-26",
+"id": 74
+},
+{
+"f": "docs/part-01-linux/26-kvm-qemu-and-libvirt-basics.md",
+"h": "## 4. Storage",
+"w": 394,
+"ch": "01-26",
+"id": 75
+},
+{
+"f": "docs/part-01-linux/26-kvm-qemu-and-libvirt-basics.md",
+"h": "## 7. Observing VMs",
+"w": 551,
+"ch": "01-26",
+"id": 76
+},
+{
+"f": "docs/part-01-linux/26-kvm-qemu-and-libvirt-basics.md",
+"h": "## 8. GPUs and other devices in VMs",
+"w": 1034,
+"ch": "01-26",
+"id": 77
+},
+{
+"f": "docs/part-01-linux/26-kvm-qemu-and-libvirt-basics.md",
+"h": "## 9. Security and isolation",
+"w": 294,
+"ch": "01-26",
+"id": 78
+},
+{
+"f": "docs/part-01-linux/26-kvm-qemu-and-libvirt-basics.md",
+"h": "## 11. Troubleshooting",
+"w": 351,
+"ch": "01-26",
+"id": 79
+},
+{
+"f": "docs/part-01-linux/27-cloud-computing-and-virtualization-internals-for-linux-engineers.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 307,
+"ch": "01-27",
+"id": 80
+},
+{
+"f": "docs/part-01-linux/27-cloud-computing-and-virtualization-internals-for-linux-engineers.md",
+"h": "## 3. Comparing the three (performance attributes)",
+"w": 424,
+"ch": "01-27",
+"id": 81
+},
+{
+"f": "docs/part-01-linux/27-cloud-computing-and-virtualization-internals-for-linux-engineers.md",
+"h": "## 6. Observing containers and VMs",
+"w": 1016,
+"ch": "01-27",
+"id": 82
+},
+{
+"f": "docs/part-01-linux/27-cloud-computing-and-virtualization-internals-for-linux-engineers.md",
+"h": "## 7. Failure modes",
+"w": 288,
+"ch": "01-27",
+"id": 83
+},
+{
+"f": "docs/part-01-linux/28-putting-it-together-tuning-a-linux-node-for-gpu-and-hpc-work.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 488,
+"ch": "01-28",
+"id": 84
+},
+{
+"f": "docs/part-01-linux/28-putting-it-together-tuning-a-linux-node-for-gpu-and-hpc-work.md",
+"h": "## 3. Firmware and BIOS",
+"w": 477,
+"ch": "01-28",
+"id": 85
+},
+{
+"f": "docs/part-01-linux/28-putting-it-together-tuning-a-linux-node-for-gpu-and-hpc-work.md",
+"h": "## 4. Kernel boot parameters",
+"w": 515,
+"ch": "01-28",
+"id": 86
+},
+{
+"f": "docs/part-01-linux/28-putting-it-together-tuning-a-linux-node-for-gpu-and-hpc-work.md",
+"h": "## 5. Sysctl, limits and services",
+"w": 487,
+"ch": "01-28",
+"id": 87
+},
+{
+"f": "docs/part-01-linux/28-putting-it-together-tuning-a-linux-node-for-gpu-and-hpc-work.md",
+"h": "## 6. Memory: pinning, huge pages, allocation policy",
+"w": 655,
+"ch": "01-28",
+"id": 88
+},
+{
+"f": "docs/part-01-linux/28-putting-it-together-tuning-a-linux-node-for-gpu-and-hpc-work.md",
+"h": "## 8. Storage, network and the GPU driver",
+"w": 1729,
+"ch": "01-28",
+"id": 89
+},
+{
+"f": "docs/part-01-linux/28-putting-it-together-tuning-a-linux-node-for-gpu-and-hpc-work.md",
+"h": "## 11. The node audit and baseline (verification suite)",
+"w": 583,
+"ch": "01-28",
+"id": 90
+},
+{
+"f": "docs/part-01-linux/28-putting-it-together-tuning-a-linux-node-for-gpu-and-hpc-work.md",
+"h": "## 12. A case study: the unexplained 3 to 4x win",
+"w": 864,
+"ch": "01-28",
+"id": 91
+},
+{
+"f": "docs/part-01-linux/29-remote-administration-reference-ssh-server-and-client-options-host-bas.md",
+"h": "## 1. First: make out-of-band access possible before you need it",
+"w": 298,
+"ch": "01-29",
+"id": 92
+},
+{
+"f": "docs/part-01-linux/29-remote-administration-reference-ssh-server-and-client-options-host-bas.md",
+"h": "## 3. Keys in practice",
+"w": 943,
+"ch": "01-29",
+"id": 93
+},
+{
+"f": "docs/part-01-linux/29-remote-administration-reference-ssh-server-and-client-options-host-bas.md",
+"h": "## 4. The SSH client: options and configuration",
+"w": 577,
+"ch": "01-29",
+"id": 94
+},
+{
+"f": "docs/part-01-linux/29-remote-administration-reference-ssh-server-and-client-options-host-bas.md",
+"h": "## 6. The SSH server: `sshd_config`",
+"w": 593,
+"ch": "01-29",
+"id": 95
+},
+{
+"f": "docs/part-01-linux/29-remote-administration-reference-ssh-server-and-client-options-host-bas.md",
+"h": "## 8. Running commands on many nodes",
+"w": 907,
+"ch": "01-29",
+"id": 96
+},
+{
+"f": "docs/part-01-linux/29-remote-administration-reference-ssh-server-and-client-options-host-bas.md",
+"h": "## 9. `screen` and `tmux` in detail",
+"w": 749,
+"ch": "01-29",
+"id": 97
+},
+{
+"f": "docs/part-01-linux/29-remote-administration-reference-ssh-server-and-client-options-host-bas.md",
+"h": "## How it fails",
+"w": 508,
+"ch": "01-29",
+"id": 98
+},
+{
+"f": "docs/part-01-linux/30-network-file-sharing-and-remote-graphical-access-rsync-in-depth-samba.md",
+"h": "## 5. Samba: sharing with Windows (SMB) and CIFS mounts",
+"w": 1678,
+"ch": "01-30",
+"id": 99
+},
+{
+"f": "docs/part-01-linux/30-network-file-sharing-and-remote-graphical-access-rsync-in-depth-samba.md",
+"h": "## 6. SSHFS and NFS: sharing between Linux machines",
+"w": 560,
+"ch": "01-30",
+"id": 100
+},
+{
+"f": "docs/part-01-linux/30-network-file-sharing-and-remote-graphical-access-rsync-in-depth-samba.md",
+"h": "## 7. Cloud storage, and the state of network file sharing",
+"w": 662,
+"ch": "01-30",
+"id": 101
+},
+{
+"f": "docs/part-01-linux/30-network-file-sharing-and-remote-graphical-access-rsync-in-depth-samba.md",
+"h": "## 8. Giving users remote access",
+"w": 617,
+"ch": "01-30",
+"id": 102
+},
+{
+"f": "docs/part-01-linux/30-network-file-sharing-and-remote-graphical-access-rsync-in-depth-samba.md",
+"h": "## How it fails",
+"w": 524,
+"ch": "01-30",
+"id": 103
+},
+{
+"f": "docs/part-02-networking/01-what-happens-when-you-curl-a-url-a-packet-s-journey-end-to-end.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 499,
+"ch": "02-01",
+"id": 104
+},
+{
+"f": "docs/part-02-networking/02-how-networks-work-layers-encapsulation-the-tcp-ip-model.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 428,
+"ch": "02-02",
+"id": 105
+},
+{
+"f": "docs/part-02-networking/03-ethernet-and-l2-frames-mac-addresses-switching-arp-and-ndp.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 385,
+"ch": "02-03",
+"id": 106
+},
+{
+"f": "docs/part-02-networking/03-ethernet-and-l2-frames-mac-addresses-switching-arp-and-ndp.md",
+"h": "## 1. Ethernet in one page",
+"w": 518,
+"ch": "02-03",
+"id": 107
+},
+{
+"f": "docs/part-02-networking/04-ip-addressing-subnetting-and-cidr-ipv4-and-ipv6-with-practice.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 372,
+"ch": "02-04",
+"id": 108
+},
+{
+"f": "docs/part-02-networking/05-routing-on-a-host-routing-tables-default-gateways-and-forwarding.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 359,
+"ch": "02-05",
+"id": 109
+},
+{
+"f": "docs/part-02-networking/06-tcp-in-depth-handshake-windows-congestion-control-retransmission.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 395,
+"ch": "02-06",
+"id": 110
+},
+{
+"f": "docs/part-02-networking/10-http-tls-and-pki-basics.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 270,
+"ch": "02-10",
+"id": 111
+},
+{
+"f": "docs/part-02-networking/11-vlans-trunking-and-spanning-tree.md",
+"h": "## 4. How devices discover the network: neighbours, links and reachability",
+"w": 798,
+"ch": "02-11",
+"id": 112
+},
+{
+"f": "docs/part-02-networking/12-link-aggregation-lacp-and-mlag.md",
+"h": "## 6. Cluster roles and networks (a practical map)",
+"w": 601,
+"ch": "02-12",
+"id": 113
+},
+{
+"f": "docs/part-02-networking/12-link-aggregation-lacp-and-mlag.md",
+"h": "## 7. Failure behaviour and troubleshooting",
+"w": 445,
+"ch": "02-12",
+"id": 114
+},
+{
+"f": "docs/part-02-networking/20-load-balancing-l4-l7-ecmp-hashing-and-proxies.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 295,
+"ch": "02-20",
+"id": 115
+},
+{
+"f": "docs/part-02-networking/21-network-security-firewalls-tls-and-zero-trust.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 357,
+"ch": "02-21",
+"id": 116
+},
+{
+"f": "docs/part-02-networking/21-network-security-firewalls-tls-and-zero-trust.md",
+"h": "## 1. Vocabulary and threat modelling",
+"w": 636,
+"ch": "02-21",
+"id": 117
+},
+{
+"f": "docs/part-02-networking/21-network-security-firewalls-tls-and-zero-trust.md",
+"h": "## 3. Access control and AAA",
+"w": 484,
+"ch": "02-21",
+"id": 118
+},
+{
+"f": "docs/part-02-networking/21-network-security-firewalls-tls-and-zero-trust.md",
+"h": "## 5. Data protection: encryption and keys",
+"w": 387,
+"ch": "02-21",
+"id": 119
+},
+{
+"f": "docs/part-02-networking/21-network-security-firewalls-tls-and-zero-trust.md",
+"h": "## 7. SSH in depth (and hardening)",
+"w": 1456,
+"ch": "02-21",
+"id": 120
+},
+{
+"f": "docs/part-02-networking/21-network-security-firewalls-tls-and-zero-trust.md",
+"h": "## 8. Scanning and auditing exposure",
+"w": 409,
+"ch": "02-21",
+"id": 121
+},
+{
+"f": "docs/part-02-networking/21-network-security-firewalls-tls-and-zero-trust.md",
+"h": "## 9. Basic rules and how attacks reach AI clusters",
+"w": 538,
+"ch": "02-21",
+"id": 122
+},
+{
+"f": "docs/part-02-networking/21-network-security-firewalls-tls-and-zero-trust.md",
+"h": "## 10. Securing routing and the control plane",
+"w": 448,
+"ch": "02-21",
+"id": 123
+},
+{
+"f": "docs/part-02-networking/21-network-security-firewalls-tls-and-zero-trust.md",
+"h": "## 13. Security specifics for AI clusters",
+"w": 717,
+"ch": "02-21",
+"id": 124
+},
+{
+"f": "docs/part-02-networking/21-network-security-firewalls-tls-and-zero-trust.md",
+"h": "## 14. The OODA loop for security operations",
+"w": 489,
+"ch": "02-21",
+"id": 125
+},
+{
+"f": "docs/part-02-networking/23-linux-networking-netfilter-nftables-conntrack-and-nat.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 323,
+"ch": "02-23",
+"id": 126
+},
+{
+"f": "docs/part-02-networking/23-linux-networking-netfilter-nftables-conntrack-and-nat.md",
+"h": "## 4. Container and Kubernetes hosts",
+"w": 542,
+"ch": "02-23",
+"id": 127
+},
+{
+"f": "docs/part-02-networking/23-linux-networking-netfilter-nftables-conntrack-and-nat.md",
+"h": "## 5. Firewall design strategies",
+"w": 1133,
+"ch": "02-23",
+"id": 128
+},
+{
+"f": "docs/part-02-networking/23-linux-networking-netfilter-nftables-conntrack-and-nat.md",
+"h": "## 6. Debugging netfilter",
+"w": 452,
+"ch": "02-23",
+"id": 129
+},
+{
+"f": "docs/part-02-networking/23-linux-networking-netfilter-nftables-conntrack-and-nat.md",
+"h": "## 7. Performance notes for large nodes",
+"w": 281,
+"ch": "02-23",
+"id": 130
+},
+{
+"f": "docs/part-02-networking/24-linux-networking-policy-routing-bonding-mtu-nic-and-stack-tuning.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 302,
+"ch": "02-24",
+"id": 131
+},
+{
+"f": "docs/part-02-networking/24-linux-networking-policy-routing-bonding-mtu-nic-and-stack-tuning.md",
+"h": "## 3. Bonding operations",
+"w": 481,
+"ch": "02-24",
+"id": 132
+},
+{
+"f": "docs/part-02-networking/24-linux-networking-policy-routing-bonding-mtu-nic-and-stack-tuning.md",
+"h": "## 6. TCP/IP stack tuning",
+"w": 846,
+"ch": "02-24",
+"id": 133
+},
+{
+"f": "docs/part-02-networking/24-linux-networking-policy-routing-bonding-mtu-nic-and-stack-tuning.md",
+"h": "## 7. Beyond the kernel stack",
+"w": 427,
+"ch": "02-24",
+"id": 134
+},
+{
+"f": "docs/part-02-networking/24-linux-networking-policy-routing-bonding-mtu-nic-and-stack-tuning.md",
+"h": "## 8. A safe tuning method",
+"w": 385,
+"ch": "02-24",
+"id": 135
+},
+{
+"f": "docs/part-02-networking/24-linux-networking-policy-routing-bonding-mtu-nic-and-stack-tuning.md",
+"h": "## 9. Scenarios",
+"w": 541,
+"ch": "02-24",
+"id": 136
+},
+{
+"f": "docs/part-02-networking/25-linux-networking-namespaces-veth-bridges-and-container-networking.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 294,
+"ch": "02-25",
+"id": 137
+},
+{
+"f": "docs/part-02-networking/26-packet-capture-from-scratch-tcpdump-tshark-and-wireshark.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 335,
+"ch": "02-26",
+"id": 138
+},
+{
+"f": "docs/part-02-networking/30-network-troubleshooting-method-and-case-studies.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 318,
+"ch": "02-30",
+"id": 139
+},
+{
+"f": "docs/part-02-networking/31-network-monitoring-and-telemetry.md",
+"h": "## 7. Operating the monitoring system",
+"w": 347,
+"ch": "02-31",
+"id": 140
+},
+{
+"f": "docs/part-02-networking/32-cloud-networking-vpc-peering-load-balancers-and-gcp-specifics.md",
+"h": "## 1. Cloud computing concepts",
+"w": 296,
+"ch": "02-32",
+"id": 141
+},
+{
+"f": "docs/part-02-networking/32-cloud-networking-vpc-peering-load-balancers-and-gcp-specifics.md",
+"h": "## 2. Business drivers and trade-offs",
+"w": 449,
+"ch": "02-32",
+"id": 142
+},
+{
+"f": "docs/part-02-networking/32-cloud-networking-vpc-peering-load-balancers-and-gcp-specifics.md",
+"h": "## 3. Technical challenges of cloud networking",
+"w": 531,
+"ch": "02-32",
+"id": 143
+},
+{
+"f": "docs/part-02-networking/32-cloud-networking-vpc-peering-load-balancers-and-gcp-specifics.md",
+"h": "## 6. GKE and Kubernetes networking on GCP",
+"w": 385,
+"ch": "02-32",
+"id": 144
+},
+{
+"f": "docs/part-03-python/03-idiomatic-python-the-data-model-comprehensions-generators.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 291,
+"ch": "03-03",
+"id": 145
+},
+{
+"f": "docs/part-03-python/07-building-apis-and-microservices-with-fastapi.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 281,
+"ch": "03-07",
+"id": 146
+},
+{
+"f": "docs/part-03-python/07-building-apis-and-microservices-with-fastapi.md",
+"h": "## 2. A first application",
+"w": 408,
+"ch": "03-07",
+"id": 147
+},
+{
+"f": "docs/part-03-python/07-building-apis-and-microservices-with-fastapi.md",
+"h": "## 6. Structuring applications",
+"w": 514,
+"ch": "03-07",
+"id": 148
+},
+{
+"f": "docs/part-03-python/07-building-apis-and-microservices-with-fastapi.md",
+"h": "## 7. Authentication and security",
+"w": 691,
+"ch": "03-07",
+"id": 149
+},
+{
+"f": "docs/part-03-python/07-building-apis-and-microservices-with-fastapi.md",
+"h": "## 8. Databases",
+"w": 681,
+"ch": "03-07",
+"id": 150
+},
+{
+"f": "docs/part-03-python/07-building-apis-and-microservices-with-fastapi.md",
+"h": "## 10. Testing",
+"w": 394,
+"ch": "03-07",
+"id": 151
+},
+{
+"f": "docs/part-03-python/07-building-apis-and-microservices-with-fastapi.md",
+"h": "## 11. Deployment and operations",
+"w": 1078,
+"ch": "03-07",
+"id": 152
+},
+{
+"f": "docs/part-04-automation/01-git-from-scratch-for-infrastructure-engineers.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 371,
+"ch": "04-01",
+"id": 153
+},
+{
+"f": "docs/part-04-automation/01-git-from-scratch-for-infrastructure-engineers.md",
+"h": "## 1. Why version control (the infrastructure view)",
+"w": 988,
+"ch": "04-01",
+"id": 154
+},
+{
+"f": "docs/part-04-automation/01-git-from-scratch-for-infrastructure-engineers.md",
+"h": "## 3. The daily workflow",
+"w": 1161,
+"ch": "04-01",
+"id": 155
+},
+{
+"f": "docs/part-04-automation/01-git-from-scratch-for-infrastructure-engineers.md",
+"h": "## 4. Ignoring files and keeping the repo clean",
+"w": 468,
+"ch": "04-01",
+"id": 156
+},
+{
+"f": "docs/part-04-automation/01-git-from-scratch-for-infrastructure-engineers.md",
+"h": "## 6. Branching strategies for infrastructure",
+"w": 414,
+"ch": "04-01",
+"id": 157
+},
+{
+"f": "docs/part-04-automation/01-git-from-scratch-for-infrastructure-engineers.md",
+"h": "## 8. Undoing things safely",
+"w": 788,
+"ch": "04-01",
+"id": 158
+},
+{
+"f": "docs/part-04-automation/01-git-from-scratch-for-infrastructure-engineers.md",
+"h": "## 9. Repository architecture",
+"w": 730,
+"ch": "04-01",
+"id": 159
+},
+{
+"f": "docs/part-04-automation/01-git-from-scratch-for-infrastructure-engineers.md",
+"h": "## 10. Hooks and pre-commit: shifting left",
+"w": 481,
+"ch": "04-01",
+"id": 160
+},
+{
+"f": "docs/part-04-automation/01-git-from-scratch-for-infrastructure-engineers.md",
+"h": "## 11. Secrets and sensitive history",
+"w": 509,
+"ch": "04-01",
+"id": 161
+},
+{
+"f": "docs/part-04-automation/01-git-from-scratch-for-infrastructure-engineers.md",
+"h": "## 12. Governance: branch protection and CODEOWNERS",
+"w": 585,
+"ch": "04-01",
+"id": 162
+},
+{
+"f": "docs/part-04-automation/01-git-from-scratch-for-infrastructure-engineers.md",
+"h": "## 13. Large files, binaries and LFS",
+"w": 434,
+"ch": "04-01",
+"id": 163
+},
+{
+"f": "docs/part-04-automation/02-ci-cd-pipelines-concepts-and-design.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 532,
+"ch": "04-02",
+"id": 164
+},
+{
+"f": "docs/part-04-automation/02-ci-cd-pipelines-concepts-and-design.md",
+"h": "## 1. Application CI/CD versus infrastructure CI/CD",
+"w": 1599,
+"ch": "04-02",
+"id": 165
+},
+{
+"f": "docs/part-04-automation/02-ci-cd-pipelines-concepts-and-design.md",
+"h": "## 2. Core principles",
+"w": 480,
+"ch": "04-02",
+"id": 166
+},
+{
+"f": "docs/part-04-automation/02-ci-cd-pipelines-concepts-and-design.md",
+"h": "## 4. Pull requests as the control plane",
+"w": 617,
+"ch": "04-02",
+"id": 167
+},
+{
+"f": "docs/part-04-automation/02-ci-cd-pipelines-concepts-and-design.md",
+"h": "## 5. Authentication: OIDC instead of stored keys",
+"w": 654,
+"ch": "04-02",
+"id": 168
+},
+{
+"f": "docs/part-04-automation/02-ci-cd-pipelines-concepts-and-design.md",
+"h": "## 7. Policy as code",
+"w": 804,
+"ch": "04-02",
+"id": 169
+},
+{
+"f": "docs/part-04-automation/02-ci-cd-pipelines-concepts-and-design.md",
+"h": "## 10. Testing infrastructure code",
+"w": 509,
+"ch": "04-02",
+"id": 170
+},
+{
+"f": "docs/part-04-automation/02-ci-cd-pipelines-concepts-and-design.md",
+"h": "## 11. Drift detection and self-healing",
+"w": 607,
+"ch": "04-02",
+"id": 171
+},
+{
+"f": "docs/part-04-automation/02-ci-cd-pipelines-concepts-and-design.md",
+"h": "## 12. Operating the pipeline itself",
+"w": 579,
+"ch": "04-02",
+"id": 172
+},
+{
+"f": "docs/part-04-automation/03-ansible-from-zero-what-it-is-how-it-works-installation-and-ad-hoc-comm.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 332,
+"ch": "04-03",
+"id": 173
+},
+{
+"f": "docs/part-04-automation/08-ansible-handlers-conditionals-loops-blocks-and-error-handling.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 266,
+"ch": "04-08",
+"id": 174
+},
+{
+"f": "docs/part-04-automation/09-a-real-playbook-end-to-end-deploying-an-application.md",
+"h": "## 3. Variables",
+"w": 289,
+"ch": "04-09",
+"id": 175
+},
+{
+"f": "docs/part-04-automation/10-debugging-ansible-playbooks.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 251,
+"ch": "04-10",
+"id": 176
+},
+{
+"f": "docs/part-04-automation/10-debugging-ansible-playbooks.md",
+"h": "## 10. Prevention habits",
+"w": 275,
+"ch": "04-10",
+"id": 177
+},
+{
+"f": "docs/part-04-automation/18-terraform-refresher-why-providers-resources-and-the-workflow.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 289,
+"ch": "04-18",
+"id": 178
+},
+{
+"f": "docs/part-04-automation/18-terraform-refresher-why-providers-resources-and-the-workflow.md",
+"h": "## 3. HCL language essentials",
+"w": 2079,
+"ch": "04-18",
+"id": 179
+},
+{
+"f": "docs/part-04-automation/18-terraform-refresher-why-providers-resources-and-the-workflow.md",
+"h": "## 5. Drift, import and refactoring",
+"w": 756,
+"ch": "04-18",
+"id": 180
+},
+{
+"f": "docs/part-04-automation/18-terraform-refresher-why-providers-resources-and-the-workflow.md",
+"h": "## 6. Providers and authentication",
+"w": 307,
+"ch": "04-18",
+"id": 181
+},
+{
+"f": "docs/part-04-automation/18-terraform-refresher-why-providers-resources-and-the-workflow.md",
+"h": "## 8. Terraform OSS, HCP Terraform and OpenTofu",
+"w": 252,
+"ch": "04-18",
+"id": 182
+},
+{
+"f": "docs/part-04-automation/18-terraform-refresher-why-providers-resources-and-the-workflow.md",
+"h": "## 9. A small end-to-end example",
+"w": 392,
+"ch": "04-18",
+"id": 183
+},
+{
+"f": "docs/part-04-automation/19-terraform-state-in-depth-backends-locking-and-drift.md",
+"h": "## 1. What state is",
+"w": 498,
+"ch": "04-19",
+"id": 184
+},
+{
+"f": "docs/part-04-automation/19-terraform-state-in-depth-backends-locking-and-drift.md",
+"h": "## 3. Remote backends",
+"w": 1300,
+"ch": "04-19",
+"id": 185
+},
+{
+"f": "docs/part-04-automation/19-terraform-state-in-depth-backends-locking-and-drift.md",
+"h": "## 4. Locking",
+"w": 365,
+"ch": "04-19",
+"id": 186
+},
+{
+"f": "docs/part-04-automation/19-terraform-state-in-depth-backends-locking-and-drift.md",
+"h": "## 5. State layout: how to split",
+"w": 916,
+"ch": "04-19",
+"id": 187
+},
+{
+"f": "docs/part-04-automation/19-terraform-state-in-depth-backends-locking-and-drift.md",
+"h": "## 7. Migrating and restructuring state",
+"w": 595,
+"ch": "04-19",
+"id": 188
+},
+{
+"f": "docs/part-04-automation/19-terraform-state-in-depth-backends-locking-and-drift.md",
+"h": "## 8. Recovery scenarios",
+"w": 343,
+"ch": "04-19",
+"id": 189
+},
+{
+"f": "docs/part-04-automation/19-terraform-state-in-depth-backends-locking-and-drift.md",
+"h": "## 9. Drift",
+"w": 482,
+"ch": "04-19",
+"id": 190
+},
+{
+"f": "docs/part-04-automation/19-terraform-state-in-depth-backends-locking-and-drift.md",
+"h": "## 10. Secrets and sensitive data in state",
+"w": 389,
+"ch": "04-19",
+"id": 191
+},
+{
+"f": "docs/part-04-automation/19-terraform-state-in-depth-backends-locking-and-drift.md",
+"h": "## 11. State in CI/CD",
+"w": 285,
+"ch": "04-19",
+"id": 192
+},
+{
+"f": "docs/part-05-kubernetes/01-containers-from-first-principles-images-layers-registries.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 250,
+"ch": "05-01",
+"id": 193
+},
+{
+"f": "docs/part-05-kubernetes/02-container-runtimes-containerd-runc-cri-and-oci.md",
+"h": "## 3. CRI-O and alternatives",
+"w": 1531,
+"ch": "05-02",
+"id": 194
+},
+{
+"f": "docs/part-05-kubernetes/02-container-runtimes-containerd-runc-cri-and-oci.md",
+"h": "## 4. OCI runtimes and RuntimeClass",
+"w": 1388,
+"ch": "05-02",
+"id": 195
+},
+{
+"f": "docs/part-05-kubernetes/02-container-runtimes-containerd-runc-cri-and-oci.md",
+"h": "## 5. GPU runtimes: NVIDIA Container Toolkit with containerd",
+"w": 482,
+"ch": "05-02",
+"id": 196
+},
+{
+"f": "docs/part-05-kubernetes/02-container-runtimes-containerd-runc-cri-and-oci.md",
+"h": "## 6. Node-level tools",
+"w": 467,
+"ch": "05-02",
+"id": 197
+},
+{
+"f": "docs/part-05-kubernetes/02-container-runtimes-containerd-runc-cri-and-oci.md",
+"h": "## 8. Operations: upgrades, GC, logs, security",
+"w": 670,
+"ch": "05-02",
+"id": 198
+},
+{
+"f": "docs/part-05-kubernetes/02-container-runtimes-containerd-runc-cri-and-oci.md",
+"h": "## 9. Failure modes and diagnostics",
+"w": 384,
+"ch": "05-02",
+"id": 199
+},
+{
+"f": "docs/part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md",
+"h": "## 9. Add-ons required for a functioning cluster",
+"w": 259,
+"ch": "05-03",
+"id": 200
+},
+{
+"f": "docs/part-05-kubernetes/03-kubernetes-architecture-overview-components-and-what-talks-to-what.md",
+"h": "## 12. Hands-on tour",
+"w": 352,
+"ch": "05-03",
+"id": 201
+},
+{
+"f": "docs/part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md",
+"h": "## 1. Plan the cluster",
+"w": 2135,
+"ch": "05-04",
+"id": 202
+},
+{
+"f": "docs/part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md",
+"h": "## 2. Prepare every node",
+"w": 1735,
+"ch": "05-04",
+"id": 203
+},
+{
+"f": "docs/part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md",
+"h": "## 4. Install a CNI",
+"w": 288,
+"ch": "05-04",
+"id": 204
+},
+{
+"f": "docs/part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md",
+"h": "## 6. Verify the cluster",
+"w": 866,
+"ch": "05-04",
+"id": 205
+},
+{
+"f": "docs/part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md",
+"h": "## 8. Alternatives to kubeadm for bare metal (for context)",
+"w": 1148,
+"ch": "05-04",
+"id": 206
+},
+{
+"f": "docs/part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md",
+"h": "## 10. Day-1 add-ons",
+"w": 815,
+"ch": "05-04",
+"id": 207
+},
+{
+"f": "docs/part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md",
+"h": "## 11. Troubleshooting kubeadm clusters",
+"w": 617,
+"ch": "05-04",
+"id": 208
+},
+{
+"f": "docs/part-05-kubernetes/04-bare-metal-kubernetes-from-scratch-with-kubeadm-lab.md",
+"h": "## 12. Automation and reproducibility",
+"w": 669,
+"ch": "05-04",
+"id": 209
+},
+{
+"f": "docs/part-05-kubernetes/05-the-api-server-and-etcd-how-a-request-becomes-cluster-state.md",
+"h": "## 5. Audit, authn/z debugging and security notes",
+"w": 436,
+"ch": "05-05",
+"id": 210
+},
+{
+"f": "docs/part-05-kubernetes/07-pods-and-workloads-deployments-statefulsets-daemonsets-and-jobs.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 373,
+"ch": "05-07",
+"id": 211
+},
+{
+"f": "docs/part-05-kubernetes/08-the-life-of-a-pod-end-to-end-including-what-the-kernel-does.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 269,
+"ch": "05-08",
+"id": 212
+},
+{
+"f": "docs/part-05-kubernetes/09-the-kubelet-and-the-node-cri-cgroups-qos-classes-probes-and-eviction.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 252,
+"ch": "05-09",
+"id": 213
+},
+{
+"f": "docs/part-05-kubernetes/10-services-endpoints-and-kube-proxy-the-life-of-a-service.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 255,
+"ch": "05-10",
+"id": 214
+},
+{
+"f": "docs/part-05-kubernetes/11-dns-and-service-discovery-with-coredns.md",
+"h": "## 6. Observability",
+"w": 326,
+"ch": "05-11",
+"id": 215
+},
+{
+"f": "docs/part-05-kubernetes/12-ingress-load-balancers-and-the-gateway-api.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 282,
+"ch": "05-12",
+"id": 216
+},
+{
+"f": "docs/part-05-kubernetes/12-ingress-load-balancers-and-the-gateway-api.md",
+"h": "## 3. Gateway API",
+"w": 860,
+"ch": "05-12",
+"id": 217
+},
+{
+"f": "docs/part-05-kubernetes/12-ingress-load-balancers-and-the-gateway-api.md",
+"h": "## 4. TLS and cert-manager",
+"w": 589,
+"ch": "05-12",
+"id": 218
+},
+{
+"f": "docs/part-05-kubernetes/12-ingress-load-balancers-and-the-gateway-api.md",
+"h": "## 5. Bare-metal and GPU-cloud load balancers",
+"w": 486,
+"ch": "05-12",
+"id": 219
+},
+{
+"f": "docs/part-05-kubernetes/12-ingress-load-balancers-and-the-gateway-api.md",
+"h": "## 6. Designing the edge for AI/LLM traffic",
+"w": 768,
+"ch": "05-12",
+"id": 220
+},
+{
+"f": "docs/part-05-kubernetes/12-ingress-load-balancers-and-the-gateway-api.md",
+"h": "## 7. Operating and debugging",
+"w": 566,
+"ch": "05-12",
+"id": 221
+},
+{
+"f": "docs/part-05-kubernetes/13-pod-networking-under-the-hood-veth-bridges-routes-and-cni-plugins.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 263,
+"ch": "05-13",
+"id": 222
+},
+{
+"f": "docs/part-05-kubernetes/13-pod-networking-under-the-hood-veth-bridges-routes-and-cni-plugins.md",
+"h": "## 4. Implementation families (overview)",
+"w": 336,
+"ch": "05-13",
+"id": 223
+},
+{
+"f": "docs/part-05-kubernetes/13-pod-networking-under-the-hood-veth-bridges-routes-and-cni-plugins.md",
+"h": "## 5. MTU, performance and offloads",
+"w": 683,
+"ch": "05-13",
+"id": 224
+},
+{
+"f": "docs/part-05-kubernetes/13-pod-networking-under-the-hood-veth-bridges-routes-and-cni-plugins.md",
+"h": "## 6. Secondary networks, SR-IOV and RDMA for AI",
+"w": 764,
+"ch": "05-13",
+"id": 225
+},
+{
+"f": "docs/part-05-kubernetes/13-pod-networking-under-the-hood-veth-bridges-routes-and-cni-plugins.md",
+"h": "## 7. Inspecting pod networking on a node",
+"w": 407,
+"ch": "05-13",
+"id": 226
+},
+{
+"f": "docs/part-05-kubernetes/13-pod-networking-under-the-hood-veth-bridges-routes-and-cni-plugins.md",
+"h": "## 8. Troubleshooting matrix",
+"w": 507,
+"ch": "05-13",
+"id": 227
+},
+{
+"f": "docs/part-05-kubernetes/14-overlay-versus-routed-pod-networking-vxlan-bgp-with-calico-ebpf-with-c.md",
+"h": "## 4. Cilium and eBPF",
+"w": 1319,
+"ch": "05-14",
+"id": 228
+},
+{
+"f": "docs/part-05-kubernetes/14-overlay-versus-routed-pod-networking-vxlan-bgp-with-calico-ebpf-with-c.md",
+"h": "## 5. Comparison",
+"w": 500,
+"ch": "05-14",
+"id": 229
+},
+{
+"f": "docs/part-05-kubernetes/14-overlay-versus-routed-pod-networking-vxlan-bgp-with-calico-ebpf-with-c.md",
+"h": "## 6. Choosing for GPU clusters",
+"w": 581,
+"ch": "05-14",
+"id": 230
+},
+{
+"f": "docs/part-05-kubernetes/14-overlay-versus-routed-pod-networking-vxlan-bgp-with-calico-ebpf-with-c.md",
+"h": "## 7. Verification and benchmarking",
+"w": 480,
+"ch": "05-14",
+"id": 231
+},
+{
+"f": "docs/part-05-kubernetes/14-overlay-versus-routed-pod-networking-vxlan-bgp-with-calico-ebpf-with-c.md",
+"h": "## 8. Migration and operations",
+"w": 515,
+"ch": "05-14",
+"id": 232
+},
+{
+"f": "docs/part-05-kubernetes/16-configuration-secrets-and-rbac.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 267,
+"ch": "05-16",
+"id": 233
+},
+{
+"f": "docs/part-05-kubernetes/16-configuration-secrets-and-rbac.md",
+"h": "## 6. Configuration management patterns for AI workloads",
+"w": 301,
+"ch": "05-16",
+"id": 234
+},
+{
+"f": "docs/part-05-kubernetes/17-storage-internals-volumes-pv-and-pvc-csi-and-mounts.md",
+"h": "## 1. Volume types at a glance",
+"w": 717,
+"ch": "05-17",
+"id": 235
+},
+{
+"f": "docs/part-05-kubernetes/17-storage-internals-volumes-pv-and-pvc-csi-and-mounts.md",
+"h": "## 5. Storage patterns for AI/ML workloads",
+"w": 746,
+"ch": "05-17",
+"id": 236
+},
+{
+"f": "docs/part-05-kubernetes/17-storage-internals-volumes-pv-and-pvc-csi-and-mounts.md",
+"h": "## 6. Operations and failure modes",
+"w": 910,
+"ch": "05-17",
+"id": 237
+},
+{
+"f": "docs/part-05-kubernetes/18-scheduling-in-depth-kube-scheduler-affinity-taints-priority-and-preemp.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 252,
+"ch": "05-18",
+"id": 238
+},
+{
+"f": "docs/part-05-kubernetes/19-cluster-deployment-models-and-day-2-operations.md",
+"h": "## 1. Deployment models",
+"w": 1847,
+"ch": "05-19",
+"id": 239
+},
+{
+"f": "docs/part-05-kubernetes/19-cluster-deployment-models-and-day-2-operations.md",
+"h": "## 2. Cluster topology choices",
+"w": 1961,
+"ch": "05-19",
+"id": 240
+},
+{
+"f": "docs/part-05-kubernetes/19-cluster-deployment-models-and-day-2-operations.md",
+"h": "## 4. Capacity and quota management",
+"w": 679,
+"ch": "05-19",
+"id": 241
+},
+{
+"f": "docs/part-05-kubernetes/19-cluster-deployment-models-and-day-2-operations.md",
+"h": "## 5. Add-on and configuration lifecycle",
+"w": 638,
+"ch": "05-19",
+"id": 242
+},
+{
+"f": "docs/part-05-kubernetes/19-cluster-deployment-models-and-day-2-operations.md",
+"h": "## 6. Observability, SLOs and on-call",
+"w": 976,
+"ch": "05-19",
+"id": 243
+},
+{
+"f": "docs/part-05-kubernetes/19-cluster-deployment-models-and-day-2-operations.md",
+"h": "## 8. Cluster API and fleet operations (brief)",
+"w": 855,
+"ch": "05-19",
+"id": 244
+},
+{
+"f": "docs/part-05-kubernetes/20-upgrades-etcd-backup-and-restore-and-disaster-recovery.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 259,
+"ch": "05-20",
+"id": 245
+},
+{
+"f": "docs/part-05-kubernetes/20-upgrades-etcd-backup-and-restore-and-disaster-recovery.md",
+"h": "## 1. Versioning and skew",
+"w": 1445,
+"ch": "05-20",
+"id": 246
+},
+{
+"f": "docs/part-05-kubernetes/20-upgrades-etcd-backup-and-restore-and-disaster-recovery.md",
+"h": "## 4. Upgrading the GPU and platform stack",
+"w": 364,
+"ch": "05-20",
+"id": 247
+},
+{
+"f": "docs/part-05-kubernetes/20-upgrades-etcd-backup-and-restore-and-disaster-recovery.md",
+"h": "## 6. Application and data backup",
+"w": 645,
+"ch": "05-20",
+"id": 248
+},
+{
+"f": "docs/part-05-kubernetes/20-upgrades-etcd-backup-and-restore-and-disaster-recovery.md",
+"h": "## 7. Disaster recovery strategies",
+"w": 662,
+"ch": "05-20",
+"id": 249
+},
+{
+"f": "docs/part-05-kubernetes/20-upgrades-etcd-backup-and-restore-and-disaster-recovery.md",
+"h": "## 8. Failure scenarios and responses",
+"w": 392,
+"ch": "05-20",
+"id": 250
+},
+{
+"f": "docs/part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 312,
+"ch": "05-21",
+"id": 251
+},
+{
+"f": "docs/part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md",
+"h": "## 2. Identity and authentication federation",
+"w": 3428,
+"ch": "05-21",
+"id": 252
+},
+{
+"f": "docs/part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md",
+"h": "## 5. Policy engines",
+"w": 3032,
+"ch": "05-21",
+"id": 253
+},
+{
+"f": "docs/part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md",
+"h": "## 6. A guardrail set for multi-tenant GPU clusters",
+"w": 501,
+"ch": "05-21",
+"id": 254
+},
+{
+"f": "docs/part-05-kubernetes/21-certificates-identity-admission-control-and-policy.md",
+"h": "## 7. Troubleshooting",
+"w": 415,
+"ch": "05-21",
+"id": 255
+},
+{
+"f": "docs/part-05-kubernetes/22-multitenancy-and-platform-services.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 280,
+"ch": "05-22",
+"id": 256
+},
+{
+"f": "docs/part-05-kubernetes/22-multitenancy-and-platform-services.md",
+"h": "## 2. Namespace-level building blocks",
+"w": 1665,
+"ch": "05-22",
+"id": 257
+},
+{
+"f": "docs/part-05-kubernetes/22-multitenancy-and-platform-services.md",
+"h": "## 3. Delegated administration and virtual clusters",
+"w": 607,
+"ch": "05-22",
+"id": 258
+},
+{
+"f": "docs/part-05-kubernetes/22-multitenancy-and-platform-services.md",
+"h": "## 4. Self-service and onboarding",
+"w": 4936,
+"ch": "05-22",
+"id": 259
+},
+{
+"f": "docs/part-05-kubernetes/22-multitenancy-and-platform-services.md",
+"h": "## 5. Platform services around the cluster",
+"w": 2580,
+"ch": "05-22",
+"id": 260
+},
+{
+"f": "docs/part-05-kubernetes/22-multitenancy-and-platform-services.md",
+"h": "## 6. Cost allocation and showback",
+"w": 1007,
+"ch": "05-22",
+"id": 261
+},
+{
+"f": "docs/part-05-kubernetes/22-multitenancy-and-platform-services.md",
+"h": "## 7. Failure modes and troubleshooting",
+"w": 584,
+"ch": "05-22",
+"id": 262
+},
+{
+"f": "docs/part-05-kubernetes/23-autoscaling-hpa-vpa-keda-and-the-cluster-autoscaler.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 307,
+"ch": "05-23",
+"id": 263
+},
+{
+"f": "docs/part-05-kubernetes/24-observability-for-kubernetes.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 264,
+"ch": "05-24",
+"id": 264
+},
+{
+"f": "docs/part-05-kubernetes/24-observability-for-kubernetes.md",
+"h": "## 3. Alerting design",
+"w": 1271,
+"ch": "05-24",
+"id": 265
+},
+{
+"f": "docs/part-05-kubernetes/24-observability-for-kubernetes.md",
+"h": "## 4. Logs",
+"w": 1585,
+"ch": "05-24",
+"id": 266
+},
+{
+"f": "docs/part-05-kubernetes/24-observability-for-kubernetes.md",
+"h": "## 5. Traces and OpenTelemetry",
+"w": 1431,
+"ch": "05-24",
+"id": 267
+},
+{
+"f": "docs/part-05-kubernetes/24-observability-for-kubernetes.md",
+"h": "## 6. Dashboards",
+"w": 521,
+"ch": "05-24",
+"id": 268
+},
+{
+"f": "docs/part-05-kubernetes/24-observability-for-kubernetes.md",
+"h": "## 7. Scaling, retention and cost",
+"w": 699,
+"ch": "05-24",
+"id": 269
+},
+{
+"f": "docs/part-06-hpc-slurm/01-what-a-supercomputer-is-top500-linpack-hpc-versus-ai-factory.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 305,
+"ch": "06-01",
+"id": 270
+},
+{
+"f": "docs/part-06-hpc-slurm/02-cluster-anatomy-head-login-compute-storage-and-management-nodes.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 298,
+"ch": "06-02",
+"id": 271
+},
+{
+"f": "docs/part-06-hpc-slurm/02-cluster-anatomy-head-login-compute-storage-and-management-nodes.md",
+"h": "## 1. Anatomy of a supercomputer: four layers",
+"w": 594,
+"ch": "06-02",
+"id": 272
+},
+{
+"f": "docs/part-06-hpc-slurm/02-cluster-anatomy-head-login-compute-storage-and-management-nodes.md",
+"h": "## 3. The networks, latencies, and fabric topologies",
+"w": 1530,
+"ch": "06-02",
+"id": 273
+},
+{
+"f": "docs/part-06-hpc-slurm/02-cluster-anatomy-head-login-compute-storage-and-management-nodes.md",
+"h": "## 4. Storage access methods, RAID levels, SMP vs NUMA, and hardware features",
+"w": 1139,
+"ch": "06-02",
+"id": 274
+},
+{
+"f": "docs/part-06-hpc-slurm/02-cluster-anatomy-head-login-compute-storage-and-management-nodes.md",
+"h": "## 5. Planning, hardware consistency, documentation, and post-build verification",
+"w": 1817,
+"ch": "06-02",
+"id": 275
+},
+{
+"f": "docs/part-06-hpc-slurm/02-cluster-anatomy-head-login-compute-storage-and-management-nodes.md",
+"h": "## 6. How a supercomputer does the job: user session, job life cycle, and what is hidden",
+"w": 904,
+"ch": "06-02",
+"id": 276
+},
+{
+"f": "docs/part-06-hpc-slurm/02-cluster-anatomy-head-login-compute-storage-and-management-nodes.md",
+"h": "## 7. Merging roles in small clusters and mapping to Kubernetes",
+"w": 663,
+"ch": "06-02",
+"id": 277
+},
+{
+"f": "docs/part-06-hpc-slurm/07-slurm-architecture-and-installation.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 300,
+"ch": "06-07",
+"id": 278
+},
+{
+"f": "docs/part-06-hpc-slurm/08-slurm-configuration-nodes-partitions-and-cgroups.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 352,
+"ch": "06-08",
+"id": 279
+},
+{
+"f": "docs/part-06-hpc-slurm/08-slurm-configuration-nodes-partitions-and-cgroups.md",
+"h": "## 2. Nodes: hardware discovery (`slurmd -C`), `DEFAULT`, `NodeSet`, and states",
+"w": 1382,
+"ch": "06-08",
+"id": 280
+},
+{
+"f": "docs/part-06-hpc-slurm/08-slurm-configuration-nodes-partitions-and-cgroups.md",
+"h": "## 3. Partitions: attributes, states, and live `scontrol` updates (*Supercomputers for Linux Sysadmins* Chapter 15)",
+"w": 845,
+"ch": "06-08",
+"id": 281
+},
+{
+"f": "docs/part-06-hpc-slurm/08-slurm-configuration-nodes-partitions-and-cgroups.md",
+"h": "## 4. Resource selection (`select/cons_tres`) and cgroup containment",
+"w": 410,
+"ch": "06-08",
+"id": 282
+},
+{
+"f": "docs/part-06-hpc-slurm/08-slurm-configuration-nodes-partitions-and-cgroups.md",
+"h": "## 5. Topology awareness (`topology.conf` / `topology.yaml` and `SwitchAsNodeRank`)",
+"w": 426,
+"ch": "06-08",
+"id": 283
+},
+{
+"f": "docs/part-06-hpc-slurm/08-slurm-configuration-nodes-partitions-and-cgroups.md",
+"h": "## 6. Advanced `slurm.conf` parameters (`PrologFlags`, `SchedulerParameters`, `PrivateData`)",
+"w": 637,
+"ch": "06-08",
+"id": 284
+},
+{
+"f": "docs/part-06-hpc-slurm/08-slurm-configuration-nodes-partitions-and-cgroups.md",
+"h": "## 7. Validating configurations: `slurmconf_lint.py` and `gen_slurm_conf.py`",
+"w": 362,
+"ch": "06-08",
+"id": 285
+},
+{
+"f": "docs/part-06-hpc-slurm/09-slurm-accounting-and-scheduling-policy-qos-fairshare-backfill-preempti.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 312,
+"ch": "06-09",
+"id": 286
+},
+{
+"f": "docs/part-06-hpc-slurm/09-slurm-accounting-and-scheduling-policy-qos-fairshare-backfill-preempti.md",
+"h": "## 2. Limits and QOS",
+"w": 905,
+"ch": "06-09",
+"id": 287
+},
+{
+"f": "docs/part-06-hpc-slurm/09-slurm-accounting-and-scheduling-policy-qos-fairshare-backfill-preempti.md",
+"h": "## 3. Priority: the multifactor formula",
+"w": 619,
+"ch": "06-09",
+"id": 288
+},
+{
+"f": "docs/part-06-hpc-slurm/09-slurm-accounting-and-scheduling-policy-qos-fairshare-backfill-preempti.md",
+"h": "## 4. Priorities and fair-share",
+"w": 992,
+"ch": "06-09",
+"id": 289
+},
+{
+"f": "docs/part-06-hpc-slurm/09-slurm-accounting-and-scheduling-policy-qos-fairshare-backfill-preempti.md",
+"h": "## 5. Backfill",
+"w": 706,
+"ch": "06-09",
+"id": 290
+},
+{
+"f": "docs/part-06-hpc-slurm/09-slurm-accounting-and-scheduling-policy-qos-fairshare-backfill-preempti.md",
+"h": "## 6. Preemption",
+"w": 528,
+"ch": "06-09",
+"id": 291
+},
+{
+"f": "docs/part-06-hpc-slurm/09-slurm-accounting-and-scheduling-policy-qos-fairshare-backfill-preempti.md",
+"h": "## 7. A policy design for a multi-team GPU cluster",
+"w": 847,
+"ch": "06-09",
+"id": 292
+},
+{
+"f": "docs/part-06-hpc-slurm/09-slurm-accounting-and-scheduling-policy-qos-fairshare-backfill-preempti.md",
+"h": "## 8. Why is my job pending: a decision list",
+"w": 272,
+"ch": "06-09",
+"id": 293
+},
+{
+"f": "docs/part-06-hpc-slurm/10-slurm-gpu-scheduling-gres-nvml-autodetect-mig-and-device-constraints.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 253,
+"ch": "06-10",
+"id": 294
+},
+{
+"f": "docs/part-06-hpc-slurm/11-submitting-and-launching-jobs-sbatch-srun-salloc-arrays-dependencies.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 269,
+"ch": "06-11",
+"id": 295
+},
+{
+"f": "docs/part-10-gpu-cuda/21-gpu-health-dcgm-ecc-row-remapping-and-xid.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 892,
+"ch": "10-21",
+"id": 296
+},
+{
+"f": "docs/part-10-gpu-cuda/21-gpu-health-dcgm-ecc-row-remapping-and-xid.md",
+"h": "## 1. NVIDIA Data Center GPU Manager (DCGM 4): Architecture, Watches, Fields, and Diagnostics",
+"w": 2283,
+"ch": "10-21",
+"id": 297
+},
+{
+"f": "docs/part-10-gpu-cuda/21-gpu-health-dcgm-ecc-row-remapping-and-xid.md",
+"h": "## 2. ECC Memory, Thermal Correlation, Page Retirement, and Hardware Row Remapping",
+"w": 1931,
+"ch": "10-21",
+"id": 298
+},
+{
+"f": "docs/part-10-gpu-cuda/21-gpu-health-dcgm-ecc-row-remapping-and-xid.md",
+"h": "## 3. The Authoritative 15-Code Xid Encyclopedia and 3-Tier Triage Framework",
+"w": 1819,
+"ch": "10-21",
+"id": 299
+},
+{
+"f": "docs/part-10-gpu-cuda/21-gpu-health-dcgm-ecc-row-remapping-and-xid.md",
+"h": "## 4. GPU Sharing Fault Isolation, Safe Node Draining, and Cluster Health SLOs",
+"w": 1731,
+"ch": "10-21",
+"id": 300
+},
+{
+"f": "docs/part-10-gpu-cuda/21-gpu-health-dcgm-ecc-row-remapping-and-xid.md",
+"h": "## 5. Commands and Configurations That Matter",
+"w": 302,
+"ch": "10-21",
+"id": 301
+},
+{
+"f": "docs/part-10-gpu-cuda/21-gpu-health-dcgm-ecc-row-remapping-and-xid.md",
+"h": "## 6. How It Fails: Six DCGM, ECC, Row Remapper, MIG, and Xid Operational Failure Modes",
+"w": 813,
+"ch": "10-21",
+"id": 302
+},
+{
+"f": "docs/part-11-gpu-kubernetes/02-device-plugin-container-toolkit-cdi-and-runtime-classes.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 545,
+"ch": "11-02",
+"id": 303
+},
+{
+"f": "docs/part-11-gpu-kubernetes/02-device-plugin-container-toolkit-cdi-and-runtime-classes.md",
+"h": "## Commands and configurations that matter",
+"w": 1072,
+"ch": "11-02",
+"id": 304
+},
+{
+"f": "docs/part-11-gpu-kubernetes/02-device-plugin-container-toolkit-cdi-and-runtime-classes.md",
+"h": "## How it fails",
+"w": 1146,
+"ch": "11-02",
+"id": 305
+},
+{
+"f": "docs/part-17-operations/01-observability-foundations-metrics-logs-and-traces.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 506,
+"ch": "17-01",
+"id": 306
+},
+{
+"f": "docs/part-17-operations/01-observability-foundations-metrics-logs-and-traces.md",
+"h": "## 2. The cardinality budget",
+"w": 909,
+"ch": "17-01",
+"id": 307
+},
+{
+"f": "docs/part-17-operations/01-observability-foundations-metrics-logs-and-traces.md",
+"h": "## 3. The data shape",
+"w": 879,
+"ch": "17-01",
+"id": 308
+},
+{
+"f": "docs/part-17-operations/01-observability-foundations-metrics-logs-and-traces.md",
+"h": "## 4. Observability for AI workloads",
+"w": 923,
+"ch": "17-01",
+"id": 309
+},
+{
+"f": "docs/part-17-operations/01-observability-foundations-metrics-logs-and-traces.md",
+"h": "## 5. Operating the observability stack on GKE",
+"w": 711,
+"ch": "17-01",
+"id": 310
+},
+{
+"f": "docs/part-17-operations/01-observability-foundations-metrics-logs-and-traces.md",
+"h": "## 6. How it fails",
+"w": 731,
+"ch": "17-01",
+"id": 311
+},
+{
+"f": "docs/part-17-operations/02-prometheus-and-grafana.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 499,
+"ch": "17-02",
+"id": 312
+},
+{
+"f": "docs/part-17-operations/02-prometheus-and-grafana.md",
+"h": "## 1. Prometheus",
+"w": 3841,
+"ch": "17-02",
+"id": 313
+},
+{
+"f": "docs/part-17-operations/02-prometheus-and-grafana.md",
+"h": "## 2. PromQL for AI workloads",
+"w": 1451,
+"ch": "17-02",
+"id": 314
+},
+{
+"f": "docs/part-17-operations/02-prometheus-and-grafana.md",
+"h": "## 3. Grafana",
+"w": 961,
+"ch": "17-02",
+"id": 315
+},
+{
+"f": "docs/part-17-operations/02-prometheus-and-grafana.md",
+"h": "## 4. Storage and retention",
+"w": 668,
+"ch": "17-02",
+"id": 316
+},
+{
+"f": "docs/part-17-operations/02-prometheus-and-grafana.md",
+"h": "## 5. Operating Prometheus and Grafana on GKE",
+"w": 808,
+"ch": "17-02",
+"id": 317
+},
+{
+"f": "docs/part-17-operations/02-prometheus-and-grafana.md",
+"h": "## 6. How it fails",
+"w": 655,
+"ch": "17-02",
+"id": 318
+},
+{
+"f": "docs/part-17-operations/03-logging-with-loki-and-tracing-with-opentelemetry.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 515,
+"ch": "17-03",
+"id": 319
+},
+{
+"f": "docs/part-17-operations/03-logging-with-loki-and-tracing-with-opentelemetry.md",
+"h": "## 1. Loki",
+"w": 3133,
+"ch": "17-03",
+"id": 320
+},
+{
+"f": "docs/part-17-operations/03-logging-with-loki-and-tracing-with-opentelemetry.md",
+"h": "## 2. OpenTelemetry",
+"w": 2110,
+"ch": "17-03",
+"id": 321
+},
+{
+"f": "docs/part-17-operations/03-logging-with-loki-and-tracing-with-opentelemetry.md",
+"h": "## 3. Integration with Grafana",
+"w": 642,
+"ch": "17-03",
+"id": 322
+},
+{
+"f": "docs/part-17-operations/03-logging-with-loki-and-tracing-with-opentelemetry.md",
+"h": "## 4. Operating Loki and OpenTelemetry on GKE",
+"w": 724,
+"ch": "17-03",
+"id": 323
+},
+{
+"f": "docs/part-17-operations/03-logging-with-loki-and-tracing-with-opentelemetry.md",
+"h": "## 5. How it fails",
+"w": 582,
+"ch": "17-03",
+"id": 324
+},
+{
+"f": "docs/part-17-operations/06-alerting-slos-and-health-checks-for-gpu-clusters.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 402,
+"ch": "17-06",
+"id": 325
+},
+{
+"f": "docs/part-17-operations/06-alerting-slos-and-health-checks-for-gpu-clusters.md",
+"h": "## 1. The SLOs",
+"w": 1623,
+"ch": "17-06",
+"id": 326
+},
+{
+"f": "docs/part-17-operations/06-alerting-slos-and-health-checks-for-gpu-clusters.md",
+"h": "## 2. Alertmanager",
+"w": 668,
+"ch": "17-06",
+"id": 327
+},
+{
+"f": "docs/part-17-operations/06-alerting-slos-and-health-checks-for-gpu-clusters.md",
+"h": "## 3. Health checks",
+"w": 747,
+"ch": "17-06",
+"id": 328
+},
+{
+"f": "docs/part-17-operations/06-alerting-slos-and-health-checks-for-gpu-clusters.md",
+"h": "## 4. The on-call runbook",
+"w": 751,
+"ch": "17-06",
+"id": 329
+},
+{
+"f": "docs/part-17-operations/06-alerting-slos-and-health-checks-for-gpu-clusters.md",
+"h": "## 5. Operating the alerting and SLO stack on GKE",
+"w": 618,
+"ch": "17-06",
+"id": 330
+},
+{
+"f": "docs/part-17-operations/06-alerting-slos-and-health-checks-for-gpu-clusters.md",
+"h": "## 6. How it fails",
+"w": 864,
+"ch": "17-06",
+"id": 331
+},
+{
+"f": "docs/part-17-operations/07-failure-modes-and-detection.md",
+"h": "## Why this matters for AI infrastructure",
+"w": 516,
+"ch": "17-07",
+"id": 332
+},
+{
+"f": "docs/part-17-operations/07-failure-modes-and-detection.md",
+"h": "## 3. Storage failures",
+"w": 769,
+"ch": "17-07",
+"id": 333
+},
+{
+"f": "docs/part-17-operations/07-failure-modes-and-detection.md",
+"h": "## 4. Scheduler failures",
+"w": 730,
+"ch": "17-07",
+"id": 334
+},
+{
+"f": "docs/part-17-operations/07-failure-modes-and-detection.md",
+"h": "## 5. Container image failures",
+"w": 630,
+"ch": "17-07",
+"id": 335
+},
+{
+"f": "docs/part-17-operations/07-failure-modes-and-detection.md",
+"h": "## 6. Model serving failures",
+"w": 744,
+"ch": "17-07",
+"id": 336
+},
+{
+"f": "docs/part-17-operations/07-failure-modes-and-detection.md",
+"h": "## 7. Operating the failure mode catalogue",
+"w": 405,
+"ch": "17-07",
+"id": 337
+},
+{
+"f": "docs/part-17-operations/07-failure-modes-and-detection.md",
+"h": "## 8. How it fails",
+"w": 808,
+"ch": "17-07",
+"id": 338
+},
+{
+"f": "docs/part-20-nebius-sre-interview/01-the-nebius-loop-and-how-to-use-this-volume.md",
+"h": "## How to answer out loud",
+"w": 420,
+"ch": "20-01",
+"id": 339
+},
+{
+"f": "docs/part-20-nebius-sre-interview/01-the-nebius-loop-and-how-to-use-this-volume.md",
+"h": "## Worked scenarios",
+"w": 343,
+"ch": "20-01",
+"id": 340
+},
+{
+"f": "docs/part-20-nebius-sre-interview/01-the-nebius-loop-and-how-to-use-this-volume.md",
+"h": "## Connections to the rest of the handbook",
+"w": 401,
+"ch": "20-01",
+"id": 341
+},
+{
+"f": "docs/part-20-nebius-sre-interview/02-the-role-in-one-page-the-job-posting-line-by-line.md",
+"h": "## How to answer out loud",
+"w": 390,
+"ch": "20-02",
+"id": 342
+},
+{
+"f": "docs/part-20-nebius-sre-interview/03-triage-method-for-a-sick-linux-box.md",
+"h": "## How to answer out loud",
+"w": 636,
+"ch": "20-03",
+"id": 343
+},
+{
+"f": "docs/part-20-nebius-sre-interview/03-triage-method-for-a-sick-linux-box.md",
+"h": "## What the container run showed",
+"w": 402,
+"ch": "20-03",
+"id": 344
+},
+{
+"f": "docs/part-20-nebius-sre-interview/04-files-descriptors-syscalls-and-permissions.md",
+"h": "## How to answer out loud",
+"w": 699,
+"ch": "20-04",
+"id": 345
+},
+{
+"f": "docs/part-20-nebius-sre-interview/04-files-descriptors-syscalls-and-permissions.md",
+"h": "## What the container run showed",
+"w": 281,
+"ch": "20-04",
+"id": 346
+},
+{
+"f": "docs/part-20-nebius-sre-interview/05-cpu-memory-disk-and-the-scheduler.md",
+"h": "## How to answer out loud",
+"w": 455,
+"ch": "20-05",
+"id": 347
+},
+{
+"f": "docs/part-20-nebius-sre-interview/05-cpu-memory-disk-and-the-scheduler.md",
+"h": "## Worked scenarios",
+"w": 2583,
+"ch": "20-05",
+"id": 348
+},
+{
+"f": "docs/part-20-nebius-sre-interview/05-cpu-memory-disk-and-the-scheduler.md",
+"h": "## What the container run showed",
+"w": 286,
+"ch": "20-05",
+"id": 349
+},
+{
+"f": "docs/part-20-nebius-sre-interview/06-network-debugging-from-socket-to-switch.md",
+"h": "## How to answer out loud",
+"w": 483,
+"ch": "20-06",
+"id": 350
+},
+{
+"f": "docs/part-20-nebius-sre-interview/07-the-console-round-text-tools-systemd-and-everyday-operations.md",
+"h": "## How to answer out loud",
+"w": 522,
+"ch": "20-07",
+"id": 351
+},
+{
+"f": "docs/part-20-nebius-sre-interview/08-the-coding-round-what-to-expect-and-how-to-perform.md",
+"h": "## How to answer out loud",
+"w": 589,
+"ch": "20-08",
+"id": 352
+},
+{
+"f": "docs/part-20-nebius-sre-interview/09-algorithm-patterns-for-sre-flavoured-problems.md",
+"h": "## How to answer out loud",
+"w": 474,
+"ch": "20-09",
+"id": 353
+},
+{
+"f": "docs/part-20-nebius-sre-interview/10-complexity-latency-numbers-and-measuring-your-own-code.md",
+"h": "## How to answer out loud",
+"w": 412,
+"ch": "20-10",
+"id": 354
+},
+{
+"f": "docs/part-20-nebius-sre-interview/10-complexity-latency-numbers-and-measuring-your-own-code.md",
+"h": "## Worked scenarios",
+"w": 327,
+"ch": "20-10",
+"id": 355
+},
+{
+"f": "docs/part-20-nebius-sre-interview/11-coding-practice-set-40-problems-with-tested-solutions.md",
+"h": "## How to answer out loud",
+"w": 268,
+"ch": "20-11",
+"id": 356
+},
+{
+"f": "docs/part-20-nebius-sre-interview/11-coding-practice-set-40-problems-with-tested-solutions.md",
+"h": "## Worked scenarios",
+"w": 1396,
+"ch": "20-11",
+"id": 357
+},
+{
+"f": "docs/part-20-nebius-sre-interview/12-estimation-toolkit-for-inference-capacity.md",
+"h": "## How to answer out loud",
+"w": 530,
+"ch": "20-12",
+"id": 358
+},
+{
+"f": "docs/part-20-nebius-sre-interview/16-design-gpu-fleet-health-and-capacity.md",
+"h": "## How to answer out loud",
+"w": 572,
+"ch": "20-16",
+"id": 359
+},
+{
+"f": "docs/part-20-nebius-sre-interview/17-system-design-drill-sheet-twelve-prompts.md",
+"h": "## Worked scenarios",
+"w": 257,
+"ch": "20-17",
+"id": 360
+},
+{
+"f": "docs/part-20-nebius-sre-interview/18-how-llm-serving-fails.md",
+"h": "## How to answer out loud",
+"w": 479,
+"ch": "20-18",
+"id": 361
+},
+{
+"f": "docs/part-20-nebius-sre-interview/19-slis-slos-and-alerts-for-token-apis.md",
+"h": "## How to answer out loud",
+"w": 590,
+"ch": "20-19",
+"id": 362
+},
+{
+"f": "docs/part-20-nebius-sre-interview/20-autoscaling-gpu-inference.md",
+"h": "## How to answer out loud",
+"w": 542,
+"ch": "20-20",
+"id": 363
+},
+{
+"f": "docs/part-20-nebius-sre-interview/21-request-routing-retries-and-overload-control.md",
+"h": "## How to answer out loud",
+"w": 357,
+"ch": "20-21",
+"id": 364
+},
+{
+"f": "docs/part-20-nebius-sre-interview/22-operating-vllm-triton-ray-and-tensorrt-llm.md",
+"h": "## How to answer out loud",
+"w": 501,
+"ch": "20-22",
+"id": 365
+},
+{
+"f": "docs/part-20-nebius-sre-interview/24-terraform-for-resilient-gpu-clusters.md",
+"h": "## How to answer out loud",
+"w": 522,
+"ch": "20-24",
+"id": 366
+},
+{
+"f": "docs/part-20-nebius-sre-interview/25-promql-grafana-and-tracing-traps.md",
+"h": "## How to answer out loud",
+"w": 629,
+"ch": "20-25",
+"id": 367
+},
+{
+"f": "docs/part-20-nebius-sre-interview/26-the-stress-interview-production-incident-role-play.md",
+"h": "## How to answer out loud",
+"w": 295,
+"ch": "20-26",
+"id": 368
+},
+{
+"f": "docs/part-20-nebius-sre-interview/27-post-mortems-on-call-and-incident-leadership.md",
+"h": "## How to answer out loud",
+"w": 786,
+"ch": "20-27",
+"id": 369
+},
+{
+"f": "docs/part-20-nebius-sre-interview/29-the-8-week-plan-the-final-week-and-the-cheat-sheet.md",
+"h": "## How to answer out loud",
+"w": 431,
+"ch": "20-29",
+"id": 370
+},
+{
+"f": "docs/part-20-nebius-sre-interview/29-the-8-week-plan-the-final-week-and-the-cheat-sheet.md",
+"h": "## Worked scenarios",
+"w": 357,
+"ch": "20-29",
+"id": 371
+},
+{
+"f": "docs/part-20-nebius-sre-interview/29-the-8-week-plan-the-final-week-and-the-cheat-sheet.md",
+"h": "## The code",
+"w": 1632,
+"ch": "20-29",
+"id": 372
+}
+]

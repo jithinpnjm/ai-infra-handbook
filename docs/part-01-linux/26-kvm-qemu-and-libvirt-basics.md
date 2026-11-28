@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Almost every GPU you rent is attached to a virtual machine, and many on-premises AI platforms run VMs too. Picture where you will meet them. Kubernetes nodes sit on a hypervisor. GPU passthrough VMs give a tenant its own device. KubeVirt runs VMs inside Kubernetes, and Kata Containers give pods stronger isolation. Development and test clusters run on KVM, and so do image-build farms and CI for drivers and kernels.
 
+![A central KVM virtual machines box with four common places VMs appear around it.](./img/g-74.jpg)
+*Figure 1.26.1. VMs show up in many places, and networking is where they most often slow down.*
+
+
 The people who design, debug and cost these systems need to know what a hypervisor does to CPU, memory, I/O and GPUs. A VM can be as fast as bare metal for compute and still be slow for networking. Why? That is what this chapter explains, along with why vCPU pinning and huge pages matter, why `%steal` appears, why a GPU needs an IOMMU before it can be passed through, and why features such as NVLink fabric management, MIG and P2P behave differently in guests.
 
 You may never operate a hypervisor yourself, because cloud providers do that for you. You will still be asked to explain, size and troubleshoot virtualised GPU environments. You will also run VMs yourself, to test cluster software, images and kernels. KVM, QEMU and libvirt form the standard open-source stack, and most large clouds use it, Google Compute Engine among them.
@@ -61,7 +65,7 @@ The classical **Type 1** hypervisor runs directly on the hardware. People also c
 
 ![Hypervisor types and configurations](./img/ch26-d1-luna.svg)
 
-*Figure 1.26.1. Hypervisor types and configurations.*
+*Figure 1.26.2. Hypervisor types and configurations.*
 
 In KVM, each VM is an ordinary Linux process, `qemu-system-x86_64`. Each virtual CPU is an ordinary thread of that process, named `CPU 0/KVM`, `CPU 1/KVM` and so on. The host's own scheduler, memory manager, cgroups, NUMA policy, `perf` and tracepoints all apply to it. That is KVM's strength, and it is why chapters 1.8, 1.17 and 1.18 carry over so neatly. What you already know about Linux processes applies to VMs too.
 
@@ -102,7 +106,7 @@ Classic x86 CPUs had privilege rings, numbered 0 for the kernel and 3 for user p
 
 ![CPU virtualisation](./img/ch26-d2-luna.svg)
 
-*Figure 1.26.2. CPU virtualisation.*
+*Figure 1.26.3. CPU virtualisation.*
 
 **VM exits are where virtualisation costs time.** Two things matter: how long the CPU spends outside the guest handling exits, and how often exits happen. An exit that the kernel handles on its own is cheap. An exit that must go back to QEMU in user space costs much more, because of the context switches.
 
@@ -116,7 +120,7 @@ Run these checks on the host first. `lscpu | grep -i virtualization` and `grep -
 
 ![A guest address is translated twice, by shadow page tables or by hardware nested paging.](./img/l26-memory-translation.svg)
 
-*Figure 1.26.3. Nested paging cuts exits but makes each TLB miss more expensive, which is why huge pages help.*
+*Figure 1.26.4. Nested paging cuts exits but makes each TLB miss more expensive, which is why huge pages help.*
 
 A guest has three kinds of address: guest virtual, guest physical and host physical. Picture a letter with two forwarding addresses written on the envelope. A memory access needs two translation stages in the same way. The guest page tables map guest virtual addresses to guest physical ones, and the hypervisor maps guest physical addresses to host physical ones.
 
@@ -146,7 +150,7 @@ Devices that cannot be isolated from each other are grouped into **IOMMU groups*
 
 ![GPU passthrough with VFIO](./img/ch26-fig1-vfio.jpg)
 
-*Figure 1.26.4. VFIO hands a whole IOMMU group, including the GPU, to a guest VM.*
+*Figure 1.26.5. VFIO hands a whole IOMMU group, including the GPU, to a guest VM.*
 
 When you read VM configurations, you will see names such as `virtio-blk`, `virtio-scsi`, `virtio-net`, `virtio-balloon`, `virtio-fs`, `virtio-vsock`, `vhost-net`, `vfio-pci` and `qemu-guest-agent`. Some are plain English once you know the shape. OVMF is the UEFI firmware for guests. `q35` is the modern chipset with PCIe, and `i440fx` is the legacy one. `QMP` is the QEMU Machine Protocol. You will also see `qcow2` and `cloud-init` in almost every VM setup.
 
@@ -160,7 +164,7 @@ Read the diagram from the top down. Admins and orchestrators sit at the top. lib
 
 ![The stack: KVM, QEMU, libvirt](./img/ch26-d3-luna.svg)
 
-*Figure 1.26.5. The stack: KVM, QEMU, libvirt.*
+*Figure 1.26.6. The stack: KVM, QEMU, libvirt.*
 
 The three names are easy to tangle, so keep one picture. KVM is the kernel side. QEMU is the process that builds and runs a machine. libvirt is the manager you talk to.
 
@@ -205,7 +209,7 @@ Log out and back in after the group change, or the new group will not apply. The
 
 ![A thin overlay on a cloud image plus a cloud-init seed lets a new VM boot configured in seconds.](./img/l26-cloud-init.svg)
 
-*Figure 1.26.6. A cloud image needs no installer because cloud-init configures it at first boot.*
+*Figure 1.26.7. A cloud image needs no installer because cloud-init configures it at first boot.*
 
 Cloud images are small, preinstalled disk images, and they change how you think about installation. You do not run an installer with them. Instead, cloud-init configures the instance at first boot, using user data and meta data from a seed ISO or another datasource. The commands below build a VM this way.
 
@@ -293,6 +297,10 @@ Use libvirt and `virsh` for every change, so the domain XML stays the single rec
 
 Storage decides how fast a guest's disk is, and how much of the host's disk the guest quietly uses. A thin image that grows until the host filesystem is full can end an afternoon badly. The table lists the options you will meet.
 
+![A three-row table listing VM disk choices and what each one risks or provides.](./img/g-75.jpg)
+*Figure 1.26.8. Disk cache and thin-image choices can cost data or stop a whole guest.*
+
+
 | Choice | Notes |
 |---|---|
 | **Format** | `raw`: simplest/fastest, no features beyond what the backing store gives (LVM volume, zvol, NVMe partition, or file). `qcow2`: thin provisioning, backing files (linked clones), snapshots, compression, encryption; some overhead and metadata caching; set `lazy_refcounts`, larger `cluster_size`, preallocation (`preallocation=metadata`/`falloc`) for performance. Over-committed qcow2 files can **fill the host filesystem** and pause guests |
@@ -314,7 +322,7 @@ Measure passthrough NVMe against a raw LVM volume before you commit to either on
 
 ![The common VM networking modes and when to use each.](./img/l26-vm-net-modes.svg)
 
-*Figure 1.26.7. Choose the network mode by asking who needs to reach the guest.*
+*Figure 1.26.9. Choose the network mode by asking who needs to reach the guest.*
 
 Networking decides who can reach a VM, and how fast its packets move. Get the mode wrong and the guest is perfectly healthy but unreachable. The table lists the common modes.
 
@@ -340,7 +348,7 @@ You should decide the network mode first, because it determines whether anyone o
 
 ![Six layers of VM tuning, from the host up to the guest.](./img/l26-tuning-order.svg)
 
-*Figure 1.26.8. Tune the host first, then libvirt, then the guest.*
+*Figure 1.26.10. Tune the host first, then libvirt, then the guest.*
 
 Here is the question every VM tuning session starts with: where does the time go? Overhead comes from three areas. CPU overhead comes from guest exits, both how often they happen and how long they take, and from interrupt and timer virtualisation. Memory overhead comes from two-level page walks, from the extra kernel and QEMU memory each VM needs, and from double caching.
 
@@ -364,6 +372,10 @@ Start with the host, because the guest settings depend on what the host exposes.
 ## 7. Observing VMs
 
 When a guest feels slow, you have two places to stand: the host and the guest. Start with the host, because every VM is visible there as a process.
+
+![Two side-by-side panels comparing what a VM looks like from the host and from inside the guest.](./img/g-76.jpg)
+*Figure 1.26.11. The host and the guest each see part of a VM, so use both views.*
+
 
 **From the host**, every VM is a process, so `top`, `ps` and `pidstat` can all see it. Run `pidstat -tp <qemu-pid> 1` to get per-thread usage. Threads named `CPU n/KVM` are vCPUs. `%guest` is the time spent running guest code. `%system` and `%usr` inside a vCPU thread are host or QEMU work, such as exits and emulation.
 
@@ -393,6 +405,10 @@ The host operator checks physical-resource USE, per-VM resource-control limits a
 ## 8. GPUs and other devices in VMs
 
 This is the part most people came for. A GPU passed through properly performs like bare metal. A GPU passed through carelessly boots, then fails in a way that blames the wrong component. Work through the sections in order: get the device into the guest first, then check the fabric, the peer-to-peer paths and the remaining devices.
+
+![Five stacked steps for passing a GPU to a VM with VFIO, from firmware to the guest definition.](./img/g-77.jpg)
+*Figure 1.26.12. Get the GPU into the guest first, since a careless setup fails in confusing ways.*
+
 
 ### PCI passthrough with VFIO
 
@@ -431,6 +447,10 @@ If you plan GPUDirect RDMA, plan the NIC and the GPU as a pair from the start, b
 
 Security is where a VM's neat boundary either holds or quietly leaks. Nothing below is exotic. Each item is one layer you either keep intact or leave open.
 
+![A four-row table listing the layers that keep a VM's isolation intact.](./img/g-78.jpg)
+*Figure 1.26.13. A VM's isolation rests on several layers, and each one must stay intact.*
+
+
 - **Hardware boundary.** Each VM has its own kernel and address space. The attack surface is the hypervisor (the VMM) and the virtual devices, and QEMU has had many device-emulation CVEs. Minimise the devices, avoid unused emulated hardware, and keep QEMU and the kernel patched. For untrusted workloads, use a microVM monitor such as Firecracker or Cloud Hypervisor.
 - **Confining the QEMU process.** libvirt does this by default. Each VM runs as an unprivileged user, such as `libvirt-qemu` or `qemu`. SELinux sVirt labels or AppArmor profiles apply, and a seccomp sandbox (`-sandbox on`) filters system calls. Cgroups limit devices, CPU and memory, and namespaces add further separation. sVirt gives each VM and its disks unique MCS categories.
 - **The IOMMU** protects against malicious DMA. Keep it on, and remember the trade-offs of `iommu=pt`.
@@ -453,6 +473,10 @@ If you need GPU passthrough results, plan for a bare-metal machine from the star
 ## 11. Troubleshooting
 
 When a VM misbehaves, start from the symptom in the table. Each row names a likely cause and the command that confirms it.
+
+![A four-row table pairing common VM symptoms with the first check to make.](./img/g-79.jpg)
+*Figure 1.26.14. Find the symptom's row and run its check before changing anything.*
+
 
 | Symptom | Cause | Check / fix |
 |---|---|---|

@@ -86,6 +86,10 @@ Now multiply by how often you save. A 980 GB checkpoint every 40 minutes is 36 s
 
 A training run that used to save in a few seconds now takes minutes, and the GPU dashboard shows utilization falling to zero for the whole stretch. The question is where the time goes. A checkpoint has four phases, and each one can stall the cluster. The diagram shows the loop.
 
+![The four phases of a checkpoint save](./img/pre-ckpt-phases.jpg)
+
+*Figure 13.7.1. A checkpoint has four phases, and a slow phase holds every GPU in place while it runs.*
+
 ```mermaid
 flowchart TD
     Loop["Training loop<br/>forward, backward, optimizer step"]

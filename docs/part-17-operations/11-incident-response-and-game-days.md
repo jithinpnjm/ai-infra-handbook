@@ -119,6 +119,10 @@ Before your next incident, write down your team's three severity levels, with on
 
 ## 2. The incident response process
 
+![The incident response stages from detection to runbook update](./img/pre-incident-flow.jpg)
+
+*Figure 17.11.1. Every incident follows the same path, and the last step updates the runbook so it does not repeat.*
+
 ### 2.1 The process stages
 
 Picture a page at night. An alert fires, and within minutes someone has to decide what to do next. The process gives every incident the same path, so the on-call does not have to invent one. It has six stages, shown in the diagram: detection, triage, mitigation, resolution, communication, and post-mortem. The diagram adds one final step: updating the runbook. A runbook is the written set of steps for handling a known kind of problem, and updating it at the end is what stops the same surprise from happening twice.
@@ -212,6 +216,10 @@ Before your first drill, write the status-update template and the cadence for ea
 ## 3. The Incident Commander role
 
 In a real incident, several engineers work at once. Without one person coordinating, they duplicate work, contradict each other, and forget to tell anyone outside the room. Picture two engineers rolling back the same service in different ways while a third is changing the alert thresholds. The Incident Commander (IC) is the person who stops that. The IC does not have to fix the problem personally. The job is to keep the response organised and the decisions clear. A good IC is calm, asks short questions, and says out loud who is doing what.
+
+![The four duties of the Incident Commander](./img/pre-ic-role.jpg)
+
+*Figure 17.11.2. One person coordinates, decides, communicates and documents so the responders do not duplicate work.*
 
 ### 3.1 The IC's responsibilities
 

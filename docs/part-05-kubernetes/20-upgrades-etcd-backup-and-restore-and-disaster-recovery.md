@@ -240,6 +240,10 @@ Before you touch the GPU stack, fix the order of the layers. The typical order i
 
 Suppose the data behind your control plane is gone. Every object the cluster knows about lives in etcd, so the snapshot you saved earlier decides how fast you can recover. A snapshot is a single file that captures the whole database at one moment. It is the closest thing you have to a save button for the cluster.
 
+![The etcd snapshot backup steps and the choice between replacing a member and restoring](./img/pre-etcd-backup.jpg)
+
+*Figure 5.20.3. Snapshot, verify, checksum and ship off the cluster. Restore from a snapshot only when quorum is lost.*
+
 ### Backup
 
 Start with a snapshot. Save it, check it, copy it off the node, and protect it. The block below shows each step.

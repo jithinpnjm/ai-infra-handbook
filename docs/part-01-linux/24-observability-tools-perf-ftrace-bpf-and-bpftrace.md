@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 The method chapter (1.23) tells you which question to ask. This chapter hands you the instruments that answer it. Picture a training job that runs far slower than its benchmark, while every GPU dashboard looks calm. On a GPU node, the cause often sits in a CPU or kernel question that no GPU tool can answer. Which threads burn host CPU launching tiny kernels? Why does a data-loader worker block in the kernel? Where does a process spend time off-CPU, waiting on a lock or a filesystem? Which file reads come from the network filesystem? Why do TCP retransmits spike, which function in the NVIDIA driver is slow, and why does a syscall take 400 ms every few minutes?
 
+![A four-row table matching common GPU host performance questions to the tool to start with.](./img/g-64.jpg)
+*Figure 1.24.1. Pick the cheapest observability tool that answers your question.*
+
+
 The Linux tracing tools answer these questions on a live production system, usually without restarting anything. They are perf, ftrace, and BPF with BCC and bpftrace. Here is what that looks like on AI infrastructure.
 
 - Profile the **host side** of a training job with `perf record -g` and flame graphs. That shows the Python interpreter, data decoding, `memcpy`, page faults and lock contention.
@@ -60,7 +64,7 @@ Most tools focus on one resource. A few are **multi-tools** that reach every lay
 
 ![Tool coverage: what can each tool see?](./img/ch24-d1-luna.svg)
 
-*Figure 1.24.1. Tool coverage: what can each tool see?.*
+*Figure 1.24.2. Tool coverage: what can each tool see?.*
 
 It helps to think of these four names as three lenses on the same machine. `perf` samples and counts, using hardware events and stacks. Ftrace reads the kernel's own call flow through tracefs. BPF loads small programs that run whenever an event fires. Each lens sees something the other two miss, and each one costs something different to run.
 
@@ -99,7 +103,7 @@ Finally, validate each tool before the crisis arrives. Run it on a healthy node,
 
 ![Tools sorted by system-wide versus per-process scope and by counting, sampling or tracing.](./img/l24-tool-matrix.svg)
 
-*Figure 1.24.2. Two questions sort the tools: whole system or one process, and counting, sampling or tracing.*
+*Figure 1.24.3. Two questions sort the tools: whole system or one process, and counting, sampling or tracing.*
 
 A node is slow, and a dozen tool names are competing for your attention. Two questions sort them faster than any list of names. The first asks whether a tool looks at the whole system or at one process. The second asks whether it counts things or reacts to events. The table places common tools on that grid.
 
@@ -133,7 +137,7 @@ You have three tools that disagree about the same metric. Before you blame the t
 
 ![Observability sources](./img/ch24-d2-luna.svg)
 
-*Figure 1.24.3. Observability sources.*
+*Figure 1.24.4. Observability sources.*
 
 ### /proc
 
@@ -225,7 +229,7 @@ A job failed at 02:40 last night. By the time you log in, every counter looks he
 
 ![sar flags for CPU, memory, disk and network history](./img/pre-sar-history.jpg)
 
-*Figure 1.24.4. sar records history, so you can look at what happened an hour ago.*
+*Figure 1.24.5. sar records history, so you can look at what happened an hour ago.*
 
 Two parts make it work. The collector, `sadc`, runs from cron or a systemd timer and archives system-wide statistics. The reporter, `sar` with `sadf`, reads those statistics back. The archive covers CPU, memory, paging, swap, I/O and block devices. It also covers network interfaces and protocols such as TCP, UDP, ICMP and IP errors. Interrupts, softirqs, context switches, load, run queue, power, temperature and fan sensors, and filesystems are included too. Add `-S XALL` for more breakdowns.
 
@@ -248,6 +252,10 @@ Collect at 1 to 5 minute intervals when you want history. Use live mode, `sar 1`
 ## 5. Observing the observability
 
 Observability tools and metrics are software, and software can be wrong. You have probably met the moment already: the dashboard says the node is healthy, and the job is still slow. Several problems show up in practice. Some tools and kernel counters have bugs. Some man pages have not kept up with the code. Some metrics are incomplete, because developers added them for their own debugging and never designed them from operator needs. Other metrics are confusing or poorly named.
+
+![A four-row table listing defences against misleading performance metrics and what to do for each.](./img/g-65.jpg)
+*Figure 1.24.6. Metrics can be wrong or incomplete, so verify them before you act on them.*
+
 
 Collectors that parse tool output can break, and their numbers can be quietly wrong. One benchmarking company once stripped units from `fio` results, which produced 1024x errors and dropped decimal points. Scripts and spreadsheets can introduce processing errors. Container views can also show **host** values instead of container values.
 
@@ -301,7 +309,7 @@ Two kernel limits apply. `kernel.perf_event_max_sample_rate` throttles sampling,
 
 ![Counting with perf stat comes first, then sampling with perf record, then reporting.](./img/l24-perf-workflow.svg)
 
-*Figure 1.24.5. Run perf stat first because counting is cheap, then record and report only where it matters.*
+*Figure 1.24.7. Run perf stat first because counting is cheap, then record and report only where it matters.*
 
 Run `perf stat` first to check an event's rate before you trace or record it. Counting is cheap, so this is always the first step, and it gives you an overhead estimate. It also gives you IPC. An *insn per cycle* below about 0.5 suggests memory stalls. Above about 1.5 to 2, the CPU is executing efficiently, as chapter 1.18 explains. Filters such as `--filter 'prev_pid == 25467'` apply to tracepoints.
 
@@ -347,7 +355,7 @@ Two engineers are arguing about where the time goes. A flame graph ends that arg
 
 ![How to read a flame graph](./img/ch24-fig1-flame.jpg)
 
-*Figure 1.24.6. In a flame graph, width is the share of samples and height is call depth.*
+*Figure 1.24.8. In a flame graph, width is the share of samples and height is call depth.*
 
 ```bash
 sudo perf record -F 99 -a -g -- sleep 30
@@ -555,7 +563,7 @@ Unlike older tracers, BPF is programmable. A program can filter events and store
 
 ![BPF, BCC and bpftrace](./img/ch24-d3-luna.svg)
 
-*Figure 1.24.7. BPF, BCC and bpftrace.*
+*Figure 1.24.9. BPF, BCC and bpftrace.*
 
 BPF needs Linux 4.9 or later for most tools, and 4.4 or later for basic BCC. The kernel options `CONFIG_BPF`, `CONFIG_BPF_SYSCALL` and `CONFIG_BPF_EVENTS` must be present. Modern **CO-RE** ("compile once, run everywhere") tools also need BTF, which lives at `/sys/kernel/btf/vmlinux`. Running a tool requires root, or `CAP_BPF` with `CAP_PERFMON`, and `CAP_SYS_ADMIN` on older kernels. Container security profiles typically block BPF, as chapter 1.21 explains. Your kernel upgrade policy matters here. kprobe-based tools can break when internal functions change, while tracepoint-based tools are more stable.
 
@@ -599,7 +607,7 @@ Newer distributions package the CO-RE versions as `*-bpfcc`. On Debian and Ubunt
 
 ![An entry probe stores a timestamp by thread ID and a return probe turns it into a histogram.](./img/l24-bpftrace-timing.svg)
 
-*Figure 1.24.8. The filter on the return probe protects against calls that began before tracing started.*
+*Figure 1.24.10. The filter on the return probe protects against calls that began before tracing started.*
 
 bpftrace is "awk for tracing". If you know awk, you already know the shape: a pattern, and an action that runs when the pattern matches. A program is a set of probes. Each probe has an optional filter and one or more actions.
 
@@ -661,7 +669,7 @@ Large companies install both on every host. For example, BCC tools are the first
 
 ![Event-rate thresholds and probe-type preferences that keep tracing overhead safe.](./img/l24-overhead-rules.svg)
 
-*Figure 1.24.9. Count the event rate first and prefer tracepoints over kprobes over uprobes.*
+*Figure 1.24.11. Count the event rate first and prefer tracepoints over kprobes over uprobes.*
 
 1. Count first. Measure the event rate with `perf stat -e event -a sleep 1`, `funccount`, or `bpftrace -e 'k:func { @=count(); } interval:s:1 {exit();}'`.
 2. As a rough guide, under about 10k events per second is negligible, and above about 100k per second needs care. Scheduler, memory allocation, network packet and syscall-per-sample events can exceed 1M per second on busy GPU hosts.
@@ -675,6 +683,10 @@ Large companies install both on every host. For example, BCC tools are the first
 ## 9. Joining the host tools to the GPU tools
 
 Picture a training step that is slow while the GPUs sit idle for part of every step. The GPU timeline shows the gaps, but it cannot tell you why they are there. Linux tracers see the **host**: the CPU, the kernel, the drivers, the NIC and the storage. GPU-side activity needs GPU-aware profilers. A complete investigation uses both, and it lines them up in time. If you use only one side, you may miss the cause.
+
+![Five stacked steps for diagnosing a drop in training throughput, from monitoring to host tracing.](./img/g-67.jpg)
+*Figure 1.24.12. A fixed order of checks finds the cause of a throughput drop without guessing.*
+
 
 The table is organised by question. Each row starts from something you want to know, and it names the tool that answers it.
 
@@ -710,13 +722,17 @@ You have collected three screens of numbers and still have to decide what to run
 
 ![Choosing a tool](./img/ch24-d4-luna.svg)
 
-*Figure 1.24.10. Choosing a tool.*
+*Figure 1.24.13. Choosing a tool.*
 
 Four rules of thumb cover most choices. Rule 1 is to start with counters, then profiling, then tracing. Rule 2 is to use the cheapest tool that can answer the question, and the highest-level tool that can still see the thing you are measuring. Rule 3 is to confirm important conclusions with a second tool. Rule 4 is to keep a library of your own one-liners and of saved "normal" outputs.
 
 ## 11. Worked examples
 
 Each example below starts with a symptom and follows the evidence to a cause. Read them as short detective stories, with the tools as witnesses and the numbers as testimony.
+
+![A four-row table linking worked performance symptoms to the evidence that found their cause.](./img/g-68.jpg)
+*Figure 1.24.14. Each performance symptom is traced to a cause by following the evidence.*
+
 
 **A. "Data-loader workers are slow".** Your data-loader workers are slow. `pidstat -u -t 1` shows low CPU use, so the workers are waiting rather than computing. `offcputime -p <worker> 20` shows stacks blocked in `read()`, which lead into `nfs_file_read`. The time is therefore off-CPU, spent in NFS reads.
 

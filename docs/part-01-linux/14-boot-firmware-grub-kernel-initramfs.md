@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a node in a GPU fleet at three in the morning. The fans are loud, the power light is on, and the screen stays black. Nobody can log in, and nothing is training on it. A node that does not boot is a node that does not train, and many of the nastiest problems on a GPU fleet begin at boot.
 
+![Five stacked boot stages from firmware through the boot loader, kernel, initramfs, and init.](./img/g-39.jpg)
+*Figure 1.14.1. A node boots in ordered stages, so find the stage that failed first.*
+
+
 Some of those problems are small and some are not. A kernel update may come up without the NVIDIA module. A Secure Boot setting may quietly refuse an unsigned driver. A firmware setting decides whether GPUs and NICs work as designed, and the list includes IOMMU, Above-4G decoding, SR-IOV and NUMA mode. An `fstab` entry can hang the boot while it waits for an unplugged drive. A cloned image may not find its disks. An `initramfs` without the storage or network driver cannot reach the root filesystem. And when hundreds of diskless nodes PXE-boot at once, they can flatten the DHCP and TFTP servers.
 
 Many production procedures also start at boot. That is where you set kernel parameters for hugepages, IOMMU, isolated CPUs and console redirection. It is where you provision stateless nodes from images. It is also how you recover a node out of band, over a serial console or a BMC.
@@ -56,11 +60,11 @@ Something has gone wrong at boot, and you have a console open. Before you type a
 
 ![The boot chain from firmware to systemd and services, with the BMC working beside it](./img/pre-boot-chain.jpg)
 
-*Figure 1.14.1. From power button to a running service, in order. The BMC works even before the OS exists.*
+*Figure 1.14.2. From power button to a running service, in order. The BMC works even before the OS exists.*
 
 ![The big picture](./img/ch14-d1-luna.svg)
 
-*Figure 1.14.2. The big picture.*
+*Figure 1.14.3. The big picture.*
 
 There are seven stages in the simple form, and each stage is one hand-off. Stage 1 is the firmware, which loads and runs a boot loader. Stage 2 is the boot loader, which finds the kernel image on disk, loads it into memory with its parameters, and starts it. Stage 3 is the kernel, which initialises devices and drivers. Stage 4 is the root filesystem, which the kernel mounts, using the initramfs when it is needed. Stage 5 is the point where the kernel starts `init` as PID 1. Stage 6 is `init` starting the rest of the system. Stage 7 is the moment a login service becomes available.
 
@@ -76,7 +80,7 @@ The first stage of boot happens before Linux exists. Long before any kernel code
 
 ![BIOS with MBR versus UEFI with GPT](./img/ch14-fig1-uefi.jpg)
 
-*Figure 1.14.3. The two firmware boot paths that lead to the kernel and initramfs.*
+*Figure 1.14.4. The two firmware boot paths that lead to the kernel and initramfs.*
 
 ### BIOS (legacy) boot
 
@@ -117,7 +121,7 @@ These commands tell you which mode a machine booted in, and what it will try nex
 
 ![Each stage of the boot verifies the next, up to the kernel modules.](./img/l14-secure-boot.svg)
 
-*Figure 1.14.4. A signed chain from firmware to kernel modules means an unsigned GPU driver module will not load.*
+*Figure 1.14.5. A signed chain from firmware to kernel modules means an unsigned GPU driver module will not load.*
 
 With **Secure Boot**, the firmware runs only boot code that is cryptographically **signed** by a key it trusts. A signature here works like a wax seal: the code carries a stamp the firmware can check before it runs a single instruction. Hardware vendors ship with Microsoft's keys. Distributions therefore use a small Microsoft-signed **`shim`**, which verifies and runs **GRUB**. GRUB verifies the **kernel**, and when the kernel is locked down, the kernel verifies **kernel modules**. The distribution's own key is built into shim. You can enrol more keys as **Machine Owner Keys (MOK)** with `mokutil`.
 
@@ -154,7 +158,7 @@ Picture the moment when the firmware hands over. The kernel file is sitting on a
 
 ![GRUB loading the kernel and initramfs and passing the kernel command line](./img/pre-boot-loader.jpg)
 
-*Figure 1.14.5. The boot loader's whole job: find the kernel and initramfs, load them, pass the command line, and jump to the kernel.*
+*Figure 1.14.6. The boot loader's whole job: find the kernel and initramfs, load them, pass the command line, and jump to the kernel.*
 
 The boot loader's job sounds simple: it loads the kernel with its parameters. The work is subtle, because the loader has to do it with only the tools it brought along. The boot loader must do four things. It must find and load the kernel image and the initramfs. It must pass **kernel parameters**. It must let you choose among kernels or edit the parameters. And it can optionally boot other operating systems.
 
@@ -215,7 +219,7 @@ grub> boot
 
 ![Settings and scripts feed a generator that writes grub.cfg, which you should never edit by hand.](./img/l14-grub-config.svg)
 
-*Figure 1.14.6. grub.cfg is generated, so change /etc/default/grub or /etc/grub.d and regenerate.*
+*Figure 1.14.7. grub.cfg is generated, so change /etc/default/grub or /etc/grub.d and regenerate.*
 
 GRUB reads `grub.cfg`, which lives in `/boot/grub/` or `/boot/grub2/`. On EFI systems there is also a small stub on the ESP. **The file is generated, so your edits will be overwritten.** That surprises almost everyone once: you edit the file, boot works, and the next kernel update quietly throws your work away. Make your changes in the right place, and then regenerate the file. The workflow has four steps.
 
@@ -273,6 +277,10 @@ UEFI makes multi-boot easy, because several loaders can live side by side in the
 ## 4. The kernel starts
 
 The boot loader finishes its work by putting two files into memory: the kernel and the initramfs. The **kernel image** comes from `/boot/vmlinuz-<version>`, and it is a compressed image called `bzImage`. Its first part is a small program that sets up a minimal hardware state and decompresses the rest into memory. The boot loader also loads the **initramfs** from `/boot/initrd.img-<version>` or `initramfs-<version>.img`. It passes the **command line** along with both.
+
+![Five stacked steps showing the kernel start-up order from CPUs and memory to the first user-space process.](./img/g-40.jpg)
+*Figure 1.14.8. The kernel log lines map to these steps, so you can see how far boot got.*
+
 
 Several files in `/boot` are worth recognising, and `ls /boot` shows them all. `vmlinuz-*` is the kernel. `initrd.img-*` and `initramfs-*.img` hold the initial RAM filesystem. `config-*` holds the kernel build configuration, and you can check it with `grep CONFIG_PREEMPT /boot/config-$(uname -r)`. `System.map-*` holds the symbol addresses. `grub/` and `efi/` complete the list. Loadable modules for each kernel sit in `/lib/modules/<version>/`.
 
@@ -366,7 +374,7 @@ Read the diagram from top to bottom. Each arrow is one hand-off, from the boot l
 
 ![The initial RAM filesystem (initramfs)](./img/ch14-d2-luna.svg)
 
-*Figure 1.14.7. The initial RAM filesystem (initramfs).*
+*Figure 1.14.9. The initial RAM filesystem (initramfs).*
 
 The two families of distributions use different tools. Debian and Ubuntu use `initramfs-tools`, while RHEL, Fedora and SUSE use `dracut`. The table compares the commands for each.
 
@@ -404,7 +412,7 @@ The kernel has one job left, and it is the smallest and most important one. It s
 
 ![systemd as process 1 starting the default target and its services](./img/pre-init-pid1.jpg)
 
-*Figure 1.14.8. systemd is process 1. It reads its units and brings the machine up to the default target.*
+*Figure 1.14.10. systemd is process 1. It reads its units and brings the machine up to the default target.*
 
 **`init` always has PID 1, and it is the only process the kernel watches. If it dies, the kernel panics.** That sentence explains a whole family of boot failures, so it is worth reading twice. The duties of `init` are to set up the system, mount filesystems, start services, and **adopt and reap orphaned processes**, which chapter 1.8 covers.
 
@@ -465,7 +473,7 @@ Before you change a unit file, check which location it lives in, because a copy 
 
 ![A table that maps common boot symptoms to their likely cause and first action.](./img/l14-boot-symptoms.svg)
 
-*Figure 1.14.9. Identify the failing boot stage first, then change only one thing before testing again.*
+*Figure 1.14.11. Identify the failing boot stage first, then change only one thing before testing again.*
 
 The moment a node will not boot, it is tempting to start changing things. Resist that, because every change you make without a note hides the cause a little further. Follow the same routine every time, because it stops you changing too much at once.
 
@@ -542,7 +550,7 @@ The diagram traces a network boot from the first DHCP request to the hand-off to
 
 ![Network booting: DHCP, TFTP, PXE and NFS root](./img/ch14-d3-luna.svg)
 
-*Figure 1.14.10. Network booting: DHCP, TFTP, PXE and NFS root.*
+*Figure 1.14.12. Network booting: DHCP, TFTP, PXE and NFS root.*
 
 ### Components
 
@@ -638,6 +646,10 @@ Stagger the boots, and watch the DHCP and TFTP logs, before you blame the image.
 
 A boot decision made once can affect a whole fleet. These patterns show how teams keep boot predictable across many GPU nodes.
 
+![A four-row table pairing GPU fleet boot patterns with their key actions.](./img/g-41.jpg)
+*Figure 1.14.13. Keep boot consistent across nodes by pinning, signing, and verifying in advance.*
+
+
 - **Golden image and fleet kernel policy.** Pin the kernel, the driver and the initramfs together. Chapter 1.7 covers holds, and chapter 1.22 covers DKMS. Test each kernel and driver combination on a canary node first. After a kernel update, confirm that `dkms status` shows the module built and loaded for the *new* kernel. Do this *before* you reboot production nodes. Keep the previous kernel installed as a fallback in GRUB. Automate a health check after each reboot that covers the kernel version, the module, the GPU count and the link state. Chapter 1.9 has the script pattern.
 - **Secure Boot and the NVIDIA driver.** If Secure Boot is on, the module must be signed. Enrol the MOK in the image or fleet-wide. Otherwise the node boots, and the GPUs are silently absent.
 - **Kernel command line for GPU nodes.** Typical entries turn on the IOMMU in passthrough mode for VFIO, SR-IOV or vGPU hosts. They blacklist `nouveau`, and they set the hugepages and the `transparent_hugepage` policy. They include `isolcpus` and `nohz_full` only for sites that need them. They also carry `console=tty0 console=ttyS0,115200n8` and `crashkernel=`, and they set the `numa_balancing` policy. Add `pci=realloc` or `pcie_aspm=off` only when a platform guide demands them. Every added parameter is a fleet-wide deviation. Put it in the image, in `/etc/default/grub.d/`, or in the provisioning tool's per-category kernel parameter setting. Then verify it with `cat /proc/cmdline` in the health check.
@@ -651,6 +663,10 @@ Pick the patterns that match your fleet, and write the checks down before you ro
 ## How it fails
 
 Each item below is a failure you can meet on a real node. The item names the symptom and the usual cause, then the commands that confirm it.
+
+![A four-row table pairing common boot failures with the check to run first.](./img/g-42.jpg)
+*Figure 1.14.14. Confirm each boot failure with its named command before you change anything.*
+
 
 1. **The machine boots into the old kernel after an update.** The default entry may be `GRUB_DEFAULT=saved`, or the update did not regenerate the config. Run `update-grub`, check `grub-editenv list`, and compare `/proc/cmdline` with `uname -r`.
 2. **The new kernel has no GPU.** The DKMS build may have failed because headers were missing or the driver was too old. Secure Boot may reject the module. Or the initramfs lacks `blacklist` handling, so `nouveau` grabbed the device. Check with `dkms status`, `dmesg | grep -i nvidia` and `mokutil --sb-state`.

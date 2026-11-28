@@ -71,6 +71,10 @@ This chapter walks through four tools for slow or expensive workloads: the USE m
 
 ## 1. The USE method
 
+![The USE method checklist of utilisation, saturation and errors for each resource](./img/pre-use-method.jpg)
+
+*Figure 17.8.1. For every resource ask three questions: how busy is it, is work queueing, and is it reporting errors.*
+
 ### 1.1 The USE method in detail
 
 Picture the page itself. It has one line in it: the workload is slow. You do not yet know whether the GPU, the disk, the network or the code is at fault, and the team is waiting for an answer. The USE method gives you a fixed set of questions, so you check every resource in the same order each time, instead of starting with whatever you happen to suspect. The handbook's source for the method is *Systems Performance*.
@@ -233,6 +237,10 @@ Pick the one kernel that matters most to your service, and compute its roofline 
 Keep the roofline plot with the ticket for the change, so the next engineer can see the gap that justified the work.
 
 ## 3. The performance decision tree
+
+![A shortened performance decision tree starting from GPU utilisation](./img/pre-perf-tree.jpg)
+
+*Figure 17.8.2. Start with GPU utilisation. A busy GPU is memory bound or compute bound. An idle GPU sends you to CPU, network, then storage.*
 
 ### 3.1 The decision tree structure
 

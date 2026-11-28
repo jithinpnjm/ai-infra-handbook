@@ -80,6 +80,10 @@ Start with the first idea, and keep it in view as you read. The rest of the chap
 
 When a distributed training job synchronizes gradients across nodes, network latency and throughput decide how long you wait. That wait is called Job Completion Time, the total elapsed time from job start to job completion. Synchronous collective operations wait for every parallel worker to finish before the job moves to the next layer or step. A single slow transfer therefore stalls the entire cluster.
 
+![The TCP/IP path through the kernel compared with the RDMA path from NIC to memory](./img/pre-rdma-vs-tcp.jpg)
+
+*Figure 12.2.1. TCP goes through the kernel and CPU. RDMA lets the NIC move data straight to memory.*
+
 ```text
 Tail Latency Impact on Job Completion Time (ADC Ch 1, Figs 1-4 to 1-6):
   - Serial Execution (n = 10 tasks):   9 tasks take 1 ms each + taskX takes 1 s (1,000 ms) -> Total JCT = 1 s + (10 x 1 ms) = 1.010 seconds

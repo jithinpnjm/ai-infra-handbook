@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a GPU job that runs well on your own cluster but crawls once it moves to a cloud node. You cannot see the hypervisor. You cannot change the host. You have a login, a bill, and a job that used to finish before lunch. This is the kind of problem the handbook prepares you for, because it sits where bare-metal GPU clusters meet cloud economics.
 
+![A three-row table listing how elastic capacity, shared resources, and partial observability change cloud performance.](./img/g-80.jpg)
+*Figure 1.27.1. Cloud performance problems usually come from one of three limits.*
+
+
 Your team will ask you to compare GPU instance types. It will ask you to decide between virtual machines and bare metal. You will need to explain why a cloud node behaves differently from an on-premises one, and you will diagnose performance in environments where you do not control the hypervisor. You will also size and cost a training run, and design for neoclouds, such as CoreWeave and Nebius and others, and for hyperscalers alike.
 
 Cloud computing changes the performance problem in three ways. **Capacity is elastic but not unlimited**, because GPU quota and availability are scarce. **Resources are shared** through multitenancy, noisy neighbours and resource controls. **Observability is partial**, so you see a slice of the machine, not the whole machine.
@@ -130,7 +134,7 @@ The mitigations come in two groups. **Resource controls** give performance isola
 
 ![Noisy neighbours, virtual topology, passthrough limits and nested virtualisation explain most cloud surprises.](./img/l27-cloud-gpu-diffs.svg)
 
-*Figure 1.27.1. Check these four differences before blaming the software for a slower cloud GPU node.*
+*Figure 1.27.2. Check these four differences before blaming the software for a slower cloud GPU node.*
 
 A GPU node in the cloud is not the same machine as one in your own rack, even when the GPU model matches. Four differences explain most surprises.
 
@@ -151,7 +155,7 @@ Two jobs feel slow this week, and they have nothing in common except the symptom
 
 ![Three ways to virtualise](./img/ch27-d1-luna.svg)
 
-*Figure 1.27.2. Three ways to virtualise.*
+*Figure 1.27.3. Three ways to virtualise.*
 
 The top stack has a full VM with its own kernel. The middle stack has no guest kernel at all, because every container shares the host kernel. The bottom stack keeps a guest kernel, but a minimal one behind a small hypervisor. Count the kernels, and you can predict most of the differences that follow.
 
@@ -208,6 +212,10 @@ Two further models hide the server entirely. With serverless functions you submi
 
 Suppose you have a latency-sensitive service and three places to run it. Which option gives you the performance you need, and which one lets you see what is wrong when it slows down? The table below compares the three on the attributes that answer those questions.
 
+![A four-row table comparing VMs, containers, and microVMs on isolation, start time, memory, and observability.](./img/g-81.jpg)
+*Figure 1.27.4. Compare these options on the attributes that matter for your workload.*
+
+
 | Attribute | Hardware VM (KVM) | Containers | MicroVM (Firecracker) |
 |---|---|---|---|
 | CPU performance | High (CPU support) | High | High |
@@ -236,7 +244,7 @@ That is the trade-off to weigh. Cloud operators get the best visibility from con
 
 ![Five ways to run GPU workloads compared by their pros and cons.](./img/l27-gpu-options.svg)
 
-*Figure 1.27.3. Each option trades control for convenience, so read the cons column as carefully as the pros.*
+*Figure 1.27.5. Each option trades control for convenience, so read the cons column as carefully as the pros.*
 
 Your team has a GPU workload and must choose where it will run. Five options are common, and each one trades control for convenience. The table sets out the pros, the cons and the typical use of each.
 
@@ -288,7 +296,7 @@ Before you commit a GPU workload to a cloud, test the network and storage with y
 
 ![Each software limit paired with the signals that show whether it is binding.](./img/l27-limits-use.svg)
 
-*Figure 1.27.4. Utilisation is measured against the limit, not the physical resource, which is what makes the table useful in a shared cloud.*
+*Figure 1.27.6. Utilisation is measured against the limit, not the physical resource, which is what makes the table useful in a shared cloud.*
 
 Your dashboards show the physical machine, but the limit that slows your container is a software setting. Traditional tools are blind to software-imposed limits. In cloud environments, those limits are often the first thing you hit. To find them, extend the USE table from chapter 1.23 with **limits**.
 
@@ -311,6 +319,10 @@ Interpreting CPU throttling for a container takes five facts. First, is **thrott
 Then apply the decision rule. If throttled time is increasing, a bandwidth cap is binding. If nothing is throttled, but involuntary switches rise while the host has idle CPU, only cpuset or shares effects can explain it. When other tenants are busy and no CPU is idle, those switches mean you are at your share. If every tenant is idle and you are still limited, a cap or cpuset is the limit. Build this decision into your monitoring, so engineers do not have to work it out during an incident.
 
 ## 6. Observing containers and VMs
+
+![A three-row table showing which tools inside a container show host values and which show the container's own data.](./img/g-82.jpg)
+*Figure 1.27.7. Inside a container, check the cgroup files rather than the system tools.*
+
 
 ### From the host: containers
 
@@ -362,6 +374,10 @@ The guest sees only virtual devices, but it can run all kernel tracing tools. It
 ## 7. Failure modes
 
 Here is where the chapter pays off on a bad afternoon. Each row is a symptom someone will report to you, the cause behind it, and the first thing to check. Find your symptom, then work the check column before you touch anything.
+
+![A four-row table pairing common cloud failure symptoms with the first check to make.](./img/g-83.jpg)
+*Figure 1.27.8. Each cloud symptom has a first check that points to the cause.*
+
 
 | Symptom | Cause | Check / fix |
 |---|---|---|

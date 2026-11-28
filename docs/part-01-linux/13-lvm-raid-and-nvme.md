@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 It is Friday evening, a training run is crawling, and one dataset volume is completely full while another sits half-empty. Nobody wants to restart the job just to move data from one volume to another. On the next rack, a disk has quietly died, and the weekend backup plan depends on it. And somewhere in the back of your mind sits a wish you have almost certainly had: move a filesystem onto faster NVMe without taking the machine down.
 
+![A three-row table summarising RAID 0 scratch, LVM volumes, and NVMe health for GPU servers.](./img/g-35.jpg)
+*Figure 1.13.1. Each storage layer trades speed, flexibility, or early warning, so know which you need.*
+
+
 Storage is one of the first places to look when a node slows down, and these are exactly the moments where LVM, RAID, and NVMe earn their keep. A GPU server is full of fast local flash. M.2 drives hold the operating system, and a bank of U.2 or E1.S NVMe drives holds datasets, caches and checkpoints. Cloud GPU instances add local SSDs and network-attached volumes that you can resize while the machine runs. How you present those drives to the operating system decides whether the node is fast, resilient and easy to operate.
 
 Five ideas carry the whole chapter, and each one is practical:
@@ -61,7 +65,7 @@ LVM, the Logical Volume Manager, adds a layer between the physical block devices
 
 ![The problem LVM solves](./img/ch13-d1-luna.svg)
 
-*Figure 1.13.1. The problem LVM solves.*
+*Figure 1.13.2. The problem LVM solves.*
 
 The terms below appear in almost every LVM command, so it is worth learning them before you type anything.
 
@@ -223,7 +227,7 @@ If you prefer two separate commands, run `lvextend -L +20G ...` and then `xfs_gr
 
 ![Growing a volume without downtime](./img/ch13-fig2-grow.jpg)
 
-*Figure 1.13.2. Add space to the volume group, then extend the volume and its filesystem online with lvextend -r.*
+*Figure 1.13.3. Add space to the volume group, then extend the volume and its filesystem online with lvextend -r.*
 
 ### A worked two-disk example
 
@@ -341,7 +345,7 @@ Be careful with `lvremove`. Its argument is `VG/LV`, with a slash. If you type a
 
 ![Growing a resized cloud disk requires growing the partition, PV, LV and filesystem in order.](./img/l13-cloud-grow.svg)
 
-*Figure 1.13.3. Work up the stack one layer at a time: disk, partition, physical volume, then logical volume and filesystem.*
+*Figure 1.13.4. Work up the stack one layer at a time: disk, partition, physical volume, then logical volume and filesystem.*
 
 A cloud disk can be resized in the console, but the machine does not notice until you tell it. Work up the stack one layer at a time: the disk, then the partition, then the PV, then the LV and the filesystem.
 
@@ -360,7 +364,7 @@ sudo lvextend -r -l +100%FREE /dev/myvg/mylv1
 
 ![Several virtual volumes share one thin pool whose total size can be exceeded by the volumes.](./img/l13-thin-pool.svg)
 
-*Figure 1.13.4. A thin pool that reaches 100% corrupts or blocks the volumes in it, so monitor it.*
+*Figure 1.13.5. A thin pool that reaches 100% corrupts or blocks the volumes in it, so monitor it.*
 
 A **snapshot** is a point-in-time view of a logical volume, like a photograph of the volume at one instant. A classic LVM snapshot uses **copy-on-write**. When the origin changes, LVM copies the old blocks into the snapshot area first. You estimate the snapshot's size up front, with `lvcreate -s -L 5G -n snap /dev/vg/lv`. If the snapshot area fills up, the snapshot becomes invalid. Snapshots also slow down writes to the origin while they exist, so keep them short-lived. Two common uses are backups and undo points before an upgrade. For a backup, mount the snapshot read-only, copy from it, and remove it. For an undo point, `lvconvert --merge` rolls the origin back to the snapshot.
 
@@ -412,7 +416,7 @@ Each field has a job. The first is the start offset in the mapped device. Then c
 
 ![Device mapper: virtual sectors to physical disks](./img/ch13-d4-luna.svg)
 
-*Figure 1.13.5. How the device mapper maps virtual LV sector ranges across underlying physical devices.*
+*Figure 1.13.6. How the device mapper maps virtual LV sector ranges across underlying physical devices.*
 
 The table can use these target types: `linear`, `striped`, `mirror`/`raid`, `snapshot`/`snapshot-origin`, `thin`/`thin-pool`, `crypt` (dm-crypt/LUKS), `multipath`, `cache`/`writecache`, `integrity`, `verity` (read-only integrity for images), `zero`, and `error` (to inject failures for testing).
 
@@ -474,7 +478,7 @@ Encryption costs CPU time for AES. Hardware AES-NI keeps that cost small. On ver
 
 ![Several physical paths to one LUN appear as several block devices that multipath merges into one.](./img/l13-multipath.svg)
 
-*Figure 1.13.6. Always build filesystems and LVM on the multipath device, never on a component path.*
+*Figure 1.13.7. Always build filesystems and LVM on the multipath device, never on a component path.*
 
 A SAN, or an NVMe/SCSI target, can be reachable over several physical paths: two HBAs, two switches or two controllers. The operating system then sees one LUN as several block devices, such as `sdb`, `sdc`, `sdd` and `sde`. **`multipathd`** with `dm-multipath` recognises that they share a WWID, a world-wide identifier for the storage. It creates **one** device, `/dev/mapper/mpathX` or an alias. It spreads I/O across the active paths, using round-robin or queue length, and fails over when a path dies.
 
@@ -499,7 +503,7 @@ Picture the moment a drive dies in the middle of a training run. What happens ne
 
 ![Common RAID levels](./img/ch13-fig1-raid.jpg)
 
-*Figure 1.13.7. RAID 0, 1, 5 and 10 compared; RAID is not a backup.*
+*Figure 1.13.8. RAID 0, 1, 5 and 10 compared; RAID is not a backup.*
 
 **Hardware RAID** runs on a controller card, which often has its own cache backed by a battery or capacitor. **Software RAID** runs in the operating system, through Linux `md`, LVM RAID or ZFS and btrfs. Modern CPUs make the parity calculation cheap. Software RAID also gives the operating system full sight of each drive, and it survives a dead controller. Most GPU servers use **software RAID (`md`)**.
 
@@ -562,7 +566,7 @@ Some habits make an `md` array much easier to live with. Refer to the array by i
 
 ![A table matching RAID levels to the job a volume does on a GPU node.](./img/l13-raid-choice.svg)
 
-*Figure 1.13.8. Match the RAID level to the job, and use RAID 0 only when the data can be rebuilt.*
+*Figure 1.13.9. Match the RAID level to the job, and use RAID 0 only when the data can be rebuilt.*
 
 | Purpose | Typical choice | Reason |
 |---|---|---|
@@ -587,7 +591,7 @@ Completion usually comes by interrupt. For the lowest latency, you can poll inst
 
 ![NVMe queues per CPU and namespaces](./img/ch13-d5-luna.svg)
 
-*Figure 1.13.9. NVMe per-CPU submission/completion queue pairs and controller-to-namespace naming.*
+*Figure 1.13.10. NVMe per-CPU submission/completion queue pairs and controller-to-namespace naming.*
 
 Bandwidth is limited by the **PCIe link**. A Gen3 x4 link gives about 3.5 GB/s. Gen4 x4 gives about 7 GB/s, and Gen5 x4 gives about 14 GB/s, each per direction. A drive running at x2, or at a lower generation, will be slow. Check the link state with `lspci -vv`, or read `/sys/class/nvme/nvme0/device/current_link_speed` and `max_link_width`.
 
@@ -645,6 +649,10 @@ The `nvme0n1` names depend on the order in which the kernel probes the devices. 
 
 Chapter 1.12 section 9 covers the filesystem layer. This section covers the block device and everything below it. The time scales and concepts are in 1.12 section 2.
 
+![Four stacked method steps for diagnosing disk performance, from error checks to latency analysis.](./img/g-36.jpg)
+*Figure 1.13.11. Work through disk performance methods in order, because each step builds on the last.*
+
+
 ### Concepts you need
 
 When a disk looks slow, you need to know where the time goes. Start with the parts of I/O time. A request has *wait time*, the time it spends queued in the OS or on the device. It also has *service time*, the time the device spends working. Together they make *request time*, which is what you feel, and what `iostat` reports as `await`. Modern devices queue work internally and handle many requests at once. So a "service time" derived from utilisation (`util / IOPS`) is only a rough single-queue estimate.
@@ -692,6 +700,10 @@ Read the results as **latency percentiles** (p50, p99 and p99.9) and as IOPS **a
 
 When a disk misbehaves, you need the right tool for the question. A training run has slowed, and you suspect storage. The table below lists the main tools, with what each one shows. Start with the cheap ones, and move to the heavier tracers only when they are needed.
 
+![A four-row table matching block-layer disk tools to what each one shows.](./img/g-37.jpg)
+*Figure 1.13.12. Begin with cheap tools and reach for heavy tracers only when the simple ones are not enough.*
+
+
 | Tool | Shows | Notes |
 |---|---|---|
 | **`iostat -xz 1`** | Per-device `r/s w/s rkB/s wkB/s rrqm/s wrqm/s` (merged requests), `r_await w_await await`, `areq-sz`, `aqu-sz`, `%util` | Cheap (kernel keeps the counters by default), the first command to run; `-p ALL` per partition; `-s` short form; the figures are interval averages; `%util` caveat above |
@@ -735,7 +747,7 @@ Training data travels a long way. It crosses storage media, storage servers, the
 
 ![The full data path, layer by layer](./img/ch13-d2-luna.svg)
 
-*Figure 1.13.10. The full data path, layer by layer.*
+*Figure 1.13.13. The full data path, layer by layer.*
 
 The procedure has three steps. First, establish the demand: samples per second, multiplied by the bytes per sample, for each GPU. Second, measure the supply at each layer. Use a tool that bypasses the layers above it. Start with a raw device read using `fio --direct=1`, then test the filesystem, then the network path with the storage client, then the application loader. Third, the first layer whose measured capacity falls below the demand is the bottleneck. Also check for hidden copies. An extra decode or format conversion on the CPU can cost more than the disk does.
 
@@ -752,7 +764,7 @@ Use local NVMe staging when the shared link or filesystem is the measured bottle
 
 ![Local NVMe as cache and staging area](./img/ch13-d3-luna.svg)
 
-*Figure 1.13.11. Local NVMe as cache and staging area.*
+*Figure 1.13.14. Local NVMe as cache and staging area.*
 
 **Cache design points.** Verify every cached file with a checksum or a version key, so a run never trains on stale data after the source changes. Log the hit rate for each epoch. In a healthy setup it is about 0% in epoch 1 and above 95% from epoch 2, if the dataset fits. A drop in later epochs shows eviction pressure, which tends to appear once the NVMe is above about 85% full. Choose an eviction policy. Pre-stage the data in parallel before the job starts, instead of fetching lazily on first read. Keep the staging deterministic and idempotent, and treat the volume as disposable. Watch out for file naming. Two different names for the same data defeat the hit rate.
 
@@ -777,6 +789,10 @@ If you run a compute node, you can follow one rule: use software RAID, keep the 
 ## How it fails
 
 Most storage incidents follow a pattern you can learn. Each item below names the symptom, the cause and the fix.
+
+![A four-row table pairing common storage incidents with the first check to make.](./img/g-38.jpg)
+*Figure 1.13.15. Each storage incident has a known first check that prevents a wrong fix.*
+
 
 1. **The LV was extended, but the filesystem was not grown.** You run `df` and the size has not changed. Use `lvextend -r`, or run `xfs_growfs` or `resize2fs` yourself.
 2. **Shrinking in the wrong order corrupts the filesystem.** Shrink the filesystem first, then the LV. XFS cannot shrink at all.

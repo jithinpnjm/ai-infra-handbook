@@ -1,0 +1,114 @@
+[
+ [
+  "use-method",
+  "part-17-operations",
+  "08",
+  "## 1. The USE method",
+  "The USE method checklist of utilisation, saturation and errors for each resource",
+  "For every resource ask three questions: how busy is it, is work queueing, and is it reporting errors."
+ ],
+ [
+  "incident-flow",
+  "part-17-operations",
+  "11",
+  "## 2. The incident response process",
+  "The incident response stages from detection to runbook update",
+  "Every incident follows the same path, and the last step updates the runbook so it does not repeat."
+ ],
+ [
+  "five-threats",
+  "part-18-security",
+  "05",
+  "## 1. Five threats and the control for each",
+  "Five GPU sharing threats paired with the control that stops each one",
+  "Each threat has one control. The control depends on which memory is under attack."
+ ],
+ [
+  "gpu-util-lie",
+  "part-10-gpu-cuda",
+  "08",
+  "## 2. The three misleading metrics",
+  "Why GPU-Util of 85 percent can mean three different things",
+  "GPU-Util only says a kernel was running, so the same number can hide very different jobs."
+ ],
+ [
+  "links-hard-soft",
+  "part-01-linux",
+  "03",
+  "## 5. Links: hard and symbolic",
+  "A hard link sharing an inode compared with a symbolic link pointing at a path",
+  "A hard link is another name for the same inode. A symbolic link is a small file that stores a path."
+ ],
+ [
+  "tls-handshake",
+  "part-02-networking",
+  "10",
+  "## 3. TLS",
+  "The TLS handshake between a client and a server",
+  "The client checks the server certificate, both sides agree on keys, then data is encrypted."
+ ],
+ [
+  "gpu-failures",
+  "part-17-operations",
+  "07",
+  "## 1. GPU hardware failures",
+  "GPU hardware failures with the signal to watch and the first action for each",
+  "Each GPU failure has a signal that detects it and a first action. Most start with cordon and drain."
+ ],
+ [
+  "network-failures",
+  "part-17-operations",
+  "07",
+  "## 2. Network failures",
+  "Network failures in a training cluster with the first action for each",
+  "Read the first error, not the last, because healthy ranks often print the timeout."
+ ],
+ [
+  "ic-role",
+  "part-17-operations",
+  "11",
+  "## 3. The Incident Commander role",
+  "The four duties of the Incident Commander",
+  "One person coordinates, decides, communicates and documents so the responders do not duplicate work."
+ ],
+ [
+  "ckpt-phases",
+  "part-13-ai-storage",
+  "07",
+  "## 2. Where the time goes in one save",
+  "The four phases of a checkpoint save",
+  "A checkpoint has four phases, and a slow phase holds every GPU in place while it runs."
+ ],
+ [
+  "perf-tree",
+  "part-17-operations",
+  "08",
+  "## 3. The performance decision tree",
+  "A shortened performance decision tree starting from GPU utilisation",
+  "Start with GPU utilisation. A busy GPU is memory bound or compute bound. An idle GPU sends you to CPU, network, then storage."
+ ],
+ [
+  "obs-signals",
+  "part-05-kubernetes",
+  "24",
+  "## 1. The observability signals",
+  "Six observability signals and the question each one answers",
+  "Each signal answers a different question, so you rarely get the whole story from one."
+ ],
+ [
+  "etcd-backup",
+  "part-05-kubernetes",
+  "20",
+  "## 5. Backing up and restoring etcd",
+  "The etcd snapshot backup steps and the choice between replacing a member and restoring",
+  "Snapshot, verify, checksum and ship off the cluster. Restore from a snapshot only when quorum is lost."
+ ],
+ [
+  "throttle-reasons",
+  "part-10-gpu-cuda",
+  "08",
+  "## 3. Clocks, power caps and throttle reasons",
+  "Common GPU throttle reasons with the severity and action for each",
+  "Read the throttle mask to tell a hot room from a power cap or an idle workload."
+ ]
+]

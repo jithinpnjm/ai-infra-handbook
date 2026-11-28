@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 An AI platform engineer is asked for numbers almost every week, and the questions sound like small talk. Is this new node healthy? Did the driver upgrade slow training? Which instance type should we buy? Does this vendor's 400 Gb/s fabric really deliver? What tokens/s can one H100 serve at a 200 ms TTFT? What will 1,024 GPUs cost per run? Each of those answers is a benchmark, whether or not anyone uses the word.
 
+![A four-row table pairing misleading benchmark results with the hidden problem behind each.](./img/g-69.jpg)
+*Figure 1.25.1. Benchmark numbers mislead when the test measured the wrong thing.*
+
+
 A benchmark done well catches bad hardware before a customer job runs on it. It validates a cluster acceptance test, it sizes capacity, it justifies a purchase, and it gates a regression in CI. A benchmark done badly costs millions. You buy the wrong instance family. You accept a cluster with a flaky link. You spend a week chasing a "regression" that was only thermal throttling. Or you repeat a vendor claim in a design review, and it fails to survive contact with your workload.
 
 The failures are usually small and ordinary:
@@ -57,6 +61,10 @@ By the end of this chapter, you will be able to do the following:
 
 Two engineers test the same new node on the same afternoon and walk away with different numbers. Neither is lying, and neither ran a careless test. They simply started from different questions, and a different question sets a different bar for how careful you have to be.
 
+![A four-row table listing reasons to run a benchmark with an AI infrastructure example for each.](./img/g-70.jpg)
+*Figure 1.25.2. Know why you are benchmarking, because the reason sets how careful the test must be.*
+
+
 You can run a benchmark for many reasons. A purchase decision needs more care than a quick tuning experiment, because somebody will sign a contract on the strength of it. The table lists the eight reasons, with an AI-infrastructure example for each.
 
 | Reason | Example in AI infrastructure |
@@ -86,6 +94,10 @@ Before you trust a number, decide which reason you ran the test for. The reason 
 
 Picture a benchmark that produces a good number for a bad reason. Nobody in the room is lying, and the tool is not broken. The result simply landed in one of sixteen familiar failure patterns, and a result that carries one of them looks exactly like a result that does not. The table names each failure, says what goes wrong, and gives the cure. Read it before you trust a number, because a result from any of these failures can end up in a purchase decision.
 
+![A four-row table pairing classic benchmark failures with the cure for each.](./img/g-71.jpg)
+*Figure 1.25.3. Each benchmark failure is cured by a check that takes minutes.*
+
+
 | # | Failure | What goes wrong | Cure |
 |---|---|---|---|
 | 1 | **Casual benchmarking** | "You benchmark A, but actually measure B, and conclude you've measured C." Disk tools that test the filesystem and page cache; GPU tools that test the launch rate | Verify what is measured with tracing and metrics (section 4) |
@@ -113,7 +125,7 @@ Benchmarks sit on a spectrum, from one isolated operation to live traffic. Suppo
 
 ![Benchmark types](./img/ch25-d1-luna.svg)
 
-*Figure 1.25.1. Benchmark types.*
+*Figure 1.25.4. Benchmark types.*
 
 Read the diagram from left to right. It runs from the simplest test to real traffic.
 
@@ -134,7 +146,7 @@ For each new micro-benchmark, decide first which dimensions matter for your work
 
 ![Passive benchmarking reads a report afterwards, while active benchmarking watches the system during the run.](./img/l25-passive-active.svg)
 
-*Figure 1.25.2. Active benchmarking confirms what is tested and what limits it while the benchmark runs.*
+*Figure 1.25.5. Active benchmarking confirms what is tested and what limits it while the benchmark runs.*
 
 Methods differ in how much they teach you. One engineer runs a tool, pastes the output into slides and moves on. Another runs the same tool and watches the system while it works. The table lists the methods, and it helps you choose one for each situation.
 
@@ -164,7 +176,7 @@ The conclusion is that the first test measures 1-byte *buffered filesystem write
 
 ![Throughput and latency plotted against stepped load, with the knee marked.](./img/l25-ramp-knee.svg)
 
-*Figure 1.25.3. The result is the highest load whose latency is still acceptable, not the highest throughput.*
+*Figure 1.25.6. The result is the highest load whose latency is still acceptable, not the highest throughput.*
 
 Add clients, threads or QPS in increments, and hold each level long enough for the system to settle. Plot throughput and latency percentiles against load, and mark the **knee**, the point where the curve bends. Report the highest load whose latency is acceptable to a customer. Going from 990,000 IOPS at 5 ms to 1,000,000+ IOPS at 50 ms is not an achievement, and no user is better off for it. The right number to publish is 990,000. Then verify with the USE method that some resource really reached its limit, or you are only measuring the generator. Always record **latency distributions**, not just means.
 
@@ -172,7 +184,7 @@ Add clients, threads or QPS in increments, and hold each level long enough for t
 
 ![Six questions to ask of any benchmark result before accepting it.](./img/l25-six-questions.svg)
 
-*Figure 1.25.4. Each question catches a different way a benchmark result can mislead you.*
+*Figure 1.25.7. Each question catches a different way a benchmark result can mislead you.*
 
 Put every result through six questions before you accept it. Each one catches a different way a result can mislead you.
 
@@ -201,7 +213,7 @@ Picture a team that spends a week choosing between two load generators, then run
 
 ![A benchmark you can trust](./img/ch25-fig1-bench.jpg)
 
-*Figure 1.25.5. A reproducible benchmark fixes the setup, warms up, measures steady state, repeats and reports median and spread.*
+*Figure 1.25.8. A reproducible benchmark fixes the setup, warms up, measures steady state, repeats and reports median and spread.*
 
 1. **Question and success criterion.** Write down the question and what counts as a pass. For example, does node X deliver at least 95% of the fleet median on a reference step? Or can this fabric sustain at least 90% of line rate for a 1 GiB all-reduce across 16 nodes? Without a criterion, the result can never pass or fail.
 2. **Record the environment** automatically. Capture the hardware: CPU model, microcode, BIOS version and settings, DIMMs, GPU model, SKU and VBIOS, NIC model and firmware, PCIe link width and speed, and topology. Capture the OS as well: kernel, boot parameters, sysctls, governor, and THP. Capture drivers and libraries, meaning the NVIDIA driver, CUDA, cuDNN, NCCL, MOFED/DOCA, PyTorch or the framework, and the container image digest. Then capture the cluster settings, such as scheduler, cgroup limits, and CPU, memory and GPU binding. Finally, capture clocks, power limits, and the software versions of the benchmark tool. Keep a script that dumps all of it next to your results.
@@ -217,6 +229,10 @@ A minimal result record holds one row per run. The row contains the date, node o
 ## 6. The AI-infrastructure benchmark toolkit
 
 A storage vendor says the array is fast, and the array probably is. The question is whether the number in the slide came from the array, from the host, or from the page cache sitting between the two. Every tool in this toolkit gets the same four questions. What does it claim to measure? What does it actually measure? What limits it? What must you control? The sections below follow that pattern.
+
+![A three-row table listing CPU, memory, and storage benchmark tools with the main trap of each.](./img/g-72.jpg)
+*Figure 1.25.9. Every benchmark tool has a trap, so check what it actually measures.*
+
 
 ### 6.1 CPU
 
@@ -387,7 +403,7 @@ Industry results are vendor-tuned, and they often use the best configuration, sp
 
 ![Quick arithmetic shows when a claimed number exceeds a physical limit.](./img/l25-sanity-math.svg)
 
-*Figure 1.25.6. Do the arithmetic with units and treat any number above a physical limit as a measurement error.*
+*Figure 1.25.10. Do the arithmetic with units and treat any number above a physical limit as a measurement error.*
 
 Before you repeat a number to a colleague or a customer, run these checks in your head first. Each row shows the arithmetic and the verdict, and each verdict is one you can reach in seconds.
 
@@ -424,6 +440,10 @@ End every report with the decision it supports, so the reader knows what the num
 ## 8. Worked examples
 
 **A. Storage "40 GB/s" per node.** Picture an engineer who runs `fio --rw=read --bs=1M --size=2G --numjobs=8` on a node with 1 TiB RAM. The tool reports 40 GB/s from "the NVMe array", and the engineer is pleased. Before you believe that number, look at what the node is actually doing. `iostat -x 1` shows near-zero device reads. `cachestat` shows a hit ratio of about 100%, and `free` shows the files sitting in page cache. The test measured memory, not the drives. When you see a number like this, check the cache before you check the drives, because the cache sits between the test and the hardware.
+
+![A four-row table pairing real benchmark cases with the hidden limiter that explained each result.](./img/g-73.jpg)
+*Figure 1.25.11. Always name the limiter behind a benchmark number before you accept it.*
+
 
 Run it again with `--direct=1`, on files larger than RAM, or with `drop_caches` for read tests, and let it run long. Ramp `iodepth` and `numjobs` as well. Now the array delivers 24 GB/s sequential and 3.4 M random 4 KiB IOPS at p99 220 µs. `nvme smart-log` shows no errors. One device reaches 85 °C and throttles after 4 minutes, which you can see in `--write_bw_log`.
 

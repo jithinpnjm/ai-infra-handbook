@@ -41,6 +41,10 @@ You need chapters 1.1 to 1.6 behind you. Chapter 1.5 matters most, because it co
 
 SSH is the everyday way into a node. It needs three things to be true at once: a working operating system, a working network, and a running `sshd`. When any one of them is broken, you need another door into the machine. That door has to be opened in advance, because the moment you need it is the moment you cannot configure it.
 
+![A three-row table listing out-of-band access tasks and why each matters before an outage.](./img/g-92.jpg)
+*Figure 1.29.1. The management controller only helps if you configured it before the outage.*
+
+
 The other door is the management controller, usually shortened to **BMC**, for baseboard management controller. It is a small computer on the motherboard that stays awake when the main system does not. You reach it through **IPMI** or **KVM-over-IP**. Newer interfaces such as Redfish and DCMI are covered in Part 7.
 
 One catch trips up nearly every new cluster. These interfaces are usually **disabled for network access by default**. Only local access works until someone configures the network side.
@@ -64,7 +68,7 @@ Suppose your laptop connects to a server for the first time. The server hands ov
 
 ![Public-key cryptography handles identity and key exchange, and symmetric encryption protects the session.](./img/l29-two-crypto.svg)
 
-*Figure 1.29.1. SSH uses each kind of cryptography for the job it does best.*
+*Figure 1.29.2. SSH uses each kind of cryptography for the job it does best.*
 
 **Symmetric encryption** uses one shared secret key to both encrypt and decrypt. It is fast and cheap, so it carries the bulk of the data. The catch is that both parties must somehow already hold the same key. Getting that key to the other side safely is the hard part, and it is the part public-key cryptography solves.
 
@@ -82,7 +86,7 @@ When you install the server package, host keys are generated automatically. If y
 
 ![The sequence of a session](./img/ch29-d1-luna.svg)
 
-*Figure 1.29.2. The sequence of a session.*
+*Figure 1.29.3. The sequence of a session.*
 
 The login runs in seven steps.
 
@@ -101,6 +105,10 @@ Turn off password logins for ordinary users, and protect every private key with 
 ## 3. Keys in practice
 
 Your key pair decides how strong your login is, so make the choices on purpose rather than by habit. The first command below creates the modern default key type. The second creates an RSA key, for servers that still need compatibility.
+
+![A three-row table listing the key type, key length, and passphrase choices for SSH keys.](./img/g-93.jpg)
+*Figure 1.29.4. Pick the key type, length, and passphrase on purpose, not by habit.*
+
 
 ```bash
 ssh-keygen -t ed25519 -C "alice@laptop"        # modern default
@@ -164,6 +172,10 @@ The SSH server and clients also keep a file called `ssh_known_hosts`, which stor
 
 You can spend a week retyping the same long `ssh` command, or you can learn a handful of `ssh` options and write the command down once. The table below lists them all, so use it as a lookup when you need one.
 
+![Two side-by-side panels comparing ssh local forwarding with remote forwarding.](./img/g-94.jpg)
+*Figure 1.29.5. Local and remote forwards point the same tunnel in opposite directions.*
+
+
 ### Command-line options
 
 | Option | Meaning |
@@ -220,7 +232,7 @@ Give each machine you visit often its own `Host` block, and keep the general blo
 
 ![Environment, port, X11 and agent forwarding all ride inside one SSH connection.](./img/l29-forwarding-kinds.svg)
 
-*Figure 1.29.3. Forwarding sends extra traffic through the single encrypted SSH connection.*
+*Figure 1.29.6. Forwarding sends extra traffic through the single encrypted SSH connection.*
 
 Suppose the only thing you can reach from your laptop is port 22 on one bastion. Forwarding is the trick that makes that single open port enough, because it sends extra traffic through the single encrypted SSH connection. The server opens no extra connections for it. Being able to reach port 22 is enough.
 
@@ -234,6 +246,10 @@ Before you enable agent forwarding to a shared host, remember that root there ca
 ## 6. The SSH server: `sshd_config`
 
 A wrong line in the server configuration can lock you out of the machine you are editing. Everyone who has run a cluster for a while has a version of that story: one hardening change, one reload, and then the admin's own key is refused at the next login.
+
+![A four-row table listing key sshd_config settings and the guidance for each.](./img/g-95.jpg)
+*Figure 1.29.7. A wrong sshd setting can lock you out, so validate before reloading.*
+
 
 The server is configured in **`/etc/ssh/sshd_config`**, and current distributions also read drop-ins in `sshd_config.d/`. A drop-in is a small extra file with the same syntax, so a vendor package or an automation role can add settings without rewriting the main file. After you edit the file, validate it with `sshd -t`, then reload it with `systemctl reload sshd`. A reload does not affect existing sessions. That helps, because a mistake need not lock you out of the session you are already using. Still, keep a second session open.
 
@@ -286,7 +302,7 @@ Use `Match` when service accounts, administrators or an internal network need ru
 
 ![Options placed before a key in authorized_keys limit where it may connect from and what it may run.](./img/l29-restricted-key.svg)
 
-*Figure 1.29.4. A key limited to one command from one subnet is worth far less to an attacker than a general key.*
+*Figure 1.29.8. A key limited to one command from one subnet is worth far less to an attacker than a general key.*
 
 Give your monitoring system a narrow capability instead of a shell. A key that can read one status page is worth far less to an attacker than a key that can do anything. In `authorized_keys`, options placed before the key limit what that key can do:
 
@@ -323,6 +339,10 @@ Use host-based authentication only on a network you control, and only for the ac
 ## 8. Running commands on many nodes
 
 Suppose you need the uptime of every node on a list. A simple loop works for a few machines, and many administrators begin there:
+
+![A three-row table listing problems with a simple ssh loop across many nodes and the fix for each.](./img/g-96.jpg)
+*Figure 1.29.9. Fan-out tools fix the problems that a plain loop creates at scale.*
+
 
 ```bash
 for h in $(cat nodes.txt); do ssh -o ConnectTimeout=3 "$h" 'uptime' ; done
@@ -397,6 +417,10 @@ Rehearse destructive commands on one node, then on a few, and only then on all. 
 
 Here is the scene these tools exist for. You start a long `rsync` on a compute node before lunch, then close the laptop and walk away. Your connection drops while you are gone. The copy keeps running, because it lives inside a session that outlived the shell.
 
+![A three-row table of GNU screen commands and what each one does.](./img/g-97.jpg)
+*Figure 1.29.10. A session outlives a dropped connection, so long jobs keep running.*
+
+
 Both `screen` and `tmux` give you several terminals inside one connection. They also keep your session alive when the connection drops. After a reconnect, you attach again and carry on. The programs inside never noticed the disconnect.
 
 ### GNU `screen`
@@ -456,7 +480,7 @@ Learn the start-or-attach command for whichever tool you use. That one command g
 
 ![The BMC with the tools used to reach its console, sensors and power control.](./img/l29-ipmi-tools.svg)
 
-*Figure 1.29.5. IPMI reaches the hardware even when the operating system is down, so isolate it on a management network.*
+*Figure 1.29.11. IPMI reaches the hardware even when the operating system is down, so isolate it on a management network.*
 
 Suppose a node stops answering SSH, and nobody can reach its operating system. That is the 2 a.m. case from the start of this chapter, and the hardware may still be reachable. IPMI is the standard way to reach it.
 
@@ -558,6 +582,10 @@ Because there is no standard protocol, you generally cannot automate iKVM. For e
 ## How it fails
 
 Each failure below has a telltale sign, a cause and a fix. Learn the signs here, while the cluster is quiet, so you recognise the pattern when it appears for real.
+
+![A four-row table pairing remote access failures on many nodes with their fixes.](./img/g-98.jpg)
+*Figure 1.29.12. Learn the warning signs while the cluster is quiet, so you recognise them under pressure.*
+
 
 ### 1. A fan-out command hangs forever on one node
 

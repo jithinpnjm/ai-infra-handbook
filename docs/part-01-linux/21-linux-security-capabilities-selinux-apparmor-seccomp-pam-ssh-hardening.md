@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a GPU cluster that holds model weights, proprietary data, and SSH keys that reach hundreds of nodes. The compute on that cluster is worth stealing too, because an intruder can put it to work on crypto-mining. All of that makes the cluster a shared, high-value target.
 
+![A three-row table listing hardening situations on GPU nodes and the trade-off to check for each.](./img/g-54.jpg)
+*Figure 1.21.1. Every hardening control protects the node but may cost a job, so check both.*
+
+
 Hardening such a node helps, but the same hardening can silently destroy performance. It can also break GPU, InfiniBand and container access. So a good AI-infrastructure engineer has to do both jobs at once: harden the node, and know which controls to relax, which to keep, and why.
 
 You will meet situations like these:
@@ -67,7 +71,7 @@ Security on Linux is layered, and each layer answers one of those questions. A r
 
 ![The security model in one picture](./img/ch21-d1-luna.svg)
 
-*Figure 1.21.1. The security model in one picture.*
+*Figure 1.21.2. The security model in one picture.*
 
 Several principles run through every section of this chapter. The first and most important is **least privilege**, which asks you to give a process only what it needs. Defence in depth means stacking several independent layers, so that one failure is not fatal. Where practical, aim for default deny. Keep separation of duties and auditability in view as well.
 
@@ -76,6 +80,10 @@ Shared clusters add one more principle to the list. Assume that a workload may b
 ## 2. Users, groups and the superuser
 
 Suppose a service account can read a file it should never touch. Suppose, too, that a job seems to have root-like power on a shared node. Both problems start in the same place, in how the kernel thinks about users.
+
+![Two side-by-side panels contrasting the kernel, which sees numeric IDs, with user space, which holds user names.](./img/g-55.jpg)
+*Figure 1.21.3. The kernel only sees numbers, and user names exist only in user space.*
+
 
 At the kernel level, users are only numbers. The kernel knows UIDs and GIDs, and user names exist only in user space. The only UID with special meaning to the kernel is **0**. Since Linux 2.2, even that special meaning has been split into capabilities, which section 4 covers.
 
@@ -180,7 +188,7 @@ Follow the order. If root passes, the stack is done. If root does not pass and t
 
 ![PAM stack evaluation](./img/ch21-d2-luna.svg)
 
-*Figure 1.21.2. PAM stack evaluation showing sufficient, requisite, and required control flags.*
+*Figure 1.21.4. PAM stack evaluation showing sufficient, requisite, and required control flags.*
 
 Several modules do the everyday work, and the first group checks the password itself. `pam_unix` handles traditional passwords and `/etc/shadow`, and its `nullok` option allows empty passwords, which should never be set. `pam_sss` connects to SSSD, LDAP or Kerberos, and `pam_pwquality` checks password strength.
 
@@ -232,13 +240,13 @@ Machines should use **keys, not passwords**. Use SSH keys or certificates (secti
 
 ![The five capability sets of a thread and what each one does.](./img/l21-cap-sets.svg)
 
-*Figure 1.21.3. The effective set is what the kernel checks, and dropping from the bounding set cannot be undone.*
+*Figure 1.21.5. The effective set is what the kernel checks, and dropping from the bounding set cannot be undone.*
 
 Suppose a server must bind a port below 1024, but it should never be able to load a kernel module. Traditional Unix offers only two kinds of process: root, which is all-powerful, and everyone else.
 
 ![Capabilities split root into pieces](./img/ch21-fig1-caps.jpg)
 
-*Figure 1.21.4. Capabilities divide root's power into separate pieces that you grant one at a time.*
+*Figure 1.21.6. Capabilities divide root's power into separate pieces that you grant one at a time.*
 
 Linux breaks root's powers into about 40 **capabilities**. Each capability is a distinct privilege, one key rather than the whole ring, and each can be granted, dropped or inherited separately. A process with euid 0 *normally* holds all of them. A process with a few capabilities and a non-zero UID can still do just those operations.
 
@@ -303,7 +311,7 @@ Before you grant a capability, ask which single operation the process needs. The
 
 ![A seccomp filter decides call by call which system calls reach the kernel.](./img/l21-seccomp.svg)
 
-*Figure 1.21.5. seccomp refuses system calls the service never needed, and filters cannot be removed once installed.*
+*Figure 1.21.7. seccomp refuses system calls the service never needed, and filters cannot be removed once installed.*
 
 In a container-escape demo, the attacker's next move is a system call the service never needed, such as `mount` or `ptrace`. seccomp is the layer that refuses that call.
 
@@ -339,7 +347,7 @@ DAC and MAC are *both* checked. MAC can only deny more. Run `cat /sys/kernel/sec
 
 ![Three security gates: seccomp, DAC, and MAC](./img/ch21-d3-luna.svg)
 
-*Figure 1.21.6. Syscall security gates: seccomp-bpf filtering, DAC with capabilities, and MAC (SELinux/AppArmor).*
+*Figure 1.21.8. Syscall security gates: seccomp-bpf filtering, DAC with capabilities, and MAC (SELinux/AppArmor).*
 
 ### SELinux (RHEL, Rocky, Fedora, Amazon Linux; also used by Android)
 
@@ -395,7 +403,7 @@ In an AI cluster, keep MAC **on**. Handle GPU, InfiniBand, NFS, Lustre and scrat
 
 ![Key sshd settings, a per-group Match exception and the safe way to test them.](./img/l21-ssh-hardening.svg)
 
-*Figure 1.21.7. Disable passwords and root login, allow specific groups, validate with sshd -t and keep a session open.*
+*Figure 1.21.9. Disable passwords and root login, allow specific groups, validate with sshd -t and keep a session open.*
 
 SSH is the front door to every node, and it is also the path an attacker uses to move sideways once inside. Harden it with care.
 
@@ -452,6 +460,10 @@ Restrict node-to-node SSH to the private management network. Use per-user keys o
 
 A login happens at three in the morning, and nobody can say who it was. Logs answer that question, but only if you set them up in advance. Start with the audit subsystem. **auditd** records security-relevant events from the kernel audit subsystem: syscalls, file watches, logins, privilege use and SELinux denials. Its rules live in `/etc/audit/rules.d/*.rules`. For example, `-w /etc/passwd -p wa -k identity` watches the password file, and `-w /etc/sudoers -p wa -k scope` watches the sudo rules.
 
+![A three-row table listing auditing and integrity tools and what each records.](./img/g-56.jpg)
+*Figure 1.21.10. Audit logs only help if you set them up in advance and ship them off the node.*
+
+
 Some rules cost more than others. The rule `-a always,exit -F arch=b64 -S execve -k exec` records every program execution, but it creates a lot of volume, so expect a warning. Query events with `ausearch -k identity`, summarise them with `aureport`, and ship them to a central log system. Boot with `audit=1` to cover early processes.
 
 Journald and syslog hold authentication logs, in `/var/log/auth.log` or `/var/log/secure`, along with `sudo` I/O logs and the output of `last` and `lastb`. Forward these logs off the node, because an attacker with root deletes local logs.
@@ -467,6 +479,10 @@ Decide now where these logs go and who reads them.
 ## 9. Kernel and system hardening
 
 Suppose you apply every sysctl in a CIS checklist, and then a profiler or an MPI job stops working. The table below lists kernel and system settings that harden a node. Each row gives the effect and a note on the cost. Read the notes before you apply a row, because some settings break GPU or MPI work.
+
+![A four-row table listing kernel hardening settings and the cost of each on GPU and MPI workloads.](./img/g-57.jpg)
+*Figure 1.21.11. Each hardening setting can break something, so measure before you apply it.*
+
 
 | Setting | Effect | Notes |
 |---|---|---|
@@ -498,6 +514,10 @@ A failed load shows `Lockdown: ... unsigned module loading is restricted` or "Re
 ## 10. Hardening AI/HPC nodes without breaking them
 
 Apply an enterprise baseline to a GPU node unchanged, and something may stop working. The project's operations notes (Volume 10, chapter 3, rewritten and checked for consistency) make the point plainly. Enterprise baselines were written for web servers, so GPU clusters need documented, deliberate exceptions. The table sets out each common rule, why it hurts AI nodes, and a better stance.
+
+![A four-row table pairing common enterprise hardening rules with better stances for GPU nodes.](./img/g-58.jpg)
+*Figure 1.21.12. Generic baselines break GPU work, so document the exceptions you need.*
+
 
 | Typical baseline rule | Why it hurts AI nodes | Better stance |
 |---|---|---|
@@ -531,6 +551,10 @@ Finally, list every listening service with `lsof` or `ss -tlnp`. Each open port 
 
 Suppose a platform team wants to ban privileged pods across a whole cluster. No single kernel can enforce that rule, because the pods do not exist yet. In Kubernetes, the **API server** can stop a dangerous workload before it is ever scheduled. The notes from *Production Kubernetes* (chapter 8) describe the flow.
 
+![Five boxes in a row showing a Kubernetes request passing RBAC, mutating admission, schema validation, and validating admission before etcd.](./img/g-59.jpg)
+*Figure 1.21.13. A request must pass every admission step before it reaches etcd.*
+
+
 Every request is authenticated and authorised with RBAC. Then it passes **mutating** admission, which may change the object. The ServiceAccount controller adds a default service account and token volume, and sidecar injectors add containers. Schema validation comes next, followed by **validating** admission, which may only accept or reject. For example, `NamespaceLifecycle` refuses to create objects in a terminating namespace.
 
 Only if all validating controllers admit the object does it reach etcd. One rejection is enough to deny it. Admission controllers sit on the **critical path** of every matching request. Webhooks add latency, and they can take the cluster down if they are unavailable.
@@ -547,6 +571,10 @@ The Kubernetes security chapters later in the book go deeper, covering RBAC, ser
 ## 13. Failure modes and troubleshooting
 
 Most security failures show up as a vague symptom, such as a denied file or a job that will not start. The table pairs each symptom with its likely cause and the check that confirms it. Use it as a first pass before you start changing configuration.
+
+![A four-row table pairing common security failures with the check or fix to try first.](./img/g-60.jpg)
+*Figure 1.21.14. Run the check for each security symptom before changing configuration.*
+
 
 | Symptom | Likely cause | Check / fix |
 |---|---|---|

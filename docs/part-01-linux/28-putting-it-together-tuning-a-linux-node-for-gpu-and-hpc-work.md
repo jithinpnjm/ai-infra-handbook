@@ -24,6 +24,10 @@ lab_venue: "GCP / GKE"
 
 Picture a training run that was fast last week and crawls today. The code has not changed, so the on-call engineer has to stop reading logs and start looking at the machine itself. This chapter is about the work that keeps such a machine fast. It is about making a Linux server with GPUs deliver the hardware's full capability, proving that it does, and keeping it that way across a fleet.
 
+![A three-row table linking node tuning problems on GPU clusters to their likely causes.](./img/g-84.jpg)
+*Figure 1.28.1. One slow node can cost the whole job, so every node must match the rest.*
+
+
 This is the capstone of Part 1, so every earlier chapter contributes a piece of the answer. Processes came first, then memory and NUMA, then scheduling and cgroups, namespaces, security, kernel modules and ``sysctl``. Later chapters added methods, tracing, benchmarking and virtualisation. Here those pieces come together in one practical task, the kind you will meet again and again in your career. **Take a Linux server with GPUs, make it deliver the hardware's capability predictably, prove it, and keep it that way across a fleet.**
 
 The cost logic behind that task is blunt. A single DGX/HGX-class node costs hundreds of thousands of dollars and consumes kilowatts of power. In a synchronous distributed training job, the slowest rank sets the speed of every other rank. So one node with a throttled GPU, a mispinned data loader, a degraded PCIe link, a too-low `vm.max_map_count`, or a NIC on the wrong NUMA node costs the whole job. Tuning is not about heroics on one machine. It is about making all nodes identical, within a tolerance you can measure, and finding the ones that are not.
@@ -58,7 +62,7 @@ A procurement team orders two identical GPU nodes, and the invoices agree down t
 
 ![The tuning stack, top to bottom](./img/ch28-d1-luna.svg)
 
-*Figure 1.28.1. The tuning stack, top to bottom.*
+*Figure 1.28.2. The tuning stack, top to bottom.*
 
 The order matters for two practical reasons. First, lower layers cannot be fixed from above. An OS cannot repair a PCIe link that negotiated at x8, and it cannot undo a BIOS that hides NUMA. Second, each layer must be verified before the next one is tuned, or you will tune around a fault. So build and verify bottom-up, and diagnose symptoms top-down.
 
@@ -82,7 +86,7 @@ The goal is for every layer to work in harmony, from the OS and CPU up to the GP
 
 ![The connection codes in nvidia-smi topo -m ordered by distance.](./img/l28-topo-codes.svg)
 
-*Figure 1.28.2. Each topology code is a statement about distance, and SYS between a worker's CPU, GPU and NIC should be avoided.*
+*Figure 1.28.3. Each topology code is a statement about distance, and SYS between a worker's CPU, GPU and NIC should be avoided.*
 
 Here is a question worth thirty seconds of looking: which CPU cores can reach GPU 3's memory directly? The answer is not written on the GPU. It belongs to the layout of the machine, and guessing it wrong costs you performance for the life of the node. That layout is the topology, meaning the map of where the CPU cores, memory, PCIe switches, GPUs, NICs and NVMe drives sit, and which of them are close to each other. Record that map before you tune anything, because a wrong assumption at this step invalidates everything that follows.
 
@@ -115,6 +119,10 @@ Linux still treats the CPU DRAM and the GPU HBM as two separate memory pools. So
 
 A node can boot cleanly, pass every GPU check, and still be throttled by a firmware option that was never set. Firmware sits below the operating system, and it decides what the operating system is even allowed to see. A BIOS that hides NUMA, or leaves deep C-states switched on, costs you performance that no amount of kernel tuning can win back. Firmware settings are chosen once per hardware generation, through vendor tooling, Redfish or BCM (Part 1b), and the audit then checks them on every node. Always follow the server vendor's reference profile for your model. The table below gives the concept behind each setting.
 
+![A four-row table listing firmware settings that shape GPU node behaviour and their typical choices.](./img/g-85.jpg)
+*Figure 1.28.4. Firmware settings are chosen once and checked on every node, so keep them identical.*
+
+
 | Setting | Typical for GPU training nodes | Why / caution |
 |---|---|---|
 | Power/performance profile | Maximum performance / "HPC" profile | Disable aggressive CPU power saving; consistent clocks |
@@ -136,6 +144,10 @@ Two rows deserve a second look. The PCIe row carries a security trade-off, becau
 ## 4. Kernel boot parameters
 
 The kernel command line is one of the quietest places a fleet can drift. Someone edits it by hand on the node in front of them, the node reboots, and the change never reaches the image that built it. So change boot parameters only through the distribution's supported mechanism. On RHEL-family BLS systems, use `grubby`. On Ubuntu, edit `/etc/default/grub` and run `update-grub`. For image builds, use your image tooling. Then verify the result with `cat /proc/cmdline`, and keep the parameters under version control.
+
+![A four-row table listing contested boot parameters for GPU nodes and their trade-offs.](./img/g-86.jpg)
+*Figure 1.28.5. Boot parameters are contested, so test each one on your own workload.*
+
 
 ```text
 # Example baseline for a bare-metal HGX-class node (adapt; flags are workload and platform dependent)
@@ -169,6 +181,10 @@ Choose each value by measurement, not by copying it from another machine. A sett
 ## 5. Sysctl, limits and services
 
 A node can pass every boot-parameter check and still kill a long job, because a service limit was never raised. Below the boot parameters sits the rest of the OS layer: kernel settings, resource limits and services. These are the files people copy from a blog post and then forget for three years. Every line in them needs a reason and a test. Chapter 1.22 has the full table.
+
+![A three-row table showing where sysctl, limits, and systemd settings apply on a GPU node.](./img/g-87.jpg)
+*Figure 1.28.6. A limit that looks right in your shell can still be missing from the job.*
+
 
 ```ini
 # /etc/sysctl.d/90-gpu-node.conf   (every line needs a reason and a test; see chapter 1.22 for the full table)
@@ -222,6 +238,10 @@ Treat the `sysctl` file and the limits file as code. Each change should come wit
 
 Memory problems are quiet, which is what makes them expensive. A job still runs, but slower than it should, or it dies days later when a limit is finally reached. Nobody sees the cause at the moment it happens. The settings below prevent both kinds of failure.
 
+![A four-row table listing memory choices for GPU nodes with their guidance.](./img/g-88.jpg)
+*Figure 1.28.7. Each memory choice trades speed, locality, or safety, so measure before keeping it.*
+
+
 - Local allocation. By default, a process allocates memory from the NUMA node of the CPU it runs on. Memory allocated before pinning, or by threads that have since migrated, may be remote. Bind at launch with `numactl --cpunodebind=N --membind=N`, or with the Slurm or Kubernetes equivalents.
 - Policy inheritance is not always reliable. A `numactl` policy is inherited by `fork`ed children, but not necessarily by `spawn`ed or `exec`ed workers. It is not guaranteed either for threads that some Python frameworks create, or for processes started by container runtimes. Re-assert the binding in every worker, as section 7 shows, and verify it with `numastat -p PID`, `/proc/PID/numa_maps` and `taskset -cp`.
 - Pinned memory, also called page-locked memory, is memory the operating system promises not to move or swap. Allocations such as `cudaHostAlloc`, or PyTorch's `pin_memory=True` paired with `non_blocking=True` on host-to-device copies, allow true asynchronous DMA. They reach `2x–3x` higher host-to-device PCIe throughput than pageable memory. You can measure the gap yourself with `bandwidthTest --memory=pinned` and `bandwidthTest --memory=pageable`. Pinned memory is a limited resource. Raise `RLIMIT_MEMLOCK` with `ulimit -l`. Pinned memory also counts against cgroup memory limits, and it cannot be swapped.
@@ -246,7 +266,7 @@ Here is the failure this section prevents. A data loader runs on a CPU socket th
 
 ![Keep the GPU, NIC and CPU on one NUMA node](./img/ch28-fig1-numa.jpg)
 
-*Figure 1.28.3. Work placed on the GPU's own NUMA node avoids the slower trip across the interconnect.*
+*Figure 1.28.8. Work placed on the GPU's own NUMA node avoids the slower trip across the interconnect.*
 
 ```bash
 #!/usr/bin/env bash
@@ -423,6 +443,10 @@ The NVML path is the most direct answer. If the driver exposes the NUMA node, th
 
 Three very different things can all present as "the GPU is slow": slow local disks, a slow fabric, or a driver that nobody configured. This section covers local and network storage, the host side of the network, and the GPU driver and runtime. Each one has settings you must choose on purpose, so the reasons matter as much as the values.
 
+![A four-row table listing GPU driver settings and the guidance for each.](./img/g-89.jpg)
+*Figure 1.28.9. Each GPU driver setting needs a deliberate choice that you record.*
+
+
 ### Local storage and filesystems
 
 - Start with the disk layout. A typical layout puts the OS on a mirrored pair (RAID1) of small NVMe or SATA devices. Use the remaining NVMe drives as scratch, either striped (md RAID0 or an LVM stripe) or individually. Do not use parity RAID for scratch. Scratch holds the dataset cache, the container layers (`/var/lib/containerd` and the enroot cache) and checkpoint staging. Use the mount options `noatime` and `nodev,nosuid`, as your policy allows. Modern kernels default to `relatime`. Use XFS or ext4, aligned to the stripe, and enable `fstrim.timer`. Put container storage on its own partition, so that it cannot fill the root filesystem (chapters 1.12 and 1.13).
@@ -501,7 +525,7 @@ You can tune a node perfectly and then lose all of it one layer higher up. A con
 
 ![A map from each tuning concern to the Kubernetes setting that implements it.](./img/l28-k8s-mechanisms.svg)
 
-*Figure 1.28.4. Kubernetes expresses the same tuning ideas through its own knobs, and dedicating whole nodes removes jitter.*
+*Figure 1.28.10. Kubernetes expresses the same tuning ideas through its own knobs, and dedicating whole nodes removes jitter.*
 
 Kubernetes expresses the same ideas through its own knobs, and the names are different. The table below lists each concern and its mechanism.
 
@@ -533,7 +557,7 @@ A fleet stays uniform only when every node is built the same way, and that is a 
 
 ![Configuration as code and fleet operations](./img/ch28-d2-luna.svg)
 
-*Figure 1.28.5. Configuration as code and fleet operations.*
+*Figure 1.28.11. Configuration as code and fleet operations.*
 
 Notice that a failed canary rejects the image, while drift or a fault sends the node back for diagnosis.
 
@@ -549,7 +573,7 @@ Notice that a failed canary rejects the image, while drift or a fault sends the 
 
 ![Four automated checks from boot audit to statistical outlier detection.](./img/l28-fleet-checks.svg)
 
-*Figure 1.28.6. Stragglers are the expensive failure, so compare each node against the fleet median.*
+*Figure 1.28.12. Stragglers are the expensive failure, so compare each node against the fleet median.*
 
 1. Boot-time audit (section 11). It checks topology, links, settings and versions. It fails closed, so a failing node stays drained.
 2. Prolog and epilog. The prolog verifies that GPUs are visible and healthy, ECC is clean, there has been no Xid since the last job, clocks are nominal, no leftover processes exist, memory is free and scratch space is available. The epilog resets that state.
@@ -559,6 +583,10 @@ Notice that a failed canary rejects the image, while drift or a fault sends the 
 ## 11. The node audit and baseline (verification suite)
 
 Before a node joins the pool, someone has to say yes to it, and that yes should come from a script rather than a feeling. The audit is also the part of this chapter you will come back to most often, so keep it small. Write one short script that prints PASS or FAIL for each check, and exits non-zero when any check fails. Adapt the expected values to your platform, including the GPU count, link speeds, kernel version string, cmdline tokens and `sysctl` values. Here is an illustrative skeleton (**untested**; adapt it):
+
+![Four stacked steps for auditing a GPU node and comparing it with a stored baseline.](./img/g-90.jpg)
+*Figure 1.28.13. A scripted audit and baseline catch drift before a node joins the pool.*
+
 
 ```bash
 #!/usr/bin/env bash
@@ -606,6 +634,10 @@ Later, compare new nodes and later snapshots against this baseline, using `diff`
 
 Sometimes a system gets faster for reasons nobody can explain, and that is exactly when you need a method rather than a hunch. The last few chapters gave you one, so here it is applied to a real mystery, retold from Gregg's *Systems Performance*, chapter 16. The case is a service that moved platforms and suddenly ran several times faster, and nobody on the team trusted the number. The platform is a cloud rather than a GPU node, but the technique is the one you will use on nodes.
 
+![Five stacked steps of a performance investigation that explained an unexplained speedup.](./img/g-91.jpg)
+*Figure 1.28.14. A fixed method turns a surprising speedup into measured causes.*
+
+
 Every investigation starts with the problem statement. A microservice that computes recommendations was moved from VM instances to a new container platform. One of its two components took 3 to 4 seconds per request on the VMs, and 1 second on the containers. A 3 to 4x gain "sounded too good to be true". The question was whether the gain was permanent, or an artefact of the test.
 
 The team had two initial hypotheses. One was better CPU cache use, because the component now ran alone. The other was bursting into idle CPU on the container platform.
@@ -632,7 +664,7 @@ The lessons carry over to GPU nodes. State the problem first. Compare two system
 
 ![A short troubleshooting map from symptoms to likely causes and first checks.](./img/l28-troubleshoot.svg)
 
-*Figure 1.28.7. Match the symptom to the row and run its first checks before exploring other causes.*
+*Figure 1.28.15. Match the symptom to the row and run its first checks before exploring other causes.*
 
 When a node misbehaves, you rarely get to choose the question. The symptom chooses it for you. Match the symptom to the likely causes in the table, then run the first checks in the same row.
 
